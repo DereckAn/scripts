@@ -318,7 +318,7 @@ def show_ssh_key_instructions(ssh_key_path: str) -> None:
         console.print(Panel(
             f"[bold]Clave pública SSH:[/bold]\n{public_key}\n\n"
             "1. Copia la clave pública arriba.\n"
-            "2. Ve a https://github.com/settings/keys\n"
+            "2. Ve a https://github.com/settings/keys \n"
             "3. Haz clic en 'New SSH key' o 'Add SSH key'.\n"
             "4. Pega la clave en el campo 'Key' y dale un título (e.g., 'MacBook').\n"
             "5. Haz clic en 'Add SSH key'.",
