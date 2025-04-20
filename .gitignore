@@ -1,0 +1,19 @@
+# Ignorar el directorio de compilación
+setup_macos/target/
+
+# Ignorar archivos de configuración de Rust
+#Cargo.lock
+
+# Ignorar archivos de caché de Rust
+**/*.rs.bk
+**/*.rs.bk.*
+
+# Ignorar archivos de compilación de dependencias
+**/*.d
+**/*.o
+**/*.so
+**/*.rlib
+**/*.rmeta
+
+# Ignorar archivos de caché de compilación
+.DS_Store
