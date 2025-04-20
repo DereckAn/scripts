@@ -1,0 +1,4 @@
+python-dotenv==1.0.1
+square==0.0.3
+squareup==39.1.0.20241218
+pillow==11.0.0
