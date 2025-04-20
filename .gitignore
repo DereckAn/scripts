@@ -1,5 +1,5 @@
 # Ignorar el directorio de compilación
-setup_macos/target/
+**/target/
 
 # Ignorar archivos de configuración de Rust
 #Cargo.lock
