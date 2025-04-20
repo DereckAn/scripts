@@ -4,25 +4,55 @@ import subprocess
 import os
 import sys
 import time
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
+from rich.progress import Progress
 from typing import List, Dict
 
-# Verificar e instalar rich
-try:
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.prompt import Confirm, Prompt
-    from rich.progress import Progress
-except ImportError:
-    print("Instalando la biblioteca 'rich'...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "rich"], check=True)
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.prompt import Confirm, Prompt
-    from rich.progress import Progress
-
 console = Console()
+
+# Verificar e instalar pip y la dependencia 'rich'
+def ensure_pip_installed() -> bool:
+    """Verifica si pip está instalado; si no, intenta instalarlo."""
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "--version"], check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError:
+        console.print("[yellow]pip no encontrado. Intentando instalar...[/yellow]")
+        try:
+            subprocess.run(
+                ["curl", "https://bootstrap.pypa.io/get-pip.py", "-o", "get-pip.py"],
+                check=True, capture_output=True
+            )
+            subprocess.run([sys.executable, "get-pip.py"], check=True, capture_output=True)
+            console.print("[green]pip instalado correctamente.[/green]")
+            return True
+        except subprocess.CalledProcessError:
+            console.print("[red]Error instalando pip. Por favor, instala manualmente: curl https://bootstrap.pypa.io/get-pip.py | python3[/red]")
+            return False
+        finally:
+            if os.path.exists("get-pip.py"):
+                os.remove("get-pip.py")
+
+def ensure_rich_installed() -> bool:
+    """Verifica si 'rich' está instalado; si no, intenta instalarlo con pip."""
+    if not ensure_pip_installed():
+        return False
+    try:
+        import rich
+        return True
+    except ImportError:
+        console.print("[yellow]Módulo 'rich' no encontrado. Intentando instalar...[/yellow]")
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "rich"], check=True, capture_output=True)
+            console.print("[green]'rich' instalado correctamente.[/green]")
+            import rich  # Re-importar después de la instalación
+            return True
+        except subprocess.CalledProcessError:
+            console.print("[red]Error instalando 'rich'. Por favor, instala manualmente con: pip install rich[/red]")
+            return False
 
 # Definición de categorías y aplicaciones
 APPS_BY_CATEGORY = {
@@ -432,6 +462,11 @@ def restart_terminal() -> None:
         console.print("[yellow]Entrada interrumpida. No se reinició la terminal. Por favor, reinicia manualmente.[/yellow]")
 
 def main() -> None:
+    # Verificar e instalar 'rich'
+    if not ensure_rich_installed():
+        console.print("[red]No se pudo instalar 'rich'. Saliendo...[/red]")
+        sys.exit(1)
+
     console.print(Panel("Script de Configuración para macOS", style="bold green", expand=False))
 
     # Verificar Homebrew y Git
