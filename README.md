@@ -101,6 +101,10 @@ The script will:
 - **Terminal Restart**: Restarting the terminal applies Oh My Zsh and PATH changes. The script defaults to Terminal.app. If you use iTerm2 or Warp, you may need to adjust the restart command (see Troubleshooting).
 - **Rust Binary Compatibility**: The precompiled binary is for macOS Apple Silicon (arm64). For Intel (x86_64) Macs, you may need to use the Python or Bash version, or compile the Rust binary yourself (see Contributing).
 
+## Help and inspiration
+
+- [macOS Setup Script](https://github.com/sapoepsilon/scripts.git)
+
 
 ## License
 

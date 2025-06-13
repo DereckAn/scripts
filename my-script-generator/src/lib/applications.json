@@ -1,0 +1,204 @@
+{
+  "categories": {
+    "development": {
+      "name": "Development Tools",
+      "icon": "🛠️"
+    },
+    "browsers": {
+      "name": "Web Browsers",
+      "icon": "🌐"
+    },
+    "media": {
+      "name": "Media & Graphics",
+      "icon": "🎨"
+    },
+    "productivity": {
+      "name": "Productivity",
+      "icon": "📝"
+    },
+    "utilities": {
+      "name": "System Utilities",
+      "icon": "⚙️"
+    }
+  },
+  "applications": {
+    "git": {
+      "name": "Git",
+      "description": "Distributed version control system",
+      "category": "development",
+      "platforms": {
+        "windows": {
+          "winget": "Git.Git",
+          "choco": "git"
+        },
+        "macos": {
+          "brew": "git"
+        },
+        "linux": {
+          "ubuntu": "git",
+          "fedora": "git",
+          "arch": "git",
+          "opensuse": "git"
+        }
+      }
+    },
+    "vscode": {
+      "name": "Visual Studio Code",
+      "description": "Code editor redefined and optimized",
+      "category": "development",
+      "platforms": {
+        "windows": {
+          "winget": "Microsoft.VisualStudioCode"
+        },
+        "macos": {
+          "brew": "visual-studio-code",
+          "cask": true
+        },
+        "linux": {
+          "ubuntu": "code",
+          "snap": "code --classic",
+          "fedora": "code",
+          "arch": "visual-studio-code-bin",
+          "aur": true
+        }
+      }
+    },
+    "firefox": {
+      "name": "Mozilla Firefox",
+      "description": "Free and open-source web browser",
+      "category": "browsers",
+      "platforms": {
+        "windows": {
+          "winget": "Mozilla.Firefox"
+        },
+        "macos": {
+          "brew": "firefox",
+          "cask": true
+        },
+        "linux": {
+          "ubuntu": "firefox",
+          "fedora": "firefox",
+          "arch": "firefox",
+          "snap": "firefox"
+        }
+      }
+    },
+    "chrome": {
+      "name": "Google Chrome",
+      "description": "Fast, secure web browser",
+      "category": "browsers",
+      "platforms": {
+        "windows": {
+          "winget": "Google.Chrome"
+        },
+        "macos": {
+          "brew": "google-chrome",
+          "cask": true
+        },
+        "linux": {
+          "ubuntu": "google-chrome-stable",
+          "fedora": "google-chrome-stable",
+          "arch": "google-chrome",
+          "aur": true
+        }
+      }
+    },
+    "nodejs": {
+      "name": "Node.js",
+      "description": "JavaScript runtime built on Chrome's V8",
+      "category": "development",
+      "platforms": {
+        "windows": {
+          "winget": "OpenJS.NodeJS"
+        },
+        "macos": {
+          "brew": "node"
+        },
+        "linux": {
+          "ubuntu": "nodejs npm",
+          "fedora": "nodejs npm",
+          "arch": "nodejs npm"
+        }
+      }
+    },
+    "docker": {
+      "name": "Docker Desktop",
+      "description": "Containerization platform",
+      "category": "development",
+      "platforms": {
+        "windows": {
+          "winget": "Docker.DockerDesktop"
+        },
+        "macos": {
+          "brew": "docker",
+          "cask": true
+        },
+        "linux": {
+          "ubuntu": "docker.io",
+          "fedora": "docker",
+          "arch": "docker"
+        }
+      }
+    },
+    "vlc": {
+      "name": "VLC Media Player",
+      "description": "Free and open source cross-platform multimedia player",
+      "category": "media",
+      "platforms": {
+        "windows": {
+          "winget": "VideoLAN.VLC"
+        },
+        "macos": {
+          "brew": "vlc",
+          "cask": true
+        },
+        "linux": {
+          "ubuntu": "vlc",
+          "fedora": "vlc",
+          "arch": "vlc",
+          "snap": "vlc"
+        }
+      }
+    },
+    "7zip": {
+      "name": "7-Zip",
+      "description": "File archiver with a high compression ratio",
+      "category": "utilities",
+      "platforms": {
+        "windows": {
+          "winget": "7zip.7zip"
+        },
+        "macos": {
+          "brew": "sevenzip"
+        },
+        "linux": {
+          "ubuntu": "p7zip-full",
+          "fedora": "p7zip",
+          "arch": "p7zip"
+        }
+      }
+    }
+  },
+  "distributions": {
+    "ubuntu": {
+      "name": "Ubuntu / Debian",
+      "packageManager": "apt",
+      "updateCommand": "sudo apt update && sudo apt upgrade -y"
+    },
+    "fedora": {
+      "name": "Fedora / RHEL / CentOS",
+      "packageManager": "dnf",
+      "updateCommand": "sudo dnf update -y"
+    },
+    "arch": {
+      "name": "Arch Linux / Manjaro",
+      "packageManager": "pacman",
+      "updateCommand": "sudo pacman -Syu --noconfirm"
+    },
+    "opensuse": {
+      "name": "openSUSE",
+      "packageManager": "zypper",
+      "updateCommand": "sudo zypper refresh && sudo zypper update -y"
+    }
+  }
+}
