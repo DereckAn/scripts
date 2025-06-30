@@ -7,6 +7,10 @@ interface PreviewStepProps extends StepProps {
 
 export function PreviewStep({ formState, onPrevious, onReset }: PreviewStepProps) {
   const [copied, setCopied] = useState(false);
+  const [quickCommand, setQuickCommand] = useState('');
+  const [commandCopied, setCommandCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
 
   const copyToClipboard = async () => {
     try {
@@ -30,6 +34,52 @@ export function PreviewStep({ formState, onPrevious, onReset }: PreviewStepProps
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  const generateQuickCommand = async () => {
+    if (formState.platform === 'windows') {
+      setError('Quick install commands are only available for macOS and Linux');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/generate-script', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          platform: formState.platform,
+          distribution: formState.distribution,
+          selectedApps: formState.selectedApps,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate quick command');
+      }
+
+      const data = await response.json();
+      setQuickCommand(data.command);
+    } catch (err) {
+      setError('Failed to generate quick install command. Please try again.');
+      console.error('Error generating command:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyCommandToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(quickCommand);
+      setCommandCopied(true);
+      setTimeout(() => setCommandCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy command: ', err);
+    }
   };
 
   const getFileExtension = () => {
@@ -97,6 +147,70 @@ export function PreviewStep({ formState, onPrevious, onReset }: PreviewStepProps
         </pre>
       </div>
 
+      {/* Quick Install Command Section */}
+      {(formState.platform === 'macos' || formState.platform === 'linux') && (
+        <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
+          <h3 className="font-bold text-purple-900 mb-3 flex items-center">
+            ⚡ Quick Install Command
+            <span className="ml-2 text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded">NEW</span>
+          </h3>
+          <p className="text-purple-800 text-sm mb-4">
+            Generate a one-line command that others can copy and run directly in their terminal. 
+            Perfect for sharing with teammates or documentation!
+          </p>
+
+          {!quickCommand && (
+            <button
+              onClick={generateQuickCommand}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center"
+            >
+              {isGenerating ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                '🚀 Generate Quick Command'
+              )}
+            </button>
+          )}
+
+          {error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          {quickCommand && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium text-purple-900">Your Quick Install Command:</span>
+                <button
+                  onClick={copyCommandToClipboard}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    commandCopied
+                      ? 'bg-green-500 text-white'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                >
+                  {commandCopied ? '✓ Copied!' : '📋 Copy'}
+                </button>
+              </div>
+              <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm overflow-x-auto">
+                {quickCommand}
+              </div>
+              <p className="text-xs text-purple-700 mt-2">
+                ⏰ This command expires in 10 minutes for security
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Usage Instructions */}
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-medium text-blue-900 mb-2">📋 Usage Instructions</h3>
@@ -110,6 +224,12 @@ export function PreviewStep({ formState, onPrevious, onReset }: PreviewStepProps
           )}
           {(formState.platform === 'macos' || formState.platform === 'linux') && (
             <>
+              <p><strong>Option 1 - Quick Command:</strong></p>
+              <p>• Generate a quick command above and share it with others</p>
+              <p>• Recipients can copy-paste directly into terminal</p>
+              <p className="mb-3">• No file download needed!</p>
+              
+              <p><strong>Option 2 - Manual Download:</strong></p>
               <p>1. Save the script as <code>install-script.sh</code></p>
               <p>2. Make it executable: <code>chmod +x install-script.sh</code></p>
               <p>3. Run the script: <code>./install-script.sh</code></p>
