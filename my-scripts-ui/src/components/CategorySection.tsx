@@ -32,7 +32,7 @@ export default function CategorySection({
 }: CategorySectionProps) {
   const availableApps = apps.filter(app => {
     if (selectedOS === 'macos') return !app.linuxOnly;
-    if (selectedOS && selectedOS !== 'macos') return !app.macosOnly;
+    if (selectedOS && selectedOS !== null) return !app.macosOnly;
     return true;
   });
 

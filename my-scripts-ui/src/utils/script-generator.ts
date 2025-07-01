@@ -1,49 +1,53 @@
-import { App, OperatingSystem, ScriptConfig } from '@/types/script-generator';
-import { APPS } from '@/data/apps';
+import { APPS } from "@/data/apps";
+import { App, OperatingSystem, ScriptConfig } from "@/types/script-generator";
 
 export function generateInstallScript(config: ScriptConfig): string {
   const { os, selectedApps, options } = config;
-  const selectedAppData = APPS.filter(app => selectedApps.includes(app.id));
-  
+  const selectedAppData = APPS.filter((app) => selectedApps.includes(app.id));
+
   let script = generateScriptHeader(os);
-  
+
   // Add system update
   if (options.updateSystem) {
     script += generateSystemUpdate(os);
   }
-  
+
   // Add backup creation
   if (options.createBackup) {
     script += generateBackupSection(os);
   }
-  
+
   // Check and install package managers
   script += generatePackageManagerSetup(os);
-  
+
   // Install applications
-  script += generateApplicationInstalls(selectedAppData, os, options.showProgress);
-  
+  script += generateApplicationInstalls(
+    selectedAppData,
+    os,
+    options.showProgress
+  );
+
   // Install Oh My Zsh if selected
   if (options.installOhMyZsh) {
     script += generateOhMyZshInstall(os);
   }
-  
+
   // Add post-install configuration
   if (options.configureDotfiles) {
     script += generateDotfilesConfiguration(os);
   }
-  
+
   script += generateScriptFooter();
-  
+
   return script;
 }
 
 function generateScriptHeader(os: OperatingSystem): string {
   const osName = {
-    macos: 'macOS',
-    ubuntu: 'Ubuntu/Debian',
-    fedora: 'Fedora',
-    arch: 'Arch Linux'
+    macos: "macOS",
+    ubuntu: "Ubuntu/Debian",
+    fedora: "Fedora",
+    arch: "Arch Linux",
   }[os];
 
   return `#!/bin/bash
@@ -137,7 +141,7 @@ if [ $? -eq 0 ]; then
 else
     print_error "System update failed"
     exit 1
-fi`
+fi`,
   };
 
   return `# System Update
@@ -166,7 +170,7 @@ echo
 }
 
 function generatePackageManagerSetup(os: OperatingSystem): string {
-  if (os === 'macos') {
+  if (os === "macos") {
     return `# Check and install Homebrew
 if ! command_exists brew; then
     print_status "Installing Homebrew..."
@@ -194,7 +198,7 @@ fi
 echo
 
 `;
-  } else if (os === 'arch') {
+  } else if (os === "arch") {
     return `# Check and install AUR helper (yay)
 if ! command_exists yay; then
     print_status "Installing yay AUR helper..."
@@ -218,18 +222,22 @@ echo
 
 `;
   }
-  
-  return '';
+
+  return "";
 }
 
-function generateApplicationInstalls(apps: App[], os: OperatingSystem, showProgress: boolean): string {
+function generateApplicationInstalls(
+  apps: App[],
+  os: OperatingSystem,
+  showProgress: boolean
+): string {
   let script = `# Application Installation
 print_status "Starting application installation..."
 echo
 
 `;
 
-  apps.forEach(app => {
+  apps.forEach((app) => {
     const installConfig = app.install[os];
     if (!installConfig) return;
 
@@ -245,19 +253,19 @@ else
     }
 
     // Generate install command based on package manager
-    if (installConfig.homebrew) {
+    if ("homebrew" in installConfig && installConfig.homebrew) {
       script += `    brew install ${installConfig.homebrew}`;
-    } else if (installConfig.cask) {
+    } else if ("cask" in installConfig && installConfig.cask) {
       script += `    brew install --cask ${installConfig.cask}`;
-    } else if (installConfig.apt) {
+    } else if ("apt" in installConfig && installConfig.apt) {
       script += `    sudo apt install -y ${installConfig.apt}`;
-    } else if (installConfig.snap) {
+    } else if ("snap" in installConfig && installConfig.snap) {
       script += `    sudo snap install ${installConfig.snap}`;
-    } else if (installConfig.dnf) {
+    } else if ("dnf" in installConfig && installConfig.dnf) {
       script += `    sudo dnf install -y ${installConfig.dnf}`;
-    } else if (installConfig.pacman) {
+    } else if ("pacman" in installConfig && installConfig.pacman) {
       script += `    sudo pacman -S --noconfirm ${installConfig.pacman}`;
-    } else if (installConfig.aur) {
+    } else if ("aur" in installConfig && installConfig.aur) {
       script += `    yay -S --noconfirm ${installConfig.aur}`;
     } else if (installConfig.command) {
       script += `    ${installConfig.command}`;
@@ -280,7 +288,7 @@ else
     if (app.postInstall && app.postInstall[os]) {
       script += `
 # Post-install configuration for ${app.name}
-${app.postInstall[os].map(cmd => `${cmd}`).join('\n')}
+${app.postInstall[os].map((cmd) => `${cmd}`).join("\n")}
 `;
     }
 
@@ -411,13 +419,13 @@ print_status "Script execution completed at $(date)"
 
 export function generateReadme(config: ScriptConfig): string {
   const { os, selectedApps } = config;
-  const selectedAppData = APPS.filter(app => selectedApps.includes(app.id));
-  
+  const selectedAppData = APPS.filter((app) => selectedApps.includes(app.id));
+
   const osName = {
-    macos: 'macOS',
-    ubuntu: 'Ubuntu/Debian',
-    fedora: 'Fedora',
-    arch: 'Arch Linux'
+    macos: "macOS",
+    ubuntu: "Ubuntu/Debian",
+    fedora: "Fedora",
+    arch: "Arch Linux",
   }[os];
 
   return `# Installation Script for ${osName}
@@ -426,23 +434,30 @@ This script was generated by **My Scripts UI** and will install the following ap
 
 ## Selected Applications
 
-${selectedAppData.map(app => `- **${app.name}** - ${app.description}`).join('\n')}
+${selectedAppData
+  .map((app) => `- **${app.name}** - ${app.description}`)
+  .join("\n")}
 
 ## Prerequisites
 
 ### ${osName}
-${os === 'macos' ? `- macOS 10.15 or later
+${
+  os === "macos"
+    ? `- macOS 10.15 or later
 - Command Line Tools for Xcode (will be installed automatically if needed)
-- Administrator privileges` : 
-os === 'ubuntu' ? `- Ubuntu 18.04 or later / Debian 10 or later
+- Administrator privileges`
+    : os === "ubuntu"
+    ? `- Ubuntu 18.04 or later / Debian 10 or later
 - sudo privileges
-- Internet connection` :
-os === 'fedora' ? `- Fedora 32 or later
+- Internet connection`
+    : os === "fedora"
+    ? `- Fedora 32 or later
 - sudo privileges
-- Internet connection` :
-`- Arch Linux (up to date)
+- Internet connection`
+    : `- Arch Linux (up to date)
 - sudo privileges
-- Internet connection`}
+- Internet connection`
+}
 
 ## Usage
 
@@ -467,21 +482,30 @@ os === 'fedora' ? `- Fedora 32 or later
 2. **Package Manager Setup**: Installs required package managers (Homebrew for macOS, yay for Arch Linux)
 3. **Application Installation**: Installs all selected applications using the appropriate package manager
 4. **Configuration**: Sets up configuration files and environment variables as needed
-${config.options.installOhMyZsh ? '5. **Oh My Zsh Setup**: Installs Oh My Zsh with Powerlevel10k theme and useful plugins' : ''}
+${
+  config.options.installOhMyZsh
+    ? "5. **Oh My Zsh Setup**: Installs Oh My Zsh with Powerlevel10k theme and useful plugins"
+    : ""
+}
 
 ## Package Managers Used
 
-${os === 'macos' ? `- **Homebrew**: Primary package manager for macOS
-- **Homebrew Cask**: For GUI applications` :
-os === 'ubuntu' ? `- **APT**: Default package manager for Ubuntu/Debian
+${
+  os === "macos"
+    ? `- **Homebrew**: Primary package manager for macOS
+- **Homebrew Cask**: For GUI applications`
+    : os === "ubuntu"
+    ? `- **APT**: Default package manager for Ubuntu/Debian
 - **Snap**: Universal package manager
-- **Direct downloads**: For applications not available in repositories` :
-os === 'fedora' ? `- **DNF**: Default package manager for Fedora
+- **Direct downloads**: For applications not available in repositories`
+    : os === "fedora"
+    ? `- **DNF**: Default package manager for Fedora
 - **Flatpak**: Universal package manager
-- **Direct downloads**: For applications not available in repositories` :
-`- **Pacman**: Default package manager for Arch Linux
+- **Direct downloads**: For applications not available in repositories`
+    : `- **Pacman**: Default package manager for Arch Linux
 - **Yay**: AUR helper for community packages
-- **Direct downloads**: For applications not available in repositories`}
+- **Direct downloads**: For applications not available in repositories`
+}
 
 ## Post-Installation
 
@@ -496,7 +520,11 @@ After the script completes:
 2. **Verify installations** by running:
    \`\`\`bash
    # Check installed applications
-   ${selectedAppData.filter(app => app.checkInstall).map(app => app.checkInstall).slice(0, 3).join('\n   ')}
+   ${selectedAppData
+     .filter((app) => app.checkInstall)
+     .map((app) => app.checkInstall)
+     .slice(0, 3)
+     .join("\n   ")}
    \`\`\`
 
 3. **Configure applications** as needed (some may require initial setup)
@@ -519,15 +547,23 @@ After the script completes:
 
 If any application fails to install automatically, you can install it manually:
 
-${selectedAppData.slice(0, 3).map(app => {
-  const installCmd = app.install[os];
-  if (installCmd?.homebrew) return `- ${app.name}: \`brew install ${installCmd.homebrew}\``;
-  if (installCmd?.cask) return `- ${app.name}: \`brew install --cask ${installCmd.cask}\``;
-  if (installCmd?.apt) return `- ${app.name}: \`sudo apt install ${installCmd.apt}\``;
-  if (installCmd?.dnf) return `- ${app.name}: \`sudo dnf install ${installCmd.dnf}\``;
-  if (installCmd?.pacman) return `- ${app.name}: \`sudo pacman -S ${installCmd.pacman}\``;
-  return `- ${app.name}: Check official documentation`;
-}).join('\n')}
+${selectedAppData
+  .slice(0, 3)
+  .map((app) => {
+    const installCmd = app.install[os];
+    if (installCmd && 'homebrew' in installCmd && installCmd.homebrew)
+      return `- ${app.name}: \`brew install ${installCmd.homebrew}\``;
+    if (installCmd && 'cask' in installCmd && installCmd.cask)
+      return `- ${app.name}: \`brew install --cask ${installCmd.cask}\``;
+    if (installCmd && 'apt' in installCmd && installCmd.apt)
+      return `- ${app.name}: \`sudo apt install ${installCmd.apt}\``;
+    if (installCmd && 'dnf' in installCmd && installCmd.dnf)
+      return `- ${app.name}: \`sudo dnf install ${installCmd.dnf}\``;
+    if (installCmd && 'pacman' in installCmd && installCmd.pacman)
+      return `- ${app.name}: \`sudo pacman -S ${installCmd.pacman}\``;
+    return `- ${app.name}: Check official documentation`;
+  })
+  .join("\n")}
 
 ## Security Note
 
