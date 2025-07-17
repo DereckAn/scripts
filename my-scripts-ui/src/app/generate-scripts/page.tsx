@@ -135,21 +135,28 @@ export default function GenerateScriptsPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200 dark:from-stone-950 dark:via-stone-900 dark:to-stone-800">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-grid-stone-900/[0.04] dark:bg-grid-stone-100/[0.02]" />
+      
+      <div className="relative p-8 pt-20">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            ⚡ Generar Scripts de Instalación
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-stone-900 to-stone-700 dark:from-stone-100 dark:to-stone-300 rounded-xl mb-8 shadow-lg">
+            <span className="text-2xl">⚡</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-6">
+            Generar Scripts de Instalación
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+          <p className="text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto leading-relaxed">
             Crea scripts personalizados para instalar aplicaciones automáticamente en Mac y Linux
           </p>
         </div>
 
         <div className="space-y-8">
           {/* OS Selection */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+          <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
+            <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
               🖥️ Selecciona tu Sistema Operativo
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -159,7 +166,7 @@ export default function GenerateScriptsPage() {
                   className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
                     selectedOS === os.id
                       ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400'
-                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      : 'bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <input
@@ -172,8 +179,8 @@ export default function GenerateScriptsPage() {
                   />
                   <span className="text-2xl mr-3">{os.icon}</span>
                   <div>
-                    <div className="font-medium text-gray-900 dark:text-white">{os.name}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">{os.desc}</div>
+                    <div className="font-medium text-stone-900 dark:text-stone-100">{os.name}</div>
+                    <div className="text-sm text-stone-600 dark:text-stone-400">{os.desc}</div>
                   </div>
                 </label>
               ))}
@@ -184,10 +191,10 @@ export default function GenerateScriptsPage() {
           {selectedOS && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-2">
                   📦 Selecciona las Aplicaciones
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-stone-600 dark:text-stone-400">
                   {selectedApps.length} aplicación{selectedApps.length === 1 ? '' : 'es'} seleccionada{selectedApps.length === 1 ? '' : 's'} de {availableApps.length} disponible{availableApps.length === 1 ? '' : 's'}
                 </p>
               </div>
@@ -218,12 +225,12 @@ export default function GenerateScriptsPage() {
 
           {/* Script Options */}
           {selectedOS && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
+              <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
                 ⚙️ Opciones del Script
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
                   <input
                     type="checkbox"
                     checked={options.updateSystem}
@@ -231,12 +238,12 @@ export default function GenerateScriptsPage() {
                     className="text-blue-600 rounded focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-gray-900 dark:text-white font-medium">Actualizar sistema</span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Actualizar paquetes del sistema antes de instalar</p>
+                    <span className="text-stone-900 dark:text-stone-100 font-medium">Actualizar sistema</span>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Actualizar paquetes del sistema antes de instalar</p>
                   </div>
                 </label>
 
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
                   <input
                     type="checkbox"
                     checked={options.createBackup}
@@ -244,12 +251,12 @@ export default function GenerateScriptsPage() {
                     className="text-blue-600 rounded focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-gray-900 dark:text-white font-medium">Crear backup</span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Respaldar archivos de configuración</p>
+                    <span className="text-stone-900 dark:text-stone-100 font-medium">Crear backup</span>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Respaldar archivos de configuración</p>
                   </div>
                 </label>
 
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
                   <input
                     type="checkbox"
                     checked={options.showProgress}
@@ -257,12 +264,12 @@ export default function GenerateScriptsPage() {
                     className="text-blue-600 rounded focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-gray-900 dark:text-white font-medium">Mostrar progreso</span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Mostrar salida detallada durante la instalación</p>
+                    <span className="text-stone-900 dark:text-stone-100 font-medium">Mostrar progreso</span>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Mostrar salida detallada durante la instalación</p>
                   </div>
                 </label>
 
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
                   <input
                     type="checkbox"
                     checked={options.configureDotfiles}
@@ -270,12 +277,12 @@ export default function GenerateScriptsPage() {
                     className="text-blue-600 rounded focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-gray-900 dark:text-white font-medium">Configurar dotfiles</span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Añadir aliases y configuraciones útiles</p>
+                    <span className="text-stone-900 dark:text-stone-100 font-medium">Configurar dotfiles</span>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">Añadir aliases y configuraciones útiles</p>
                   </div>
                 </label>
 
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 md:col-span-2">
+                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200 md:col-span-2">
                   <input
                     type="checkbox"
                     checked={options.installOhMyZsh}
@@ -283,8 +290,8 @@ export default function GenerateScriptsPage() {
                     className="text-blue-600 rounded focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-gray-900 dark:text-white font-medium">Instalar Oh My Zsh</span>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-stone-900 dark:text-stone-100 font-medium">Instalar Oh My Zsh</span>
+                    <p className="text-sm text-stone-600 dark:text-stone-400">
                       Instalar Oh My Zsh con tema Powerlevel10k y plugins útiles (zsh-autosuggestions, zsh-syntax-highlighting, etc.)
                     </p>
                   </div>
@@ -307,10 +314,10 @@ export default function GenerateScriptsPage() {
 
           {/* Generated Script Output */}
           {generatedScript && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl border border-stone-200/60 dark:border-stone-800/60">
+              <div className="p-6 border-b border-stone-200/60 dark:border-stone-800/60">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
                     📄 Script Generado
                   </h2>
                   <div className="flex space-x-2">
@@ -319,7 +326,7 @@ export default function GenerateScriptsPage() {
                       className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
                         activeTab === 'script'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
                       }`}
                     >
                       Script
@@ -329,7 +336,7 @@ export default function GenerateScriptsPage() {
                       className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
                         activeTab === 'readme'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
                       }`}
                     >
                       README
@@ -339,7 +346,7 @@ export default function GenerateScriptsPage() {
               </div>
               
               <div className="p-6">
-                <div className="bg-gray-900 dark:bg-gray-800 rounded-lg p-4 mb-4">
+                <div className="bg-stone-900 dark:bg-stone-800 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-white">
                       {activeTab === 'script' ? '📄 install-script.sh' : '📖 README.md'}
@@ -378,6 +385,7 @@ export default function GenerateScriptsPage() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

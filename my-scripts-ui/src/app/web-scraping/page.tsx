@@ -284,13 +284,20 @@ export default function WebScrapingPage() {
   const errorPages = session?.pages.filter(p => p.status === 'error') || [];
 
   return (
-    <div className="min-h-screen p-8 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200 dark:from-stone-950 dark:via-stone-900 dark:to-stone-800">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-grid-stone-900/[0.04] dark:bg-grid-stone-100/[0.02]" />
+      
+      <div className="relative p-8 pt-20">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            🕷️ Web Scraping Avanzado
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-stone-900 to-stone-700 dark:from-stone-100 dark:to-stone-300 rounded-xl mb-8 shadow-lg">
+            <span className="text-2xl">🕷️</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-6">
+            Web Scraping Avanzado
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+          <p className="text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto leading-relaxed">
             Extrae contenido de sitios web y conviértelo a Markdown/MDX con procesamiento inteligente de tablas
           </p>
         </div>
@@ -317,14 +324,14 @@ export default function WebScrapingPage() {
 
           {/* Opciones de exportación */}
           {session && completedPages.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-stone-200/60 dark:border-stone-800/60">
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-4">
                 📦 Opciones de Exportación
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
                     Formato de exportación
                   </label>
                   <select
@@ -333,7 +340,7 @@ export default function WebScrapingPage() {
                       ...prev, 
                       format: e.target.value as ExportOptions['format'] 
                     }))}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
                   >
                     <option value="individual">Archivos individuales</option>
                     <option value="zip">Archivo ZIP</option>
@@ -352,7 +359,7 @@ export default function WebScrapingPage() {
                       }))}
                       className="text-blue-600 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="text-sm text-stone-700 dark:text-stone-300">
                       Incluir metadatos
                     </span>
                   </label>
@@ -367,7 +374,7 @@ export default function WebScrapingPage() {
                       }))}
                       className="text-blue-600 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="text-sm text-stone-700 dark:text-stone-300">
                       Incluir imágenes
                     </span>
                   </label>
@@ -390,7 +397,7 @@ export default function WebScrapingPage() {
           {session && session.pages.length > 0 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
                   📄 Páginas Procesadas ({session.pages.length})
                 </h2>
                 
@@ -422,10 +429,10 @@ export default function WebScrapingPage() {
           {!session && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🕷️</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              <h3 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-2">
                 ¡Comienza tu proyecto de scraping!
               </h3>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-stone-600 dark:text-stone-400">
                 Configura los parámetros arriba para extraer contenido de sitios web
               </p>
             </div>
@@ -468,6 +475,7 @@ export default function WebScrapingPage() {
           page={selectedPage}
           onClose={() => setSelectedPage(null)}
         />
+        </div>
       </div>
     </div>
   );
