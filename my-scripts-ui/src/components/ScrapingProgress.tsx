@@ -64,18 +64,18 @@ export default function ScrapingProgress({
       case 'error':
         return 'text-red-600 dark:text-red-400';
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-stone-600 dark:text-stone-400';
     }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-stone-200/60 dark:border-stone-800/60">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <span className="text-2xl">{getStatusIcon()}</span>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
               Progreso del Scraping
             </h3>
             <p className={`text-sm font-medium ${getStatusColor()}`}>
@@ -120,15 +120,15 @@ export default function ScrapingProgress({
       {/* Barra de progreso principal */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
             Progreso general
           </span>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <span className="text-sm text-stone-600 dark:text-stone-400">
             {progress.current} de {progress.total} ({progress.percentage}%)
           </span>
         </div>
         
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+        <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-3">
           <div 
             className="bg-blue-600 h-3 rounded-full transition-all duration-300 relative overflow-hidden"
             style={{ width: `${progress.percentage}%` }}
@@ -143,11 +143,11 @@ export default function ScrapingProgress({
       {/* URL actual */}
       {progress.currentUrl && (
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
             Procesando actualmente:
           </label>
-          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-            <p className="text-sm text-gray-700 dark:text-gray-300 break-all">
+          <div className="bg-stone-100 dark:bg-stone-800 rounded-lg p-3">
+            <p className="text-sm text-stone-700 dark:text-stone-300 break-all">
               {progress.currentUrl}
             </p>
           </div>
@@ -192,11 +192,11 @@ export default function ScrapingProgress({
           </div>
         </div>
 
-        <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+        <div className="text-center p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
+          <div className="text-2xl font-bold text-stone-600 dark:text-stone-400">
             {progress.skipped}
           </div>
-          <div className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+          <div className="text-xs text-stone-700 dark:text-stone-300 font-medium">
             Omitidas
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function ScrapingProgress({
       {/* Estimación de tiempo */}
       {progress.status === 'scraping' && progress.current > 0 && (
         <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             {isPaused ? 'Scraping pausado' : 'Estimando tiempo restante...'}
           </p>
         </div>

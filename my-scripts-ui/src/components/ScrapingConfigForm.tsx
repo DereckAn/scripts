@@ -111,15 +111,15 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
   const isFormValid = config.url && !urlError && !loading;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
-      <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
+      <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
         ⚙️ Configuración de Web Scraping
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* URL del sitio web */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
             🌐 URL del sitio web *
           </label>
           <input
@@ -127,8 +127,8 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
             value={config.url}
             onChange={(e) => handleUrlChange(e.target.value)}
             placeholder="https://docs.ejemplo.com"
-            className={`w-full p-4 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              urlError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+            className={`w-full p-4 border rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              urlError ? 'border-red-500' : 'border-stone-300 dark:border-stone-600'
             }`}
             required
           />
@@ -140,7 +140,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
         {/* Configuración básica */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
               📄 Máximo de páginas
             </label>
             <input
@@ -153,12 +153,12 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 maxPages: e.target.value ? parseInt(e.target.value) : undefined 
               }))}
               placeholder="Sin límite"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
               ⏱️ Delay (ms)
             </label>
             <input
@@ -170,12 +170,12 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 ...prev, 
                 delay: parseInt(e.target.value) || 0 
               }))}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
               🔄 Concurrencia
             </label>
             <input
@@ -187,18 +187,18 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 ...prev, 
                 concurrency: parseInt(e.target.value) || 1 
               }))}
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
             />
           </div>
         </div>
 
         {/* Opciones generales */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-4">
             🔧 Opciones Generales
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+            <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
               <input
                 type="checkbox"
                 checked={config.useJavaScript}
@@ -209,12 +209,12 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 className="text-blue-600 rounded focus:ring-blue-500"
               />
               <div>
-                <span className="text-gray-900 dark:text-white font-medium">Procesar JavaScript</span>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Para sitios con contenido dinámico</p>
+                <span className="text-stone-900 dark:text-stone-100 font-medium">Procesar JavaScript</span>
+                <p className="text-sm text-stone-600 dark:text-stone-400">Para sitios con contenido dinámico</p>
               </div>
             </label>
 
-            <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+            <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
               <input
                 type="checkbox"
                 checked={config.followLinks}
@@ -225,13 +225,13 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 className="text-blue-600 rounded focus:ring-blue-500"
               />
               <div>
-                <span className="text-gray-900 dark:text-white font-medium">Seguir enlaces</span>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rastrear enlaces internos</p>
+                <span className="text-stone-900 dark:text-stone-100 font-medium">Seguir enlaces</span>
+                <p className="text-sm text-stone-600 dark:text-stone-400">Rastrear enlaces internos</p>
               </div>
             </label>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
                 📝 Formato de salida
               </label>
               <select
@@ -240,7 +240,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                   ...prev, 
                   outputFormat: e.target.value as 'markdown' | 'mdx' 
                 }))}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
               >
                 <option value="markdown">Markdown (.md)</option>
                 <option value="mdx">MDX (.mdx)</option>
@@ -251,7 +251,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
 
         {/* Opciones de extracción */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-4">
             📋 Qué Extraer
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -263,7 +263,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
               metadata: { label: 'Metadatos', icon: '🏷️' },
               preserveFormatting: { label: 'Preservar formato', icon: '🎨' }
             }).map(([key, { label, icon }]) => (
-              <label key={key} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+              <label key={key} className="flex items-center space-x-2 p-2 rounded hover:bg-stone-50 dark:hover:bg-stone-800">
                 <input
                   type="checkbox"
                   checked={config.extractOptions[key as keyof ExtractOptions]}
@@ -277,7 +277,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                   className="text-blue-600 rounded focus:ring-blue-500"
                 />
                 <span className="text-sm">{icon}</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                <span className="text-sm text-stone-700 dark:text-stone-300">{label}</span>
               </label>
             ))}
           </div>
@@ -285,11 +285,11 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
 
         {/* Filtros de idioma */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-4">
             🌍 Filtros de Idioma
           </h3>
           <div className="space-y-4">
-            <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+            <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
               <input
                 type="checkbox"
                 checked={config.languageFilter?.enabled || false}
@@ -303,15 +303,15 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 className="text-blue-600 rounded focus:ring-blue-500"
               />
               <div>
-                <span className="text-gray-900 dark:text-white font-medium">Activar filtro de idiomas</span>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Solo procesar páginas en idiomas específicos</p>
+                <span className="text-stone-900 dark:text-stone-100 font-medium">Activar filtro de idiomas</span>
+                <p className="text-sm text-stone-600 dark:text-stone-400">Solo procesar páginas en idiomas específicos</p>
               </div>
             </label>
 
             {config.languageFilter?.enabled && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                  <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
                     <input
                       type="checkbox"
                       checked={config.languageFilter?.autoDetect || false}
@@ -325,12 +325,12 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                       className="text-blue-600 rounded focus:ring-blue-500"
                     />
                     <div>
-                      <span className="text-gray-900 dark:text-white font-medium">Detección automática</span>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Detectar idiomas disponibles</p>
+                      <span className="text-stone-900 dark:text-stone-100 font-medium">Detección automática</span>
+                      <p className="text-sm text-stone-600 dark:text-stone-400">Detectar idiomas disponibles</p>
                     </div>
                   </label>
 
-                  <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
+                  <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
                     <input
                       type="checkbox"
                       checked={config.languageFilter?.skipUnsupportedLanguages || false}
@@ -344,14 +344,14 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                       className="text-blue-600 rounded focus:ring-blue-500"
                     />
                     <div>
-                      <span className="text-gray-900 dark:text-white font-medium">Omitir idiomas no soportados</span>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Evitar procesar idiomas no seleccionados</p>
+                      <span className="text-stone-900 dark:text-stone-100 font-medium">Omitir idiomas no soportados</span>
+                      <p className="text-sm text-stone-600 dark:text-stone-400">Evitar procesar idiomas no seleccionados</p>
                     </div>
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
                     Idiomas preferidos
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -369,7 +369,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                       { code: 'ar', name: 'العربية' },
                       { code: 'hi', name: 'हिन्दी' }
                     ].map(lang => (
-                      <label key={lang.code} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <label key={lang.code} className="flex items-center space-x-2 p-2 rounded hover:bg-stone-50 dark:hover:bg-stone-800">
                         <input
                           type="checkbox"
                           checked={config.languageFilter?.selectedLanguages.includes(lang.code) || false}
@@ -389,7 +389,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                           }}
                           className="text-blue-600 rounded focus:ring-blue-500"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{lang.name}</span>
+                        <span className="text-sm text-stone-700 dark:text-stone-300">{lang.name}</span>
                       </label>
                     ))}
                   </div>
@@ -419,12 +419,12 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
 
         {/* Selectores personalizados */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-4">
             🎯 Selectores Personalizados (Opcional)
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
                 Selectores de contenido
               </label>
               <input
@@ -432,15 +432,15 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 value={customSelectorsText}
                 onChange={(e) => handleCustomSelectorsChange(e.target.value)}
                 placeholder="content=main, navigation=nav, sidebar=.sidebar"
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Formato: nombre=selector, separados por comas
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
                 Elementos a excluir
               </label>
               <input
@@ -448,9 +448,9 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
                 value={excludeSelectorsText}
                 onChange={(e) => handleExcludeSelectorsChange(e.target.value)}
                 placeholder=".ads, .social, .comments"
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Selectores CSS separados por comas
               </p>
             </div>
@@ -462,7 +462,7 @@ export default function ScrapingConfigForm({ onSubmit, loading }: ScrapingConfig
           <button
             type="submit"
             disabled={!isFormValid}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-stone-400 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
           >
             <span>{loading ? '🔄' : '🚀'}</span>
             <span>{loading ? 'Procesando...' : 'Iniciar Scraping'}</span>

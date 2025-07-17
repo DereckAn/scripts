@@ -34,15 +34,15 @@ export default function ConversionSettingsComponent({
   const supportsTransparency = selectedFormat?.supportsTransparency ?? false;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-stone-200/60 dark:border-stone-800/60">
+      <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
         ⚙️ Configuración de Conversión
       </h2>
 
       <div className="space-y-6">
         {/* Format Selection */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
             Formato de salida
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -53,13 +53,13 @@ export default function ConversionSettingsComponent({
                 className={`p-3 border rounded-lg text-center transition-all duration-200 ${
                   settings.format === format.value
                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400'
-                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-600 hover:bg-stone-50 dark:hover:bg-stone-700'
                 }`}
               >
-                <div className="font-medium text-gray-900 dark:text-white">
+                <div className="font-medium text-stone-900 dark:text-stone-100">
                   {format.label}
                 </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                <div className="text-xs text-stone-600 dark:text-stone-400 mt-1">
                   {format.description}
                 </div>
               </button>
@@ -69,7 +69,7 @@ export default function ConversionSettingsComponent({
 
         {/* Quality Settings */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
             Calidad: {settings.quality}%
           </label>
           <div className="space-y-2">
@@ -79,9 +79,9 @@ export default function ConversionSettingsComponent({
               max="100"
               value={settings.quality}
               onChange={(e) => handleQualityChange(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400">
               <span>Menor tamaño</span>
               <span>Mayor calidad</span>
             </div>
@@ -90,12 +90,12 @@ export default function ConversionSettingsComponent({
 
         {/* Dimension Settings */}
         <div>
-          <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
             Redimensionar (opcional)
           </label>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+              <label className="block text-xs text-stone-600 dark:text-stone-400 mb-1">
                 Ancho (px)
               </label>
               <input
@@ -103,11 +103,11 @@ export default function ConversionSettingsComponent({
                 placeholder="Auto"
                 value={settings.width || ''}
                 onChange={(e) => handleDimensionChange('width', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+              <label className="block text-xs text-stone-600 dark:text-stone-400 mb-1">
                 Alto (px)
               </label>
               <input
@@ -115,7 +115,7 @@ export default function ConversionSettingsComponent({
                 placeholder="Auto"
                 value={settings.height || ''}
                 onChange={(e) => handleDimensionChange('height', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function ConversionSettingsComponent({
               onChange={(e) => handleCheckboxChange('maintainAspectRatio', e.target.checked)}
               className="text-blue-600 rounded focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm text-stone-700 dark:text-stone-300">
               Mantener proporción de aspecto
             </span>
           </label>
@@ -136,7 +136,7 @@ export default function ConversionSettingsComponent({
         {/* Background Color (for non-transparent formats) */}
         {!supportsTransparency && (
           <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
               Color de fondo
             </label>
             <div className="flex items-center space-x-3">
@@ -144,17 +144,17 @@ export default function ConversionSettingsComponent({
                 type="color"
                 value={settings.backgroundColor || '#ffffff'}
                 onChange={(e) => onChange({ ...settings, backgroundColor: e.target.value })}
-                className="w-12 h-10 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer"
+                className="w-12 h-10 border border-stone-300 dark:border-stone-600 rounded-lg cursor-pointer"
               />
               <input
                 type="text"
                 value={settings.backgroundColor || '#ffffff'}
                 onChange={(e) => onChange({ ...settings, backgroundColor: e.target.value })}
                 placeholder="#ffffff"
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
               El formato {selectedFormat?.label} no soporta transparencia
             </p>
           </div>
@@ -169,7 +169,7 @@ export default function ConversionSettingsComponent({
               onChange={(e) => handleCheckboxChange('removeMetadata', e.target.checked)}
               className="text-blue-600 rounded focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm text-stone-700 dark:text-stone-300">
               Eliminar metadatos (EXIF, ubicación, etc.)
             </span>
           </label>

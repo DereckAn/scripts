@@ -39,19 +39,19 @@ export default function CategorySection({
   const selectedCount = availableApps.filter(app => selectedApps.includes(app.id)).length;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl shadow-lg border border-stone-200/60 dark:border-stone-800/60">
+      <div className="p-6 border-b border-stone-200/60 dark:border-stone-800/60">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <span className="text-2xl mr-3">{icon}</span>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">{title}</h3>
+              <p className="text-sm text-stone-600 dark:text-stone-400">
                 {CATEGORY_DESCRIPTIONS[apps[0]?.category] || ''}
               </p>
             </div>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="text-sm text-stone-500 dark:text-stone-400">
             {selectedCount > 0 && (
               <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
                 {selectedCount} seleccionad{selectedCount === 1 ? 'a' : 'as'}

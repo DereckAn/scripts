@@ -73,7 +73,7 @@ export default function ImageUploader({ onImagesAdded, maxFiles = 20 }: ImageUpl
         className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 ${
           isDragOver
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+            : 'border-stone-300 dark:border-stone-600 hover:border-stone-400 dark:hover:border-stone-500'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -84,13 +84,13 @@ export default function ImageUploader({ onImagesAdded, maxFiles = 20 }: ImageUpl
             {isDragOver ? '📤' : '📁'}
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-2">
               {isDragOver ? '¡Suelta las imágenes aquí!' : 'Arrastra y suelta tus imágenes'}
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-stone-600 dark:text-stone-400 mb-4">
               O haz clic para seleccionar archivos
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+            <p className="text-sm text-stone-500 dark:text-stone-500 mb-4">
               Soporta: JPEG, PNG, WebP, AVIF, BMP, TIFF, GIF, SVG (máximo {maxFiles} archivos, 50MB cada uno)
             </p>
           </div>

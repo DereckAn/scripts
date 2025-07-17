@@ -42,7 +42,7 @@ export default function ScrapedPageCard({
       case 'error':
         return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20';
       default:
-        return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800';
+        return 'text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800';
     }
   };
 
@@ -68,15 +68,15 @@ export default function ScrapedPageCard({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-stone-200/60 dark:border-stone-800/60 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       {/* Header con URL y estado */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-stone-200/60 dark:border-stone-800/60">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate" title={page.title}>
+            <h3 className="font-medium text-stone-900 dark:text-stone-100 truncate" title={page.title}>
               {page.title || 'Sin título'}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 break-all mt-1">
+            <p className="text-sm text-stone-600 dark:text-stone-400 break-all mt-1">
               {page.url}
             </p>
           </div>
@@ -95,33 +95,33 @@ export default function ScrapedPageCard({
             {/* Metadata */}
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600 dark:text-gray-400">Archivo:</span>
-                <p className="font-medium text-gray-900 dark:text-white">{page.filename}</p>
+                <span className="text-stone-600 dark:text-stone-400">Archivo:</span>
+                <p className="font-medium text-stone-900 dark:text-stone-100">{page.filename}</p>
               </div>
               <div>
-                <span className="text-gray-600 dark:text-gray-400">Tamaño:</span>
-                <p className="font-medium text-gray-900 dark:text-white">{formatFileSize(page.size)}</p>
+                <span className="text-stone-600 dark:text-stone-400">Tamaño:</span>
+                <p className="font-medium text-stone-900 dark:text-stone-100">{formatFileSize(page.size)}</p>
               </div>
               <div>
-                <span className="text-gray-600 dark:text-gray-400">Enlaces:</span>
-                <p className="font-medium text-gray-900 dark:text-white">{page.links.length}</p>
+                <span className="text-stone-600 dark:text-stone-400">Enlaces:</span>
+                <p className="font-medium text-stone-900 dark:text-stone-100">{page.links.length}</p>
               </div>
               <div>
-                <span className="text-gray-600 dark:text-gray-400">Imágenes:</span>
-                <p className="font-medium text-gray-900 dark:text-white">{page.images.length}</p>
+                <span className="text-stone-600 dark:text-stone-400">Imágenes:</span>
+                <p className="font-medium text-stone-900 dark:text-stone-100">{page.images.length}</p>
               </div>
             </div>
 
             {/* Información de idioma */}
             {page.metadata.language && (
               <div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Idioma:</span>
+                <span className="text-sm text-stone-600 dark:text-stone-400">Idioma:</span>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs px-2 py-1 rounded">
                     {page.metadata.language.toUpperCase()}
                   </span>
                   {page.metadata.alternativeLanguages && page.metadata.alternativeLanguages.length > 0 && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-stone-500 dark:text-stone-400">
                       +{page.metadata.alternativeLanguages.length} idiomas disponibles
                     </span>
                   )}
@@ -132,8 +132,8 @@ export default function ScrapedPageCard({
             {/* Metadatos adicionales */}
             {page.metadata.description && (
               <div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Descripción:</span>
-                <p className="text-sm text-gray-900 dark:text-white mt-1 line-clamp-2">
+                <span className="text-sm text-stone-600 dark:text-stone-400">Descripción:</span>
+                <p className="text-sm text-stone-900 dark:text-stone-100 mt-1 line-clamp-2">
                   {page.metadata.description}
                 </p>
               </div>
@@ -142,7 +142,7 @@ export default function ScrapedPageCard({
             {/* Keywords */}
             {page.metadata.keywords.length > 0 && (
               <div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Palabras clave:</span>
+                <span className="text-sm text-stone-600 dark:text-stone-400">Palabras clave:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {page.metadata.keywords.slice(0, 5).map((keyword, index) => (
                     <span
@@ -153,7 +153,7 @@ export default function ScrapedPageCard({
                     </span>
                   ))}
                   {page.metadata.keywords.length > 5 && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-stone-500 dark:text-stone-400">
                       +{page.metadata.keywords.length - 5} más
                     </span>
                   )}
@@ -163,9 +163,9 @@ export default function ScrapedPageCard({
 
             {/* Vista previa del contenido */}
             <div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">Vista previa:</span>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 mt-1">
-                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
+              <span className="text-sm text-stone-600 dark:text-stone-400">Vista previa:</span>
+              <div className="bg-stone-50 dark:bg-stone-800 rounded p-3 mt-1">
+                <p className="text-sm text-stone-700 dark:text-stone-300 line-clamp-3">
                   {page.content.replace(/[#*`\-\[\]]/g, '').substring(0, 200)}...
                 </p>
               </div>
@@ -186,7 +186,7 @@ export default function ScrapedPageCard({
         {page.status === 'processing' && (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-            <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">
+            <span className="ml-3 text-sm text-stone-600 dark:text-stone-400">
               Procesando contenido...
             </span>
           </div>
@@ -227,7 +227,7 @@ export default function ScrapedPageCard({
 
         {/* Processing time */}
         {page.processingTime && page.status === 'completed' && (
-          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+          <div className="mt-2 text-xs text-stone-500 dark:text-stone-400 text-center">
             Procesado en {page.processingTime.toFixed(2)}s
           </div>
         )}

@@ -37,7 +37,7 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
       case 'error':
         return 'text-red-600 dark:text-red-400';
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-stone-600 dark:text-stone-400';
     }
   };
 
@@ -60,9 +60,9 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
   const outputSize = image.convertedBlob ? formatFileSize(image.convertedBlob.size) : '-';
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-stone-200/60 dark:border-stone-800/60 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       {/* Image Preview */}
-      <div className="aspect-video bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
+      <div className="aspect-video bg-stone-100 dark:bg-stone-800 relative overflow-hidden">
         <img
           src={image.preview}
           alt={image.name}
@@ -86,9 +86,9 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
         {/* Converting Animation */}
         {image.status === 'converting' && (
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-            <div className="bg-white dark:bg-gray-800 rounded-lg px-4 py-2 flex items-center space-x-2">
+            <div className="bg-white/90 dark:bg-stone-800/90 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center space-x-2">
               <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Convirtiendo...</span>
+              <span className="text-sm font-medium text-stone-900 dark:text-stone-100">Convirtiendo...</span>
             </div>
           </div>
         )}
@@ -98,17 +98,17 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
       <div className="p-4 space-y-3">
         {/* File Name */}
         <div>
-          <h3 className="font-medium text-gray-900 dark:text-white truncate" title={image.name}>
+          <h3 className="font-medium text-stone-900 dark:text-stone-100 truncate" title={image.name}>
             {image.name}
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             {formatFileSize(image.size)} • {image.originalFormat.toUpperCase()}
           </p>
         </div>
 
         {/* Conversion Arrow */}
         <div className="flex items-center justify-center">
-          <div className="text-2xl text-gray-400 dark:text-gray-500">
+          <div className="text-2xl text-stone-400 dark:text-stone-500">
             ↓
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
         {/* Output Info */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
               {outputFileName}
             </span>
             <span className={`text-sm font-medium ${getStatusColor()}`}>
@@ -124,7 +124,7 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
             </span>
           </div>
           
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
             <span>{outputSize}</span>
             <span>{outputFormat.toUpperCase()}</span>
           </div>
