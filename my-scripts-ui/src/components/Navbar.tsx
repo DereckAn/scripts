@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Image, Menu, Palette, X, Zap } from "lucide-react";
+import { Globe, Image, Menu, Palette, X, Zap, Camera, Brain } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -29,6 +29,18 @@ export default function Navbar() {
       icon: Zap,
       color: "amber",
     },
+    {
+      name: "Instagram Photos",
+      href: "/instagram-photos",
+      icon: Camera,
+      color: "pink",
+    },
+    {
+      name: "Análisis con IA",
+      href: "/image-analysis",
+      icon: Brain,
+      color: "purple",
+    },
   ];
 
   const toggleNavbar = () => {
@@ -41,6 +53,8 @@ export default function Navbar() {
         emerald: "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25",
         violet: "bg-violet-600 text-white shadow-lg shadow-violet-600/25",
         amber: "bg-amber-600 text-white shadow-lg shadow-amber-600/25",
+        pink: "bg-pink-600 text-white shadow-lg shadow-pink-600/25",
+        purple: "bg-purple-600 text-white shadow-lg shadow-purple-600/25",
       }[color];
     }
     return {
@@ -50,6 +64,10 @@ export default function Navbar() {
         "hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300",
       amber:
         "hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-700 dark:hover:text-amber-300",
+      pink:
+        "hover:bg-pink-50 dark:hover:bg-pink-950/30 hover:text-pink-700 dark:hover:text-pink-300",
+      purple:
+        "hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300",
     }[color];
   };
 
