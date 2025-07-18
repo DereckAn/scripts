@@ -25,7 +25,7 @@ export default function Home() {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
             <Link href="/convert-images" className="group">
               <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl p-8 border border-stone-200/60 dark:border-stone-800/60 hover:bg-white dark:hover:bg-stone-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                 <div className="text-center">
