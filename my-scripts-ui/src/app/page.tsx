@@ -109,6 +109,26 @@ export default function Home() {
               </div>
             </Link>
 
+            <Link href="/twitter-photos" className="group">
+              <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl p-8 border border-stone-200/60 dark:border-stone-800/60 hover:bg-white dark:hover:bg-stone-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <Camera className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-3">
+                    Twitter Images
+                  </h3>
+                  <p className="text-stone-600 dark:text-stone-400 mb-6 text-sm leading-relaxed">
+                    Visualiza y descarga imágenes de perfiles públicos de Twitter/X de manera fácil y rápida.
+                  </p>
+                  <div className="inline-flex items-center text-blue-600 dark:text-blue-400 font-medium text-sm group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                    Comenzar
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
             <Link href="/image-analysis" className="group">
               <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl p-8 border border-stone-200/60 dark:border-stone-800/60 hover:bg-white dark:hover:bg-stone-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                 <div className="text-center">

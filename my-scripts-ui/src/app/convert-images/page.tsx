@@ -45,10 +45,10 @@ export default function ConvertImagesPage() {
     }
   }, [images, settings.format]);
 
-  const handleDownloadAll = useCallback(() => {
+  const handleDownloadAll = useCallback(async () => {
     const completedImages = images.filter(img => img.status === 'completed');
     if (completedImages.length > 0) {
-      downloadMultipleImages(completedImages, settings.format);
+      await downloadMultipleImages(completedImages, settings.format);
     }
   }, [images, settings.format]);
 
