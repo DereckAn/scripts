@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ImageFile, ImageFormat } from '@/types/image-converter';
 import { formatFileSize, generateFileName } from '@/utils/image-converter';
 
@@ -8,9 +9,12 @@ interface ImagePreviewProps {
   outputFormat: ImageFormat;
   onRemove: (id: string) => void;
   onDownload?: (id: string) => void;
+  onRename?: (id: string, newName: string) => void;
 }
 
-export default function ImagePreview({ image, outputFormat, onRemove, onDownload }: ImagePreviewProps) {
+export default function ImagePreview({ image, outputFormat, onRemove, onDownload, onRename }: ImagePreviewProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(image.customName || image.name.replace(/\.[^/.]+$/, ''));
   const getStatusIcon = () => {
     switch (image.status) {
       case 'pending':
@@ -56,7 +60,19 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
     }
   };
 
-  const outputFileName = generateFileName(image.name, outputFormat);
+  const handleSaveName = () => {
+    if (onRename && editName.trim()) {
+      onRename(image.id, editName.trim());
+      setIsEditing(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditName(image.customName || image.name.replace(/\.[^/.]+$/, ''));
+    setIsEditing(false);
+  };
+
+  const outputFileName = generateFileName(image.name, outputFormat, image.customName);
   const outputSize = image.convertedBlob ? formatFileSize(image.convertedBlob.size) : '-';
 
   return (
@@ -116,9 +132,52 @@ export default function ImagePreview({ image, outputFormat, onRemove, onDownload
         {/* Output Info */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
-              {outputFileName}
-            </span>
+            <div className="flex-1 mr-2">
+              {isEditing ? (
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="text-sm font-medium bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded px-2 py-1 flex-1 text-stone-900 dark:text-stone-100"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveName();
+                      if (e.key === 'Escape') handleCancelEdit();
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    className="text-green-600 hover:text-green-700 p-1"
+                    title="Guardar"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="text-red-600 hover:text-red-700 p-1"
+                    title="Cancelar"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm font-medium text-stone-700 dark:text-stone-300 truncate">
+                    {outputFileName}
+                  </span>
+                  {onRename && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1"
+                      title="Renombrar"
+                    >
+                      ✏️
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <span className={`text-sm font-medium ${getStatusColor()}`}>
               {getStatusIcon()} {getStatusText()}
             </span>

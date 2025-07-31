@@ -4,6 +4,7 @@ export interface ImageFile {
   id: string;
   file: File;
   name: string;
+  customName?: string; // For renaming functionality
   size: number;
   type: string;
   preview: string;

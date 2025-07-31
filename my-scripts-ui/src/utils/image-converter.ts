@@ -1,4 +1,5 @@
 import { ImageFile, ImageFormat, ConversionSettings } from '@/types/image-converter';
+import JSZip from 'jszip';
 
 export function createImageFile(file: File): ImageFile {
   const id = Math.random().toString(36).substr(2, 9);
@@ -157,10 +158,10 @@ function supportsTransparency(format: ImageFormat): boolean {
   return transparentFormats.includes(format);
 }
 
-export function generateFileName(originalName: string, format: ImageFormat): string {
-  const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, '');
+export function generateFileName(originalName: string, format: ImageFormat, customName?: string): string {
+  const baseName = customName || originalName.replace(/\.[^/.]+$/, '');
   const extension = format === 'jpg' ? 'jpg' : format;
-  return `${nameWithoutExtension}.${extension}`;
+  return `${baseName}.${extension}`;
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {
@@ -177,7 +178,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 export async function downloadMultipleImages(images: ImageFile[], format: ImageFormat): Promise<void> {
   for (const image of images) {
     if (image.convertedBlob) {
-      const filename = generateFileName(image.name, format);
+      const filename = generateFileName(image.name, format, image.customName);
       downloadBlob(image.convertedBlob, filename);
       // Add delay to prevent browser from blocking multiple downloads
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -186,20 +187,23 @@ export async function downloadMultipleImages(images: ImageFile[], format: ImageF
 }
 
 export async function createZipArchive(images: ImageFile[], format: ImageFormat): Promise<Blob> {
-  // For now, we'll return a simple implementation
-  // In a real app, you'd use a library like JSZip
-  const files: Array<{ name: string; blob: Blob }> = [];
+  const zip = new JSZip();
   
   images.forEach(image => {
     if (image.convertedBlob) {
-      const filename = generateFileName(image.name, format);
-      files.push({ name: filename, blob: image.convertedBlob });
+      const filename = generateFileName(image.name, format, image.customName);
+      zip.file(filename, image.convertedBlob);
     }
   });
   
-  // Simple concatenation for demo - replace with proper ZIP implementation
-  const combinedBlob = new Blob(files.map(f => f.blob));
-  return combinedBlob;
+  return await zip.generateAsync({ type: 'blob' });
+}
+
+export async function downloadAsZip(images: ImageFile[], format: ImageFormat): Promise<void> {
+  const zipBlob = await createZipArchive(images, format);
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+  const filename = `converted-images-${timestamp}.zip`;
+  downloadBlob(zipBlob, filename);
 }
 
 export function validateImageFile(file: File): { valid: boolean; error?: string } {

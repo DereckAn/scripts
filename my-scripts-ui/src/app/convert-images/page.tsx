@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { ImageFile, ConversionSettings, ConversionProgress } from '@/types/image-converter';
-import { convertImage, downloadBlob, downloadMultipleImages, generateFileName } from '@/utils/image-converter';
+import { convertImage, downloadBlob, downloadMultipleImages, downloadAsZip, generateFileName } from '@/utils/image-converter';
 import ImageUploader from '@/components/ImageUploader';
 import ImagePreview from '@/components/ImagePreview';
 import ConversionSettingsComponent from '@/components/ConversionSettings';
@@ -40,8 +40,21 @@ export default function ConvertImagesPage() {
   const handleDownloadSingle = useCallback((id: string) => {
     const image = images.find(img => img.id === id);
     if (image && image.convertedBlob) {
-      const filename = generateFileName(image.name, settings.format);
+      const filename = generateFileName(image.name, settings.format, image.customName);
       downloadBlob(image.convertedBlob, filename);
+    }
+  }, [images, settings.format]);
+
+  const handleRename = useCallback((id: string, newName: string) => {
+    setImages(prev => prev.map(img => 
+      img.id === id ? { ...img, customName: newName } : img
+    ));
+  }, []);
+
+  const handleDownloadAsZip = useCallback(async () => {
+    const completedImages = images.filter(img => img.status === 'completed');
+    if (completedImages.length > 0) {
+      await downloadAsZip(completedImages, settings.format);
     }
   }, [images, settings.format]);
 
@@ -64,26 +77,25 @@ export default function ConvertImagesPage() {
   }, [images]);
 
   const handleConvertAll = useCallback(async () => {
-    if (images.length === 0 || isConverting) return;
+    const pendingImages = images.filter(img => img.status === 'pending');
+    if (pendingImages.length === 0 || isConverting) return;
 
     setIsConverting(true);
     setProgress({
       current: 0,
-      total: images.length,
+      total: pendingImages.length,
       percentage: 0,
       currentFile: ''
     });
 
-    const updatedImages = [...images];
-
-    for (let i = 0; i < updatedImages.length; i++) {
-      const image = updatedImages[i];
+    for (let i = 0; i < pendingImages.length; i++) {
+      const image = pendingImages[i];
       
       // Update progress
       setProgress({
         current: i,
-        total: images.length,
-        percentage: Math.round((i / images.length) * 100),
+        total: pendingImages.length,
+        percentage: Math.round((i / pendingImages.length) * 100),
         currentFile: image.name
       });
 
@@ -111,13 +123,6 @@ export default function ConvertImagesPage() {
             : img
         ));
 
-        updatedImages[i] = {
-          ...image,
-          status: 'completed',
-          convertedBlob,
-          convertedUrl
-        };
-
       } catch (error) {
         // Update image with error
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -130,12 +135,6 @@ export default function ConvertImagesPage() {
               }
             : img
         ));
-
-        updatedImages[i] = {
-          ...image,
-          status: 'error',
-          error: errorMessage
-        };
       }
 
       // Small delay to prevent UI blocking
@@ -144,8 +143,8 @@ export default function ConvertImagesPage() {
 
     // Final progress update
     setProgress({
-      current: images.length,
-      total: images.length,
+      current: pendingImages.length,
+      total: pendingImages.length,
       percentage: 100,
       currentFile: 'Completado'
     });
@@ -236,13 +235,23 @@ export default function ConvertImagesPage() {
                   </button>
 
                   {completedImages.length > 0 && (
-                    <button
-                      onClick={handleDownloadAll}
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
-                    >
-                      <span>💾</span>
-                      <span>Descargar todas ({completedImages.length})</span>
-                    </button>
+                    <>
+                      <button
+                        onClick={handleDownloadAll}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
+                      >
+                        <span>💾</span>
+                        <span>Descargar todas ({completedImages.length})</span>
+                      </button>
+                      
+                      <button
+                        onClick={handleDownloadAsZip}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
+                      >
+                        <span>📦</span>
+                        <span>Descargar ZIP ({completedImages.length})</span>
+                      </button>
+                    </>
                   )}
 
                   <button
@@ -277,6 +286,7 @@ export default function ConvertImagesPage() {
                     outputFormat={settings.format}
                     onRemove={handleRemoveImage}
                     onDownload={handleDownloadSingle}
+                    onRename={handleRename}
                   />
                 ))}
               </div>
