@@ -13,6 +13,12 @@
     Repositorio: https://github.com/DereckAn/scripts
 #>
 
+param(
+    [switch]$Quick,
+    [string]$Theme = "montys",
+    [string]$Font = "FiraCode"
+)
+
 # Configuración de colores para mensajes
 $colors = @{
     Success = "Green"
@@ -567,13 +573,6 @@ function Start-QuickInstallation {
 # ═══════════════════════════════════════════════════════════════
 # EJECUTAR
 # ═══════════════════════════════════════════════════════════════
-
-# Verificar parámetros
-param(
-    [switch]$Quick,
-    [string]$Theme = "montys",
-    [string]$Font = "FiraCode"
-)
 
 if ($Quick) {
     Start-QuickInstallation -Theme $Theme -Font $Font
