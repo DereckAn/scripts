@@ -1,8 +1,86 @@
-# macOS Setup Script
+# Development Environment Setup Scripts
 
-This repository provides scripts to automate the setup of a macOS development environment,
- installing essential tools and configuring your terminal for productivity. 
- Choose between three implementations: **Rust (precompiled binary)**, **Python**, or **Bash**.
+This repository provides scripts to automate the setup of development environments,
+installing essential tools and configuring your terminal for productivity.
+
+## Available Scripts
+
+| Platform   | Script           | Description                                  |
+| ---------- | ---------------- | -------------------------------------------- |
+| 🍎 macOS   | Rust/Python/Bash | Complete macOS development environment setup |
+| 🪟 Windows | PowerShell       | Oh My Posh terminal beautification           |
+
+---
+
+# 🪟 Windows PowerShell Setup (Oh My Posh)
+
+Beautify your PowerShell terminal with Oh My Posh, Nerd Fonts, and useful modules.
+
+## ⚡ One-Line Installation
+
+Copy and paste this command in PowerShell to automatically configure everything:
+
+```powershell
+irm https://raw.githubusercontent.com/DereckAn/scripts/main/powershell/install-oh-my-posh.ps1 | iex
+```
+
+### Quick Install (Non-Interactive)
+
+For a quick installation with default settings (theme: montys, font: FiraCode):
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/DereckAn/scripts/main/powershell/install-oh-my-posh.ps1))) -Quick
+```
+
+## What Gets Installed
+
+- **Oh My Posh**: Beautiful prompt themes for PowerShell
+- **Nerd Fonts**: Icons and glyphs for your terminal (FiraCode, CascadiaCode, etc.)
+- **PSReadLine**: Predictive autocompletion based on history
+- **Terminal-Icons**: File and folder icons in the terminal
+- **z**: Quick directory navigation (like `cd` on steroids)
+- **posh-git**: Git integration and status in your prompt
+
+## Available Themes
+
+The script offers 10+ popular themes to choose from:
+
+- `montys` - Minimalist and clean
+- `agnoster` - Classic and popular
+- `dracula` - Elegant dark theme
+- `catppuccin` - Soft color palette
+- `tokyo` - Tokyo Night inspired
+- And many more...
+
+Preview all themes at: https://ohmyposh.dev/docs/themes
+
+## Post-Installation Steps
+
+1. **Change your terminal font** to the installed Nerd Font:
+
+   - **Windows Terminal**: Settings → Profiles → Appearance → Font Face
+   - **VS Code**: Settings → Terminal > Integrated: Font Family → `FiraCode Nerd Font`
+
+2. **Restart your terminal** to apply changes
+
+## Useful Aliases Included
+
+| Alias    | Command         | Description                |
+| -------- | --------------- | -------------------------- |
+| `g`      | `git`           | Shortcut for git           |
+| `ll`     | `Get-ChildItem` | List directory contents    |
+| `touch`  | `New-Item`      | Create new files           |
+| `which`  | Function        | Find command location      |
+| `mkcd`   | Function        | Create and enter directory |
+| `reload` | Function        | Reload PowerShell profile  |
+
+---
+
+# 🍎 macOS Setup Script
+
+This section provides scripts to automate the setup of a macOS development environment,
+installing essential tools and configuring your terminal for productivity.
+Choose between three implementations: **Rust (precompiled binary)**, **Python**, or **Bash**.
 
 ## Features
 
@@ -104,7 +182,6 @@ The script will:
 ## Help and inspiration
 
 - [macOS Setup Script](https://github.com/sapoepsilon/scripts.git)
-
 
 ## License
 
