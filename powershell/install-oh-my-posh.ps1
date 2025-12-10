@@ -89,6 +89,72 @@ function Test-WingetInstalled {
     }
 }
 
+function Test-PowerShell7Installed {
+    try {
+        $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+        if ($pwsh) {
+            return $true
+        }
+        # También verificar en rutas comunes
+        $commonPaths = @(
+            "$env:ProgramFiles\PowerShell\7\pwsh.exe",
+            "$env:ProgramFiles(x86)\PowerShell\7\pwsh.exe"
+        )
+        foreach ($path in $commonPaths) {
+            if (Test-Path $path) {
+                return $true
+            }
+        }
+        return $false
+    } catch {
+        return $false
+    }
+}
+
+function Install-PowerShell7 {
+    Write-Header "Instalando PowerShell 7"
+    
+    # Verificar si ya está instalado
+    if (Test-PowerShell7Installed) {
+        Write-Warning "PowerShell 7 ya está instalado"
+        $currentVersion = & pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>$null
+        if ($currentVersion) {
+            Write-Host "    Versión actual: $currentVersion" -ForegroundColor DarkGray
+        }
+        return $true
+    }
+    
+    Write-Step "PowerShell 7 no detectado. Instalando..."
+    
+    if (Test-WingetInstalled) {
+        try {
+            Write-Step "Instalando PowerShell 7 via winget..."
+            winget install Microsoft.PowerShell --source winget --accept-source-agreements --accept-package-agreements
+            Write-Success "PowerShell 7 instalado correctamente"
+            
+            # Refrescar PATH
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+            return $true
+        } catch {
+            Write-ErrorMsg "Error al instalar PowerShell 7: $_"
+            return $false
+        }
+    } else {
+        Write-Warning "Winget no disponible. Intentando instalación manual..."
+        try {
+            # Descargar e instalar usando el script oficial de Microsoft
+            Write-Step "Descargando instalador de PowerShell 7..."
+            Invoke-Expression "& { $(Invoke-RestMethod 'https://aka.ms/install-powershell.ps1') } -UseMSI -Quiet"
+            Write-Success "PowerShell 7 instalado correctamente"
+            return $true
+        } catch {
+            Write-ErrorMsg "Error al instalar PowerShell 7: $_"
+            Write-Host "    Puedes instalarlo manualmente desde: https://github.com/PowerShell/PowerShell/releases" -ForegroundColor DarkGray
+            return $false
+        }
+    }
+}
+
 function Install-OhMyPosh {
     Write-Header "Instalando Oh My Posh"
     
@@ -242,16 +308,19 @@ oh-my-posh init pwsh --config "$ThemePath" | Invoke-Expression
 if (Get-Module -ListAvailable -Name PSReadLine) {
     Import-Module PSReadLine
     
-    # Autocompletado predictivo basado en historial
-    Set-PSReadLineOption -PredictionSource History
-    Set-PSReadLineOption -PredictionViewStyle ListView
+    # Obtener versión de PSReadLine
+    `$psrlVersion = (Get-Module PSReadLine).Version
     
-    # Colores del historial predictivo
-    Set-PSReadLineOption -Colors @{
-        InlinePrediction = '#6c757d'
+    # Autocompletado predictivo (requiere PSReadLine 2.2.0+)
+    if (`$psrlVersion -ge [Version]"2.2.0") {
+        Set-PSReadLineOption -PredictionSource History
+        Set-PSReadLineOption -PredictionViewStyle ListView
+        Set-PSReadLineOption -Colors @{
+            InlinePrediction = '#6c757d'
+        }
     }
     
-    # Atajos de teclado útiles
+    # Atajos de teclado útiles (compatible con todas las versiones)
     Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
     Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
     Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
@@ -436,13 +505,17 @@ function Show-Summary {
     param(
         [string]$ThemeName,
         [string]$FontName,
-        [string]$ThemePath
+        [string]$ThemePath,
+        [bool]$PS7Installed = $false
     )
     
     Write-Header "¡Instalación Completada!"
     
     Write-Host "  Resumen de la instalación:" -ForegroundColor $colors.Info
     Write-Host ""
+    if ($PS7Installed) {
+        Write-Host "    ✓ PowerShell 7 instalado" -ForegroundColor $colors.Success
+    }
     Write-Host "    ✓ Oh My Posh instalado" -ForegroundColor $colors.Success
     Write-Host "    ✓ Tema: $ThemeName" -ForegroundColor $colors.Success
     Write-Host "    ✓ Fuente: $FontName Nerd Font" -ForegroundColor $colors.Success
@@ -462,9 +535,17 @@ function Show-Summary {
     Write-Host "     • Windows Terminal: Configuración → Perfiles → Apariencia → Fuente" -ForegroundColor DarkGray
     Write-Host "     • VS Code: Configuración → Terminal Font Family" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  2. Reinicia tu terminal para aplicar los cambios" -ForegroundColor White
+    if ($PS7Installed) {
+        Write-Host "  2. Usa PowerShell 7 para mejor experiencia:" -ForegroundColor White
+        Write-Host "     Abre 'pwsh' en lugar de 'powershell'" -ForegroundColor $colors.Info
+        Write-Host "     O configura PowerShell 7 como terminal predeterminada" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "  3. Reinicia tu terminal para aplicar los cambios" -ForegroundColor White
+    } else {
+        Write-Host "  2. Reinicia tu terminal para aplicar los cambios" -ForegroundColor White
+    }
     Write-Host ""
-    Write-Host "  3. Archivos de configuración:" -ForegroundColor White
+    Write-Host "  Archivos de configuración:" -ForegroundColor White
     Write-Host "     • Perfil: $PROFILE" -ForegroundColor DarkGray
     Write-Host "     • Tema: $ThemePath" -ForegroundColor DarkGray
     Write-Host ""
@@ -485,6 +566,7 @@ function Start-Installation {
     Write-Host "  ║   ✨ Oh My Posh - Instalador Automático para PowerShell ✨    ║" -ForegroundColor $colors.Header
     Write-Host "  ║                                                               ║" -ForegroundColor $colors.Header
     Write-Host "  ║   Este script instalará:                                      ║" -ForegroundColor $colors.Header
+    Write-Host "  ║   • PowerShell 7 (recomendado)                               ║" -ForegroundColor $colors.Header
     Write-Host "  ║   • Oh My Posh                                                ║" -ForegroundColor $colors.Header
     Write-Host "  ║   • Nerd Fonts                                                ║" -ForegroundColor $colors.Header
     Write-Host "  ║   • Tema personalizado                                        ║" -ForegroundColor $colors.Header
@@ -497,6 +579,22 @@ function Start-Installation {
     if (-not (Test-Administrator)) {
         Write-Warning "Se recomienda ejecutar como Administrador para instalar fuentes globalmente."
         Write-Host "  Continuando de todos modos..." -ForegroundColor DarkGray
+    }
+    
+    # Verificar versión de PowerShell
+    $ps7Installed = $false
+    if ($PSVersionTable.PSVersion.Major -lt 7) {
+        Write-Host ""
+        Write-Host "  ⚠ Estás usando PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor $colors.Warning
+        Write-Host "    PowerShell 7 ofrece mejor rendimiento y más funciones." -ForegroundColor DarkGray
+        Write-Host ""
+        $installPS7 = Read-Host "  ¿Instalar PowerShell 7? (S/n)"
+        if ($installPS7 -ne "n" -and $installPS7 -ne "N") {
+            $ps7Installed = Install-PowerShell7
+        }
+    } else {
+        Write-Host "  ✓ PowerShell 7 detectado ($($PSVersionTable.PSVersion))" -ForegroundColor $colors.Success
+        $ps7Installed = $true
     }
     
     # Selección de tema
@@ -539,11 +637,26 @@ function Start-Installation {
     # 4. Instalar módulos
     Install-PowerShellModules
     
-    # 5. Configurar perfil
+    # 5. Configurar perfil (para ambas versiones de PowerShell)
     Initialize-PowerShellProfile -ThemePath $themePath
     
-    # 6. Mostrar resumen
-    Show-Summary -ThemeName $selectedTheme -FontName $selectedFont -ThemePath $themePath
+    # 6. Si se instaló PS7, configurar también su perfil
+    if ($ps7Installed -and $PSVersionTable.PSVersion.Major -lt 7) {
+        Write-Step "Configurando perfil de PowerShell 7..."
+        $ps7ProfileDir = "$env:USERPROFILE\Documents\PowerShell"
+        $ps7Profile = "$ps7ProfileDir\Microsoft.PowerShell_profile.ps1"
+        
+        if (-not (Test-Path $ps7ProfileDir)) {
+            New-Item -Path $ps7ProfileDir -ItemType Directory -Force | Out-Null
+        }
+        
+        # Copiar el mismo perfil a PS7
+        Copy-Item -Path $PROFILE -Destination $ps7Profile -Force
+        Write-Success "Perfil de PowerShell 7 configurado"
+    }
+    
+    # 7. Mostrar resumen
+    Show-Summary -ThemeName $selectedTheme -FontName $selectedFont -ThemePath $themePath -PS7Installed $ps7Installed
 }
 
 # ═══════════════════════════════════════════════════════════════
@@ -562,12 +675,34 @@ function Start-QuickInstallation {
     Write-Host "  Tema: $Theme | Fuente: $Font" -ForegroundColor DarkGray
     Write-Host ""
     
+    # Instalar PowerShell 7 si no está instalado
+    $ps7Installed = $false
+    if ($PSVersionTable.PSVersion.Major -lt 7) {
+        Write-Step "Instalando PowerShell 7..."
+        $ps7Installed = Install-PowerShell7
+    } else {
+        $ps7Installed = $true
+    }
+    
     Install-OhMyPosh
     Install-NerdFont -FontName $Font
     $themePath = Install-Theme -ThemeName $Theme
     Install-PowerShellModules
     Initialize-PowerShellProfile -ThemePath $themePath
-    Show-Summary -ThemeName $Theme -FontName $Font -ThemePath $themePath
+    
+    # Si se instaló PS7, configurar también su perfil
+    if ($ps7Installed -and $PSVersionTable.PSVersion.Major -lt 7) {
+        $ps7ProfileDir = "$env:USERPROFILE\Documents\PowerShell"
+        $ps7Profile = "$ps7ProfileDir\Microsoft.PowerShell_profile.ps1"
+        
+        if (-not (Test-Path $ps7ProfileDir)) {
+            New-Item -Path $ps7ProfileDir -ItemType Directory -Force | Out-Null
+        }
+        Copy-Item -Path $PROFILE -Destination $ps7Profile -Force
+        Write-Success "Perfil de PowerShell 7 configurado"
+    }
+    
+    Show-Summary -ThemeName $Theme -FontName $Font -ThemePath $themePath -PS7Installed $ps7Installed
 }
 
 # ═══════════════════════════════════════════════════════════════
