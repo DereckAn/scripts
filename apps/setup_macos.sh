@@ -254,6 +254,49 @@ add_to_path() {
     echo "${GREEN}Ruta para ${app_name} añadida al PATH.${NC}"
 }
 
+# Escribir línea en ~/.zshrc si no existe
+write_to_zshrc() {
+    local description="$1"
+    local line="$2"
+    local zshrc="$HOME/.zshrc"
+
+    if grep -qF "$line" "$zshrc" 2>/dev/null; then
+        echo "${GREEN}${description} ya está en ~/.zshrc.${NC}"
+        return
+    fi
+
+    echo "${YELLOW}Añadiendo ${description} a ~/.zshrc...${NC}"
+    echo "# Añadido por setup_macos.sh - ${description}" >> "$zshrc"
+    echo "$line" >> "$zshrc"
+    echo "${GREEN}${description} añadido a ~/.zshrc.${NC}"
+}
+
+# Configuración post-instalación por herramienta
+post_install_config() {
+    local name="$1"
+    case "$name" in
+        eza)
+            echo "${YELLOW}Instalando FiraCode Nerd Font Mono (requerida para iconos de eza)...${NC}"
+            if ! brew list --cask font-fira-code-nerd-font >/dev/null 2>&1; then
+                run_command "brew install --cask font-fira-code-nerd-font" "Instalando FiraCode Nerd Font Mono"
+            else
+                echo "${GREEN}FiraCode Nerd Font Mono ya instalada.${NC}"
+            fi
+            write_to_zshrc "eza alias ls" 'alias ls="eza --color=auto --icons"'
+            write_to_zshrc "eza alias ll" 'alias ll="eza -lh --icons --git"'
+            write_to_zshrc "eza alias la" 'alias la="eza -lah --icons --git"'
+            write_to_zshrc "eza alias lt" 'alias lt="eza --tree --icons"'
+            echo "${CYAN}Nota: configura tu terminal para usar 'FiraCode Nerd Font Mono' para ver los iconos.${NC}"
+            ;;
+        zoxide)
+            write_to_zshrc "zoxide init" 'eval "$(zoxide init zsh)"'
+            ;;
+        mactop)
+            echo "${CYAN}Nota: mactop requiere permisos elevados para ejecutarse: sudo mactop${NC}"
+            ;;
+    esac
+}
+
 # Seleccionar aplicaciones
 select_apps() {
     echo "${CYAN}Selecciona las aplicaciones a instalar por categoría:${NC}"
@@ -269,6 +312,7 @@ select_apps() {
         ["Lenguajes de Programación"]="Python:brew install python:false:/opt/homebrew/bin:python3 Java:brew install java:false:/opt/homebrew/opt/openjdk/bin:java Rust:brew install rust:false:/opt/homebrew/bin:rustc C++ (clang):brew install llvm:false:/opt/homebrew/opt/llvm/bin:clang++ C# (Mono):brew install mono:false:/opt/homebrew/bin:mono Go:brew install go:false:/opt/homebrew/bin:go Ruby:brew install ruby:false:/opt/homebrew/bin:ruby PHP:brew install php:false:/opt/homebrew/bin:php TypeScript:brew install typescript:false:/opt/homebrew/bin:tsc"
         ["Bases de Datos"]="PostgreSQL:brew install postgresql:false:: MySQL:brew install mysql:false:: MongoDB:brew install mongodb-community:false::"
         ["Otros"]="Raycast:brew install raycast:false:: Telegram:brew install --cask telegram:true:: Slack:brew install --cask slack:true:: Tailscale:brew install tailscale:false:: fzf:brew install fzf:false:: GitHub CLI (gh):brew install gh:false:: Obsidian:brew install --cask obsidian:true:: Notion:brew install --cask notion:true::"
+        ["Herramientas CLI"]="eza:brew install eza:false:: mactop:brew install mactop:false:: zoxide:brew install zoxide:false:: taproom:brew install hzqtc/taproom/taproom:false:: btop:brew install btop:false:: ranger:brew install ranger:false::"
     )
 
     for category in "${!categories[@]}"; do
@@ -332,6 +376,7 @@ install_apps() {
             if [ -n "$path" ] && [ -n "$executable" ]; then
                 add_to_path "$name" "$path" "$executable"
             fi
+            post_install_config "$name"
             continue
         fi
         echo "${YELLOW}Instalando ${name}...${NC}"
@@ -339,7 +384,256 @@ install_apps() {
         if [ -n "$path" ] && [ -n "$executable" ]; then
             add_to_path "$name" "$path" "$executable"
         fi
+        post_install_config "$name"
     done
+}
+
+# Generar cheatsheet de herramientas instaladas
+generate_cheatsheet() {
+    local apps=("$@")
+    local output="$HOME/cheatsheet_macos_setup.md"
+    local date_now
+    date_now=$(date '+%Y-%m-%d')
+
+    cat > "$output" << EOF
+# Cheatsheet — macOS Setup
+Generado el $date_now
+
+---
+
+## Zsh Plugins (instalados por defecto)
+
+### zsh-autosuggestions
+Sugiere comandos mientras escribes basándose en tu historial.
+- Acepta sugerencia completa: → (flecha derecha) o `End`
+- Acepta siguiente palabra: `Ctrl + →`
+
+### zsh-syntax-highlighting
+Colorea los comandos en tiempo real (verde = válido, rojo = inválido).
+- No requiere comandos — funciona automáticamente.
+
+### zsh-history-substring-search
+Busca en el historial por subcadena.
+- Buscar hacia arriba: `↑` (con texto ya escrito)
+- Buscar hacia abajo: `↓`
+
+### Oh My Zsh plugins incluidos
+- `jump` — marca directorios: `mark <nombre>`, `jump <nombre>`
+- `jsontools` — formatea JSON: `pp_json`, `is_json`, `urlencode_json`
+- `zsh-interactive-cd` — autocompletado interactivo al usar `cd`
+
+---
+EOF
+
+    # Secciones por herramienta instalada
+    for app in "${apps[@]}"; do
+        local name
+        IFS=':' read -r name _ _ _ _ <<< "$app"
+        case "$name" in
+            eza)
+                cat >> "$output" << 'EOF'
+## eza — Listado de archivos moderno
+
+Reemplaza `ls` con iconos, colores y soporte para Git.
+
+| Alias | Comando | Descripción |
+|-------|---------|-------------|
+| `ls`  | `eza --color=auto --icons` | Listado básico con iconos |
+| `ll`  | `eza -lh --icons --git` | Listado detallado con info de Git |
+| `la`  | `eza -lah --icons --git` | Incluye archivos ocultos |
+| `lt`  | `eza --tree --icons` | Vista de árbol |
+
+Comandos extra:
+- `eza --tree --level=2` — árbol con profundidad limitada
+- `eza -l --sort=size` — ordenar por tamaño
+- `eza -l --sort=modified` — ordenar por fecha de modificación
+
+> Requiere fuente: **FiraCode Nerd Font Mono** en tu terminal.
+
+---
+EOF
+            ;;
+            zoxide)
+                cat >> "$output" << 'EOF'
+## zoxide — cd inteligente
+
+Aprende los directorios que más usas y salta a ellos con pocas letras.
+
+| Comando | Descripción |
+|---------|-------------|
+| `z foo` | Salta al directorio más frecuente que coincida con "foo" |
+| `z foo bar` | Coincidencia con múltiples términos |
+| `z -` | Vuelve al directorio anterior |
+| `zi` | Modo interactivo con fzf (requiere fzf) |
+| `zoxide query -l` | Lista todos los directorios en la base de datos |
+
+> Activado con `eval "$(zoxide init zsh)"` en `~/.zshrc`.
+
+---
+EOF
+            ;;
+            mactop)
+                cat >> "$output" << 'EOF'
+## mactop — Monitor del sistema para macOS
+
+Monitor de recursos en tiempo real estilo `top`, optimizado para Apple Silicon.
+
+| Comando | Descripción |
+|---------|-------------|
+| `sudo mactop` | Iniciar (requiere sudo) |
+| `sudo mactop -r 500` | Actualizar cada 500ms |
+| `sudo mactop -c` | Modo color alternativo |
+
+Teclas dentro de mactop:
+- `q` — salir
+- `r` — cambiar intervalo de refresco
+
+> Siempre requiere `sudo` para acceder a métricas del sistema.
+
+---
+EOF
+            ;;
+            btop)
+                cat >> "$output" << 'EOF'
+## btop — Monitor de recursos
+
+Monitor visual de CPU, memoria, disco y red.
+
+| Comando | Descripción |
+|---------|-------------|
+| `btop` | Iniciar |
+| `btop --utf-force` | Forzar caracteres UTF-8 |
+
+Teclas dentro de btop:
+- `q` — salir
+- `f` — filtrar procesos
+- `k` — matar proceso seleccionado
+- `m` — cambiar modo de memoria
+- `←/→` — cambiar entre paneles
+
+---
+EOF
+            ;;
+            ranger)
+                cat >> "$output" << 'EOF'
+## ranger — Gestor de archivos en terminal
+
+Navegador de archivos con vista de tres paneles estilo vim.
+
+| Comando | Descripción |
+|---------|-------------|
+| `ranger` | Iniciar |
+
+Navegación:
+- `h/j/k/l` o flechas — moverse
+- `Enter` — abrir archivo/directorio
+- `q` — salir
+
+Operaciones:
+- `yy` — copiar, `dd` — cortar, `pp` — pegar
+- `dD` — eliminar
+- `cw` — renombrar
+- `zh` — mostrar/ocultar archivos ocultos
+- `/` — buscar
+
+---
+EOF
+            ;;
+            taproom)
+                cat >> "$output" << 'EOF'
+## taproom — Explorador de Homebrew taps
+
+Navega e instala fórmulas de taps de Homebrew de forma interactiva.
+
+| Comando | Descripción |
+|---------|-------------|
+| `taproom` | Abrir explorador interactivo |
+
+---
+EOF
+            ;;
+            fzf)
+                cat >> "$output" << 'EOF'
+## fzf — Buscador difuso interactivo
+
+| Atajo | Descripción |
+|-------|-------------|
+| `Ctrl + R` | Búsqueda difusa en historial de comandos |
+| `Ctrl + T` | Búsqueda difusa de archivos en directorio actual |
+| `Alt + C` | Saltar a directorio con búsqueda difusa |
+
+Uso en comandos:
+- `vim $(fzf)` — abrir archivo seleccionado con vim
+- `kill -9 $(ps aux | fzf | awk '{print $2}')` — matar proceso interactivamente
+
+---
+EOF
+            ;;
+            Docker)
+                cat >> "$output" << 'EOF'
+## Docker — Contenedores
+
+| Comando | Descripción |
+|---------|-------------|
+| `docker ps` | Contenedores en ejecución |
+| `docker ps -a` | Todos los contenedores |
+| `docker images` | Imágenes locales |
+| `docker run -it <imagen>` | Ejecutar contenedor interactivo |
+| `docker build -t <nombre> .` | Construir imagen |
+| `docker compose up -d` | Levantar servicios en background |
+| `docker compose down` | Detener servicios |
+| `docker logs <id>` | Ver logs de contenedor |
+| `docker exec -it <id> bash` | Entrar a contenedor en ejecución |
+
+---
+EOF
+            ;;
+            kubectl)
+                cat >> "$output" << 'EOF'
+## kubectl — Kubernetes CLI
+
+| Comando | Descripción |
+|---------|-------------|
+| `kubectl get pods` | Listar pods |
+| `kubectl get pods -n <namespace>` | Pods en namespace específico |
+| `kubectl describe pod <nombre>` | Detalles de un pod |
+| `kubectl logs <pod>` | Ver logs |
+| `kubectl apply -f <archivo.yaml>` | Aplicar configuración |
+| `kubectl delete -f <archivo.yaml>` | Eliminar recursos |
+| `kubectl exec -it <pod> -- bash` | Entrar a pod |
+| `kubectl port-forward <pod> 8080:80` | Redirigir puerto |
+
+---
+EOF
+            ;;
+        esac
+    done
+
+    # Sección de ~/.zshrc siempre incluida
+    cat >> "$output" << 'EOF'
+## ~/.zshrc — Referencia rápida
+
+| Acción | Comando |
+|--------|---------|
+| Recargar configuración | `source ~/.zshrc` |
+| Editar configuración | `nano ~/.zshrc` o `code ~/.zshrc` |
+| Ver aliases definidos | `alias` |
+| Ver PATH actual | `echo $PATH` |
+
+EOF
+
+    echo "${GREEN}Cheatsheet guardado en: $output${NC}"
+}
+
+# Preguntar si generar cheatsheet
+ask_cheatsheet() {
+    local apps=("$@")
+    echo
+    echo "${YELLOW}¿Generar un cheatsheet con los comandos y aliases de las herramientas instaladas? [Y/n]: ${NC}"
+    read -r gen_cheatsheet
+    if [[ "$gen_cheatsheet" != "n" && "$gen_cheatsheet" != "N" ]]; then
+        generate_cheatsheet "${apps[@]}"
+    fi
 }
 
 # Ocultar el Dock
@@ -380,6 +674,7 @@ main() {
     selected_apps=($(select_apps))
     install_apps "${selected_apps[@]}"
     hide_dock
+    ask_cheatsheet "${selected_apps[@]}"
     echo
     echo "${GREEN}¡Configuración completada! Los cambios en la terminal requieren reiniciar.${NC}"
     restart_terminal

@@ -12,8 +12,9 @@ This is a Next.js 15 application with TypeScript, Tailwind CSS v4, and React 19.
 - **Build**: `bun run build` - Creates production build
 - **Start**: `bun start` - Starts production server
 - **Lint**: `bun run lint` - Runs ESLint with Next.js rules
+- **Type check**: `bun run type-check` - TypeScript type checking (no emit)
 
-**Note**: Bun is the preferred package manager for this project.
+**Note**: Bun is the required package manager for this project.
 
 ## Architecture
 
