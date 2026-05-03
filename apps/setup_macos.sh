@@ -661,23 +661,82 @@ restart_terminal() {
     fi
 }
 
+# Desinstalar configuración
+uninstall() {
+    echo "${CYAN}Modo de desinstalación${NC}"
+    echo
+
+    echo "${YELLOW}¿Desinstalar Oh My Zsh y plugins? [Y/n]: ${NC}"
+    read -r remove_omz
+    if [[ "$remove_omz" != "n" && "$remove_omz" != "N" ]]; then
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            run_command "uninstall_oh_my_zsh" "Desinstalando Oh My Zsh" || \
+                run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
+            echo "${GREEN}Oh My Zsh eliminado.${NC}"
+        else
+            echo "${YELLOW}Oh My Zsh no está instalado.${NC}"
+        fi
+    fi
+
+    echo "${YELLOW}¿Eliminar clave SSH (~/.ssh/id_ed25519)? [y/N]: ${NC}"
+    read -r remove_ssh
+    if [[ "$remove_ssh" == "y" || "$remove_ssh" == "Y" ]]; then
+        run_command "rm -f $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub" "Eliminando clave SSH"
+        echo "${GREEN}Clave SSH eliminada.${NC}"
+    fi
+
+    echo "${YELLOW}¿Desinstalar aplicaciones instaladas por este script? [Y/n]: ${NC}"
+    read -r remove_apps
+    if [[ "$remove_apps" != "n" && "$remove_apps" != "N" ]]; then
+        selected_apps=($(select_apps))
+        if [ ${#selected_apps[@]} -gt 0 ]; then
+            for app in "${selected_apps[@]}"; do
+                IFS=':' read -r name cmd cask _ _ <<< "$app"
+                local package_name=$(echo "$cmd" | awk '{print $NF}')
+                if [ "$cask" = "true" ]; then
+                    run_command "brew uninstall --cask $package_name" "Desinstalando $name" || \
+                        echo "${YELLOW}No se pudo desinstalar $name.${NC}"
+                else
+                    run_command "brew uninstall $package_name" "Desinstalando $name" || \
+                        echo "${YELLOW}No se pudo desinstalar $name.${NC}"
+                fi
+            done
+        fi
+    fi
+
+    echo
+    echo "${GREEN}Desinstalación completada.${NC}"
+}
+
 # Función principal
 main() {
     echo "${CYAN}Script de Configuración para macOS${NC}"
     echo
+    echo "${CYAN}¿Qué deseas hacer?${NC}"
+    echo "${CYAN}[1] Instalar y configurar${NC}"
+    echo "${CYAN}[2] Desinstalar${NC}"
+    echo -n "${YELLOW}Elige una opción (1/2): ${NC}"
+    read -r mode
 
-    check_brew
-    check_git
-    install_oh_my_zsh
-    configure_git_global
-    configure_ssh_key
-    selected_apps=($(select_apps))
-    install_apps "${selected_apps[@]}"
-    hide_dock
-    ask_cheatsheet "${selected_apps[@]}"
-    echo
-    echo "${GREEN}¡Configuración completada! Los cambios en la terminal requieren reiniciar.${NC}"
-    restart_terminal
+    case "$mode" in
+        2)
+            uninstall
+            ;;
+        *)
+            check_brew
+            check_git
+            install_oh_my_zsh
+            configure_git_global
+            configure_ssh_key
+            selected_apps=($(select_apps))
+            install_apps "${selected_apps[@]}"
+            hide_dock
+            ask_cheatsheet "${selected_apps[@]}"
+            echo
+            echo "${GREEN}¡Configuración completada! Los cambios en la terminal requieren reiniciar.${NC}"
+            restart_terminal
+            ;;
+    esac
 }
 
 main
