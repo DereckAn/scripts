@@ -326,7 +326,12 @@ select_apps() {
         local i=1
         for app in "${apps[@]}"; do
             IFS=':' read -r name cmd cask path executable <<< "$app"
-            echo "${CYAN}[$i]  $name${NC}"
+            local package_name=$(echo "$cmd" | awk '{print $NF}')
+            if is_app_installed "$package_name" "$cask"; then
+                echo "${GREEN}[$i]  $name (instalado)${NC}"
+            else
+                echo "${CYAN}[$i]  $name${NC}"
+            fi
             app_list[$i]="$name:$cmd:$cask:$path:$executable"
             ((i++))
         done
@@ -661,28 +666,58 @@ restart_terminal() {
     fi
 }
 
+# Eliminar líneas añadidas por el script de ~/.zshrc
+clean_zshrc() {
+    local zshrc="$HOME/.zshrc"
+    [ ! -f "$zshrc" ] && return
+    # Elimina líneas de comentario del script y la línea siguiente
+    sed -i '' '/# Añadido por setup_macos\.sh/{ N; d; }' "$zshrc"
+    # Elimina el tema powerlevel10k
+    sed -i '' 's/ZSH_THEME="powerlevel10k\/powerlevel10k"/ZSH_THEME="robbyrussell"/' "$zshrc"
+    # Elimina la línea de plugins extendida y restaura la original
+    sed -i '' 's/plugins=(git jump zsh-autosuggestions zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)/plugins=(git)/' "$zshrc"
+    echo "${GREEN}~/.zshrc limpiado.${NC}"
+}
+
+# Eliminar la entrada de GitHub en ~/.ssh/config
+clean_ssh_config() {
+    local ssh_config="$HOME/.ssh/config"
+    [ ! -f "$ssh_config" ] && return
+    # Elimina el bloque "Host github.com" y sus 4 líneas siguientes
+    sed -i '' '/^Host github\.com/{N;N;N;N;d;}' "$ssh_config"
+    echo "${GREEN}Entrada de GitHub eliminada de ~/.ssh/config.${NC}"
+}
+
 # Desinstalar configuración
 uninstall() {
     echo "${CYAN}Modo de desinstalación${NC}"
     echo
 
-    echo "${YELLOW}¿Desinstalar Oh My Zsh y plugins? [Y/n]: ${NC}"
+    echo "${YELLOW}¿Desinstalar Oh My Zsh, Powerlevel10k y plugins? [Y/n]: ${NC}"
     read -r remove_omz
     if [[ "$remove_omz" != "n" && "$remove_omz" != "N" ]]; then
         if [ -d "$HOME/.oh-my-zsh" ]; then
-            run_command "uninstall_oh_my_zsh" "Desinstalando Oh My Zsh" || \
-                run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
+            run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
             echo "${GREEN}Oh My Zsh eliminado.${NC}"
         else
             echo "${YELLOW}Oh My Zsh no está instalado.${NC}"
         fi
+        run_command "rm -f $HOME/.p10k.zsh" "Eliminando configuración de Powerlevel10k"
+        clean_zshrc
     fi
 
     echo "${YELLOW}¿Eliminar clave SSH (~/.ssh/id_ed25519)? [y/N]: ${NC}"
     read -r remove_ssh
     if [[ "$remove_ssh" == "y" || "$remove_ssh" == "Y" ]]; then
         run_command "rm -f $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub" "Eliminando clave SSH"
+        clean_ssh_config
         echo "${GREEN}Clave SSH eliminada.${NC}"
+    fi
+
+    echo "${YELLOW}¿Eliminar el cheatsheet generado? [Y/n]: ${NC}"
+    read -r remove_cheatsheet
+    if [[ "$remove_cheatsheet" != "n" && "$remove_cheatsheet" != "N" ]]; then
+        run_command "rm -f $HOME/cheatsheet_macos_setup.md" "Eliminando cheatsheet"
     fi
 
     echo "${YELLOW}¿Desinstalar aplicaciones instaladas por este script? [Y/n]: ${NC}"
