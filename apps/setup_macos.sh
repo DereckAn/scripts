@@ -12,12 +12,18 @@ NC='\033[0m' # No color
 run_command() {
     local cmd="$1"
     local desc="$2"
-    echo -n "${YELLOW}${desc}...${NC} "
-    if $cmd >/dev/null 2>&1; then
-        echo "${GREEN}Hecho${NC}"
+    printf "${YELLOW}%s...${NC} " "$desc"
+    local error_output
+    error_output=$(eval "$cmd" 2>&1 >/dev/null)
+    local exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        printf "${GREEN}Hecho${NC}\n"
         return 0
     else
-        echo "${RED}Error${NC}"
+        printf "${RED}Error (código $exit_code)${NC}\n"
+        if [ -n "$error_output" ]; then
+            printf "${RED}  → %s${NC}\n" "$error_output"
+        fi
         return 1
     fi
 }

@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/DereckAn/scripts/main/apps/setup_ma
 
 **Bash** — no dependencies:
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/DereckAn/scripts/main/apps/setup_macos.sh)"
+bash <(curl -fsSL https://raw.githubusercontent.com/DereckAn/scripts/main/apps/setup_macos.sh)
 ```
 
 ### After running
@@ -50,7 +50,7 @@ Installs and configures: Git, Zsh, Oh My Zsh, Powerlevel10k, Zsh plugins, SSH ke
 ### Run it
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/DereckAn/scripts/main/apps/setup_linux.sh)"
+bash <(curl -fsSL https://raw.githubusercontent.com/DereckAn/scripts/main/apps/setup_linux.sh)
 ```
 
 ### After running
