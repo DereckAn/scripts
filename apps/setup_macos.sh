@@ -1,12 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Colores para la interfaz
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[1;36m'
-BLUE='\033[1;34m'
-NC='\033[0m' # No color
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+CYAN=$'\033[1;36m'
+BLUE=$'\033[1;34m'
+NC=$'\033[0m' # No color
 
 # Función para ejecutar comandos con retroalimentación
 run_command() {
@@ -63,10 +63,12 @@ install_oh_my_zsh() {
         echo "${GREEN}Oh My Zsh ya instalado.${NC}"
     else
         echo "${YELLOW}Instalando Oh My Zsh...${NC}"
-        run_command 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" --unattended' "Instalando Oh My Zsh" || {
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        if [ $? -ne 0 ]; then
             echo "${RED}Error instalando Oh My Zsh. Saliendo...${NC}"
             exit 1
-        }
+        fi
+        echo "${GREEN}Oh My Zsh instalado.${NC}"
     fi
 
     echo "${YELLOW}Instalando Powerlevel10k...${NC}"
