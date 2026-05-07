@@ -71,14 +71,32 @@ install_oh_my_zsh() {
         echo "${GREEN}Oh My Zsh instalado.${NC}"
     fi
 
-    echo "${YELLOW}Instalando Powerlevel10k...${NC}"
-    run_command "git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" "Instalando Powerlevel10k"
+    local zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+
+    if [ -d "$zsh_custom/themes/powerlevel10k" ]; then
+        echo "${GREEN}Powerlevel10k ya instalado.${NC}"
+    else
+        echo "${YELLOW}Instalando Powerlevel10k...${NC}"
+        run_command "git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $zsh_custom/themes/powerlevel10k" "Instalando Powerlevel10k"
+    fi
     sed -i '' 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' ~/.zshrc
 
     echo "${YELLOW}Instalando plugins de Zsh...${NC}"
-    run_command "git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions" "Instalando zsh-autosuggestions"
-    run_command "git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-history-substring-search" "Instalando zsh-history-substring-search"
-    run_command "git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting" "Instalando zsh-syntax-highlighting"
+    if [ -d "$zsh_custom/plugins/zsh-autosuggestions" ]; then
+        echo "${GREEN}zsh-autosuggestions ya instalado.${NC}"
+    else
+        run_command "git clone https://github.com/zsh-users/zsh-autosuggestions $zsh_custom/plugins/zsh-autosuggestions" "Instalando zsh-autosuggestions"
+    fi
+    if [ -d "$zsh_custom/plugins/zsh-history-substring-search" ]; then
+        echo "${GREEN}zsh-history-substring-search ya instalado.${NC}"
+    else
+        run_command "git clone https://github.com/zsh-users/zsh-history-substring-search $zsh_custom/plugins/zsh-history-substring-search" "Instalando zsh-history-substring-search"
+    fi
+    if [ -d "$zsh_custom/plugins/zsh-syntax-highlighting" ]; then
+        echo "${GREEN}zsh-syntax-highlighting ya instalado.${NC}"
+    else
+        run_command "git clone https://github.com/zsh-users/zsh-syntax-highlighting $zsh_custom/plugins/zsh-syntax-highlighting" "Instalando zsh-syntax-highlighting"
+    fi
     sed -i '' 's/plugins=(git)/plugins=(git jump zsh-autosuggestions zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)/' ~/.zshrc
 }
 
@@ -185,10 +203,11 @@ add_ssh_key_to_github() {
         echo "${YELLOW}Verificando autenticación en GitHub CLI...${NC}"
         if ! gh auth status >/dev/null 2>&1; then
             echo "${YELLOW}Autenticando en GitHub CLI...${NC}"
-            run_command "gh auth login" "Autenticando en GitHub CLI" || {
+            gh auth login
+            if [ $? -ne 0 ]; then
                 show_ssh_key_instructions
                 return
-            }
+            fi
         fi
         echo "${YELLOW}Añadiendo clave SSH a GitHub...${NC}"
         run_command "gh ssh-key add \"$public_key_path\" --title \"MacBook_$(date +%Y%m%d)\" --type authentication" "Añadiendo clave SSH a GitHub" || {
@@ -678,12 +697,13 @@ restart_terminal() {
 clean_zshrc() {
     local zshrc="$HOME/.zshrc"
     [ ! -f "$zshrc" ] && return
-    # Elimina líneas de comentario del script y la línea siguiente
+    # Líneas añadidas por nuestro script
     sed -i '' '/# Añadido por setup_macos\.sh/{ N; d; }' "$zshrc"
-    # Elimina el tema powerlevel10k
-    sed -i '' 's/ZSH_THEME="powerlevel10k\/powerlevel10k"/ZSH_THEME="robbyrussell"/' "$zshrc"
-    # Elimina la línea de plugins extendida y restaura la original
-    sed -i '' 's/plugins=(git jump zsh-autosuggestions zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)/plugins=(git)/' "$zshrc"
+    # Líneas escritas por el instalador de Oh My Zsh
+    sed -i '' '/^export ZSH=/d' "$zshrc"
+    sed -i '' '/^ZSH_THEME=/d' "$zshrc"
+    sed -i '' '/^plugins=/d' "$zshrc"
+    sed -i '' '/^source \$ZSH\/oh-my-zsh\.sh/d' "$zshrc"
     echo "${GREEN}~/.zshrc limpiado.${NC}"
 }
 
