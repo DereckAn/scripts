@@ -324,65 +324,114 @@ post_install_config() {
     esac
 }
 
+# Procesar una categoría y añadir selecciones a selected_apps
+process_category() {
+    local category="$1"
+    shift
+    local apps=("$@")
+
+    echo
+    echo "${BLUE}Categoría: $category${NC}"
+    echo "${CYAN}ID   Aplicación${NC}"
+
+    local app_list=()
+    local i=1
+    for app in "${apps[@]}"; do
+        IFS=':' read -r name cmd cask path executable <<< "$app"
+        local package_name
+        package_name=$(echo "$cmd" | awk '{print $NF}')
+        if is_app_installed "$package_name" "$cask"; then
+            echo "${GREEN}[$i]  $name (instalado)${NC}"
+        else
+            echo "${CYAN}[$i]  $name${NC}"
+        fi
+        app_list[$i]="$name:$cmd:$cask:$path:$executable"
+        ((i++))
+    done
+
+    printf "${YELLOW}Ingresa los números (ej. 1,3,5), 'all', '0' o 'n' para omitir: ${NC}"
+    read -r choices
+    choices=$(echo "$choices" | tr '[:upper:]' '[:lower:]')
+
+    if [ "$choices" = "all" ]; then
+        for ((j=1; j<i; j++)); do
+            selected_apps+=("${app_list[$j]}")
+        done
+    elif [ "$choices" = "0" ] || [ "$choices" = "n" ] || [ -z "$choices" ]; then
+        echo "${YELLOW}Omitiendo categoría $category.${NC}"
+    else
+        IFS=',' read -ra indices <<< "$choices"
+        for idx in "${indices[@]}"; do
+            if echo "$idx" | grep -qE '^[0-9]+$' && [ "$idx" -ge 1 ] && [ "$idx" -lt "$i" ]; then
+                selected_apps+=("${app_list[$idx]}")
+            fi
+        done
+    fi
+}
+
 # Seleccionar aplicaciones
 select_apps() {
     echo "${CYAN}Selecciona las aplicaciones a instalar por categoría:${NC}"
-    local selected_apps=()
+    selected_apps=()
 
-    # Definir categorías y aplicaciones
-    declare -A categories=(
-        ["Gestores de Paquetes"]="pnpm:brew install pnpm:false:: Bun:brew install oven-sh/bun/bun:false:: Yarn:brew install yarn:false:: npm:brew install node:false::"
-        ["Herramientas de Contenedores"]="Docker:brew install --cask docker:true:: kubectl:brew install kubectl:false:: Minikube:brew install minikube:false::"
-        ["IDEs y Editores"]="Visual Studio Code:brew install --cask visual-studio-code:true:: Cursor:brew install --cask cursor:true:: IntelliJ IDEA:brew install --cask intellij-idea:true:: WebStorm:brew install --cask webstorm:true::"
-        ["Navegadores"]="Google Chrome:brew install --cask google-chrome:true:: Brave:brew install --cask brave-browser:true:: Opera:brew install --cask opera:true:: Firefox:brew install --cask firefox:true::"
-        ["Terminales"]="iTerm2:brew install --cask iterm2:true:: Warp:brew install --cask warp:true::"
-        ["Lenguajes de Programación"]="Python:brew install python:false:/opt/homebrew/bin:python3 Java:brew install java:false:/opt/homebrew/opt/openjdk/bin:java Rust:brew install rust:false:/opt/homebrew/bin:rustc C++ (clang):brew install llvm:false:/opt/homebrew/opt/llvm/bin:clang++ C# (Mono):brew install mono:false:/opt/homebrew/bin:mono Go:brew install go:false:/opt/homebrew/bin:go Ruby:brew install ruby:false:/opt/homebrew/bin:ruby PHP:brew install php:false:/opt/homebrew/bin:php TypeScript:brew install typescript:false:/opt/homebrew/bin:tsc"
-        ["Bases de Datos"]="PostgreSQL:brew install postgresql:false:: MySQL:brew install mysql:false:: MongoDB:brew install mongodb-community:false::"
-        ["Otros"]="Raycast:brew install raycast:false:: Telegram:brew install --cask telegram:true:: Slack:brew install --cask slack:true:: Tailscale:brew install tailscale:false:: fzf:brew install fzf:false:: GitHub CLI (gh):brew install gh:false:: Obsidian:brew install --cask obsidian:true:: Notion:brew install --cask notion:true::"
-        ["Herramientas CLI"]="eza:brew install eza:false:: mactop:brew install mactop:false:: zoxide:brew install zoxide:false:: taproom:brew install hzqtc/taproom/taproom:false:: btop:brew install btop:false:: ranger:brew install ranger:false::"
-    )
+    process_category "Gestores de Paquetes" \
+        "pnpm:brew install pnpm:false::" \
+        "Bun:brew install oven-sh/bun/bun:false::" \
+        "Yarn:brew install yarn:false::" \
+        "Node:brew install node:false::"
 
-    for category in "${!categories[@]}"; do
-        echo
-        echo "${BLUE}Categoría: $category${NC}"
-        echo "${CYAN}ID   Aplicación${NC}"
+    process_category "Herramientas de Contenedores" \
+        "Docker:brew install --cask docker:true::" \
+        "kubectl:brew install kubectl:false::" \
+        "Minikube:brew install minikube:false::"
 
-        # Parsear aplicaciones
-        IFS=' ' read -ra apps <<< "${categories[$category]}"
-        local app_list=()
-        local i=1
-        for app in "${apps[@]}"; do
-            IFS=':' read -r name cmd cask path executable <<< "$app"
-            local package_name=$(echo "$cmd" | awk '{print $NF}')
-            if is_app_installed "$package_name" "$cask"; then
-                echo "${GREEN}[$i]  $name (instalado)${NC}"
-            else
-                echo "${CYAN}[$i]  $name${NC}"
-            fi
-            app_list[$i]="$name:$cmd:$cask:$path:$executable"
-            ((i++))
-        done
+    process_category "IDEs y Editores" \
+        "Visual Studio Code:brew install --cask visual-studio-code:true::" \
+        "Cursor:brew install --cask cursor:true::" \
+        "IntelliJ IDEA:brew install --cask intellij-idea:true::" \
+        "WebStorm:brew install --cask webstorm:true::"
 
-        echo -n "${YELLOW}Ingresa los números (ej. 1,3,5), 'all', '0' o 'n' para omitir: ${NC}"
-        read -r choices
-        choices=$(echo "$choices" | tr '[:upper:]' '[:lower:]')
-        if [ "$choices" = "all" ]; then
-            for ((j=1; j<i; j++)); do
-                selected_apps+=("${app_list[$j]}")
-            done
-        elif [[ "$choices" = "0" || "$choices" = "n" || -z "$choices" ]]; then
-            echo "${YELLOW}Omitiendo categoría $category.${NC}"
-        else
-            IFS=',' read -ra indices <<< "$choices"
-            for idx in "${indices[@]}"; do
-                if [[ "$idx" =~ ^[0-9]+$ && "$idx" -ge 1 && "$idx" -lt "$i" ]]; then
-                    selected_apps+=("${app_list[$idx]}")
-                fi
-            done
-        fi
-    done
+    process_category "Navegadores" \
+        "Google Chrome:brew install --cask google-chrome:true::" \
+        "Brave:brew install --cask brave-browser:true::" \
+        "Opera:brew install --cask opera:true::" \
+        "Firefox:brew install --cask firefox:true::"
 
-    # Devolver aplicaciones seleccionadas
+    process_category "Terminales" \
+        "iTerm2:brew install --cask iterm2:true::" \
+        "Warp:brew install --cask warp:true::"
+
+    process_category "Lenguajes de Programacion" \
+        "Python:brew install python:false:/opt/homebrew/bin:python3" \
+        "Java:brew install java:false:/opt/homebrew/opt/openjdk/bin:java" \
+        "Rust:brew install rust:false:/opt/homebrew/bin:rustc" \
+        "Go:brew install go:false:/opt/homebrew/bin:go" \
+        "Ruby:brew install ruby:false:/opt/homebrew/bin:ruby" \
+        "PHP:brew install php:false:/opt/homebrew/bin:php" \
+        "TypeScript:brew install typescript:false:/opt/homebrew/bin:tsc"
+
+    process_category "Bases de Datos" \
+        "PostgreSQL:brew install postgresql:false::" \
+        "MySQL:brew install mysql:false::" \
+        "MongoDB:brew install mongodb-community:false::"
+
+    process_category "Herramientas CLI" \
+        "eza:brew install eza:false::" \
+        "mactop:brew install mactop:false::" \
+        "zoxide:brew install zoxide:false::" \
+        "btop:brew install btop:false::" \
+        "ranger:brew install ranger:false::" \
+        "fzf:brew install fzf:false::"
+
+    process_category "Otros" \
+        "Raycast:brew install --cask raycast:true::" \
+        "Telegram:brew install --cask telegram:true::" \
+        "Slack:brew install --cask slack:true::" \
+        "Tailscale:brew install tailscale:false::" \
+        "GitHub CLI:brew install gh:false::" \
+        "Obsidian:brew install --cask obsidian:true::" \
+        "Notion:brew install --cask notion:true::"
+
     printf '%s\n' "${selected_apps[@]}"
 }
 
@@ -427,7 +476,7 @@ generate_cheatsheet() {
     local date_now
     date_now=$(date '+%Y-%m-%d')
 
-    cat > "$output" << EOF
+    cat > "$output" << HEREDOC
 # Cheatsheet — macOS Setup
 Generado el $date_now
 
@@ -455,7 +504,7 @@ Busca en el historial por subcadena.
 - `zsh-interactive-cd` — autocompletado interactivo al usar `cd`
 
 ---
-EOF
+HEREDOC
 
     # Secciones por herramienta instalada
     for app in "${apps[@]}"; do
