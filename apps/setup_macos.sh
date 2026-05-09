@@ -14,7 +14,7 @@ run_command() {
     local desc="$2"
     printf "${YELLOW}%s...${NC} " "$desc"
     local error_output
-    error_output=$(eval "$cmd" 2>&1 >/dev/null)
+    error_output=$(eval "$cmd" 2>&1 1>/dev/null)
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         printf "${GREEN}Hecho${NC}\n"
@@ -37,6 +37,9 @@ check_brew() {
             echo "${RED}Error instalando Homebrew. Saliendo...${NC}"
             exit 1
         }
+        if [[ "$(uname -m)" == "arm64" ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
     else
         echo "${GREEN}Homebrew encontrado.${NC}"
     fi
@@ -58,46 +61,57 @@ check_git() {
 
 # Instalar Oh My Zsh y Powerlevel10k
 install_oh_my_zsh() {
-    echo "${YELLOW}Configurando Oh My Zsh...${NC}"
-    if [ -d "$HOME/.oh-my-zsh" ]; then
-        echo "${GREEN}Oh My Zsh ya instalado.${NC}"
+    echo "${YELLOW}¿Instalar Oh My Zsh y Powerlevel10k? [Y/n]: ${NC}"
+    read -r install_omz
+    if [[ "$install_omz" == "n" || "$install_omz" == "N" ]]; then
+        echo "${YELLOW}Saltando instalación de Oh My Zsh.${NC}"
+        return
+    fi
+
+    # Check macOS version and handle ZSH installation if needed
+    local version
+    version=$(sw_vers -productVersion)
+    if [[ "$version" < "10.15" ]]; then
+        echo "${YELLOW}macOS version is Catalina or older${NC}"
+        echo "${YELLOW}Setting ZSH as default shell${NC}"
+        brew install zsh
+        chsh -s "$(which zsh)"
     else
-        echo "${YELLOW}Instalando Oh My Zsh...${NC}"
-        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-        if [ $? -ne 0 ]; then
-            echo "${RED}Error instalando Oh My Zsh. Saliendo...${NC}"
+        echo "${GREEN}macOS version is newer than Catalina${NC}"
+    fi
+
+    # Install Oh My Zsh if not already installed
+    if [ -d "$HOME/.oh-my-zsh" ]; then
+        echo "${GREEN}Oh My Zsh already installed${NC}"
+    else
+        echo "${YELLOW}Installing Oh My Zsh${NC}"
+        ZSH="$HOME/.oh-my-zsh" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &
+        wait
+        if [ $? -eq 0 ]; then
+            echo "${GREEN}Successfully installed Oh My Zsh${NC}"
+        else
+            echo "${RED}Error installing Oh My Zsh${NC}"
             exit 1
         fi
-        echo "${GREEN}Oh My Zsh instalado.${NC}"
     fi
 
-    local zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+    if [ $? -eq 0 ]; then
+        echo "${YELLOW}Installing Powerlevel10k${NC}"
+        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+        sed -i '' 's#robbyrussell#powerlevel10k/powerlevel10k#g' ~/.zshrc
+        echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> ~/.zshrc
 
-    if [ -d "$zsh_custom/themes/powerlevel10k" ]; then
-        echo "${GREEN}Powerlevel10k ya instalado.${NC}"
+        echo "${YELLOW}Installing plugins${NC}"
+        git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
+        git clone https://github.com/zsh-users/zsh-history-substring-search "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-history-substring-search"
+        git clone https://github.com/zsh-users/zsh-syntax-highlighting "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
+        sed -i '' 's/plugins=(git)/plugins=(git jump zsh-autosuggestions sublime zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)/g' ~/.zshrc
+        echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> ~/.zshrc
+        echo "${GREEN}Please restart your terminal for changes to take effect${NC}"
     else
-        echo "${YELLOW}Instalando Powerlevel10k...${NC}"
-        run_command "git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $zsh_custom/themes/powerlevel10k" "Instalando Powerlevel10k"
+        echo "${RED}Error installing Oh My Zsh${NC}"
+        exit 1
     fi
-    sed -i '' 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' ~/.zshrc
-
-    echo "${YELLOW}Instalando plugins de Zsh...${NC}"
-    if [ -d "$zsh_custom/plugins/zsh-autosuggestions" ]; then
-        echo "${GREEN}zsh-autosuggestions ya instalado.${NC}"
-    else
-        run_command "git clone https://github.com/zsh-users/zsh-autosuggestions $zsh_custom/plugins/zsh-autosuggestions" "Instalando zsh-autosuggestions"
-    fi
-    if [ -d "$zsh_custom/plugins/zsh-history-substring-search" ]; then
-        echo "${GREEN}zsh-history-substring-search ya instalado.${NC}"
-    else
-        run_command "git clone https://github.com/zsh-users/zsh-history-substring-search $zsh_custom/plugins/zsh-history-substring-search" "Instalando zsh-history-substring-search"
-    fi
-    if [ -d "$zsh_custom/plugins/zsh-syntax-highlighting" ]; then
-        echo "${GREEN}zsh-syntax-highlighting ya instalado.${NC}"
-    else
-        run_command "git clone https://github.com/zsh-users/zsh-syntax-highlighting $zsh_custom/plugins/zsh-syntax-highlighting" "Instalando zsh-syntax-highlighting"
-    fi
-    sed -i '' 's/plugins=(git)/plugins=(git jump zsh-autosuggestions zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)/' ~/.zshrc
 }
 
 # Configurar credenciales de Git
@@ -122,8 +136,8 @@ configure_git_global() {
         echo -n "Ingresa tu correo para Git (e.g., juan@example.com): "
         read -r git_email
         if [ -n "$git_name" ] && [ -n "$git_email" ]; then
-            run_command "git config --global user.name \"$git_name\"" "Configurando nombre de Git"
-            run_command "git config --global user.email \"$git_email\"" "Configurando correo de Git"
+            git config --global user.name "$git_name" && printf "${GREEN}Configurando nombre de Git... Hecho${NC}\n"
+            git config --global user.email "$git_email" && printf "${GREEN}Configurando correo de Git... Hecho${NC}\n"
             echo "${GREEN}Credenciales configuradas: $git_name <$git_email>${NC}"
         else
             echo "${YELLOW}No se proporcionaron credenciales válidas. Saltando...${NC}"
@@ -133,58 +147,84 @@ configure_git_global() {
     fi
 }
 
+# Generar y registrar una clave SSH para una cuenta de GitHub
+# Uso: setup_github_account <alias> <key_file> <host_alias>
+#   alias     — etiqueta legible (e.g. "personal", "trabajo")
+#   key_file  — ruta completa al archivo de clave (e.g. ~/.ssh/id_ed25519_work)
+#   host_alias — alias del Host en ~/.ssh/config (e.g. "github.com" o "github-work")
+setup_github_account() {
+    local account_label="$1"
+    local key_file="$2"
+    local host_alias="$3"
+    local ssh_config_path="$HOME/.ssh/config"
+
+    # Instalar GitHub CLI si no está presente
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "${YELLOW}GitHub CLI no encontrado. Instalando...${NC}"
+        run_command "brew install gh" "Instalando GitHub CLI"
+    fi
+
+    if [ -f "$key_file" ]; then
+        echo "${GREEN}Clave SSH ya existe en $key_file.${NC}"
+        echo "${YELLOW}¿Generar nueva clave para la cuenta $account_label (sobrescribirá la existente)? [y/N]: ${NC}"
+        read -r overwrite
+        if [[ "$overwrite" != "y" && "$overwrite" != "Y" ]]; then
+            echo "${YELLOW}Usando clave existente para $account_label.${NC}"
+            add_ssh_key_to_github "$key_file" "$host_alias"
+            return
+        fi
+    fi
+
+    echo -n "Ingresa tu correo de GitHub para la cuenta $account_label (e.g., juan@example.com): "
+    read -r ssh_email
+    if [ -z "$ssh_email" ]; then
+        echo "${YELLOW}No se proporcionó correo válido. Saltando cuenta $account_label.${NC}"
+        return
+    fi
+
+    printf "${YELLOW}Generando clave SSH (%s)...${NC} " "$account_label"
+    ssh-keygen -t ed25519 -C "$ssh_email" -f "$key_file" -N "" 1>/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        printf "${RED}Error${NC}\n"
+        echo "${RED}Error generando clave SSH para $account_label.${NC}"
+        return
+    fi
+    printf "${GREEN}Hecho${NC}\n"
+
+    eval "$(ssh-agent -s)" >/dev/null 2>&1
+    printf "${YELLOW}Añadiendo clave SSH (%s) al agente...${NC} " "$account_label"
+    ssh-add "$key_file" >/dev/null 2>&1 && printf "${GREEN}Hecho${NC}\n" || printf "${YELLOW}Advertencia: no se pudo añadir al agente${NC}\n"
+
+    mkdir -p "$(dirname "$ssh_config_path")"
+    [ ! -f "$ssh_config_path" ] && install -m 600 /dev/null "$ssh_config_path"
+    if ! grep -q "Host $host_alias" "$ssh_config_path" 2>/dev/null; then
+        printf "\nHost %s\n    HostName github.com\n    User git\n    IdentityFile %s\n    IdentitiesOnly yes\n" \
+            "$host_alias" "$key_file" >> "$ssh_config_path"
+    fi
+
+    add_ssh_key_to_github "$key_file" "$host_alias"
+}
+
 # Configurar clave SSH
 configure_ssh_key() {
     echo "${YELLOW}¿Configurar clave SSH para GitHub? [Y/n]: ${NC}"
     read -r configure_ssh
     if [[ "$configure_ssh" != "n" && "$configure_ssh" != "N" ]]; then
-        ssh_key_path="$HOME/.ssh/id_ed25519"
-        if [ -f "$ssh_key_path" ]; then
-            echo "${GREEN}Clave SSH ya existe en ~/.ssh/id_ed25519.${NC}"
-            echo "${YELLOW}¿Generar nueva clave (sobrescribirá la existente)? [y/N]: ${NC}"
-            read -r overwrite
-            if [[ "$overwrite" != "y" && "$overwrite" != "Y" ]]; then
-                echo "${YELLOW}Usando clave existente.${NC}"
-                add_ssh_key_to_github
-                return
-            fi
-        fi
+        echo
+        echo "${CYAN}¿Tienes más de una cuenta de GitHub (e.g., personal y trabajo)? [y/N]: ${NC}"
+        read -r multi_account
+        echo
 
-        # Instalar GitHub CLI si no está presente
-        if ! command -v gh >/dev/null 2>&1; then
-            echo "${YELLOW}GitHub CLI no encontrado. Instalando...${NC}"
-            run_command "brew install gh" "Instalando GitHub CLI"
-        fi
+        if [[ "$multi_account" == "y" || "$multi_account" == "Y" ]]; then
+            echo "${CYAN}Cuenta 1 — Personal (usará host: github.com)${NC}"
+            setup_github_account "personal" "$HOME/.ssh/id_ed25519" "github.com"
 
-        echo "${YELLOW}Generando clave SSH...${NC}"
-        echo -n "Ingresa tu correo para SSH (e.g., juan@example.com): "
-        read -r ssh_email
-        if [ -n "$ssh_email" ]; then
-            run_command "ssh-keygen -t ed25519 -C \"$ssh_email\" -f \"$ssh_key_path\" -N \"\"" "Generando clave SSH" || {
-                echo "${RED}Error generando clave SSH.${NC}"
-                return
-            }
-            run_command "eval \$(ssh-agent -s)" "Iniciando ssh-agent"
-            run_command "ssh-add $ssh_key_path" "Añadiendo clave SSH al agente"
-
-            # Configurar ~/.ssh/config
-            ssh_config_path="$HOME/.ssh/config"
-            ssh_config_content="
-Host github.com
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/id_ed25519
-    IdentitiesOnly yes
-"
-            mkdir -p "$(dirname "$ssh_config_path")"
-            if ! grep -q "Host github.com" "$ssh_config_path" 2>/dev/null; then
-                echo "$ssh_config_content" >> "$ssh_config_path"
-            fi
-            run_command "chmod 600 $ssh_config_path" "Configurando permisos de ~/.ssh/config"
-
-            add_ssh_key_to_github
+            echo
+            echo "${CYAN}Cuenta 2 — Trabajo (usará host alias: github-work)${NC}"
+            echo "${CYAN}Para clonar repos de trabajo usa: git clone git@github-work:org/repo.git${NC}"
+            setup_github_account "trabajo" "$HOME/.ssh/id_ed25519_work" "github-work"
         else
-            echo "${YELLOW}No se proporcionó correo válido. Saltando...${NC}"
+            setup_github_account "personal" "$HOME/.ssh/id_ed25519" "github.com"
         fi
     else
         echo "${YELLOW}Saltando configuración de clave SSH.${NC}"
@@ -192,45 +232,60 @@ Host github.com
 }
 
 # Añadir clave SSH a GitHub
+# Uso: add_ssh_key_to_github <key_file> <host_alias>
 add_ssh_key_to_github() {
-    local public_key_path="$HOME/.ssh/id_ed25519.pub"
+    local key_file="${1:-$HOME/.ssh/id_ed25519}"
+    local host_alias="${2:-github.com}"
+    local public_key_path="${key_file}.pub"
+
     if [ ! -f "$public_key_path" ]; then
-        echo "${RED}No se encontró la clave pública SSH.${NC}"
+        echo "${RED}No se encontró la clave pública SSH: $public_key_path${NC}"
         return
     fi
 
     if command -v gh >/dev/null 2>&1; then
-        echo "${YELLOW}Verificando autenticación en GitHub CLI...${NC}"
-        if ! gh auth status >/dev/null 2>&1; then
-            echo "${YELLOW}Autenticando en GitHub CLI...${NC}"
+        if [ "$host_alias" != "github.com" ]; then
+            echo "${YELLOW}Autenticando cuenta de trabajo en GitHub CLI...${NC}"
+            gh auth logout --hostname github.com 2>/dev/null
             gh auth login
             if [ $? -ne 0 ]; then
-                show_ssh_key_instructions
+                show_ssh_key_instructions "$public_key_path"
                 return
             fi
+        else
+            echo "${YELLOW}Verificando autenticación en GitHub CLI...${NC}"
+            if ! gh auth status >/dev/null 2>&1; then
+                echo "${YELLOW}Autenticando en GitHub CLI...${NC}"
+                gh auth login
+                if [ $? -ne 0 ]; then
+                    show_ssh_key_instructions "$public_key_path"
+                    return
+                fi
+            fi
         fi
-        echo "${YELLOW}Añadiendo clave SSH a GitHub...${NC}"
-        run_command "gh ssh-key add \"$public_key_path\" --title \"MacBook_$(date +%Y%m%d)\" --type authentication" "Añadiendo clave SSH a GitHub" || {
-            show_ssh_key_instructions
+        local key_title="MacBook_${host_alias}_$(date +%Y%m%d)"
+        echo "${YELLOW}Añadiendo clave SSH a GitHub con título '$key_title'...${NC}"
+        run_command "gh ssh-key add \"$public_key_path\" --title \"$key_title\" --type authentication" "Añadiendo clave SSH a GitHub" || {
+            show_ssh_key_instructions "$public_key_path"
             return
         }
         echo "${GREEN}Clave SSH añadida a GitHub.${NC}"
 
-        echo "${YELLOW}Probando conexión SSH con GitHub...${NC}"
-        if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-            echo "${GREEN}Conexión SSH verificada.${NC}"
+        echo "${YELLOW}Probando conexión SSH con GitHub (host alias: $host_alias)...${NC}"
+        if ssh -T "git@${host_alias}" 2>&1 | grep -q "successfully authenticated"; then
+            echo "${GREEN}Conexión SSH verificada para $host_alias.${NC}"
         else
             echo "${YELLOW}No se pudo verificar la conexión. Verifica la clave en GitHub.${NC}"
         fi
     else
         echo "${RED}GitHub CLI no encontrado.${NC}"
-        show_ssh_key_instructions
+        show_ssh_key_instructions "$public_key_path"
     fi
 }
 
 # Mostrar instrucciones para añadir clave SSH manualmente
 show_ssh_key_instructions() {
-    local public_key_path="$HOME/.ssh/id_ed25519.pub"
+    local public_key_path="${1:-$HOME/.ssh/id_ed25519.pub}"
     if [ -f "$public_key_path" ]; then
         echo "${CYAN}Clave pública SSH:${NC}"
         cat "$public_key_path"
@@ -246,14 +301,25 @@ show_ssh_key_instructions() {
     fi
 }
 
+# Cache brew list results to avoid calling brew list once per app
+BREW_LIST_CACHE=""
+BREW_CASK_LIST_CACHE=""
+
+load_brew_cache() {
+    echo "${YELLOW}Cargando lista de paquetes instalados...${NC}"
+    BREW_LIST_CACHE=$(HOMEBREW_NO_AUTO_UPDATE=1 brew list --formula 2>/dev/null)
+    BREW_CASK_LIST_CACHE=$(HOMEBREW_NO_AUTO_UPDATE=1 brew list --cask 2>/dev/null)
+    echo "${GREEN}Lista cargada.${NC}"
+}
+
 # Verificar si una aplicación está instalada
 is_app_installed() {
     local package_name="$1"
     local is_cask="$2"
     if [ "$is_cask" = "true" ]; then
-        brew list --cask | grep -q "^${package_name}$"
+        echo "$BREW_CASK_LIST_CACHE" | grep -q "^${package_name}$"
     else
-        brew list | grep -q "^${package_name}$"
+        echo "$BREW_LIST_CACHE" | grep -q "^${package_name}$"
     fi
     return $?
 }
@@ -413,7 +479,7 @@ select_apps() {
     process_category "Bases de Datos" \
         "PostgreSQL:brew install postgresql:false::" \
         "MySQL:brew install mysql:false::" \
-        "MongoDB:brew install mongodb-community:false::"
+        "MongoDB:brew tap mongodb/brew && brew install mongodb-community:false::"
 
     process_category "Herramientas CLI" \
         "eza:brew install eza:false::" \
@@ -451,7 +517,8 @@ install_apps() {
 
     for app in "${apps[@]}"; do
         IFS=':' read -r name cmd cask path executable <<< "$app"
-        local package_name=$(echo "$cmd" | awk '{print $NF}')
+        local package_name
+        package_name=$(echo "$cmd" | awk '{print $NF}')
         if is_app_installed "$package_name" "$cask"; then
             echo "${GREEN}${name} ya está instalado.${NC}"
             if [ -n "$path" ] && [ -n "$executable" ]; then
@@ -620,19 +687,6 @@ Operaciones:
 ---
 EOF
             ;;
-            taproom)
-                cat >> "$output" << 'EOF'
-## taproom — Explorador de Homebrew taps
-
-Navega e instala fórmulas de taps de Homebrew de forma interactiva.
-
-| Comando | Descripción |
-|---------|-------------|
-| `taproom` | Abrir explorador interactivo |
-
----
-EOF
-            ;;
             fzf)
                 cat >> "$output" << 'EOF'
 ## fzf — Buscador difuso interactivo
@@ -717,25 +771,14 @@ ask_cheatsheet() {
     fi
 }
 
-# Ocultar el Dock
-hide_dock() {
-    echo "${YELLOW}¿Ocultar el Dock de macOS? [Y/n]: ${NC}"
-    read -r hide_dock
-    if [[ "$hide_dock" != "n" && "$hide_dock" != "N" ]]; then
-        run_command "defaults write com.apple.dock autohide -bool true && killall Dock" "Ocultando Dock"
-        echo "${GREEN}Dock ocultado.${NC}"
-    else
-        echo "${GREEN}El Dock permanecerá visible.${NC}"
-    fi
-}
 
 # Reiniciar terminal
 restart_terminal() {
     echo "${YELLOW}¿Reiniciar la terminal para aplicar cambios? [Y/n]: ${NC}"
     read -r restart
     if [[ "$restart" != "n" && "$restart" != "N" ]]; then
-        echo "${YELLOW}Abriendo nueva ventana de terminal y cerrando la actual...${NC}"
-        run_command "osascript -e 'tell application \"Terminal\" to do script \"\"' -e 'tell application \"Terminal\" to close (every window whose name contains \"bash\")'" "Reiniciando terminal"
+        echo "${YELLOW}Abriendo nueva ventana de terminal...${NC}"
+        run_command "osascript -e 'tell application \"Terminal\" to do script \"\"'" "Abriendo nueva ventana de terminal"
         exit 0
     else
         echo "${YELLOW}No se reinició la terminal. Reinicia manualmente para aplicar cambios.${NC}"
@@ -746,12 +789,20 @@ restart_terminal() {
 clean_zshrc() {
     local zshrc="$HOME/.zshrc"
     [ ! -f "$zshrc" ] && return
-    # Líneas añadidas por nuestro script
+    # Si el archivo es la plantilla de OMZ (no contiene configuración personal),
+    # borrarlo por completo para que OMZ lo regenere limpio en la siguiente instalación
+    if ! grep -qE "^[^#]" "$zshrc" 2>/dev/null; then
+        rm -f "$zshrc"
+        echo "${GREEN}~/.zshrc eliminado (era la plantilla de OMZ sin configuración personal).${NC}"
+        return
+    fi
+    # Si tiene configuración personal, solo eliminar las líneas de OMZ
+    sed -i '' '/# Enable Powerlevel10k instant prompt/,/^fi$/d' "$zshrc"
     sed -i '' '/# Añadido por setup_macos\.sh/{ N; d; }' "$zshrc"
-    # Líneas escritas por el instalador de Oh My Zsh
     sed -i '' '/^export ZSH=/d' "$zshrc"
     sed -i '' '/^ZSH_THEME=/d' "$zshrc"
     sed -i '' '/^plugins=/d' "$zshrc"
+    sed -i '' '/^\[\[ ! -f ~\/.p10k\.zsh \]\]/d' "$zshrc"
     sed -i '' '/^source \$ZSH\/oh-my-zsh\.sh/d' "$zshrc"
     echo "${GREEN}~/.zshrc limpiado.${NC}"
 }
@@ -760,9 +811,10 @@ clean_zshrc() {
 clean_ssh_config() {
     local ssh_config="$HOME/.ssh/config"
     [ ! -f "$ssh_config" ] && return
-    # Elimina el bloque "Host github.com" y sus 4 líneas siguientes
+    # Elimina bloques "Host github.com" y "Host github-work" y sus 4 líneas siguientes
     sed -i '' '/^Host github\.com/{N;N;N;N;d;}' "$ssh_config"
-    echo "${GREEN}Entrada de GitHub eliminada de ~/.ssh/config.${NC}"
+    sed -i '' '/^Host github-work/{N;N;N;N;d;}' "$ssh_config"
+    echo "${GREEN}Entradas de GitHub eliminadas de ~/.ssh/config.${NC}"
 }
 
 # Desinstalar configuración
@@ -773,20 +825,19 @@ uninstall() {
     echo "${YELLOW}¿Desinstalar Oh My Zsh, Powerlevel10k y plugins? [Y/n]: ${NC}"
     read -r remove_omz
     if [[ "$remove_omz" != "n" && "$remove_omz" != "N" ]]; then
-        if [ -d "$HOME/.oh-my-zsh" ]; then
-            run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
-            echo "${GREEN}Oh My Zsh eliminado.${NC}"
-        else
-            echo "${YELLOW}Oh My Zsh no está instalado.${NC}"
-        fi
+        run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
         run_command "rm -f $HOME/.p10k.zsh" "Eliminando configuración de Powerlevel10k"
+        run_command "rm -f $HOME/.zshrc.pre-oh-my-zsh" "Eliminando backup de ~/.zshrc"
+        run_command "rm -f $HOME/.cache/p10k-instant-prompt-*.zsh" "Eliminando caché de Powerlevel10k"
+        # Limpiar ~/.zshrc: eliminar bloque instant-prompt de p10k y líneas de OMZ
         clean_zshrc
+        echo "${GREEN}Oh My Zsh y Powerlevel10k eliminados completamente.${NC}"
     fi
 
     echo "${YELLOW}¿Eliminar clave SSH (~/.ssh/id_ed25519)? [y/N]: ${NC}"
     read -r remove_ssh
     if [[ "$remove_ssh" == "y" || "$remove_ssh" == "Y" ]]; then
-        run_command "rm -f $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub" "Eliminando clave SSH"
+        run_command "rm -f $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub $HOME/.ssh/id_ed25519_work $HOME/.ssh/id_ed25519_work.pub" "Eliminando claves SSH"
         clean_ssh_config
         echo "${GREEN}Clave SSH eliminada.${NC}"
     fi
@@ -800,11 +851,15 @@ uninstall() {
     echo "${YELLOW}¿Desinstalar aplicaciones instaladas por este script? [Y/n]: ${NC}"
     read -r remove_apps
     if [[ "$remove_apps" != "n" && "$remove_apps" != "N" ]]; then
-        selected_apps=($(select_apps))
+        selected_apps=()
+        while IFS= read -r line; do
+            selected_apps+=("$line")
+        done < <(select_apps)
         if [ ${#selected_apps[@]} -gt 0 ]; then
             for app in "${selected_apps[@]}"; do
                 IFS=':' read -r name cmd cask _ _ <<< "$app"
-                local package_name=$(echo "$cmd" | awk '{print $NF}')
+                local package_name
+                package_name=$(echo "$cmd" | awk '{print $NF}')
                 if [ "$cask" = "true" ]; then
                     run_command "brew uninstall --cask $package_name" "Desinstalando $name" || \
                         echo "${YELLOW}No se pudo desinstalar $name.${NC}"
@@ -840,9 +895,12 @@ main() {
             install_oh_my_zsh
             configure_git_global
             configure_ssh_key
-            selected_apps=($(select_apps))
+            load_brew_cache
+            selected_apps=()
+        while IFS= read -r line; do
+            selected_apps+=("$line")
+        done < <(select_apps)
             install_apps "${selected_apps[@]}"
-            hide_dock
             ask_cheatsheet "${selected_apps[@]}"
             echo
             echo "${GREEN}¡Configuración completada! Los cambios en la terminal requieren reiniciar.${NC}"
