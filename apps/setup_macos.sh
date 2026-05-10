@@ -59,6 +59,92 @@ check_git() {
     fi
 }
 
+# ---------------------------------------------------------------------------
+# Resolución del .zshrc correcto
+#
+# La mayoría de terminales (Terminal.app, iTerm2, Warp, Ghostty, Kitty…) NO
+# tocan $ZDOTDIR, así que el rc real es ~/.zshrc.
+#
+# Otras (Terax, y la terminal integrada de VS Code / Cursor / Trae y forks)
+# redirigen $ZDOTDIR a un directorio EFÍMERO que ellas regeneran, y cargan el
+# rc real desde una variable puntero (TERAX_USER_ZDOTDIR o USER_ZDOTDIR).
+# Escribir en el directorio efímero se pierde, así que apuntamos al rc real.
+#
+# El instalador de Oh My Zsh y `p10k configure` SÍ respetan $ZDOTDIR; por eso
+# el bloque que escribimos resuelve la ruta de p10k en tiempo de ejecución con
+# ${ZDOTDIR:-$HOME}, que coincide con donde el asistente guarda la config.
+# ---------------------------------------------------------------------------
+USER_ZSHRC=""
+TERAX_DETECTED=0
+resolve_user_zshrc() {
+    TERAX_DETECTED=0
+    local zdot="${ZDOTDIR:-$HOME}"
+
+    # Caso normal: $ZDOTDIR sin redirigir -> el rc real es ~/.zshrc
+    if [ "$zdot" = "$HOME" ]; then
+        USER_ZSHRC="$HOME/.zshrc"
+        return
+    fi
+
+    # Terax -> TERAX_USER_ZDOTDIR (fallback $HOME)
+    if [ -n "$TERAX_TERMINAL" ] || [[ "$zdot" == *"/terax/"* ]]; then
+        USER_ZSHRC="${TERAX_USER_ZDOTDIR:-$HOME}/.zshrc"
+        TERAX_DETECTED=1
+        return
+    fi
+
+    # VS Code / Cursor / Trae y forks -> USER_ZDOTDIR (fallback $HOME)
+    if [ -n "$USER_ZDOTDIR" ] || [ -n "$VSCODE_INJECTION" ] || \
+       [[ "$TERM_PROGRAM" == "vscode" || "$TERM_PROGRAM" == "cursor" || "$TERM_PROGRAM" == "trae" ]]; then
+        USER_ZSHRC="${USER_ZDOTDIR:-$HOME}/.zshrc"
+        return
+    fi
+
+    # $ZDOTDIR personalizado deliberadamente por el usuario -> respetarlo
+    USER_ZSHRC="$zdot/.zshrc"
+}
+
+ZSHRC_BLOCK_START="# >>> setup_macos.sh (Oh My Zsh + Powerlevel10k) >>>"
+ZSHRC_BLOCK_END="# <<< setup_macos.sh (Oh My Zsh + Powerlevel10k) <<<"
+
+# Eliminar el bloque gestionado (entre marcadores) de un archivo (idempotente)
+remove_managed_block() {
+    local target="$1"
+    [ -f "$target" ] || return 0
+    sed -i '' "/^# >>> setup_macos.sh (Oh My Zsh + Powerlevel10k) >>>/,/^# <<< setup_macos.sh (Oh My Zsh + Powerlevel10k) <<</d" "$target"
+}
+
+# (Re)escribir el bloque gestionado de OMZ + p10k de forma idempotente
+write_managed_block() {
+    local plugins_line="$1"
+    local target="$USER_ZSHRC"
+    touch "$target"
+    remove_managed_block "$target"
+    {
+        echo ""
+        echo "$ZSHRC_BLOCK_START"
+        echo 'export ZSH="$HOME/.oh-my-zsh"'
+        echo 'ZSH_THEME="powerlevel10k/powerlevel10k"'
+        echo "$plugins_line"
+        echo 'source "$ZSH/oh-my-zsh.sh"'
+        echo '# `p10k configure` escribe la config en ${ZDOTDIR:-$HOME}/.p10k.zsh'
+        echo '[[ ! -f "${ZDOTDIR:-$HOME}/.p10k.zsh" ]] || source "${ZDOTDIR:-$HOME}/.p10k.zsh"'
+        echo "$ZSHRC_BLOCK_END"
+    } >> "$target"
+}
+
+# Clonar un repo solo si el destino no existe (idempotente)
+clone_if_missing() {
+    local repo="$1"
+    local dest="$2"
+    local label="$3"
+    if [ -d "$dest" ]; then
+        echo "${GREEN}${label} ya está clonado.${NC}"
+    else
+        run_command "git clone --depth=1 $repo \"$dest\"" "Clonando ${label}"
+    fi
+}
+
 # Instalar Oh My Zsh y Powerlevel10k
 install_oh_my_zsh() {
     echo "${YELLOW}¿Instalar Oh My Zsh y Powerlevel10k? [Y/n]: ${NC}"
@@ -68,50 +154,55 @@ install_oh_my_zsh() {
         return
     fi
 
-    # Check macOS version and handle ZSH installation if needed
+    resolve_user_zshrc
+    if [ "${ZDOTDIR:-$HOME}" != "$HOME" ]; then
+        echo "${CYAN}Detectado \$ZDOTDIR redirigido: $ZDOTDIR${NC}"
+    fi
+    echo "${CYAN}La configuración de zsh se escribirá en: $USER_ZSHRC${NC}"
+
+    # macOS antiguo (Catalina o anterior): fijar zsh como shell por defecto
     local version
     version=$(sw_vers -productVersion)
     if [[ "$version" < "10.15" ]]; then
-        echo "${YELLOW}macOS version is Catalina or older${NC}"
-        echo "${YELLOW}Setting ZSH as default shell${NC}"
+        echo "${YELLOW}macOS es Catalina o anterior. Fijando zsh como shell por defecto.${NC}"
         brew install zsh
         chsh -s "$(which zsh)"
-    else
-        echo "${GREEN}macOS version is newer than Catalina${NC}"
     fi
 
-    # Install Oh My Zsh if not already installed
-    if [ -d "$HOME/.oh-my-zsh" ]; then
-        echo "${GREEN}Oh My Zsh already installed${NC}"
+    # Instalar Oh My Zsh SIN que toque ningún .zshrc (lo gestionamos nosotros).
+    # Exportar ZSH es obligatorio: con $ZDOTDIR definido el instalador usa
+    # "$ZDOTDIR/ohmyzsh" como ruta de instalación por defecto.
+    export ZSH="$HOME/.oh-my-zsh"
+    if [ -d "$ZSH" ]; then
+        echo "${GREEN}Oh My Zsh ya está instalado en $ZSH.${NC}"
     else
-        echo "${YELLOW}Installing Oh My Zsh${NC}"
-        ZSH="$HOME/.oh-my-zsh" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &
-        wait
-        if [ $? -eq 0 ]; then
-            echo "${GREEN}Successfully installed Oh My Zsh${NC}"
-        else
-            echo "${RED}Error installing Oh My Zsh${NC}"
+        echo "${YELLOW}Instalando Oh My Zsh...${NC}"
+        # Asegurar que el .zshrc que inspecciona el instalador exista, para que
+        # --keep-zshrc lo conserve y NO escriba su plantilla (evita duplicar
+        # `source oh-my-zsh.sh`).
+        touch "$USER_ZSHRC" "${ZDOTDIR:-$HOME}/.zshrc" 2>/dev/null
+        RUNZSH=no CHSH=no KEEP_ZSHRC=yes \
+            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --keep-zshrc
+        if [ ! -d "$ZSH" ]; then
+            echo "${RED}Error instalando Oh My Zsh.${NC}"
             exit 1
         fi
+        echo "${GREEN}Oh My Zsh instalado.${NC}"
     fi
 
-    if [ $? -eq 0 ]; then
-        echo "${YELLOW}Installing Powerlevel10k${NC}"
-        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
-        sed -i '' 's#robbyrussell#powerlevel10k/powerlevel10k#g' ~/.zshrc
-        echo 'ZSH_THEME="powerlevel10k/powerlevel10k"' >> ~/.zshrc
+    # Tema y plugins (idempotente)
+    local custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+    echo "${YELLOW}Instalando Powerlevel10k y plugins...${NC}"
+    clone_if_missing "https://github.com/romkatv/powerlevel10k.git" "$custom/themes/powerlevel10k" "Powerlevel10k"
+    clone_if_missing "https://github.com/zsh-users/zsh-autosuggestions" "$custom/plugins/zsh-autosuggestions" "zsh-autosuggestions"
+    clone_if_missing "https://github.com/zsh-users/zsh-history-substring-search" "$custom/plugins/zsh-history-substring-search" "zsh-history-substring-search"
+    clone_if_missing "https://github.com/zsh-users/zsh-syntax-highlighting" "$custom/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
 
-        echo "${YELLOW}Installing plugins${NC}"
-        git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
-        git clone https://github.com/zsh-users/zsh-history-substring-search "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-history-substring-search"
-        git clone https://github.com/zsh-users/zsh-syntax-highlighting "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting"
-        sed -i '' 's/plugins=(git)/plugins=(git jump zsh-autosuggestions sublime zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)/g' ~/.zshrc
-        echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> ~/.zshrc
-        echo "${GREEN}Please restart your terminal for changes to take effect${NC}"
-    else
-        echo "${RED}Error installing Oh My Zsh${NC}"
-        exit 1
-    fi
+    # Escribir el bloque gestionado en el .zshrc real
+    write_managed_block "plugins=(git jump zsh-autosuggestions sublime zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)"
+    echo "${GREEN}Configuración de Oh My Zsh + Powerlevel10k escrita en $USER_ZSHRC.${NC}"
+    echo "${CYAN}El asistente de Powerlevel10k se abrirá al iniciar una nueva sesión de zsh${NC}"
+    echo "${CYAN}(o ejecútalo manualmente con: ${NC}${GREEN}p10k configure${NC}${CYAN}).${NC}"
 }
 
 # Configurar credenciales de Git
@@ -772,39 +863,39 @@ ask_cheatsheet() {
 }
 
 
-# Reiniciar terminal
+# Recargar la shell para aplicar cambios
 restart_terminal() {
-    echo "${YELLOW}¿Reiniciar la terminal para aplicar cambios? [Y/n]: ${NC}"
+    echo "${YELLOW}¿Recargar zsh ahora para aplicar los cambios? [Y/n]: ${NC}"
     read -r restart
     if [[ "$restart" != "n" && "$restart" != "N" ]]; then
-        echo "${YELLOW}Abriendo nueva ventana de terminal...${NC}"
-        run_command "osascript -e 'tell application \"Terminal\" to do script \"\"'" "Abriendo nueva ventana de terminal"
-        exit 0
+        echo "${CYAN}Iniciando una nueva sesión de zsh en esta terminal...${NC}"
+        echo "${CYAN}Si no hay config de p10k, se abrirá el asistente automáticamente.${NC}"
+        exec zsh -l
     else
-        echo "${YELLOW}No se reinició la terminal. Reinicia manualmente para aplicar cambios.${NC}"
+        echo "${YELLOW}Abre una nueva pestaña/ventana o ejecuta 'exec zsh' para aplicar los cambios.${NC}"
+        echo "${YELLOW}Para estilizar el prompt cuando quieras: 'p10k configure'.${NC}"
     fi
 }
 
-# Eliminar líneas añadidas por el script de ~/.zshrc
+# Eliminar la configuración añadida por el script
 clean_zshrc() {
-    local zshrc="$HOME/.zshrc"
-    [ ! -f "$zshrc" ] && return
-    # Si el archivo es la plantilla de OMZ (no contiene configuración personal),
-    # borrarlo por completo para que OMZ lo regenere limpio en la siguiente instalación
-    if ! grep -qE "^[^#]" "$zshrc" 2>/dev/null; then
-        rm -f "$zshrc"
-        echo "${GREEN}~/.zshrc eliminado (era la plantilla de OMZ sin configuración personal).${NC}"
-        return
-    fi
-    # Si tiene configuración personal, solo eliminar las líneas de OMZ
-    sed -i '' '/# Enable Powerlevel10k instant prompt/,/^fi$/d' "$zshrc"
-    sed -i '' '/# Añadido por setup_macos\.sh/{ N; d; }' "$zshrc"
-    sed -i '' '/^export ZSH=/d' "$zshrc"
-    sed -i '' '/^ZSH_THEME=/d' "$zshrc"
-    sed -i '' '/^plugins=/d' "$zshrc"
-    sed -i '' '/^\[\[ ! -f ~\/.p10k\.zsh \]\]/d' "$zshrc"
-    sed -i '' '/^source \$ZSH\/oh-my-zsh\.sh/d' "$zshrc"
-    echo "${GREEN}~/.zshrc limpiado.${NC}"
+    resolve_user_zshrc
+    # 1) Quitar el bloque gestionado del .zshrc real
+    remove_managed_block "$USER_ZSHRC"
+    # 2) Limpiar líneas heredadas/sueltas de versiones anteriores del script,
+    #    en todas las ubicaciones posibles ($HOME y el dir de $ZDOTDIR).
+    local f
+    for f in "$USER_ZSHRC" "${ZDOTDIR:-$HOME}/.zshrc" "$HOME/.zshrc"; do
+        [ -f "$f" ] || continue
+        sed -i '' '/# Enable Powerlevel10k instant prompt/,/^fi$/d' "$f"
+        sed -i '' '/# Añadido por setup_macos\.sh/d' "$f"
+        sed -i '' '/^export ZSH=/d' "$f"
+        sed -i '' '/^ZSH_THEME=/d' "$f"
+        sed -i '' '/^plugins=/d' "$f"
+        sed -i '' '/^source .*oh-my-zsh\.sh/d' "$f"
+        sed -i '' '/\.p10k\.zsh/d' "$f"
+    done
+    echo "${GREEN}.zshrc limpiado (bloque gestionado y líneas heredadas).${NC}"
 }
 
 # Eliminar la entrada de GitHub en ~/.ssh/config
@@ -825,11 +916,17 @@ uninstall() {
     echo "${YELLOW}¿Desinstalar Oh My Zsh, Powerlevel10k y plugins? [Y/n]: ${NC}"
     read -r remove_omz
     if [[ "$remove_omz" != "n" && "$remove_omz" != "N" ]]; then
+        resolve_user_zshrc
         run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
-        run_command "rm -f $HOME/.p10k.zsh" "Eliminando configuración de Powerlevel10k"
-        run_command "rm -f $HOME/.zshrc.pre-oh-my-zsh" "Eliminando backup de ~/.zshrc"
-        run_command "rm -f $HOME/.cache/p10k-instant-prompt-*.zsh" "Eliminando caché de Powerlevel10k"
-        # Limpiar ~/.zshrc: eliminar bloque instant-prompt de p10k y líneas de OMZ
+        # La config de p10k puede estar en $HOME o en el dir de $ZDOTDIR (Terax)
+        run_command "rm -f \"$HOME/.p10k.zsh\" \"${ZDOTDIR:-$HOME}/.p10k.zsh\"" "Eliminando configuración de Powerlevel10k"
+        run_command "rm -rf $HOME/.cache/p10k-* $HOME/.cache/gitstatus" "Eliminando caché de Powerlevel10k"
+        run_command "rm -f \"${ZDOTDIR:-$HOME}/.zshrc.pre-oh-my-zsh\"* \"$HOME/.zshrc.pre-oh-my-zsh\"*" "Eliminando backups de .zshrc"
+        # OMZ residual que el instalador pudo dejar en \$ZDOTDIR/ohmyzsh
+        if [ -n "$ZDOTDIR" ] && [ -d "$ZDOTDIR/ohmyzsh" ]; then
+            run_command "rm -rf \"$ZDOTDIR/ohmyzsh\"" "Eliminando OMZ residual en \$ZDOTDIR"
+        fi
+        # Limpiar el .zshrc: bloque gestionado + líneas heredadas
         clean_zshrc
         echo "${GREEN}Oh My Zsh y Powerlevel10k eliminados completamente.${NC}"
     fi
@@ -877,6 +974,7 @@ uninstall() {
 
 # Función principal
 main() {
+    resolve_user_zshrc
     echo "${CYAN}Script de Configuración para macOS${NC}"
     echo
     echo "${CYAN}¿Qué deseas hacer?${NC}"
@@ -909,4 +1007,10 @@ main() {
     esac
 }
 
-main
+# Ejecutar main solo si el script se EJECUTA directamente con bash
+# (p. ej. `bash setup_macos.sh` o `bash <(curl ...)`), no al hacer `source`.
+# Bajo zsh o al importarse desde un test, BASH_SOURCE[0] != $0 (o está vacío),
+# así que main NO se lanza y se pueden usar las funciones de forma aislada.
+if [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main
+fi
