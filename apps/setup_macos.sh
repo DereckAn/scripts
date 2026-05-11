@@ -238,95 +238,226 @@ configure_git_global() {
     fi
 }
 
-# Generar y registrar una clave SSH para una cuenta de GitHub
-# Uso: setup_github_account <alias> <key_file> <host_alias>
-#   alias     — etiqueta legible (e.g. "personal", "trabajo")
-#   key_file  — ruta completa al archivo de clave (e.g. ~/.ssh/id_ed25519_work)
-#   host_alias — alias del Host en ~/.ssh/config (e.g. "github.com" o "github-work")
+# Generar una clave ed25519 pidiendo el correo de la cuenta
+# Uso: _generate_key <key_file> <account_label>
+_generate_key() {
+    local key_file="$1" label="$2"
+    local ssh_email
+    echo -n "Correo de GitHub para la cuenta '$label' (e.g., juan@example.com): "
+    read -r ssh_email
+    if [ -z "$ssh_email" ]; then
+        echo "${YELLOW}No se proporcionó correo. Saltando cuenta '$label'.${NC}"
+        return 1
+    fi
+    printf "${YELLOW}Generando clave ed25519 para '%s'...${NC} " "$label"
+    if ssh-keygen -t ed25519 -C "$ssh_email" -f "$key_file" -N "" >/dev/null 2>&1; then
+        printf "${GREEN}Hecho${NC}\n"
+        return 0
+    fi
+    printf "${RED}Error${NC}\n"
+    return 1
+}
+
+# Generar/usar una clave SSH y vincularla a una cuenta de GitHub
+# Uso: setup_github_account <label> <key_file> <host_alias>
+#   label      — etiqueta legible (e.g. "personal", "trabajo")
+#   key_file   — ruta de la clave (e.g. ~/.ssh/id_ed25519_trabajo)
+#   host_alias — alias del Host en ~/.ssh/config (e.g. "github.com" o "github-trabajo")
 setup_github_account() {
     local account_label="$1"
     local key_file="$2"
     local host_alias="$3"
+    local github_host="${4:-github.com}"
     local ssh_config_path="$HOME/.ssh/config"
 
-    # Instalar GitHub CLI si no está presente
+    # Clave: reutilizar la existente o (re)generar
+    if [ -f "$key_file" ]; then
+        echo "${GREEN}Ya existe una clave en $key_file.${NC}"
+        echo "${YELLOW}¿Generar una nueva (sobrescribe la existente)? [y/N]: ${NC}"
+        read -r overwrite
+        if [[ "$overwrite" == "y" || "$overwrite" == "Y" ]]; then
+            rm -f "$key_file" "$key_file.pub"
+            _generate_key "$key_file" "$account_label" || return
+        else
+            echo "${YELLOW}Usando la clave existente para '$account_label'.${NC}"
+        fi
+    else
+        _generate_key "$key_file" "$account_label" || return
+    fi
+
+    # Añadir al agente, persistiendo en el llavero de macOS
+    eval "$(ssh-agent -s)" >/dev/null 2>&1
+    if ssh-add --apple-use-keychain "$key_file" >/dev/null 2>&1; then
+        echo "${GREEN}Clave añadida al agente (llavero de macOS).${NC}"
+    else
+        echo "${YELLOW}Advertencia: no se pudo añadir la clave al agente.${NC}"
+    fi
+
+    # Bloque Host en ~/.ssh/config (idempotente, coincidencia anclada)
+    mkdir -p "$(dirname "$ssh_config_path")"; chmod 700 "$(dirname "$ssh_config_path")" 2>/dev/null
+    [ ! -f "$ssh_config_path" ] && install -m 600 /dev/null "$ssh_config_path"
+    if ! grep -qE "^Host[[:space:]]+${host_alias}([[:space:]]|\$)" "$ssh_config_path" 2>/dev/null; then
+        printf "\nHost %s\n    HostName %s\n    User git\n    IdentityFile %s\n    IdentitiesOnly yes\n" \
+            "$host_alias" "$github_host" "$key_file" >> "$ssh_config_path"
+        echo "${GREEN}Bloque Host '$host_alias' (HostName $github_host) añadido a ~/.ssh/config.${NC}"
+    else
+        echo "${GREEN}El host '$host_alias' ya existe en ~/.ssh/config.${NC}"
+    fi
+
+    add_ssh_key_to_github "$key_file" "$host_alias" "$account_label" "$github_host"
+}
+
+# Opciones globales de SSH en macOS (persistir claves en el llavero), una vez
+ensure_ssh_defaults() {
+    local cfg="$HOME/.ssh/config"
+    mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh" 2>/dev/null
+    [ ! -f "$cfg" ] && install -m 600 /dev/null "$cfg"
+    if ! grep -qE "^Host \*$" "$cfg" 2>/dev/null; then
+        printf "Host *\n    AddKeysToAgent yes\n    UseKeychain yes\n\n" >> "$cfg"
+        echo "${GREEN}Opciones SSH (llavero de macOS) añadidas a ~/.ssh/config.${NC}"
+    fi
+}
+
+# Convierte una etiqueta libre en un slug seguro para nombre de archivo/host
+slugify() {
+    local s
+    s=$(echo "$1" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+    echo "${s:-cuenta}"
+}
+
+# Configurar una o varias claves SSH para GitHub (tantas cuentas como quieras)
+configure_ssh_key() {
+    echo "${YELLOW}¿Configurar clave(s) SSH para GitHub? [Y/n]: ${NC}"
+    read -r configure_ssh
+    if [[ "$configure_ssh" == "n" || "$configure_ssh" == "N" ]]; then
+        echo "${YELLOW}Saltando configuración de clave SSH.${NC}"
+        return
+    fi
+
+    # Instalar GitHub CLI una sola vez
     if ! command -v gh >/dev/null 2>&1; then
         echo "${YELLOW}GitHub CLI no encontrado. Instalando...${NC}"
         run_command "brew install gh" "Instalando GitHub CLI"
     fi
 
-    if [ -f "$key_file" ]; then
-        echo "${GREEN}Clave SSH ya existe en $key_file.${NC}"
-        echo "${YELLOW}¿Generar nueva clave para la cuenta $account_label (sobrescribirá la existente)? [y/N]: ${NC}"
-        read -r overwrite
-        if [[ "$overwrite" != "y" && "$overwrite" != "Y" ]]; then
-            echo "${YELLOW}Usando clave existente para $account_label.${NC}"
-            add_ssh_key_to_github "$key_file" "$host_alias"
-            return
+    ensure_ssh_defaults
+
+    # Cuenta 1: personal (host por defecto github.com -> clonas como git@github.com:...)
+    echo
+    echo "${CYAN}=== Cuenta 1: personal (host: github.com) ===${NC}"
+    setup_github_account "personal" "$HOME/.ssh/id_ed25519" "github.com" "github.com"
+
+    # Cuentas adicionales, en bucle (trabajo, clientes, GitHub Enterprise, etc.)
+    local n=2
+    while true; do
+        echo
+        echo "${CYAN}¿Configurar otra clave SSH para otra cuenta de GitHub? [y/N]: ${NC}"
+        read -r more
+        [[ "$more" == "y" || "$more" == "Y" ]] || break
+
+        local default_label="cuenta$n"
+        [ "$n" -eq 2 ] && default_label="trabajo"
+        echo -n "Etiqueta para esta cuenta (e.g., trabajo, cliente1) [$default_label]: "
+        read -r label
+        [ -z "$label" ] && label="$default_label"
+        local safe
+        safe=$(slugify "$label")
+
+        # ¿github.com o GitHub Enterprise (otra URL)?
+        local gh_host="github.com" host_choice ent
+        echo "${YELLOW}¿Esta cuenta es de github.com o de GitHub Enterprise con URL propia?${NC}"
+        echo "  ${CYAN}[1]${NC} github.com (incluye cuentas gestionadas/EMU con login por SSO)"
+        echo "  ${CYAN}[2]${NC} GitHub Enterprise Server o data residency (otra URL, e.g. github.miempresa.com o algo.ghe.com)"
+        printf "${YELLOW}Elige [1/2]: ${NC}"
+        read -r host_choice
+        if [ "$host_choice" = "2" ]; then
+            printf "${YELLOW}Host de GitHub Enterprise (sin https://, e.g. github.miempresa.com): ${NC}"
+            read -r ent
+            ent=$(echo "$ent" | sed -E 's#^https?://##; s#/.*$##')
+            [ -n "$ent" ] && gh_host="$ent"
         fi
-    fi
 
-    echo -n "Ingresa tu correo de GitHub para la cuenta $account_label (e.g., juan@example.com): "
-    read -r ssh_email
-    if [ -z "$ssh_email" ]; then
-        echo "${YELLOW}No se proporcionó correo válido. Saltando cuenta $account_label.${NC}"
-        return
-    fi
+        echo
+        echo "${CYAN}=== Cuenta $n: $label (host alias: github-$safe -> $gh_host) ===${NC}"
+        echo "${CYAN}Para clonar repos de esta cuenta usa: git clone git@github-$safe:org/repo.git${NC}"
+        setup_github_account "$label" "$HOME/.ssh/id_ed25519_$safe" "github-$safe" "$gh_host"
+        n=$((n + 1))
+    done
 
-    printf "${YELLOW}Generando clave SSH (%s)...${NC} " "$account_label"
-    ssh-keygen -t ed25519 -C "$ssh_email" -f "$key_file" -N "" 1>/dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        printf "${RED}Error${NC}\n"
-        echo "${RED}Error generando clave SSH para $account_label.${NC}"
-        return
-    fi
-    printf "${GREEN}Hecho${NC}\n"
-
-    eval "$(ssh-agent -s)" >/dev/null 2>&1
-    printf "${YELLOW}Añadiendo clave SSH (%s) al agente...${NC} " "$account_label"
-    ssh-add "$key_file" >/dev/null 2>&1 && printf "${GREEN}Hecho${NC}\n" || printf "${YELLOW}Advertencia: no se pudo añadir al agente${NC}\n"
-
-    mkdir -p "$(dirname "$ssh_config_path")"
-    [ ! -f "$ssh_config_path" ] && install -m 600 /dev/null "$ssh_config_path"
-    if ! grep -q "Host $host_alias" "$ssh_config_path" 2>/dev/null; then
-        printf "\nHost %s\n    HostName github.com\n    User git\n    IdentityFile %s\n    IdentitiesOnly yes\n" \
-            "$host_alias" "$key_file" >> "$ssh_config_path"
-    fi
-
-    add_ssh_key_to_github "$key_file" "$host_alias"
+    echo
+    echo "${GREEN}Configuración de claves SSH completada ($((n - 1)) cuenta(s)).${NC}"
 }
 
-# Configurar clave SSH
-configure_ssh_key() {
-    echo "${YELLOW}¿Configurar clave SSH para GitHub? [Y/n]: ${NC}"
-    read -r configure_ssh
-    if [[ "$configure_ssh" != "n" && "$configure_ssh" != "N" ]]; then
-        echo
-        echo "${CYAN}¿Tienes más de una cuenta de GitHub (e.g., personal y trabajo)? [y/N]: ${NC}"
-        read -r multi_account
-        echo
+# Asegurar que gh esté autenticado con la cuenta correcta para esta clave.
+# Obliga a ELEGIR explícitamente la cuenta destino (no asume la activa) y pide
+# una confirmación final mostrando a qué cuenta se añadirá la clave. Por defecto
+# la confirmación es NO, para no añadir la clave a la cuenta equivocada.
+# Uso: _ensure_gh_account <label> [github_host]
+_ensure_gh_account() {
+    local label="$1" host="${2:-github.com}" active="" choice confirm
+    if gh auth status -h "$host" >/dev/null 2>&1; then
+        active=$(GH_HOST="$host" gh api user --jq .login 2>/dev/null)
+    fi
 
-        if [[ "$multi_account" == "y" || "$multi_account" == "Y" ]]; then
-            echo "${CYAN}Cuenta 1 — Personal (usará host: github.com)${NC}"
-            setup_github_account "personal" "$HOME/.ssh/id_ed25519" "github.com"
-
-            echo
-            echo "${CYAN}Cuenta 2 — Trabajo (usará host alias: github-work)${NC}"
-            echo "${CYAN}Para clonar repos de trabajo usa: git clone git@github-work:org/repo.git${NC}"
-            setup_github_account "trabajo" "$HOME/.ssh/id_ed25519_work" "github-work"
-        else
-            setup_github_account "personal" "$HOME/.ssh/id_ed25519" "github.com"
-        fi
+    echo "${CYAN}--- Cuenta de GitHub para la clave de '${label}' (host: ${host}) ---${NC}"
+    if [ -n "$active" ]; then
+        echo "${CYAN}Cuenta activa ahora mismo: ${GREEN}${active}${NC}"
     else
-        echo "${YELLOW}Saltando configuración de clave SSH.${NC}"
+        echo "${YELLOW}No hay ninguna cuenta activa en GitHub CLI.${NC}"
     fi
+    echo "${YELLOW}¿A qué cuenta de GitHub quieres AÑADIR esta clave?${NC}"
+    echo "  ${CYAN}[1]${NC} Usar la cuenta activa${active:+ (${active})}"
+    echo "  ${CYAN}[2]${NC} Cambiar a otra cuenta ya autenticada (gh auth switch)"
+    echo "  ${CYAN}[3]${NC} Iniciar sesión en otra cuenta (gh auth login)"
+    printf "${YELLOW}Elige [1/2/3] (por defecto 1): ${NC}"
+    read -r choice
+    case "$choice" in
+        2)
+            echo "${CYAN}Selecciona la cuenta a activar...${NC}"
+            gh auth switch -h "$host" || {
+                echo "${RED}No se pudo cambiar de cuenta. Si nunca iniciaste sesión con ella, usa la opción 3.${NC}"
+                return 1
+            }
+            ;;
+        3)
+            echo "${CYAN}Inicia sesión con la otra cuenta (se abrirá el navegador)...${NC}"
+            gh auth login --hostname "$host" --scopes admin:public_key || return 1
+            ;;
+        *)
+            : # usar la cuenta activa
+            ;;
+    esac
+
+    active=$(GH_HOST="$host" gh api user --jq .login 2>/dev/null)
+    echo "${YELLOW}La clave de '${label}' se añadirá a la cuenta: ${GREEN}${active:-desconocida}${NC} (host: ${host})"
+    printf "${YELLOW}¿Es la cuenta correcta? [y/N]: ${NC}"
+    read -r confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "${YELLOW}Cancelado: no se añadió la clave de '${label}'.${NC}"
+        return 1
+    fi
+    return 0
 }
 
-# Añadir clave SSH a GitHub
-# Uso: add_ssh_key_to_github <key_file> <host_alias>
+# Asegurar el scope admin:public_key (necesario para `gh ssh-key add`)
+# Uso: _ensure_gh_scope [github_host]
+_ensure_gh_scope() {
+    local host="${1:-github.com}"
+    if gh auth status -h "$host" 2>&1 | grep -q "admin:public_key"; then
+        return 0
+    fi
+    echo "${YELLOW}Falta el permiso 'admin:public_key' en gh (host: $host). Solicitándolo...${NC}"
+    gh auth refresh -h "$host" -s admin:public_key || return 1
+    return 0
+}
+
+# Añadir una clave SSH a la cuenta de GitHub activa del host indicado
+# Uso: add_ssh_key_to_github <key_file> <host_alias> <label> [github_host]
 add_ssh_key_to_github() {
     local key_file="${1:-$HOME/.ssh/id_ed25519}"
     local host_alias="${2:-github.com}"
+    local label="${3:-personal}"
+    local github_host="${4:-github.com}"
     local public_key_path="${key_file}.pub"
 
     if [ ! -f "$public_key_path" ]; then
@@ -334,43 +465,35 @@ add_ssh_key_to_github() {
         return
     fi
 
-    if command -v gh >/dev/null 2>&1; then
-        if [ "$host_alias" != "github.com" ]; then
-            echo "${YELLOW}Autenticando cuenta de trabajo en GitHub CLI...${NC}"
-            gh auth logout --hostname github.com 2>/dev/null
-            gh auth login
-            if [ $? -ne 0 ]; then
-                show_ssh_key_instructions "$public_key_path"
-                return
-            fi
-        else
-            echo "${YELLOW}Verificando autenticación en GitHub CLI...${NC}"
-            if ! gh auth status >/dev/null 2>&1; then
-                echo "${YELLOW}Autenticando en GitHub CLI...${NC}"
-                gh auth login
-                if [ $? -ne 0 ]; then
-                    show_ssh_key_instructions "$public_key_path"
-                    return
-                fi
-            fi
-        fi
-        local key_title="MacBook_${host_alias}_$(date +%Y%m%d)"
-        echo "${YELLOW}Añadiendo clave SSH a GitHub con título '$key_title'...${NC}"
-        run_command "gh ssh-key add \"$public_key_path\" --title \"$key_title\" --type authentication" "Añadiendo clave SSH a GitHub" || {
-            show_ssh_key_instructions "$public_key_path"
-            return
-        }
-        echo "${GREEN}Clave SSH añadida a GitHub.${NC}"
-
-        echo "${YELLOW}Probando conexión SSH con GitHub (host alias: $host_alias)...${NC}"
-        if ssh -T "git@${host_alias}" 2>&1 | grep -q "successfully authenticated"; then
-            echo "${GREEN}Conexión SSH verificada para $host_alias.${NC}"
-        else
-            echo "${YELLOW}No se pudo verificar la conexión. Verifica la clave en GitHub.${NC}"
-        fi
-    else
+    if ! command -v gh >/dev/null 2>&1; then
         echo "${RED}GitHub CLI no encontrado.${NC}"
         show_ssh_key_instructions "$public_key_path"
+        return
+    fi
+
+    _ensure_gh_account "$label" "$github_host" || { show_ssh_key_instructions "$public_key_path"; return; }
+    _ensure_gh_scope "$github_host"            || { show_ssh_key_instructions "$public_key_path"; return; }
+
+    local key_title="$(hostname -s)_${host_alias}_$(date +%Y%m%d)"
+    echo "${YELLOW}Añadiendo clave SSH con título '$key_title' (host: $github_host)...${NC}"
+    local out rc
+    out=$(GH_HOST="$github_host" gh ssh-key add "$public_key_path" --title "$key_title" --type authentication 2>&1)
+    rc=$?
+    if [ $rc -eq 0 ]; then
+        echo "${GREEN}Clave SSH añadida a GitHub.${NC}"
+    elif echo "$out" | grep -qiE "already|key is already in use"; then
+        echo "${GREEN}La clave ya estaba registrada en la cuenta. OK.${NC}"
+    else
+        echo "${RED}No se pudo añadir la clave: $out${NC}"
+        show_ssh_key_instructions "$public_key_path"
+        return
+    fi
+
+    echo "${YELLOW}Probando conexión SSH (git@${host_alias})...${NC}"
+    if ssh -T "git@${host_alias}" -o StrictHostKeyChecking=accept-new 2>&1 | grep -q "successfully authenticated"; then
+        echo "${GREEN}Conexión SSH verificada para $host_alias.${NC}"
+    else
+        echo "${YELLOW}No se pudo verificar la conexión todavía. Revisa la clave en GitHub.${NC}"
     fi
 }
 
@@ -588,8 +711,6 @@ select_apps() {
         "GitHub CLI:brew install gh:false::" \
         "Obsidian:brew install --cask obsidian:true::" \
         "Notion:brew install --cask notion:true::"
-
-    printf '%s\n' "${selected_apps[@]}"
 }
 
 # Instalar aplicaciones
@@ -618,8 +739,12 @@ install_apps() {
             post_install_config "$name"
             continue
         fi
-        echo "${YELLOW}Instalando ${name}...${NC}"
-        run_command "$cmd" "Instalando ${name}" || echo "${RED}Error instalando ${name}.${NC}"
+        echo "${YELLOW}Instalando ${name}... (puede tardar; se muestra el progreso de brew)${NC}"
+        if eval "$cmd"; then
+            echo "${GREEN}${name} instalado.${NC}"
+        else
+            echo "${RED}Error instalando ${name}.${NC}"
+        fi
         if [ -n "$path" ] && [ -n "$executable" ]; then
             add_to_path "$name" "$path" "$executable"
         fi
@@ -898,13 +1023,14 @@ clean_zshrc() {
     echo "${GREEN}.zshrc limpiado (bloque gestionado y líneas heredadas).${NC}"
 }
 
-# Eliminar la entrada de GitHub en ~/.ssh/config
+# Eliminar las entradas de GitHub en ~/.ssh/config
 clean_ssh_config() {
     local ssh_config="$HOME/.ssh/config"
     [ ! -f "$ssh_config" ] && return
-    # Elimina bloques "Host github.com" y "Host github-work" y sus 4 líneas siguientes
-    sed -i '' '/^Host github\.com/{N;N;N;N;d;}' "$ssh_config"
-    sed -i '' '/^Host github-work/{N;N;N;N;d;}' "$ssh_config"
+    # Elimina bloques "Host github.com" y cualquier "Host github-*" (5 líneas:
+    # Host / HostName / User / IdentityFile / IdentitiesOnly).
+    sed -i '' '/^Host github\.com$/{N;N;N;N;d;}' "$ssh_config"
+    sed -i '' '/^Host github-/{N;N;N;N;d;}' "$ssh_config"
     echo "${GREEN}Entradas de GitHub eliminadas de ~/.ssh/config.${NC}"
 }
 
@@ -931,12 +1057,12 @@ uninstall() {
         echo "${GREEN}Oh My Zsh y Powerlevel10k eliminados completamente.${NC}"
     fi
 
-    echo "${YELLOW}¿Eliminar clave SSH (~/.ssh/id_ed25519)? [y/N]: ${NC}"
+    echo "${YELLOW}¿Eliminar las claves SSH generadas por el script (~/.ssh/id_ed25519*)? [y/N]: ${NC}"
     read -r remove_ssh
     if [[ "$remove_ssh" == "y" || "$remove_ssh" == "Y" ]]; then
-        run_command "rm -f $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub $HOME/.ssh/id_ed25519_work $HOME/.ssh/id_ed25519_work.pub" "Eliminando claves SSH"
+        run_command "rm -f $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub $HOME/.ssh/id_ed25519_*" "Eliminando claves SSH"
         clean_ssh_config
-        echo "${GREEN}Clave SSH eliminada.${NC}"
+        echo "${GREEN}Claves SSH eliminadas.${NC}"
     fi
 
     echo "${YELLOW}¿Eliminar el cheatsheet generado? [Y/n]: ${NC}"
@@ -948,10 +1074,8 @@ uninstall() {
     echo "${YELLOW}¿Desinstalar aplicaciones instaladas por este script? [Y/n]: ${NC}"
     read -r remove_apps
     if [[ "$remove_apps" != "n" && "$remove_apps" != "N" ]]; then
-        selected_apps=()
-        while IFS= read -r line; do
-            selected_apps+=("$line")
-        done < <(select_apps)
+        load_brew_cache
+        select_apps
         if [ ${#selected_apps[@]} -gt 0 ]; then
             for app in "${selected_apps[@]}"; do
                 IFS=':' read -r name cmd cask _ _ <<< "$app"
@@ -994,10 +1118,7 @@ main() {
             configure_git_global
             configure_ssh_key
             load_brew_cache
-            selected_apps=()
-        while IFS= read -r line; do
-            selected_apps+=("$line")
-        done < <(select_apps)
+            select_apps
             install_apps "${selected_apps[@]}"
             ask_cheatsheet "${selected_apps[@]}"
             echo
