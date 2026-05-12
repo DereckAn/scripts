@@ -748,14 +748,6 @@ install_tailscale() {
     run_command "curl -fsSL https://tailscale.com/install.sh | sh" "Instalando Tailscale"
 }
 
-install_mongodb() {
-    echo "${CYAN}MongoDB Community requiere el repositorio oficial de MongoDB.${NC}"
-    echo "${CYAN}Guía: https://www.mongodb.com/docs/manual/administration/install-on-linux/${NC}"
-    case "$PKG_MANAGER" in
-        pacman) echo "${CYAN}En Arch, usa AUR: 'yay -S mongodb-bin'.${NC}" ;;
-    esac
-}
-
 # Instalar una Nerd Font (requerida por los iconos de eza)
 install_nerd_font() {
     if fc-list 2>/dev/null | grep -qi "FiraCode Nerd"; then
@@ -930,7 +922,6 @@ select_apps() {
     process_category "Navegadores" \
         "Google Chrome:@install_chrome:@install_chrome:@install_chrome:::google-chrome-stable" \
         "Brave:@install_brave:@install_brave:@install_brave:com.brave.Browser::brave-browser" \
-        "Firefox:firefox-esr:firefox:firefox:::" \
         "Opera::::com.opera.Opera::"
 
     process_category "Terminales" \
@@ -948,8 +939,7 @@ select_apps() {
 
     process_category "Bases de Datos" \
         "PostgreSQL:postgresql:postgresql-server:postgresql:::" \
-        "MariaDB:mariadb-server:mariadb-server:mariadb:::" \
-        "MongoDB:@install_mongodb:@install_mongodb:@install_mongodb:::mongod"
+        "MariaDB:mariadb-server:mariadb-server:mariadb:::"
 
     process_category "Herramientas CLI" \
         "eza:eza:eza:eza:::" \
