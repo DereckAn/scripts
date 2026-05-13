@@ -1,0 +1,13 @@
+# Workspace for the Ratatui-based setup binaries.
+#
+# `setup_core` holds the shared TUI + logic; the per-OS binaries
+# (setup_macos / setup_linux / setup_windows) depend on it and only provide a
+# `Platform` impl + app catalog.
+#
+# NOTE: the legacy `setup_macos` crate (console/dialoguer/prettytable based) is
+# EXCLUDED for now so it keeps building standalone. It will be folded into the
+# workspace in Step 5 when it is refactored onto `setup_core`.
+[workspace]
+resolver = "2"
+members = ["setup_core"]
+exclude = ["setup_macos"]

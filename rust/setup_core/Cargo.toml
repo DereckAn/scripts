@@ -1,0 +1,11 @@
+[package]
+name = "setup_core"
+version = "0.1.0"
+edition = "2021"
+description = "Shared Ratatui TUI and setup logic for the macOS/Linux/Windows setup binaries"
+
+[dependencies]
+ratatui = "0.28"
+crossterm = "0.28"
+chrono = "0.4"
+anyhow = "1"
