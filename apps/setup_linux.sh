@@ -108,6 +108,52 @@ bootstrap_base() {
     done
 }
 
+# Establecer zsh como shell por defecto del usuario (chsh).
+# A diferencia de macOS (zsh por defecto desde Catalina), en Linux la shell
+# inicial suele ser bash. Esta función se llama tras instalar zsh para que
+# el cambio se ofrezca SIEMPRE — no sólo si el usuario instala Oh My Zsh.
+# Si zsh ya es la shell por defecto, no hace nada.
+set_default_shell_zsh() {
+    local zsh_path current_shell
+    zsh_path="$(command -v zsh 2>/dev/null)"
+    if [ -z "$zsh_path" ]; then
+        echo "${YELLOW}zsh no está instalado; saltando cambio de shell por defecto.${NC}"
+        return
+    fi
+
+    # Leer la shell por defecto desde /etc/passwd (más fiable que $SHELL,
+    # que sólo se refresca al iniciar una nueva sesión).
+    if command -v getent >/dev/null 2>&1; then
+        current_shell=$(getent passwd "$USER" 2>/dev/null | awk -F: '{print $7}')
+    else
+        current_shell="${SHELL:-}"
+    fi
+
+    if [ "$(basename "$current_shell")" = "zsh" ]; then
+        echo "${GREEN}zsh ya es tu shell por defecto ($current_shell).${NC}"
+        return
+    fi
+
+    echo "${YELLOW}Tu shell por defecto actual es: ${current_shell:-desconocida}${NC}"
+    echo "${YELLOW}¿Establecer zsh como tu shell por defecto (chsh)? [Y/n]: ${NC}"
+    read -r set_default_shell
+    if [[ "$set_default_shell" == "n" || "$set_default_shell" == "N" ]]; then
+        echo "${YELLOW}Saltando cambio de shell por defecto.${NC}"
+        return
+    fi
+
+    # Asegurar que el path de zsh esté listado en /etc/shells (chsh lo exige).
+    if [ -r /etc/shells ] && ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
+        echo "${YELLOW}Añadiendo $zsh_path a /etc/shells (requiere sudo)...${NC}"
+        echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
+    fi
+
+    run_command "chsh -s \"$zsh_path\"" "Cambiando shell por defecto a zsh" || \
+        echo "${YELLOW}No se pudo cambiar la shell. Ejecútalo manualmente: chsh -s \$(which zsh)${NC}"
+
+    echo "${CYAN}El cambio surte efecto al iniciar una nueva sesión (logout/login o nueva terminal).${NC}"
+}
+
 # Asegurar que flatpak esté disponible y con el remoto Flathub configurado.
 # Se usa como mecanismo de respaldo para apps gráficas sin paquete nativo.
 ensure_flatpak() {
@@ -254,16 +300,6 @@ install_oh_my_zsh() {
     # Escribir el bloque gestionado en el .zshrc real
     write_managed_block "plugins=(git jump zsh-autosuggestions sublime zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)"
     echo "${GREEN}Configuración de Oh My Zsh + Powerlevel10k escrita en $USER_ZSHRC.${NC}"
-
-    # A diferencia de macOS, en Linux la shell por defecto suele ser bash.
-    if [ "$(basename "${SHELL:-}")" != "zsh" ]; then
-        echo "${YELLOW}¿Establecer zsh como tu shell por defecto (chsh)? [Y/n]: ${NC}"
-        read -r set_default_shell
-        if [[ "$set_default_shell" != "n" && "$set_default_shell" != "N" ]]; then
-            run_command "chsh -s \"$(command -v zsh)\"" "Cambiando shell por defecto a zsh" || \
-                echo "${YELLOW}No se pudo cambiar la shell. Ejecútalo manualmente: chsh -s \$(which zsh)${NC}"
-        fi
-    fi
 
     echo "${CYAN}El asistente de Powerlevel10k se abrirá al iniciar una nueva sesión de zsh${NC}"
     echo "${CYAN}(o ejecútalo manualmente con: ${NC}${GREEN}p10k configure${NC}${CYAN}).${NC}"
@@ -1330,6 +1366,7 @@ main() {
             ;;
         *)
             bootstrap_base
+            set_default_shell_zsh
             install_oh_my_zsh
             configure_git_global
             configure_ssh_key

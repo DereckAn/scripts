@@ -10,11 +10,15 @@
 //! - [`prompt`] — modal prompts (Text/YesNo/Choice) that replace bash `read`,
 //!   round-tripped from the worker thread to the UI over channels.
 //!
-//! Later steps add `shell`, `ssh`, and the `platform` trait that the per-OS
-//! binaries implement.
+//! - [`shell`] — `.zshrc` management (managed block, cleanup, PATH/aliases).
+//! - [`platform`] — the `Platform` trait the per-OS binaries implement.
+//!
+//! Later steps add `ssh` and the per-OS `Platform` implementations.
 
 pub mod model;
+pub mod platform;
 pub mod prompt;
 pub mod runner;
+pub mod shell;
 pub mod tui;
 pub mod ui;
