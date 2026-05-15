@@ -178,12 +178,21 @@ ensure_flatpak() {
 # rc real desde una variable puntero (TERAX_USER_ZDOTDIR o USER_ZDOTDIR).
 # Escribir en el directorio efímero se pierde, así que apuntamos al rc real.
 #
-# El instalador de Oh My Zsh y `p10k configure` SÍ respetan $ZDOTDIR; por eso
-# el bloque que escribimos resuelve la ruta de p10k en tiempo de ejecución con
-# ${ZDOTDIR:-$HOME}, que coincide con donde el asistente guarda la config.
+# oh-my-posh recibe su tema con una ruta absoluta (--config), así que el prompt
+# NO depende de $ZDOTDIR; sólo necesitamos resolver dónde vive el .zshrc real
+# para escribir ahí nuestro bloque gestionado.
 # ---------------------------------------------------------------------------
 USER_ZSHRC=""
 TERAX_DETECTED=0
+
+# --- Configuración del prompt oh-my-posh ---
+# Tema y fuente del prompt. El tema se descarga a OMP_THEMES_DIR y se referencia
+# por ruta absoluta (--config), igual que el script de PowerShell.
+OMP_THEMES_DIR="$HOME/.config/ohmyposh"
+OMP_THEME_NAME="jandedobbeleer"   # se sobreescribe en select_omp_theme
+OMP_THEME_PATH=""                 # lo fija install_omp_theme
+OMP_FONT="FiraCode"               # Nerd Font para los iconos del prompt
+
 resolve_user_zshrc() {
     TERAX_DETECTED=0
     local zdot="${ZDOTDIR:-$HOME}"
@@ -212,56 +221,59 @@ resolve_user_zshrc() {
     USER_ZSHRC="$zdot/.zshrc"
 }
 
-ZSHRC_BLOCK_START="# >>> setup_linux.sh (Oh My Zsh + Powerlevel10k) >>>"
-ZSHRC_BLOCK_END="# <<< setup_linux.sh (Oh My Zsh + Powerlevel10k) <<<"
+ZSHRC_BLOCK_START="# >>> setup_linux.sh (Oh My Zsh + oh-my-posh) >>>"
+ZSHRC_BLOCK_END="# <<< setup_linux.sh (Oh My Zsh + oh-my-posh) <<<"
 
-# Eliminar el bloque gestionado (entre marcadores) de un archivo (idempotente)
+# Eliminar el bloque gestionado (entre marcadores) de un archivo (idempotente).
+# Borra tanto el bloque actual (oh-my-posh) como el antiguo (Powerlevel10k),
+# para migrar limpiamente a quien venía de la versión anterior del script.
 remove_managed_block() {
     local target="$1"
     [ -f "$target" ] || return 0
+    sed -i "/^# >>> setup_linux.sh (Oh My Zsh + oh-my-posh) >>>/,/^# <<< setup_linux.sh (Oh My Zsh + oh-my-posh) <<</d" "$target"
     sed -i "/^# >>> setup_linux.sh (Oh My Zsh + Powerlevel10k) >>>/,/^# <<< setup_linux.sh (Oh My Zsh + Powerlevel10k) <<</d" "$target"
 }
 
-# (Re)escribir el bloque gestionado de OMZ + p10k de forma idempotente
+# (Re)escribir el bloque gestionado de OMZ (plugins) + oh-my-posh (prompt).
+#
+# Oh My Zsh aporta los plugins; el PROMPT lo dibuja oh-my-posh. Por eso dejamos
+# ZSH_THEME vacío (para que ningún tema de OMZ pelee con oh-my-posh) e
+# inicializamos oh-my-posh DESPUÉS de cargar OMZ, así es el dueño del prompt.
+#
+# A diferencia de Powerlevel10k, oh-my-posh recibe su tema con una ruta
+# absoluta (--config), así que NO depende de $ZDOTDIR ni le afectan las
+# terminales que lo redirigen (Terax, VS Code…).
 write_managed_block() {
     local plugins_line="$1"
     local target="$USER_ZSHRC"
     touch "$target"
     remove_managed_block "$target"
 
-    # Ruta ESTABLE para la config de Powerlevel10k.
-    #
-    # Por defecto p10k usa ${ZDOTDIR:-~}/.p10k.zsh tanto para leer como para
-    # escribir (internal/configure.zsh). Pero terminales como Terax o la
-    # integrada de VS Code redirigen $ZDOTDIR a un dir EFÍMERO que regeneran en
-    # cada arranque. Si dejáramos que p10k siguiera a $ZDOTDIR, el asistente
-    # guardaría la config en ese dir efímero, se perdería al relanzar la
-    # terminal, y el asistente reaparecería en CADA sesión —mientras que en
-    # terminales normales (que no tocan $ZDOTDIR) ya quedaría configurado.
-    #
-    # Fijamos POWERLEVEL9K_CONFIG_FILE a la ruta real (el dir del .zshrc real),
-    # que p10k respeta para leer Y escribir. Así el asistente sale una sola vez
-    # y la misma config se comparte entre todas las terminales.
-    local cfg_dir cfg_path
-    cfg_dir="$(dirname "$target")"
-    if [ "$cfg_dir" = "$HOME" ]; then
-        cfg_path='$HOME/.p10k.zsh'   # literal: estable en cualquier terminal
-    else
-        cfg_path="$cfg_dir/.p10k.zsh"
-    fi
+    # Ruta del tema descargado por install_omp_theme. Si está vacía (descarga
+    # fallida), apuntamos a la ruta esperada del tema por defecto; el bloque
+    # comprueba que exista y, si no, usa el tema interno de oh-my-posh.
+    local theme_path="${OMP_THEME_PATH:-$OMP_THEMES_DIR/${OMP_THEME_NAME:-jandedobbeleer}.omp.json}"
 
     {
         echo ""
         echo "$ZSHRC_BLOCK_START"
         echo 'export ZSH="$HOME/.oh-my-zsh"'
-        echo 'ZSH_THEME="powerlevel10k/powerlevel10k"'
+        echo '# Tema de OMZ vacío: el prompt lo dibuja oh-my-posh (más abajo).'
+        echo 'ZSH_THEME=""'
         echo "$plugins_line"
-        echo '# Ruta fija de la config de p10k (no seguir $ZDOTDIR, que algunas'
-        echo '# terminales —Terax, VS Code— redirigen a un dir efímero).'
-        echo "export POWERLEVEL9K_CONFIG_FILE=\"$cfg_path\""
         echo 'source "$ZSH/oh-my-zsh.sh"'
-        echo '# `p10k configure` escribe la config en $POWERLEVEL9K_CONFIG_FILE'
-        echo '[[ ! -f "$POWERLEVEL9K_CONFIG_FILE" ]] || source "$POWERLEVEL9K_CONFIG_FILE"'
+        echo '# oh-my-posh se instala en ~/.local/bin; asegúralo en el PATH.'
+        echo '[[ ":$PATH:" == *":$HOME/.local/bin:"* ]] || export PATH="$HOME/.local/bin:$PATH"'
+        echo '# Prompt: oh-my-posh (al final, para que sea el dueño del prompt).'
+        echo "# Cambia el tema editando POSH_THEME (ve $OMP_THEMES_DIR)."
+        echo "POSH_THEME=\"$theme_path\""
+        echo 'if command -v oh-my-posh >/dev/null 2>&1; then'
+        echo '  if [[ -f "$POSH_THEME" ]]; then'
+        echo '    eval "$(oh-my-posh init zsh --config "$POSH_THEME")"'
+        echo '  else'
+        echo '    eval "$(oh-my-posh init zsh)"'
+        echo '  fi'
+        echo 'fi'
         echo "$ZSHRC_BLOCK_END"
     } >> "$target"
 }
@@ -278,9 +290,111 @@ clone_if_missing() {
     fi
 }
 
-# Instalar Oh My Zsh y Powerlevel10k
+# ¿Hay un framework que ya gestiona el zsh del usuario y su prompt?
+#
+# ML4W (dotfiles de Hyprland) y similares cargan Oh My Zsh y configuran el
+# prompt mediante su propio cargador modular en ~/.config/zshrc. Si encima
+# añadiéramos nuestro bloque a ~/.zshrc, OMZ se cargaría DOS veces y dos
+# prompts competirían. Lo detectamos para NO pisar su configuración.
+detect_ml4w() {
+    [ -d "$HOME/.config/zshrc" ] && grep -q "ML4W" "$HOME/.zshrc" 2>/dev/null
+}
+
+# Instalar la Nerd Font del prompt usando el propio oh-my-posh.
+# `oh-my-posh font install <nombre>` la descarga e instala en
+# ~/.local/share/fonts (igual que hace el script de PowerShell). Los iconos del
+# prompt (ramas de git, etc.) necesitan una Nerd Font para verse bien.
+install_omp_font() {
+    if fc-list 2>/dev/null | grep -qi "${OMP_FONT} Nerd"; then
+        echo "${GREEN}${OMP_FONT} Nerd Font ya instalada.${NC}"
+        return 0
+    fi
+    if ! command -v oh-my-posh >/dev/null 2>&1; then
+        echo "${YELLOW}oh-my-posh no disponible; saltando instalación de la fuente.${NC}"
+        return 1
+    fi
+    echo "${YELLOW}Instalando ${OMP_FONT} Nerd Font (necesaria para los iconos del prompt)...${NC}"
+    run_command "oh-my-posh font install ${OMP_FONT}" "Instalando ${OMP_FONT} Nerd Font"
+    command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts" >/dev/null 2>&1
+    echo "${CYAN}Configura tu terminal para usar '${OMP_FONT} Nerd Font' y ver los iconos.${NC}"
+    return 0
+}
+
+# Instalar oh-my-posh (motor de prompt multi-shell) sin sudo, y su Nerd Font.
+# El instalador oficial deja el binario en ~/.local/bin.
+install_oh_my_posh() {
+    if command -v oh-my-posh >/dev/null 2>&1; then
+        echo "${GREEN}oh-my-posh ya está instalado ($(oh-my-posh version 2>/dev/null)).${NC}"
+    else
+        echo "${YELLOW}Instalando oh-my-posh...${NC}"
+        mkdir -p "$HOME/.local/bin"
+        run_command "curl -s https://ohmyposh.dev/install.sh | bash -s -- -d \"$HOME/.local/bin\"" "Instalando oh-my-posh" \
+            || { echo "${YELLOW}No se pudo instalar oh-my-posh automáticamente. Instálalo manualmente: https://ohmyposh.dev/docs/installation/linux${NC}"; return 1; }
+    fi
+    # Asegurar que el binario recién instalado esté en el PATH de ESTE proceso.
+    [[ ":$PATH:" == *":$HOME/.local/bin:"* ]] || export PATH="$HOME/.local/bin:$PATH"
+
+    # Instalar la Nerd Font del prompt (no depende de elegir 'eza').
+    install_omp_font
+    return 0
+}
+
+# Menú para elegir el tema del prompt de oh-my-posh (inspirado en el selector
+# del script de PowerShell). Fija la variable global OMP_THEME_NAME.
+select_omp_theme() {
+    echo
+    echo "${BLUE}Tema del prompt (oh-my-posh)${NC}"
+    echo "  ${CYAN}[1]${NC} jandedobbeleer        — completo, el del autor (por defecto)"
+    echo "  ${CYAN}[2]${NC} atomic                — colorido y llamativo"
+    echo "  ${CYAN}[3]${NC} montys                — minimalista y limpio"
+    echo "  ${CYAN}[4]${NC} paradox               — moderno con info de Git"
+    echo "  ${CYAN}[5]${NC} agnoster              — clásico y popular"
+    echo "  ${CYAN}[6]${NC} powerlevel10k_rainbow — estilo Powerlevel10k"
+    echo "  ${CYAN}[0]${NC} otro                  — escribe el nombre del tema"
+    echo "${CYAN}Lista completa: https://ohmyposh.dev/docs/themes${NC}"
+    printf "${YELLOW}Elige [1-6/0] (Enter = jandedobbeleer): ${NC}"
+    read -r theme_choice
+    case "$theme_choice" in
+        ""|1) OMP_THEME_NAME="jandedobbeleer" ;;
+        2)    OMP_THEME_NAME="atomic" ;;
+        3)    OMP_THEME_NAME="montys" ;;
+        4)    OMP_THEME_NAME="paradox" ;;
+        5)    OMP_THEME_NAME="agnoster" ;;
+        6)    OMP_THEME_NAME="powerlevel10k_rainbow" ;;
+        0)
+            printf "${YELLOW}Nombre del tema (sin .omp.json): ${NC}"
+            read -r custom_theme
+            OMP_THEME_NAME="${custom_theme:-jandedobbeleer}"
+            ;;
+        *)    OMP_THEME_NAME="jandedobbeleer" ;;
+    esac
+    echo "${GREEN}Tema seleccionado: $OMP_THEME_NAME${NC}"
+}
+
+# Descargar el tema elegido a OMP_THEMES_DIR y fijar OMP_THEME_PATH (como hace
+# Install-Theme en el script de PowerShell). Así el --config apunta a una ruta
+# estable y el prompt es determinista (no depende de la caché de oh-my-posh).
+install_omp_theme() {
+    local name="${OMP_THEME_NAME:-jandedobbeleer}"
+    mkdir -p "$OMP_THEMES_DIR"
+    OMP_THEME_PATH="$OMP_THEMES_DIR/${name}.omp.json"
+    if [ -f "$OMP_THEME_PATH" ]; then
+        echo "${GREEN}Tema '$name' ya descargado en $OMP_THEME_PATH.${NC}"
+        return 0
+    fi
+    local url="https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/${name}.omp.json"
+    if run_command "curl -fsSL -o \"$OMP_THEME_PATH\" \"$url\"" "Descargando tema '$name'"; then
+        return 0
+    fi
+    echo "${YELLOW}No se pudo descargar '$name'; se usará el tema por defecto de oh-my-posh.${NC}"
+    rm -f "$OMP_THEME_PATH"
+    OMP_THEME_PATH=""
+    return 1
+}
+
+# Instalar Oh My Zsh (plugins) + oh-my-posh (prompt)
 install_oh_my_zsh() {
-    echo "${YELLOW}¿Instalar Oh My Zsh y Powerlevel10k? [Y/n]: ${NC}"
+    echo "${YELLOW}¿Instalar Oh My Zsh (plugins) y oh-my-posh (prompt)? [Y/n]: ${NC}"
     read -r install_omz
     if [[ "$install_omz" == "n" || "$install_omz" == "N" ]]; then
         echo "${YELLOW}Saltando instalación de Oh My Zsh.${NC}"
@@ -288,10 +402,6 @@ install_oh_my_zsh() {
     fi
 
     resolve_user_zshrc
-    if [ "${ZDOTDIR:-$HOME}" != "$HOME" ]; then
-        echo "${CYAN}Detectado \$ZDOTDIR redirigido: $ZDOTDIR${NC}"
-    fi
-    echo "${CYAN}La configuración de zsh se escribirá en: $USER_ZSHRC${NC}"
 
     # Instalar Oh My Zsh SIN que toque ningún .zshrc (lo gestionamos nosotros).
     # Exportar ZSH es obligatorio: con $ZDOTDIR definido el instalador usa
@@ -314,20 +424,42 @@ install_oh_my_zsh() {
         echo "${GREEN}Oh My Zsh instalado.${NC}"
     fi
 
-    # Tema y plugins (idempotente)
+    # Plugins externos (idempotente)
     local custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-    echo "${YELLOW}Instalando Powerlevel10k y plugins...${NC}"
-    clone_if_missing "https://github.com/romkatv/powerlevel10k.git" "$custom/themes/powerlevel10k" "Powerlevel10k"
+    echo "${YELLOW}Instalando plugins de zsh...${NC}"
     clone_if_missing "https://github.com/zsh-users/zsh-autosuggestions" "$custom/plugins/zsh-autosuggestions" "zsh-autosuggestions"
     clone_if_missing "https://github.com/zsh-users/zsh-history-substring-search" "$custom/plugins/zsh-history-substring-search" "zsh-history-substring-search"
     clone_if_missing "https://github.com/zsh-users/zsh-syntax-highlighting" "$custom/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
 
+    # Prompt: oh-my-posh (instala el binario + la Nerd Font)
+    install_oh_my_posh
+
+    # Elegir y descargar el tema del prompt a una ruta estable
+    select_omp_theme
+    install_omp_theme
+
+    # --- Guardia anti-conflicto: framework que ya gestiona el prompt ---
+    # Si ML4W (u otro) ya carga OMZ y el prompt, NO tocamos ~/.zshrc para no
+    # duplicar la carga ni hacer pelear dos prompts. Explicamos cómo integrarlo.
+    if detect_ml4w; then
+        local guard_theme="${OMP_THEME_PATH:-$OMP_THEMES_DIR/${OMP_THEME_NAME}.omp.json}"
+        echo "${YELLOW}Detectado ML4W gestionando tu zsh (~/.config/zshrc).${NC}"
+        echo "${CYAN}Para no duplicar la carga de Oh My Zsh, NO se modificará ~/.zshrc.${NC}"
+        echo "${CYAN}Activa oh-my-posh en ML4W creando/editando este archivo:${NC}"
+        echo "${GREEN}  ~/.config/zshrc/custom/20-customization${NC}"
+        echo "${CYAN}deja ${NC}${GREEN}ZSH_THEME=\"\"${NC}${CYAN}, carga OMZ, y al final añade:${NC}"
+        echo "${GREEN}  eval \"\$(oh-my-posh init zsh --config $guard_theme)\"${NC}"
+        return
+    fi
+
+    echo "${CYAN}La configuración de zsh se escribirá en: $USER_ZSHRC${NC}"
+
     # Escribir el bloque gestionado en el .zshrc real
     write_managed_block "plugins=(git jump zsh-autosuggestions sublime zsh-history-substring-search jsontools zsh-syntax-highlighting zsh-interactive-cd)"
-    echo "${GREEN}Configuración de Oh My Zsh + Powerlevel10k escrita en $USER_ZSHRC.${NC}"
+    echo "${GREEN}Configuración de Oh My Zsh + oh-my-posh escrita en $USER_ZSHRC.${NC}"
 
-    echo "${CYAN}El asistente de Powerlevel10k se abrirá al iniciar una nueva sesión de zsh${NC}"
-    echo "${CYAN}(o ejecútalo manualmente con: ${NC}${GREEN}p10k configure${NC}${CYAN}).${NC}"
+    echo "${CYAN}El prompt de oh-my-posh ('${OMP_THEME_NAME}') aparecerá al iniciar una nueva sesión de zsh.${NC}"
+    echo "${CYAN}Cambia el tema editando POSH_THEME en el bloque (ve ${NC}${GREEN}$OMP_THEMES_DIR${NC}${CYAN}).${NC}"
 }
 
 # Configurar credenciales de Git
@@ -1272,11 +1404,11 @@ restart_terminal() {
     read -r restart
     if [[ "$restart" != "n" && "$restart" != "N" ]]; then
         echo "${CYAN}Iniciando una nueva sesión de zsh en esta terminal...${NC}"
-        echo "${CYAN}Si no hay config de p10k, se abrirá el asistente automáticamente.${NC}"
+        echo "${CYAN}El prompt de oh-my-posh debería aparecer al cargar.${NC}"
         exec zsh -l
     else
         echo "${YELLOW}Abre una nueva pestaña/ventana o ejecuta 'exec zsh' para aplicar los cambios.${NC}"
-        echo "${YELLOW}Para estilizar el prompt cuando quieras: 'p10k configure'.${NC}"
+        echo "${YELLOW}Para cambiar el estilo del prompt: edita POSH_THEME en tu .zshrc (los temas están en $OMP_THEMES_DIR).${NC}"
     fi
 }
 
@@ -1317,12 +1449,13 @@ uninstall() {
     echo "${CYAN}Modo de desinstalación${NC}"
     echo
 
-    echo "${YELLOW}¿Desinstalar Oh My Zsh, Powerlevel10k y plugins? [Y/n]: ${NC}"
+    echo "${YELLOW}¿Desinstalar Oh My Zsh y plugins (y limpiar restos de Powerlevel10k)? [Y/n]: ${NC}"
     read -r remove_omz
     if [[ "$remove_omz" != "n" && "$remove_omz" != "N" ]]; then
         resolve_user_zshrc
         run_command "rm -rf $HOME/.oh-my-zsh" "Eliminando directorio Oh My Zsh"
-        # La config de p10k puede estar en $HOME o en el dir de $ZDOTDIR (Terax)
+        # Restos de Powerlevel10k (de versiones anteriores del script). La config
+        # pudo quedar en $HOME o en el dir de $ZDOTDIR (Terax).
         run_command "rm -f \"$HOME/.p10k.zsh\" \"${ZDOTDIR:-$HOME}/.p10k.zsh\"" "Eliminando configuración de Powerlevel10k"
         run_command "rm -rf $HOME/.cache/p10k-* $HOME/.cache/gitstatus" "Eliminando caché de Powerlevel10k"
         run_command "rm -f \"${ZDOTDIR:-$HOME}/.zshrc.pre-oh-my-zsh\"* \"$HOME/.zshrc.pre-oh-my-zsh\"*" "Eliminando backups de .zshrc"
@@ -1332,7 +1465,9 @@ uninstall() {
         fi
         # Limpiar el .zshrc: bloque gestionado + líneas heredadas
         clean_zshrc
-        echo "${GREEN}Oh My Zsh y Powerlevel10k eliminados completamente.${NC}"
+        echo "${GREEN}Oh My Zsh y plugins eliminados.${NC}"
+        echo "${CYAN}Nota: oh-my-posh (~/.local/bin/oh-my-posh) NO se elimina por si lo${NC}"
+        echo "${CYAN}usa otra configuración (p. ej. ML4W). Bórralo a mano si quieres.${NC}"
     fi
 
     echo "${YELLOW}¿Eliminar las claves SSH generadas por el script (~/.ssh/id_ed25519*)? [y/N]: ${NC}"
