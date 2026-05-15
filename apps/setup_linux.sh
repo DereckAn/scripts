@@ -228,15 +228,40 @@ write_managed_block() {
     local target="$USER_ZSHRC"
     touch "$target"
     remove_managed_block "$target"
+
+    # Ruta ESTABLE para la config de Powerlevel10k.
+    #
+    # Por defecto p10k usa ${ZDOTDIR:-~}/.p10k.zsh tanto para leer como para
+    # escribir (internal/configure.zsh). Pero terminales como Terax o la
+    # integrada de VS Code redirigen $ZDOTDIR a un dir EFÍMERO que regeneran en
+    # cada arranque. Si dejáramos que p10k siguiera a $ZDOTDIR, el asistente
+    # guardaría la config en ese dir efímero, se perdería al relanzar la
+    # terminal, y el asistente reaparecería en CADA sesión —mientras que en
+    # terminales normales (que no tocan $ZDOTDIR) ya quedaría configurado.
+    #
+    # Fijamos POWERLEVEL9K_CONFIG_FILE a la ruta real (el dir del .zshrc real),
+    # que p10k respeta para leer Y escribir. Así el asistente sale una sola vez
+    # y la misma config se comparte entre todas las terminales.
+    local cfg_dir cfg_path
+    cfg_dir="$(dirname "$target")"
+    if [ "$cfg_dir" = "$HOME" ]; then
+        cfg_path='$HOME/.p10k.zsh'   # literal: estable en cualquier terminal
+    else
+        cfg_path="$cfg_dir/.p10k.zsh"
+    fi
+
     {
         echo ""
         echo "$ZSHRC_BLOCK_START"
         echo 'export ZSH="$HOME/.oh-my-zsh"'
         echo 'ZSH_THEME="powerlevel10k/powerlevel10k"'
         echo "$plugins_line"
+        echo '# Ruta fija de la config de p10k (no seguir $ZDOTDIR, que algunas'
+        echo '# terminales —Terax, VS Code— redirigen a un dir efímero).'
+        echo "export POWERLEVEL9K_CONFIG_FILE=\"$cfg_path\""
         echo 'source "$ZSH/oh-my-zsh.sh"'
-        echo '# `p10k configure` escribe la config en ${ZDOTDIR:-$HOME}/.p10k.zsh'
-        echo '[[ ! -f "${ZDOTDIR:-$HOME}/.p10k.zsh" ]] || source "${ZDOTDIR:-$HOME}/.p10k.zsh"'
+        echo '# `p10k configure` escribe la config en $POWERLEVEL9K_CONFIG_FILE'
+        echo '[[ ! -f "$POWERLEVEL9K_CONFIG_FILE" ]] || source "$POWERLEVEL9K_CONFIG_FILE"'
         echo "$ZSHRC_BLOCK_END"
     } >> "$target"
 }
