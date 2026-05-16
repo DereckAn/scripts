@@ -183,7 +183,6 @@ ensure_flatpak() {
 # para escribir ahí nuestro bloque gestionado.
 # ---------------------------------------------------------------------------
 USER_ZSHRC=""
-TERAX_DETECTED=0
 
 # --- Configuración del prompt oh-my-posh ---
 # Tema y fuente del prompt. El tema se descarga a OMP_THEMES_DIR y se referencia
@@ -194,7 +193,6 @@ OMP_THEME_PATH=""                 # lo fija install_omp_theme
 OMP_FONT="FiraCode"               # Nerd Font para los iconos del prompt
 
 resolve_user_zshrc() {
-    TERAX_DETECTED=0
     local zdot="${ZDOTDIR:-$HOME}"
 
     # Caso normal: $ZDOTDIR sin redirigir -> el rc real es ~/.zshrc
@@ -206,7 +204,6 @@ resolve_user_zshrc() {
     # Terax -> TERAX_USER_ZDOTDIR (fallback $HOME)
     if [ -n "$TERAX_TERMINAL" ] || [[ "$zdot" == *"/terax/"* ]]; then
         USER_ZSHRC="${TERAX_USER_ZDOTDIR:-$HOME}/.zshrc"
-        TERAX_DETECTED=1
         return
     fi
 
@@ -262,6 +259,17 @@ write_managed_block() {
         echo 'ZSH_THEME=""'
         echo "$plugins_line"
         echo 'source "$ZSH/oh-my-zsh.sh"'
+        echo '# fzf: Ctrl+R = búsqueda difusa interactiva del historial (lista + elegir).'
+        echo 'command -v fzf >/dev/null 2>&1 && source <(fzf --zsh) 2>/dev/null'
+        echo '# zsh-history-substring-search: escribe un fragmento y pulsa ↑/↓ para'
+        echo '# recorrer SOLO los comandos anteriores que lo contienen. (Va DESPUÉS'
+        echo '# de cargar OMZ para sobrescribir su binding por defecto de ↑/↓.)'
+        echo 'bindkey "$terminfo[kcuu1]" history-substring-search-up   2>/dev/null'
+        echo 'bindkey "$terminfo[kcud1]" history-substring-search-down 2>/dev/null'
+        echo "bindkey '^[[A' history-substring-search-up"
+        echo "bindkey '^[[B' history-substring-search-down"
+        echo "bindkey '^[OA' history-substring-search-up"
+        echo "bindkey '^[OB' history-substring-search-down"
         echo '# oh-my-posh se instala en ~/.local/bin; asegúralo en el PATH.'
         echo '[[ ":$PATH:" == *":$HOME/.local/bin:"* ]] || export PATH="$HOME/.local/bin:$PATH"'
         echo '# Prompt: oh-my-posh (al final, para que sea el dueño del prompt).'
@@ -327,6 +335,10 @@ install_oh_my_posh() {
         echo "${GREEN}oh-my-posh ya está instalado ($(oh-my-posh version 2>/dev/null)).${NC}"
     else
         echo "${YELLOW}Instalando oh-my-posh...${NC}"
+        # El instalador oficial requiere 'unzip' para extraer los temas; en
+        # algunas distros base no viene preinstalado.
+        command -v unzip >/dev/null 2>&1 || \
+            run_command "$PKG_INSTALL unzip" "Instalando unzip (requerido por oh-my-posh)"
         mkdir -p "$HOME/.local/bin"
         run_command "curl -s https://ohmyposh.dev/install.sh | bash -s -- -d \"$HOME/.local/bin\"" "Instalando oh-my-posh" \
             || { echo "${YELLOW}No se pudo instalar oh-my-posh automáticamente. Instálalo manualmente: https://ohmyposh.dev/docs/installation/linux${NC}"; return 1; }
@@ -851,10 +863,8 @@ run_install() {
 # --- Instaladores propios (apps sin paquete nativo simple) ---
 
 install_node() {
-    case "$PKG_MANAGER" in
-        apt|dnf) run_command "$PKG_INSTALL nodejs npm" "Instalando Node.js + npm" ;;
-        pacman)  run_command "$PKG_INSTALL nodejs npm" "Instalando Node.js + npm" ;;
-    esac
+    # nodejs + npm están en los repos de apt/dnf/pacman con el mismo nombre.
+    run_command "$PKG_INSTALL nodejs npm" "Instalando Node.js + npm"
 }
 
 install_pnpm() {
@@ -941,7 +951,8 @@ install_tailscale() {
     run_command "curl -fsSL https://tailscale.com/install.sh | sh" "Instalando Tailscale"
 }
 
-# Instalar una Nerd Font (requerida por los iconos de eza)
+# Instalar una Nerd Font por descarga directa (método de RESPALDO, usado sólo
+# cuando oh-my-posh no está disponible para 'oh-my-posh font install').
 install_nerd_font() {
     if fc-list 2>/dev/null | grep -qi "FiraCode Nerd"; then
         echo "${GREEN}FiraCode Nerd Font ya instalada.${NC}"
@@ -956,6 +967,20 @@ install_nerd_font() {
     run_command "curl -fsSL -o /tmp/FiraCode.zip https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip && unzip -o /tmp/FiraCode.zip -d \"$font_dir\" >/dev/null && rm -f /tmp/FiraCode.zip && fc-cache -f \"$font_dir\"" "Instalando FiraCode Nerd Font"
 }
 
+# ¿Dónde escribir config extra (aliases, PATH, init de herramientas)?
+#
+# Mismo criterio que el bloque del prompt: no pisar un framework que ya gestiona
+# el zsh del usuario. En ML4W usamos ~/.zshrc_custom (que su cargador incluye y
+# que sobrevive a las actualizaciones); en cualquier otro caso, el .zshrc real
+# resuelto por resolve_user_zshrc (que respeta Terax / VS Code).
+extra_config_file() {
+    if detect_ml4w; then
+        echo "$HOME/.zshrc_custom"
+    else
+        echo "${USER_ZSHRC:-$HOME/.zshrc}"
+    fi
+}
+
 # Añadir al PATH
 add_to_path() {
     local app_name="$1"
@@ -966,7 +991,7 @@ add_to_path() {
         return
     fi
 
-    local zshrc="$HOME/.zshrc"
+    local zshrc; zshrc="$(extra_config_file)"
     local export_line="export PATH=\"${path_to_add}:\$PATH\""
     if grep -qF "$export_line" "$zshrc" 2>/dev/null; then
         echo "${GREEN}Ruta ${path_to_add} ya está en ~/.zshrc.${NC}"
@@ -983,7 +1008,7 @@ add_to_path() {
 write_to_zshrc() {
     local description="$1"
     local line="$2"
-    local zshrc="$HOME/.zshrc"
+    local zshrc; zshrc="$(extra_config_file)"
 
     if grep -qF "$line" "$zshrc" 2>/dev/null; then
         echo "${GREEN}${description} ya está en ~/.zshrc.${NC}"
@@ -1001,8 +1026,9 @@ post_install_config() {
     local name="$1"
     case "$name" in
         eza)
-            echo "${YELLOW}Instalando FiraCode Nerd Font (requerida para iconos de eza)...${NC}"
-            install_nerd_font
+            echo "${YELLOW}Asegurando una Nerd Font (requerida para los iconos de eza)...${NC}"
+            # Reutiliza el instalador de oh-my-posh; si no está, cae al método zip.
+            install_omp_font || install_nerd_font
             write_to_zshrc "eza alias ls" 'alias ls="eza --color=auto --icons"'
             write_to_zshrc "eza alias ll" 'alias ll="eza -lh --icons --git"'
             write_to_zshrc "eza alias la" 'alias la="eza -lah --icons --git"'
