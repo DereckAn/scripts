@@ -1,0 +1,17 @@
+aws-session-manager-plugin
+caelestia-cli
+caelestia-shell
+globalprotect
+hmcl
+jack
+lazysql
+libcava
+minecraft-launcher
+python-materialyoucolor
+qt5-doc
+qt5-sensors
+qt5-webkit
+spotify
+terax-bin
+ttf-rubik-vf
+visual-studio-code-bin
