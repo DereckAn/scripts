@@ -17,3 +17,4 @@
 
 # Ignorar archivos de caché de compilación
 .DS_Store
+captures/*.pcapng
