@@ -186,38 +186,50 @@ Do not start Phase 4 without this in hand.
 
 ### 3.1 Set up capture on the Armoury Crate side
 
-You need Armoury Crate running to observe what it sends. Options:
+**Chosen path: capture on a separate Windows PC with USBPcap + Wireshark.**
+Armoury Crate is Windows-only, so we run it on the Windows machine, capture the USB
+traffic there, then copy the `.pcapng` files back to Linux for analysis (Phase 3.4+).
 
-**Option A — Windows VM with USB passthrough (preferred, keeps you on Linux):**
-- QEMU/virt-manager or VirtualBox with the keyboard passed through
-- Capture on the **host** with usbmon/Wireshark — you see the real wire traffic
-- Note: passthrough of composite HID devices can be finicky; you may need to pass the whole device, and your host will lose the keyboard while the VM has it (use a second keyboard)
+On the **Windows PC**:
 
-**Option B — Dual boot Windows, capture with USBPcap + Wireshark on Windows**
-- More reliable capture, less convenient workflow
-- Export captures as `.pcapng` and analyze them back on Linux
+1. **Install Wireshark for Windows** (https://www.wireshark.org/download.html).
+   During install, **check the "Install USBPcap" box** — that's the USB capture
+   driver Wireshark needs. **Reboot** afterward (USBPcap installs a kernel driver).
+2. **Install Armoury Crate** (ASUS support site or Microsoft Store). Launch it, let it
+   detect the Falchion Ace HFX, and let it apply any pending firmware/config update so
+   you're observing the normal, up-to-date protocol.
+3. **Plug the keyboard directly into a USB port** on the Windows PC (avoid hubs — one
+   less layer in the capture). Confirm Armoury Crate sees it and you can change settings.
 
-**Option C — Native Linux capture of your own test packets (for Phase 3.5 verification)**
+> Alternatives, if this PC ever becomes unavailable: a Windows VM with USB passthrough
+> (capture on the Linux host with usbmon), or dual-boot. Both are more setup; the
+> separate-PC route above is the simplest and most reliable.
 
 ### 3.2 Capture a baseline
 
-```bash
-# find the bus number
-lsusb -d 0b05:1b7e
-# capture that bus (replace N)
-sudo wireshark -i usbmonN
-```
+On the **Windows PC**, in Wireshark:
 
-Filter in Wireshark:
-```
-usb.idVendor == 0x0b05 && usb.idProduct == 0x1b7e
-```
-or once you know the bus/device address:
-```
-usb.device_address == X
-```
+1. In the interface list, pick the **`USBPcapN`** entry for the root hub your keyboard
+   is on. USBPcap captures per-root-hub, so if you have several, start capture on each
+   briefly and watch which one shows `0b05:1b7e` traffic — that's the one. (Unplug/replug
+   the keyboard; the enumeration burst tells you which USBPcap interface it's on.)
+2. Once capturing, set the display filter to isolate the keyboard:
+   ```
+   usb.idVendor == 0x0b05 && usb.idProduct == 0x1b7e
+   ```
+   That matches from the descriptor exchange on. To follow it reliably afterward, note
+   the device address Wireshark assigns and switch to:
+   ```
+   usb.device_address == X
+   ```
+3. **Capture ~30s completely idle** (don't touch Armoury Crate or the keys). Save as
+   `captures/00-baseline-idle.pcapng`. This is your noise floor — polling and keepalives
+   you'll subtract out when diffing real changes.
 
-Capture 30s of idle — this is your noise baseline (polling, keepalives).
+> **Transfer:** copy every `.pcapng` to this repo's `captures/` on the Linux box
+> (they're git-ignored via `**/*.pcapng`). All decoding in Phase 3.4 (`tshark`) runs on
+> Linux — USBPcap's captured HID payloads land in the same `usb.capdata` field, so those
+> commands work unchanged.
 
 ### 3.3 Capture single-variable changes
 
