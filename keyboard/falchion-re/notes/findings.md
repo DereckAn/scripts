@@ -1,6 +1,7 @@
 # ROG Falchion Ace HFX — findings
 
-Device: `0b05:1b7e` · firmware `bcdDevice = 1.59` · 68 keys, 65% layout
+Device: `0b05:1b7e` · ASUS model **M605** · firmware `bcdDevice = 1.59` · 68 keys, 65% layout
+HAL class: **`AacM605Function`** (model code M605 confirmed from the official manual title)
 Linux host: CachyOS · Windows capture host: Windows 11 LTSC
 Last updated: 2026-08-27
 
@@ -91,6 +92,90 @@ Linux access: udev rule `/etc/udev/rules.d/99-asus-keyboard.rules` sets `MODE=06
 
 ---
 
+## Phase 2 — backup and recovery: BLOCKED ON HARDWARE
+
+Investigated 2026-08-27. Conclusion first: **Phase 2 cannot produce a working recovery path
+without an SWD programmer.** A firmware image you have no way to write is not a safety net.
+
+### 2.1 — dump from the chip: NOT POSSIBLE
+
+- No DFU interface. `dfu-util -l` finds nothing.
+- `AacKbHal_x64.dll` contains **no bootloader / DFU / ISP / erase / flash entry points** for
+  keyboards (searched its full string table). Firmware update for this device is handled by
+  some separate ASUS tool, not the HAL.
+- `deviceinfo.ini` does carry a **`BootloaderMode=false`** flag for `0B051B7E`, so a bootloader
+  state exists and ASUS software tracks it — but nothing found so far can trigger entry into it.
+
+### 2.2 — official firmware image: NOT PUBLISHED
+
+ASUS's support page for this keyboard offers **no standalone firmware file**. Downloads are:
+
+| item | version | size |
+|---|---|---|
+| Armoury Crate Gear – ROG Falchion Ace HFX | 1.0.1.15 | 227.4 MB |
+| Armoury Crate & Aura Creator Installer | 3.3.6.0 | 2.2 MB |
+| Armoury Crate Uninstall Tool | 2.3.7.0 | 1.21 MB |
+| Gear Link Log Tool | 1.0.0.3 | 21 KB |
+
+Firmware ships *inside* Armoury Crate. Confirmed nothing is staged locally: the installed AC
+Store package contains no firmware-shaped files, and neither do the RLS / Update caches. The
+one remaining candidate is the **227 MB device-specific "Armoury Crate Gear" package** —
+unexamined.
+
+For reference, ASUS *does* ship firmware in these packages for other devices — e.g.
+`...\ArmouryDevice\dll\ShareFromArmouryIII\Mouse\ROG Strix Impact\Upgrade_P303\FW.hex`. So the
+pattern exists; it just isn't present for this keyboard.
+
+### 2.2b — Gear Link KB Companion 3.1.0.3: searched, NO FIRMWARE
+
+Installed 2026-08-27 specifically to check for a firmware blob. Package is InstallShield
+(`ISc(` cabs — 7-Zip cannot open them, and `setup.exe /extract_all` / `/stage_only` return 0
+but extract nothing; only a real install unpacks it).
+
+Result: **no firmware image anywhere in the package.** `ArmouryLiveUpdate.exe`,
+`ArmouryUpdate.exe` and `AsusLiveUpdateDeEncrypt.dll` contain only certificate-authority URLs
+— no firmware download endpoint and no embedded image. They also live under `.../ROGMS/`
+(ROG mouse), so they are generic.
+
+What it *did* yield, useful for other reasons:
+
+| artifact | value |
+|---|---|
+| `C:\Program Files (x86)\ASUS\ArmouryDevice\View\7038\` | **the complete Armoury Crate UI bundle for this device** (`7038` = `0x1B7E`), 514 files / 24 MB of webpack JS + all language XML |
+| `C:\Program Files (x86)\ASUS\Gear Link\KB\GearLink_KBApi\GearLink_KBApi.dll` | 763 KB **managed .NET assembly** — the keyboard API layer. Decompilable, but needs the .NET **SDK** (only the runtime is installed, so `dotnet tool install -g ilspycmd` fails). |
+
+**The UI lock, located in source.** `1509-bundle-bfb3b.js` gates key editing on:
+
+```js
+function(e){ try { return !m.includes(e) } catch(e) { return !1 } }(j)
+```
+
+If the key is in `m`, the UI renders `row_1894` — *"This key combination is already assigned
+to a fixed function and cannot be changed"* — instead of the assignment control. `m` is not a
+literal array in the bundle, so the list itself is either fetched from device data or built at
+runtime; not yet extracted.
+
+Note this is only the **UI** lock. It is independent of the firmware lock proven in the
+VERDICT section, which no amount of UI patching would bypass.
+
+### 2.3 — SWD programmer: NOT ACQUIRED. This is the real blocker.
+
+Because there is no DFU and no published image, **SWD is the only route to both a dump and a
+restore.** Needed:
+
+- ST-Link V2 clone (~$5-8) or a Raspberry Pi Pico flashed as a debug probe
+- `openocd`
+- The case opened to locate SWD pads and identify the MCU (Phase 1.4, also still undone)
+
+Even with SWD, a dump may return all `0x00`/`0xFF` if read-out protection is enabled — that
+outcome is unknown until tried.
+
+### What this means for Phase 4
+
+**Phase 4 currently has no recovery path.** Do not start it until 2.3 is resolved. The
+existing hardware factory reset (`Fn + Caps`) restores *settings*, not firmware — it will not
+save a bad flash.
+
 ## Status by phase
 
 | phase | status |
@@ -114,6 +199,7 @@ start Phase 4 without resolving that.
 - **Target index encoding** — the one real blocker for a complete remap implementation.
   Contradictory results: `tgt 4` produced `4` on one source key and `3` on another. See
   protocol.md §4 for the clean experiment that would settle it.
+- **LEAD: Gear Link (`gearlink.asus.com`) is a browser-based config tool** — it must drive the keyboard over WebHID, so its JavaScript likely contains the full protocol in readable form, including the target-index encoding. Cheapest route to finishing the spec.
 - Opcodes for actuation, rapid trigger, dead zone, speed tap, profile, polling rate — all have
   known HAL method names, none captured yet.
 - What `51 22` does (seen once with `C8` = 200).
