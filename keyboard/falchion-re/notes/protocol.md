@@ -1,38 +1,50 @@
-# Falchion Ace HFX — protocol notes
+# ROG Falchion Ace HFX — protocol specification
 
-Status: **transport confirmed, opcodes not yet known.** Everything below comes from static
-analysis of ASUS's own HAL plus live HID queries. No packets captured yet, nothing written
-to the device, no firmware touched.
+Device: `0b05:1b7e`, firmware `bcdDevice = 1.59`
+Last updated: 2026-08-27
+
+Every claim below is tagged:
+**[V]** verified on hardware · **[C]** from a packet capture · **[S]** static analysis of ASUS's DLL · **[?]** unresolved
 
 ---
 
-## 1. Transport — CONFIRMED
+## 1. Transport **[V]**
 
-Armoury Crate talks to the keyboard over **interface 1**:
+Armoury Crate talks to the keyboard on **interface 1 / usage page 0xFF00**.
 
 | property | value |
 |---|---|
 | Windows instance | `HID\VID_0B05&PID_1B7E&MI_01` |
-| Usage page / usage | **0xFF00 / 0x01** |
-| Report descriptor | 34 bytes (`report-desc-ff00.txt`), matches `wDescriptorLength=34` on iface 1 |
-| Report ID | **none declared** |
+| Usage page / usage | `0xFF00` / `0x01` |
+| Report descriptor | 34 bytes, **declares no Report ID** |
 | Payload | 64 bytes IN, 64 bytes OUT |
 | Linux endpoints | `0x85` IN, `0x0d` OUT |
 
-Two independent sources agree.
-
-**(a) Live HID query** (`HidP_GetCaps` on each interface of the running device):
+### Full interface map **[V]**
 
 ```
-MI_01          UP=0xFF00  U=0x01   in=65  out=65  feat=0     <- config channel
-MI_02&COL01    UP=0x000C  U=0x01   in=4   out=0   feat=0     consumer / media
-MI_02&COL02    UP=0x0001  U=0x80   in=2   out=0   feat=0     system control
-MI_02&COL03    UP=0xFFC0  U=0x01   in=21  out=0   feat=0     vendor, input-only
-MI_04          UP=0x0059  U=0x01   in=0   out=0   feat=51    HID LampArray
+MI_01          UP=0xFF00  U=0x01   in=65  out=65  feat=0    <- config channel (this doc)
+MI_02&COL01    UP=0x000C  U=0x01   in=4   out=0   feat=0    consumer / media
+MI_02&COL02    UP=0x0001  U=0x80   in=2   out=0   feat=0    system control
+MI_02&COL03    UP=0xFFC0  U=0x01   in=21  out=0   feat=0    vendor, input-only (key events/stats)
+MI_04          UP=0x0059  U=0x01   in=0   out=0   feat=51   HID LampArray (Windows Dynamic Lighting)
+MI_00, MI_03   keyboard collections                          boot keyboard + NKRO
 ```
 
-**(b) A device table inside `AacKbHal_x64.dll`** at file offset `0x153DF4`, 0x40-byte
-records. Our entry and its neighbours:
+### How to write a report
+
+The descriptor declares no Report ID, so both platforms need a **leading `0x00`
+placeholder byte**:
+
+- **Windows** — write **65** bytes: `0x00` + 64-byte payload. (This is why `HidP_GetCaps`
+  reports `in=65 out=65` while the descriptor says 64.)
+- **Linux hidraw** — same: prepend `0x00`, then 64 payload bytes.
+
+Getting this wrong is the most common reason a hand-built report is silently dropped.
+
+### Corroborating device table in `AacKbHal_x64.dll` **[S]**
+
+At file offset `0x153DF4`, 0x40-byte records:
 
 ```
 offset      VID     PID    ?    usagePg  usage  usagePg2  variant  ?
@@ -43,115 +55,298 @@ offset      VID     PID    ?    usagePg  usage  usagePg2  variant  ?
 0x153DEC   0x0B05  0x1B7E  1    0xFF00   0x01   0xFFC0    0x10     6   <- Falchion Ace HFX
 0x153E2C   0x0B05  0x1C5E  1    0xFF00   0x01   0xFFC0    0x13     6
 0x153E6C   0x0B05  0x1C60  1    0xFF00   0x01   0xFFC0    0x13     6
-                                              (table ends with 0xFFFFFFFF)
+                                              (terminated by 0xFFFFFFFF)
 ```
 
-The table's `usagePg2 = 0xFFC0` is exactly the `MI_02&COL03` input-only channel above, so
-the HAL opens **two** channels per device: `0xFF00` for command/response and `0xFFC0` for
-unsolicited input events. The `variant` field (0x10 vs 0x13) selects a device class; the
-Falchion shares 0x10 with PIDs 0x1B3F and 0x1B42.
-
-There is also a `cmp ecx, 0x1B7E` / `jne` at file offset `0x05C005`, right after a
-`mov ecx, 0x1E0` (allocate 480 bytes) — the per-device dispatch. So the Falchion is handled
-inside `AacKbHal_x64.dll` itself, not by a separate plugin DLL.
-
-### Practical write format
-
-The 0xFF00 report descriptor declares **no Report ID**, so:
-
-- **Windows** — write **65** bytes: a leading `0x00` report-ID placeholder, then 64 payload
-  bytes. (That is why `HidP_GetCaps` says `in=65 out=65` while the descriptor says 64.)
-- **Linux hidraw** — same convention: prepend `0x00`, then the 64 payload bytes.
-
-Getting this wrong is the most common reason a hand-built report is silently dropped.
+`usagePg2 = 0xFFC0` is the `MI_02&COL03` event channel — the HAL opens **two** channels per
+device. `variant` (0x10 vs 0x13) selects a device class. A `cmp ecx, 0x1B7E` dispatch sits at
+file offset `0x05C005`, so this board is handled inside `AacKbHal_x64.dll` itself, not a
+separate plugin.
 
 ---
 
-## 2. Correction to the earlier interface table
+## 2. Command set
 
-`findings.md` originally listed interface 4 as usage page `0xFF32`, Report ID 2, 63B in/out,
-citing `report-desc-0.txt`. That attribution does not hold up:
+The device **echoes the request header back** on every command. See §5 — the echo is a
+receipt of *delivery*, not of *effect*.
 
-- `report-desc-0.txt` is **39 bytes**. No interface on this device has
-  `wDescriptorLength = 39` (they are 68, 34, 182, 23, 327).
-- Interface 4's descriptor is **327 bytes**, and Windows reports it as usage page `0x0059`
-  (HID Lighting And Illumination / LampArray) with 51-byte **feature** reports and no input
-  or output reports — consistent with a large LampArray descriptor, not a 63-byte vendor pipe.
+| Opcode | Meaning | Source |
+|---|---|---|
+| `12 <sub>` | GET / query. Reply echoes `12 <sub>` then appends data. | [C][V] |
+| `22 01` | init handshake (echo only) | [C] |
+| `25 00`, `25 01` | init handshake (echo only) | [C] |
+| `51 21 ...` | **set Fn-layer key binding** | [C][V] |
+| `51 22 ...` | set — exact function unconfirmed, seen with `C8` (200) payload | [C] |
+| `50 55` | **commit to flash.** Reply ~220 ms later. | [C][V] |
 
-`report-desc-0.txt` does decode cleanly on its own — usage page `0xFF32`, usage `0x74`,
-Report ID 2, 63B IN (usage 0x75) / 63B OUT (usage 0x76) — it just appears to **belong to a
-different device**. The Linux box also has a `ROG OMNI RECEIVER` and other ASUS hardware;
-the likeliest explanation is that the hidraw node was misidentified when it was dumped.
+### Startup handshake, in order **[C]**
 
-**Action:** re-dump the iface-4 descriptor on Linux, matching by usage page rather than
-`hidrawN`. Treat `0xFF32` as not-part-of-this-device until that is redone.
+```
+OUT 12 03      IN 12 03 00...
+OUT 12 00      IN 12 00 00 00 59 00 01 00 06 00 03 00     <- version: 0x59=89 minor, 01 major = 1.59
+OUT 22 01      IN 22 01 00...
+OUT 12 12      IN 12 12 00 00 01 01 00...
+OUT 12 08      IN 12 08 00 00 01 00...
+OUT 12 16      IN 12 16 00...
+OUT 12 14      IN 12 14 00...
+OUT 25 00      IN 25 00 00...
+OUT 25 01      IN 25 01 00...
+```
+
+`12 00` is reproducible standalone — it is the safest liveness probe:
+
+```powershell
+.\tools\send.ps1 -Bytes '12 00'
+# IN  12 00 00 00 59 00 01 00 06 00 03 00
+```
 
 ---
 
-## 3. HAL API surface (from debug strings)
+## 3. `51 21` — remap a key on the Fn layer
+
+### Wire format **[C][V]**
+
+```
+byte:  0    1    2         3    4         5    6           7    8..63
+      51   21   <src>     9F   <tgt>     00   <actuation> 00   00 ...
+
+  src        source key index   (see §4)
+  9F         constant in every sample observed
+  tgt        target key index   [?] see §4
+  actuation  0x0A = 10, matches the config file default
+```
+
+Captured from Armoury Crate, with the resulting config-file change:
+
+| action | packet | config entry changed |
+|---|---|---|
+| M → 1 | `51 21 34 9F 02 00 0A 00` | `keyfunction_55_4` |
+| M → 2 | `51 21 34 9F 03 00 0A 00` | `keyfunction_55_4` |
+| N → 1 | `51 21 33 9F 02 00 0A 00` | `keyfunction_54_4` |
+| ? → ? | `51 21 3D 9F 04 00 0A 00` | `keyfunction_53_5` |
+| ? → ? | `51 21 0F 9F 05 00 0A 00` | `keyfunction_56_7` |
+| ? → ? | `51 21 2B 9F 06 00 0A 00` | `keyfunction_57_2` |
+| ? → ? | `51 21 19 9F 07 00 0A 00` | `keyfunction_57_7` |
+
+**`51 21` writes the Fn layer.** Confirmed empirically: after `M → 2`, plain `M` still types
+`m` while **`Fn+M` types `2`**. [V]
+
+### `50 55` is NOT required to activate **[V]**
+
+An uncommitted `51 21` takes effect **immediately in RAM**. Verified: sent
+`51 21 34 9F 04 00 0A 00` with no commit, `Fn+M` changed straight away.
+
+`50 55` only persists to flash. This makes experimentation cheap and safe — **replug to
+revert anything uncommitted.**
+
+---
+
+## 4. Key indices
+
+### Source index — VERIFIED **[V][C]**
+
+A **1-based row-major count** over the 68 physical keys, reading the layout left-to-right,
+top-to-bottom.
+
+```
+row 1   Esc=1   1=2   2=3   3=4   4=5   5=6   6=7   7=8   8=9   9=10
+        0=11    -=12  +=13  Bksp=14  Ins=15
+row 2   Tab=16  Q=17  W=18  E=19  R=20  T=21  Y=22  U=23  I=24  O=25
+        P=26    [=27  ]=28  \=29  Del=30
+row 3   Caps=31 A=32  S=33  D=34  F=35  G=36  H=37  J=38  K=39  L=40
+        ;=41    '=42  Enter=43  PgUp=44
+row 4   LShift=45  Z=46  X=47  C=48  V=49  B=50  N=51  M=52
+        ,=53    .=54  /=55  RShift=56  Up=57  PgDn=58
+row 5   Ctrl=59  Win=60  Alt=61  Space=62  Alt=63  Fn=64  ROG=65
+        Left=66  Down=67  Right=68
+```
+
+Directly confirmed: **Backspace=14, Q=17, I=24, O=25, Enter=43, N=51, M=52.**
+Digits confirmed on the target side (see below).
+
+### Target index — UNRESOLVED **[?]**
+
+Contradictory observations, all from `51 21`:
+
+| target byte | result |
+|---|---|
+| `0x09` on src 24 (I) | typed `8` (`vk=0x38`) |
+| `0x04` on src 14 (Backspace) | typed `4` |
+| `0x04` on src 52 (M) | typed `3` |
+
+The last two conflict: **the same target byte produced different characters on different
+source keys.** That should not happen for a simple position lookup, so either the target
+field is not a plain key index, or Armoury Crate interactions between tests mutated state.
+
+**To resolve:** factory-reset (`Fn+Caps`, hold until LEDs blink green), replug, then send a
+clean series varying only the target byte on one source key, testing each with
+`tools/keywatch.ps1` and never opening Armoury Crate in between.
+
+---
+
+## 5. THE TRAP — echo does not mean effect **[V]**
+
+**The device echoes the request header verbatim even when it discards the write.**
+
+Controlled A/B — two commands differing only in the source byte, sent back to back, neither
+committed, no Armoury Crate interaction between them:
+
+```
+51 21 11 9F 09 00 0A 00    src 17 = Q   (reserved: Fn+Q = Play/Pause)  -> ACK, NO EFFECT
+51 21 18 9F 09 00 0A 00    src 24 = I   (not reserved)                 -> ACK, APPLIED (vk 0x38)
+```
+
+Same for `src 2` (the `1` key, reserved as F1): ACKed, `Fn+1` stayed F1, while `src 14` in
+the same batch applied normally.
+
+**`FF AA` was never observed** in any test. The firmware does not *reject* reserved-key
+remaps — it silently ignores them. The `FF AA` strings in `AacKbHal_x64.dll` [S] presumably
+cover some other error path we never triggered.
+
+> **Any tool built on this protocol must verify by reading back or observing the key.
+> Never treat the echo as success.**
+
+---
+
+## 6. Reserved keys (firmware-enforced)
+
+From the official manual. These are the ones the firmware silently refuses to remap:
+
+```
+Fn + Esc                     Backtick (`)
+Fn + Shift + Esc             Tilde (~)
+Fn + 1/2/3/4/5/6/7/8/9/-/=   Function key switch (F1-F12)
+Fn + Ins                     Fn lock / unlock
+Fn + Windows                 Windows lock
+Fn + Tab                     Speed Tap
+Fn + Left-Alt                On-the-fly macro record start/stop
+Fn + A/S/D/F/G/H             Profile switch (H = default)
+Fn + Caps                    Factory default (hold until LEDs blink green)
+Fn + Q/W/E/R/T/Y             Play-Pause / Prev / Next / Mute / Vol- / Vol+
+Fn + U                       Stealth mode
+Fn + P                       Print screen
+Fn + Del                     Scroll Lock
+Fn + PgUp / PgDn             Home / End
+Fn + Left / Right            Light effect switch
+Fn + Up / Down               Brightness up / down
+Fn + R-Ctrl (Copilot)        Menu
+```
+
+`Fn + Caps` is a **hardware factory reset** — the recovery path that does not need Armoury
+Crate.
+
+---
+
+## 7. The Armoury Crate config file
+
+`C:\ProgramData\ASUS\Framework\keyboard\ROG FALCHION ACE HFX\fp_<profile>_config_<model>.xml`
+(model = `024080600167`). Encoding: **base64 → percent-decode → JSON**.
+
+```powershell
+$b64  = ([xml](Get-Content $f -Raw)).root.device_type.device.function.file_data
+$json = [uri]::UnescapeDataString([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64)))
+```
+
+Top-level: `nationCode`, `button`, `lighting`, `performance`, `lever`.
+`button.keyboardButton` holds **136 entries** = 68 keys x 2 layers, named
+`keyfunction_<col>_<row>`.
+
+### `source_key` encoding **[V]**
+
+```
+source_key = (row << 8) | col
+```
+
+Verified on **135 of 136** entries. Sole exception: row 1 / col 0 stores `0x0000` instead of
+`0x0100` (its Fn twin stores the expected `0x0132`).
+
+- `col` 0–11 → **base layer**
+- `col` 50–61 → **Fn layer** of the same key (`col + 50`)
+
+Layer assignment confirmed on hardware: editing `keyfunction_55_4` changed `Fn+M`, not `M`. [V]
+
+Populated matrix positions — 68 of a 7x12 grid, identical on both layers:
+
+```
+      col: 0  1  2  3  4  5  6  7  8  9 10 11
+row 1:      X  X  X  X  X  X  X  X  X  X  X  .
+row 2:      X  X  X  X  X  X  X  X  X  X  X  .
+row 3:      X  X  X  X  X  X  X  X  X  X  .  .
+row 4:      X  X  X  X  X  X  X  X  X  .  X  X
+row 5:      X  X  .  X  .  .  .  X  X  .  X  X
+row 6:      X  X  X  .  X  .  .  X  X  .  X  X
+row 7:      X  X  X  X  X  .  X  X  X  .  X  X
+```
+
+**Note:** this `(row, col)` space is *not* the same as the wire's flat source index (§4), and
+the two have not been reconciled. M is `row 4 / col 55` in the file but index `52` on the wire.
+
+### Field semantics **[V]**
+
+| field | factory | after a user remap |
+|---|---|---|
+| `selectedmode` | `"0"` base / `"7"` Fn | `1` |
+| `button_function` | `0` base / `7` Fn | `1` |
+| `target_key` | same as `source_key` | the target's `(row<<8)\|col` |
+| `keydata_1` | `-1` | mirrors `target_key` |
+| `actuation` | `10` | `10` |
+| `trigger_type` | `0` | `0` |
+
+So `mode` is the **binding type**: 0 = base-layer default, 7 = Fn-layer default,
+1 = user-assigned key.
+
+> Two hypotheses were tested and **disproved** during this work, recorded so nobody retries them:
+> - "`mode == 7` marks a locked key" — **false.** All 68 Fn entries carry mode 7 uniformly,
+>   including freely-remappable ones. It just means "Fn layer default".
+> - "matrix row-major order matches ascending `lamp_id` in the LED CSV" — **false.** The
+>   resulting key-name table was wrong; M is at `row 4 / col 5`, not where that predicted.
+
+---
+
+## 8. HAL API surface **[S]**
 
 `AacKbHal_x64.dll` is a COM in-proc server — only `DllGetClassObject`, `DllRegisterServer`,
-`DllInstall`, `DllUnregisterServer`, `DllCanUnloadNow` are exported, so there are no
-callable report-builder symbols. But it logs every method via `OutputDebugString` as
-`[<Class>][<Method>] ...`, which leaks the entire API.
+`DllInstall`, `DllUnregisterServer`, `DllCanUnloadNow` are exported, so there are no callable
+report-builder symbols. But it logs every call via `OutputDebugString` as `[<Class>][<Method>]`,
+which leaks the whole API.
 
-Device classes seen: `AacM601/602/603/605`, `AacM701/702`, `AacMA01/MA02`, `AacRA06-RA10`,
+Methods relevant here:
+
+```
+ChangeKey, ChangeKey_Normal, ChangeKey_DKS, ChangeKey_ModTap, ChangeKey_Toggle
+WriteMacroFlash, WriteMacroFlash_SupportFn
+SetActuation_AllKey / _PreKey        SetRapidTrigger_AllKey / _PreKey
+SetDeadZone_AllKey / _PreKey         Reset_Actuation_RapidTrigger, Reset
+SetSpeedTap, SwitchSpeedTap, ResetSpeedTap
+SetProfile, IsDefaultProfile
+GetDeviceInfo, GetVersion, GetMultiLayout, GetLanguage
+SetLeverMode / SetLeverSwitch / SetLeverChange / GetLeverMode
+GetKeyEvent, ReadEvent, InitReadEvent, SetKeyLog, GetKeyStats
+SetPollingRate, GetPollingRate
+```
+
+Device classes: `AacM601/602/603/605`, `AacM701/702`, `AacMA01/MA02`, `AacRA06-RA10`,
 `AacX801-X807`, `AacX901/X902`, `AacXA01-XA13`, `AacTUFK1/3/5/7`, `AacClaymore`,
-`AacRogKb_Base`, `AacKbFunction_*` (BLE / RF / Remake variants).
+`AacRogKb_Base`, `AacKbFunction_*`.
 
-Methods relevant to this project:
-
-| method | relevance |
-|---|---|
-| `ChangeKey`, `ChangeKey_Normal`, `ChangeKey_DKS`, `ChangeKey_ModTap`, `ChangeKey_Toggle` | **key remapping — the primary target** |
-| `WriteMacroFlash`, **`WriteMacroFlash_SupportFn`** | persist to flash; the `_SupportFn` variant is a direct hint that Fn-layer writes are a distinct, explicitly-supported path |
-| `SetActuation_AllKey`, `SetActuation_PreKey` | actuation point, global and per-key |
-| `SetRapidTrigger_AllKey`, `SetRapidTrigger_PreKey` | rapid trigger |
-| `SetDeadZone_AllKey`, `SetDeadZone_PreKey` | dead zone |
-| `Reset_Actuation_RapidTrigger`, `Reset` | restore defaults |
-| `SetSpeedTap`, `SwitchSpeedTap`, `ResetSpeedTap` | SOCD / speed tap |
-| `SetProfile`, `IsDefaultProfile` | profile switching |
-| `GetDeviceInfo`, `GetVersion`, `GetMultiLayout`, `GetLanguage` | handshake / identification |
-| `SetLeverMode`, `SetLeverSwitch`, `SetLeverChange`, `GetLeverMode` | the "lever" (touch strip / wheel) |
-| `GetKeyEvent`, `ReadEvent`, `InitReadEvent`, `SetKeyLog`, `GetKeyStats` | the 0xFFC0 input channel |
-| `SetPollingRate`, `GetPollingRate` | polling rate |
-
-`GetDeviceInfo` also mirrors device state into the registry at
+The HAL mirrors live device state into the registry at
 `HKCR\WOW6432Node\CLSID\{EB2FD7A7-8173-43F0-92E7-16A191FA9277}\0B051B7E`:
 `Keyboard_IsAlive`, `Keyboard_IsDefaultProfile`, `Keyboard_Keypad`, `Keyboard_InBTMode`,
-`Matrix_OnOff`. `Keyboard_IsAlive = 1` right now, i.e. the HAL is actively polling the board.
+`Matrix_OnOff`.
 
-### `FF AA`
-
-Nearly every method has three log strings: `[Class][Method]`, `[Class][Method] Timeout`,
-and `[Class][Method] FF AA`. The consistent pairing of `FF AA` with `Timeout` as the two
-failure paths suggests **`FF AA` is the device's error/NAK response prefix** — the first two
-bytes of a rejected command's reply. Not observed on the wire yet, but if it holds it is
-exactly the signal Phase 3.6 needs: a firmware-level refusal to remap a locked key should
-come back as `FF AA`.
+Capture these logs live with `tools/haltrace.ps1` to label packets by method name.
 
 ---
 
-## 4. Opcodes — STILL UNKNOWN
+## 9. Still unknown
 
-| Opcode | Meaning | Payload layout | Verified? |
-|--------|---------|----------------|-----------|
-| ? | ChangeKey | probably `(row<<8)\|col` source + target keycode | no |
-| ? | SetActuation_PreKey | | no |
-| ? | WriteMacroFlash (commit) | | no |
-| `FF AA`? | error / NAK response | | no — inferred from log strings only |
-
-Recovering these needs either a USBPcap capture of Armoury Crate or disassembly of the
-`AacM*Function` methods. The capture is far cheaper and is the next step.
-
----
-
-## 5. What this already rules in / out
-
-- **No blind fuzzing needed.** Channel, report size, and framing are known, so the first
-  capture will be immediately interpretable.
-- **No firmware work implied yet.** Nothing here suggests the Fn lock is in firmware. That
-  `WriteMacroFlash_SupportFn` exists as a *separate supported entry point* is mild evidence
-  the firmware can write Fn-layer bindings, which would put the lock in the UI.
-- **The `0xFFC0` channel is a bonus.** Input-only, carrying key events and stats — probably
-  how AC builds its per-key heatmap. Not needed for remapping.
+- **Target index encoding** (§4) — the one real blocker for a complete remap implementation.
+- Opcodes for actuation, rapid trigger, dead zone, speed tap, profile switch, polling rate.
+  All have known HAL method names; none captured yet.
+- What `51 22` does (seen once with `C8` = 200 — plausibly a brightness or percentage).
+- Whether a base-layer write uses a different subcommand than `51 21`.
+- The `9F` constant in byte 3 — never varied, meaning unknown.
+- How the file's `(row, col)` space maps to the wire's flat index.
+- `12 03 / 12 12 / 12 08 / 12 16 / 12 14` query meanings.
+- The `0xFFC0` event channel payload format (21-byte input reports).
+- MCU part number — case never opened. No DFU interface is exposed.

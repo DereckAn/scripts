@@ -3,21 +3,20 @@
   Starts a USBPcap capture of the Falchion Ace HFX config channel.
 
 .DESCRIPTION
-  Finds which USBPcap root-hub interface the keyboard is on and runs dumpcap against it.
-  MUST be elevated -- USBPcap interfaces are invisible to non-admin processes, which is the
-  single most common "Wireshark shows nothing" cause.
+  USBPcap is an *extcap* interface, not a native libpcap one. That means `dumpcap -D` will
+  never list it -- you must use tshark, which spawns USBPcapCMD.exe for you. This script
+  uses tshark throughout.
+
+  Run elevated. Enumeration sometimes works unprivileged, but capturing does not.
 
 .EXAMPLE
-  # list interfaces and which one the keyboard is on
-  powershell -ExecutionPolicy Bypass -File capture.ps1 -List
-
-  # capture until Ctrl+C
-  powershell -ExecutionPolicy Bypass -File capture.ps1 -Out ..\captures\01-ac-first-launch.pcapng
+  powershell -File capture.ps1 -List
+  powershell -File capture.ps1 -Out ..\captures\01-first-launch.pcapng
 #>
 [CmdletBinding()]
 param(
   [string]$Out,
-  [string]$Interface,
+  [string[]]$Interface,
   [int]$Seconds = 0,
   [switch]$List
 )
@@ -28,54 +27,49 @@ $VID = '0B05'; $PID_ = '1B7E'
 $id = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator)) {
-  Write-Host "NOT ELEVATED -- USBPcap interfaces will not be listed." -ForegroundColor Red
+  Write-Host "NOT ELEVATED -- USBPcap capture will fail." -ForegroundColor Red
   Write-Host "Re-run from an Administrator PowerShell." -ForegroundColor Red
   exit 1
 }
 
-$dumpcap = 'C:\Program Files\Wireshark\dumpcap.exe'
-if (-not (Test-Path $dumpcap)) { throw "dumpcap not found at $dumpcap" }
+$tshark = 'C:\Program Files\Wireshark\tshark.exe'
+if (-not (Test-Path $tshark)) { throw "tshark not found at $tshark" }
 
-# --- which root hub is the keyboard under? ---
+# --- is the keyboard here? ---
 $kb = Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like "USB\VID_$VID&PID_$PID_*" } | Select-Object -First 1
 if (-not $kb) { Write-Host "Keyboard $VID`:$PID_ not present." -ForegroundColor Red; exit 1 }
+Write-Host "keyboard : $($kb.InstanceId)" -ForegroundColor Cyan
 
-$hubPath = @()
+$root = $null
 $cur = $kb.InstanceId
 for ($i = 0; $i -lt 12 -and $cur; $i++) {
   $p = (Get-PnpDeviceProperty -InstanceId $cur -KeyName 'DEVPKEY_Device_Parent' -ErrorAction SilentlyContinue).Data
   if (-not $p) { break }
-  $hubPath += $p
+  if ($p -match 'ROOT_HUB') { $root = $p; break }
   $cur = $p
 }
+if ($root) { Write-Host "root hub : $root" -ForegroundColor Cyan }
 
-Write-Host "keyboard : $($kb.InstanceId)" -ForegroundColor Cyan
-Write-Host "hub chain:" -ForegroundColor Cyan
-$hubPath | ForEach-Object { "   $_" }
+# --- enumerate USBPcap interfaces via tshark (NOT dumpcap: extcap is invisible to it) ---
+$all = & $tshark -D 2>$null
+$cands = @($all | ForEach-Object { if ($_ -match '(\\\\\.\\USBPcap\d+)') { $Matches[1] } })
 
-# --- enumerate USBPcap interfaces ---
-$ifaces = & $dumpcap -D 2>$null | Where-Object { $_ -match 'USBPcap' }
 Write-Host "`nUSBPcap interfaces:" -ForegroundColor Cyan
-if (-not $ifaces) {
-  Write-Host "  (none) -- USBPcap driver not loaded, or a reboot is still pending." -ForegroundColor Red
+if (-not $cands) {
+  Write-Host "  (none)" -ForegroundColor Red
+  Write-Host "  Check that C:\Program Files\Wireshark\extcap\USBPcapCMD.exe exists." -ForegroundColor Yellow
   exit 1
 }
-$ifaces | ForEach-Object { "   $_" }
+$cands | ForEach-Object { "   $_" }
 
 if (-not $Interface) {
-  # USBPcapN maps to root hub N; match by the ROOT_HUB entry in the chain
-  $root = $hubPath | Where-Object { $_ -match 'ROOT_HUB' } | Select-Object -First 1
-  if ($root -and $root -match 'ROOT_HUB\w*\\(\d+)') { }
-  $cands = @($ifaces | ForEach-Object { if ($_ -match '(\\\\\.\\USBPcap\d+)') { $Matches[1] } })
   if ($cands.Count -eq 1) {
-    $Interface = $cands[0]
-    Write-Host "`nOnly one interface present; using $Interface" -ForegroundColor Green
+    $Interface = $cands
+    Write-Host "`nusing $($cands[0])" -ForegroundColor Green
   } else {
-    Write-Host "`nMultiple USBPcap interfaces. Determine the right one empirically:" -ForegroundColor Yellow
-    Write-Host "  start a short capture on each, unplug/replug the keyboard, and see which" -ForegroundColor Yellow
-    Write-Host "  one records the enumeration burst. Then pass -Interface \\.\USBPcapN" -ForegroundColor Yellow
-    if ($List) { exit 0 }
-    exit 1
+    Write-Host "`n$($cands.Count) interfaces -- capturing ALL of them (no guessing needed)." -ForegroundColor Green
+    Write-Host "decode.ps1 filters to the keyboard afterwards." -ForegroundColor DarkGray
+    $Interface = $cands
   }
 }
 
@@ -85,10 +79,13 @@ if (-not $Out) { Write-Host "`n-Out <file.pcapng> is required to capture." -Fore
 $dir = Split-Path $Out -Parent
 if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
 
-$args = @('-i', $Interface, '-w', $Out)
-if ($Seconds -gt 0) { $args += @('-a', "duration:$Seconds") }
+$a = @()
+foreach ($i in @($Interface)) { $a += @('-i', $i) }
+$a += @('-w', $Out)
+if ($Seconds -gt 0) { $a += @('-a', "duration:$Seconds") }
 
-Write-Host "`ncapturing on $Interface -> $Out" -ForegroundColor Green
+Write-Host "`ncapturing on $(@($Interface) -join ', ')" -ForegroundColor Green
+Write-Host "  -> $Out" -ForegroundColor Green
 Write-Host "Ctrl+C to stop.`n" -ForegroundColor Green
-& $dumpcap @args
+& $tshark @a
 Write-Host "`nsaved: $Out" -ForegroundColor Green

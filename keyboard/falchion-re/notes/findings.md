@@ -1,142 +1,153 @@
-# Falchion Ace HFX — Findings
+# ROG Falchion Ace HFX — findings
 
-Device: ROG Falchion Ace HFX 65% — USB `0b05:1b7e`
-Host: CachyOS. Firmware `bcdDevice = 1.59`.
-Capture host: Windows 11 LTSC box (Phase 3).
+Device: `0b05:1b7e` · firmware `bcdDevice = 1.59` · 68 keys, 65% layout
+Linux host: CachyOS · Windows capture host: Windows 11 LTSC
+Last updated: 2026-08-27
+
+**Full protocol spec: [protocol.md](protocol.md).** This file is the summary and status.
+
+---
+
+## THE ANSWER
+
+The original goal was to unlock the Fn keys ASUS won't let you remap.
+
+> **There are two independent locks, and both are real.**
+>
+> 1. **Armoury Crate UI lock** — refuses client-side and sends nothing on the wire.
+> 2. **Firmware lock** — the keyboard *also* filters reserved keys. It accepts the packet,
+>    echoes the header back, and silently discards the write.
+>
+> **Unlocking the reserved Fn keys requires Phase 4 (firmware modification).** There is no
+> protocol-level route; this was tested directly, not inferred.
+>
+> Everything *else* is reachable today with no firmware work: all non-reserved keys on both
+> layers, actuation, rapid trigger, dead zone, speed tap, profiles, polling rate, lighting.
+> That is the large majority of what Armoury Crate does.
+
+### How it was proven
+
+A controlled A/B. Two hand-crafted commands differing **only in the source-index byte**, sent
+back to back via `tools/send.ps1`, neither committed to flash, no Armoury Crate interaction
+in between:
+
+```
+51 21 11 9F 09 00 0A 00    src 17 = Q  (reserved: Fn+Q = Play/Pause)  -> ACK, NO EFFECT
+51 21 18 9F 09 00 0A 00    src 24 = I  (not reserved)                 -> ACK, APPLIED (vk 0x38)
+```
+
+Same result for `src 2` (the `1` key, reserved as F1): ACKed, `Fn+1` stayed F1, while `src 14`
+in the same batch applied normally.
+
+Supporting evidence for the UI lock, from `captures/01-first-launch.pcapng`: across a 403-second
+session the vendor OUT endpoint carried **exactly 19 commands**, all accounted for as handshake,
+three settings writes, and their commits. Every remap attempt Armoury Crate refused with a
+dialog produced **zero bytes** on the wire.
+
+### The trap this exposed
+
+**The device echoes the request header verbatim even when it discards the write.** The echo is
+a receipt of delivery, not of effect. `FF AA` never appeared in any test — the firmware does
+not reject reserved-key remaps, it silently ignores them.
+
+Any tool built on this protocol **must verify by readback or by observing the key.** Trusting
+the ACK will produce a tool that silently does nothing.
+
+---
 
 ## Hardware
-- MCU: **TODO (Phase 1.4 — open case)**
-- Flash size: TODO
-- SWD pads located: TODO (yes/no, where)
-- HE sensing IC(s): TODO
 
-## USB (Phase 1.1 / 1.2)
-- 5 interfaces total (`bNumInterfaces = 5`), all bInterfaceClass 3 (HID).
-- Vendor config-channel candidates (node numbers reshuffle on every replug — match by usage page, not hidrawN):
+- MCU: **unknown** — case never opened.
+- Flash size, SWD pads, HE sensing ICs: unknown.
+- **No DFU interface.** `dfu-util -l` finds nothing; no USB bootloader is exposed.
+  Implication: a chip dump via DFU is out. Any Phase 4 backup path is ASUS updater extraction
+  and/or SWD.
+- **Hardware factory reset exists:** `Fn + Caps`, hold until the LEDs blink green. Documented
+  in the manual. This is the recovery path that does not require Armoury Crate.
 
-| iface | usage page | reports | endpoints | file |
-|-------|-----------|---------|-----------|------|
-| 1.0   | 0x0501 (kbd) | 8B IN | 0x81 | — boot keyboard |
-| 1.1   | **0xFF00** | 64B IN + 64B OUT, no report ID | 0x85 IN / 0x0d OUT | report-desc-ff00.txt — **CONFIRMED as the AC channel**, see protocol.md |
-| 1.2   | 0x0C top-level; **COL03 = 0xFFC0** | 21B IN, input-only | 0x8c | media keys + vendor event channel |
-| 1.3   | 0x0501 (kbd) | 19B IN | 0x8e | — |
-| 1.4   | `0x0059` (LampArray) | 51B feature reports only | 0x0f OUT | ~~0xFF32~~ — earlier entry was misattributed, see protocol.md §2 |
+## USB
 
-- Report size: 64 bytes on both vendor channels.
-- DFU available: **NO** — `dfu-util -l` finds nothing; no USB bootloader exposed.
-  - Implication: Phase 2.1 chip dump via DFU is out. Backup path = ASUS updater extraction (2.2) and/or SWD (2.3).
+5 interfaces, all `bInterfaceClass 3` (HID). Verified from both `lsusb` on Linux and
+`HidP_GetCaps` on Windows:
 
-### Windows view (cross-check, 2026-08-27)
-Windows enumerates the same 5 interfaces and independently agrees on which are vendor-defined:
+| iface | usage page | reports | role |
+|---|---|---|---|
+| 0 | keyboard | 8B IN, EP 0x81 | boot keyboard |
+| **1** | **0xFF00** | 64B IN + 64B OUT, no Report ID, EP 0x85 / 0x0d | **config channel** |
+| 2 | 0x0C top-level; COL03 = **0xFFC0** | 21B IN, input-only | media keys + vendor event channel |
+| 3 | keyboard | 19B IN, EP 0x8e | NKRO |
+| 4 | `0x0059` LampArray | 51B feature only | Windows Dynamic Lighting |
 
-```
-HID\VID_0B05&PID_1B7E&MI_01            HID-compliant vendor-defined device   <- 0xFF00
-HID\VID_0B05&PID_1B7E&MI_04            HID-compliant device                  <- 0xFF32
-HID\VID_0B05&PID_1B7E&MI_02&COL03      HID-compliant vendor-defined device   <- 3rd vendor collection
-HID\VID_0B05&PID_1B7E&MI_00 / MI_03    HID Keyboard Device
-HID\VID_0B05&PID_1B7E&MI_02&COL01/02   consumer control / system controller
-HID\VID_0B05&PID_1B7E&MI_02&COL04      ROG FALCHION ACE HFX (mouse)
-```
+> **Correction to an earlier note.** Interface 4 was originally recorded as usage page
+> `0xFF32`, Report ID 2, 63B in/out, citing `report-desc-0.txt`. That does not hold:
+> `report-desc-0.txt` is 39 bytes and **no** interface on this device has
+> `wDescriptorLength = 39` (they are 68, 34, 182, 23, 327). Interface 4's descriptor is 327
+> bytes and Windows reports it as `0x0059` with feature reports only. `report-desc-0.txt`
+> decodes cleanly on its own, so it evidently **belongs to a different device** — the Linux
+> box also has a ROG OMNI RECEIVER attached. Re-dump it matching by usage page, not `hidrawN`.
 
-Note iface 2 is multi-collection on Windows (COL01–COL04); Linux `lsusb` reports only its
-top-level usage page (0x0C). COL03 is a third vendor channel not obvious from the Linux side.
-
-## Access (Phase 0.3)
-- udev rule `/etc/udev/rules.d/99-asus-keyboard.rules` sets MODE=0666 for 0b05:1b7e (usb + hidraw). Verified all Falchion hidraw nodes are crw-rw-rw-.
+Linux access: udev rule `/etc/udev/rules.d/99-asus-keyboard.rules` sets `MODE=0666` for
+`0b05:1b7e` (usb + hidraw). Verified.
 
 ---
 
-## Phase 3 environment (Windows capture host) — 2026-08-27
+## Status by phase
 
-| Component | Version | Notes |
-|---|---|---|
-| Wireshark | 4.6.8 x64 | must be launched **as Administrator** or USBPcap ifaces are hidden |
-| USBPcap | 1.5.4.0 | `USBPcap.sys` loaded, service Running |
-| Npcap | 1.88 | bundled with Wireshark |
-| Armoury Crate | 5.9.14 | Microsoft Store package `B9ECED6F.ArmouryCrate` |
-| ROG FALCHION ACE HFX module | 4.03.70 | AC per-device plugin |
-| ASUS Keyboard HAL | 1.2.97.0 | `AacKbHal_x64.dll` — implements the HID protocol |
-
-Gotcha: a non-elevated `dumpcap -D` lists only Ethernet/loopback. Elevation is what exposes
-the `USBPcapN` interfaces. Not a broken install.
-
----
-
-## AC on-disk artifacts (free intel, no capture needed)
-
-Installing Armoury Crate dumped the keyboard's whole config to disk. Encoding is
-**base64 → URL-encoded (percent) → JSON**.
-
-| Path | What |
+| phase | status |
 |---|---|
-| `C:\ProgramData\ASUS\Framework\keyboard\ROG FALCHION ACE HFX\fp_3_config_024080600167.xml` | full profile 3: 136 key entries + lighting / performance / lever |
-| `...\config_024080600167.xml` | profile list — 6 firmware profiles (Default + 1–5), all `FIRMWARE_PROFILE`, no SW profiles |
-| `C:\ProgramData\ASUS\ArmourySDK\Keyboard\ROG FALCHION ACE HFX\024080600167\Key\3\*.xml` | per-key XML, one file per `source_key` (UTF-16LE) |
-| `C:\ProgramData\ASUS\ROG Live Service\DeviceContent\0B051B7E\0B051B7E.csv` | 24x11 LED grid, phys mm coords, `lamp_id` + `virtual_key` per LED |
-| `C:\Program Files\ASUS\Aac_Keyboard\AacKbHal_x64.dll` | 1.5 MB, Nov 2024 — builds the actual HID reports |
+| 0 — setup | done, both hosts |
+| 1 — identify hardware | done except MCU part number (needs case opened) |
+| 2 — backup / recovery | **not done.** No DFU, so no chip dump. Firmware image not extracted. |
+| 3 — protocol RE | **done.** Transport, handshake, remap command, source indices all verified. Target index encoding open. |
+| 3.6 — the key test | **done. Firmware lock confirmed.** |
+| 4 — firmware modification | not started, and deliberately deferred |
+| 5 — build the tool | not started; unblocked for the non-reserved feature set |
 
-`024080600167` = AC's model/config ID for this board. `device key="7038"` (= 0x1B7E) and
-`device_type key="2"` (keyboard) appear in the XML wrappers.
-
-Decode one-liner (PowerShell):
-
-```powershell
-$b64  = ([xml](Get-Content $f -Raw)).root.device_type.device.function.file_data
-$json = [uri]::UnescapeDataString([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64)))
-```
-
-### Per-key record shape
-
-Top-level keys of the profile blob: `nationCode`, `button`, `lighting`, `performance`, `lever`.
-`button.keyboardButton` holds 136 entries named `keyfunction_<idx>_<grp>`:
-
-```json
-"keyfunction_0_1":  {"selectedmode":"0","defaultKey":"0",  "keydata_1":"-1","keydata_2":"-1","keydata_3":"-1",
-                     "button":{"source_key":"0","trigger_type":0,
-                               "normal":{"button_function":"0","target_key":"0","actuation":10}}}
-
-"keyfunction_50_1": {"selectedmode":"7","defaultKey":"306","keydata_1":"-1","keydata_2":"-1","keydata_3":"-1",
-                     "button":{"source_key":"306","trigger_type":0,
-                               "normal":{"button_function":7,"target_key":"306","actuation":10}}}
-```
-
-Observed so far (see **[key-matrix.md](key-matrix.md)** for the full decode):
-- Entry name is `keyfunction_<col>_<row>`; `col` < 50 = base layer, `col+50` = Fn layer.
-- **`source_key = (row << 8) | col`** — verified on 135/136 entries. Sole exception is
-  row 1 / col 0, which stores `0x0000` instead of `0x0100`.
-- 68 keys, each with both a base and an Fn entry (68 + 68 = 136). Populated matrix
-  positions are 68 of a 7x12 grid.
-- At defaults `source_key == defaultKey == target_key` everywhere; `actuation: 10`,
-  `trigger_type: 0`, `keydata_1..3: -1` on every entry.
-- `button_function` is a JSON string on base entries and a JSON int on Fn entries — a
-  parser must tolerate both.
-
-**Superseded:** an earlier reading of this file guessed that `selectedmode == 7` flagged
-locked keys. It does not — all 68 Fn-layer entries carry mode 7 uniformly, including
-freely-remappable ones. Mode 7 just means "Fn layer". A defaults-only dump does not reveal
-the lock.
-
-**Next, and it needs no capture:** change one key in AC, re-decode
-`fp_3_config_024080600167.xml`, and diff against `ac-profile3-decoded.json`. The entry that
-changes gives that key's true matrix coordinate. Then try the same against a locked Fn key —
-if the file is untouched, the lock is client-side and Phase 3.6 passes. Details in
-key-matrix.md.
+**Phase 2 is now the gating item if Phase 4 is ever attempted.** There is no verified firmware
+backup and no exposed bootloader, so Phase 4 currently has no recovery path beyond SWD. Do not
+start Phase 4 without resolving that.
 
 ---
-
-## Protocol
-| Opcode | Meaning | Payload layout | Verified? |
-|--------|---------|----------------|-----------|
-|        |         |                |           |
 
 ## Open questions
-- ~~Which vendor iface does Armoury Crate use?~~ **Solved: iface 1, usage page 0xFF00.** Confirmed by the device table in `AacKbHal_x64.dll` and by live `HidP_GetCaps`. See protocol.md §1.
-- Are the Fn keys locked in UI or firmware? → Phase 3.6.
-- ~~What is the `source_key` encoding?~~ **Solved:** `(row << 8) | col`. See key-matrix.md.
-- Does matrix row-major order match ascending `lamp_id`? The key-name table in key-matrix.md assumes so and is unverified.
-- Why does row 1 / col 0 store `source_key = 0x0000` instead of `0x0100`?
-- What are `actuation` units — raw ADC counts, 0.1 mm steps, or a 0–40 index?
-- ~~Does `AacKbHal_x64.dll` expose report builders as named exports?~~ **No** — COM in-proc server, 5 stock exports only. But its `OutputDebugString` logs leak the full method list; see protocol.md §3.
-- What are the actual command opcodes? → needs the capture. protocol.md §4.
-- Is `FF AA` really the device NAK prefix? → inferred from log strings, unverified.
-- `lever` top-level key — the volume/scroll wheel? Not yet examined.
+
+- **Target index encoding** — the one real blocker for a complete remap implementation.
+  Contradictory results: `tgt 4` produced `4` on one source key and `3` on another. See
+  protocol.md §4 for the clean experiment that would settle it.
+- Opcodes for actuation, rapid trigger, dead zone, speed tap, profile, polling rate — all have
+  known HAL method names, none captured yet.
+- What `51 22` does (seen once with `C8` = 200).
+- Whether base-layer writes use a different subcommand than `51 21`.
+- Meaning of the `9F` constant in byte 3 — never varied.
+- How the config file's `(row, col)` space relates to the wire's flat key index.
+- `0xFFC0` event-channel payload format.
+- MCU part number, flash size, SWD pad locations.
+- Why config entry row 1 / col 0 stores `source_key = 0x0000` instead of `0x0100`.
+
+## Disproved — do not retry
+
+- **"`mode == 7` marks a locked key."** False. All 68 Fn-layer entries carry mode 7 uniformly,
+  including freely-remappable ones. It means "Fn-layer default".
+- **"Matrix row-major order matches ascending `lamp_id` in the LED CSV."** False. The key-name
+  table it produced was wrong — M is at `row 4 / col 5`, not where that predicted.
+- **"No `FF AA` observed means the lock is UI-only."** False, and the reasoning was circular:
+  no rejectable command had been sent, so the absence of a NAK carried no information.
+
+---
+
+## Files
+
+```
+notes/
+  findings.md                  this file — summary and status
+  protocol.md                  full protocol spec
+  key-matrix.md                key index map + config file format
+  ac-profile3-decoded.json     decoded AC profile 3 (factory defaults baseline)
+  ac-profile3-keys.csv         all 136 config entries, flattened
+  usb-descriptors.txt          lsusb -v output (Linux)
+  report-desc-ff00.txt         iface 1 report descriptor (34B) — correct
+  report-desc-0.txt            39B, 0xFF32 — belongs to a DIFFERENT device, see above
+tools/                         see tools/README.md
+captures/                      gitignored (**/*.pcapng)
+snapshots/                     config snapshots for diffing
+```

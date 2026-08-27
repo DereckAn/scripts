@@ -1,5 +1,24 @@
 # ROG Falchion Ace HFX — Reverse Engineering Guide
 
+> ## STATUS — 2026-08-27: Phases 0–3 complete
+>
+> **Results live in [`falchion-re/notes/`](falchion-re/notes/). Read those first — this file
+> is the original plan, not the findings.**
+>
+> - [`notes/findings.md`](falchion-re/notes/findings.md) — summary, status, open questions
+> - [`notes/protocol.md`](falchion-re/notes/protocol.md) — full protocol spec
+> - [`notes/key-matrix.md`](falchion-re/notes/key-matrix.md) — key indices + config format
+> - [`tools/README.md`](falchion-re/tools/README.md) — tooling + environment gotchas
+>
+> **Phase 3.6 outcome: BOTH locks are real.** Armoury Crate blocks client-side *and* the
+> firmware silently ignores reserved-key remaps when sent directly. Unlocking the reserved Fn
+> keys **does** require Phase 4. Everything else (all non-reserved keys, actuation, rapid
+> trigger, dead zone, profiles, polling rate) is reachable today with no firmware work.
+>
+> **Before any Phase 4 work:** Phase 2 was never completed. There is no DFU interface and no
+> verified firmware backup, so there is currently **no recovery path except SWD**. Resolve
+> that first.
+
 **Goal:** Replace Armoury Crate with a cross-platform config tool, and unlock the Fn keys that ASUS won't let you remap.
 
 **Device:** ROG Falchion Ace HFX 65% — USB VID `0x0B05`, PID `0x1B7E`
