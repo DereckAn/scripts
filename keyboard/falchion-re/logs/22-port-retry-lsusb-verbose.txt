@@ -1,0 +1,458 @@
+
+Bus 006 Device 008: ID 0b05:1b7e ASUSTek Computer, Inc. ROG FALCHION ACE HFX
+Negotiated speed: High Speed (480Mbps)
+Device Descriptor:
+  bLength                18
+  bDescriptorType         1
+  bcdUSB               2.00
+  bDeviceClass            0 [unknown]
+  bDeviceSubClass         0 [unknown]
+  bDeviceProtocol         0 
+  bMaxPacketSize0        64
+  idVendor           0x0b05 ASUSTek Computer, Inc.
+  idProduct          0x1b7e ROG FALCHION ACE HFX
+  bcdDevice            1.59
+  iManufacturer           1 ASUSTeK
+  iProduct                3 ROG FALCHION ACE HFX
+  iSerial                 2             
+  bNumConfigurations      1
+  Configuration Descriptor:
+    bLength                 9
+    bDescriptorType         2
+    wTotalLength       0x008d
+    bNumInterfaces          5
+    bConfigurationValue     1
+    iConfiguration          0 
+    bmAttributes         0xa0
+      (Bus Powered)
+      Remote Wakeup
+    MaxPower              500mA
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        0
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      1 Boot Interface Subclass
+      bInterfaceProtocol      1 Keyboard
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      68
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x81  EP 1 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0008  1x 8 bytes
+        bInterval               1
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        1
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      34
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x85  EP 5 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               1
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x0d  EP 13 OUT
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               4
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        2
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength     182
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x8c  EP 12 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0015  1x 21 bytes
+        bInterval               1
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        3
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      23
+          Report Descriptors: 
+            ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x8e  EP 14 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0013  1x 19 bytes
+        bInterval               4
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        4
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      0 [unknown]
+      bInterfaceProtocol      0 
+      iInterface              0 
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength     327
+          Report Descriptor: (length is 327)
+            Item(Global): Usage Page, data= [ 0x59 ] 89
+                            (null)
+            Item(Local ): Usage, data= [ 0x01 ] 1
+                            (null)
+            Item(Main  ): Collection, data= [ 0x01 ] 1
+                            Application
+            Item(Global): Report ID, data= [ 0x01 ] 1
+            Item(Local ): Usage, data= [ 0x02 ] 2
+                            (null)
+            Item(Main  ): Collection, data= [ 0x02 ] 2
+                            Logical
+            Item(Local ): Usage, data= [ 0x03 ] 3
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0x00 0x00 ] 65535
+            Item(Global): Report Size, data= [ 0x10 ] 16
+            Item(Global): Report Count, data= [ 0x01 ] 1
+            Item(Main  ): Feature, data= [ 0x03 ] 3
+                            Constant Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x04 ] 4
+                            (null)
+            Item(Local ): Usage, data= [ 0x05 ] 5
+                            (null)
+            Item(Local ): Usage, data= [ 0x06 ] 6
+                            (null)
+            Item(Local ): Usage, data= [ 0x07 ] 7
+                            (null)
+            Item(Local ): Usage, data= [ 0x08 ] 8
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0xff 0x7f ] 2147483647
+            Item(Global): Report Size, data= [ 0x20 ] 32
+            Item(Global): Report Count, data= [ 0x05 ] 5
+            Item(Main  ): Feature, data= [ 0x03 ] 3
+                            Constant Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Main  ): End Collection, data=none
+            Item(Global): Report ID, data= [ 0x02 ] 2
+            Item(Local ): Usage, data= [ 0x20 ] 32
+                            (null)
+            Item(Main  ): Collection, data= [ 0x02 ] 2
+                            Logical
+            Item(Local ): Usage, data= [ 0x21 ] 33
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0x00 0x00 ] 65535
+            Item(Global): Report Size, data= [ 0x10 ] 16
+            Item(Global): Report Count, data= [ 0x01 ] 1
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Main  ): End Collection, data=none
+            Item(Global): Report ID, data= [ 0x03 ] 3
+            Item(Local ): Usage, data= [ 0x22 ] 34
+                            (null)
+            Item(Main  ): Collection, data= [ 0x02 ] 2
+                            Logical
+            Item(Local ): Usage, data= [ 0x21 ] 33
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0x00 0x00 ] 65535
+            Item(Global): Report Size, data= [ 0x10 ] 16
+            Item(Global): Report Count, data= [ 0x01 ] 1
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x23 ] 35
+                            (null)
+            Item(Local ): Usage, data= [ 0x24 ] 36
+                            (null)
+            Item(Local ): Usage, data= [ 0x25 ] 37
+                            (null)
+            Item(Local ): Usage, data= [ 0x27 ] 39
+                            (null)
+            Item(Local ): Usage, data= [ 0x26 ] 38
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0xff 0x7f ] 2147483647
+            Item(Global): Report Size, data= [ 0x20 ] 32
+            Item(Global): Report Count, data= [ 0x05 ] 5
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x28 ] 40
+                            (null)
+            Item(Local ): Usage, data= [ 0x29 ] 41
+                            (null)
+            Item(Local ): Usage, data= [ 0x2a ] 42
+                            (null)
+            Item(Local ): Usage, data= [ 0x2b ] 43
+                            (null)
+            Item(Local ): Usage, data= [ 0x2c ] 44
+                            (null)
+            Item(Local ): Usage, data= [ 0x2d ] 45
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0x00 ] 255
+            Item(Global): Report Size, data= [ 0x08 ] 8
+            Item(Global): Report Count, data= [ 0x06 ] 6
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Main  ): End Collection, data=none
+            Item(Global): Report ID, data= [ 0x04 ] 4
+            Item(Local ): Usage, data= [ 0x50 ] 80
+                            (null)
+            Item(Main  ): Collection, data= [ 0x02 ] 2
+                            Logical
+            Item(Local ): Usage, data= [ 0x03 ] 3
+                            (null)
+            Item(Local ): Usage, data= [ 0x55 ] 85
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0x08 ] 8
+            Item(Global): Report Size, data= [ 0x08 ] 8
+            Item(Global): Report Count, data= [ 0x02 ] 2
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x21 ] 33
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0x00 0x00 ] 65535
+            Item(Global): Report Size, data= [ 0x10 ] 16
+            Item(Global): Report Count, data= [ 0x08 ] 8
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0x00 ] 255
+            Item(Global): Report Size, data= [ 0x08 ] 8
+            Item(Global): Report Count, data= [ 0x20 ] 32
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Main  ): End Collection, data=none
+            Item(Global): Report ID, data= [ 0x05 ] 5
+            Item(Local ): Usage, data= [ 0x60 ] 96
+                            (null)
+            Item(Main  ): Collection, data= [ 0x02 ] 2
+                            Logical
+            Item(Local ): Usage, data= [ 0x55 ] 85
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0x08 ] 8
+            Item(Global): Report Size, data= [ 0x08 ] 8
+            Item(Global): Report Count, data= [ 0x01 ] 1
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x61 ] 97
+                            (null)
+            Item(Local ): Usage, data= [ 0x62 ] 98
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0xff 0x00 0x00 ] 65535
+            Item(Global): Report Size, data= [ 0x10 ] 16
+            Item(Global): Report Count, data= [ 0x02 ] 2
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Local ): Usage, data= [ 0x51 ] 81
+                            (null)
+            Item(Local ): Usage, data= [ 0x52 ] 82
+                            (null)
+            Item(Local ): Usage, data= [ 0x53 ] 83
+                            (null)
+            Item(Local ): Usage, data= [ 0x54 ] 84
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0xff 0x00 ] 255
+            Item(Global): Report Size, data= [ 0x08 ] 8
+            Item(Global): Report Count, data= [ 0x04 ] 4
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Main  ): End Collection, data=none
+            Item(Global): Report ID, data= [ 0x06 ] 6
+            Item(Local ): Usage, data= [ 0x70 ] 112
+                            (null)
+            Item(Main  ): Collection, data= [ 0x02 ] 2
+                            Logical
+            Item(Local ): Usage, data= [ 0x71 ] 113
+                            (null)
+            Item(Global): Logical Minimum, data= [ 0x00 ] 0
+            Item(Global): Logical Maximum, data= [ 0x01 ] 1
+            Item(Global): Report Size, data= [ 0x08 ] 8
+            Item(Global): Report Count, data= [ 0x01 ] 1
+            Item(Main  ): Feature, data= [ 0x02 ] 2
+                            Data Variable Absolute No_Wrap Linear
+                            Preferred_State No_Null_Position Non_Volatile Bitfield
+            Item(Main  ): End Collection, data=none
+            Item(Main  ): End Collection, data=none
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x0f  EP 15 OUT
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               4
+Device Qualifier (for other device speed):
+  bLength                10
+  bDescriptorType         6
+  bcdUSB               2.00
+  bDeviceClass          239 Miscellaneous Device
+  bDeviceSubClass         2 [unknown]
+  bDeviceProtocol         1 Interface Association
+  bMaxPacketSize0        64
+  bNumConfigurations      1
+Device Status:     0x0600
+  (Bus Powered)
+

@@ -1,0 +1,74 @@
+old_descriptor_hex=0632ff0974a101a10385027508150026ff00953f097581027508150026ff00953f09769102c0
+43b1a65ce7e9676f234da1e1f2160048f9e8aafac09d7f2762117816a0275734  -
+== current hidraw descriptor comparison ==
+hidraw0 different
+HID_ID=0003:00000B05:00001B7E
+HID_NAME=ASUSTeK ROG FALCHION ACE HFX
+HID_PHYS=usb-0000:0c:00.0-2/input0
+7a1f1f2ae7d77e32ca34290858a13176e151a9ad3b7f21e958369ff51128dfbe  /sys/class/hidraw/hidraw0/device/report_descriptor
+hidraw1 different
+HID_ID=0003:00000B05:00001B7E
+HID_NAME=ASUSTeK ROG FALCHION ACE HFX
+HID_PHYS=usb-0000:0c:00.0-2/input1
+9934571a970e8aec2ea91e12653fb190500332fadb5342a80a394aab8ab6125f  /sys/class/hidraw/hidraw1/device/report_descriptor
+hidraw10 different
+HID_ID=0003:0000046D:0000C548
+HID_NAME=Logitech USB Receiver
+HID_PHYS=usb-0000:0c:00.0-5.1/input0
+9894cee1062a2bc506b14b5b8433620f55afd7062fee45e942873d35689e6ac9  /sys/class/hidraw/hidraw10/device/report_descriptor
+hidraw11 different
+HID_ID=0003:0000046D:0000C548
+HID_NAME=Logitech USB Receiver
+HID_PHYS=usb-0000:0c:00.0-5.1/input1
+39e9098bbd3fd57a27be4cfb9d9878798966b3e8adc6e23a8803f807e89b9524  /sys/class/hidraw/hidraw11/device/report_descriptor
+hidraw12 different
+HID_ID=0003:0000046D:0000C548
+HID_NAME=Logitech USB Receiver
+HID_PHYS=usb-0000:0c:00.0-5.1/input2
+d0eeed76ea11ef958a199263e9be1a5399e7365c45d5c2726d1e6778140912ee  /sys/class/hidraw/hidraw12/device/report_descriptor
+hidraw13 different
+HID_ID=0003:0000046D:00000B0B
+HID_NAME=Logitech A50 X
+HID_PHYS=usb-0000:0f:00.3-2/input8
+6e8f1e3e59bdf99d6041ca2285d406ad52385a4cd31f100d2084fcb54052eefa  /sys/class/hidraw/hidraw13/device/report_descriptor
+hidraw2 different
+HID_ID=0003:00000B05:00001B7E
+HID_NAME=ASUSTeK ROG FALCHION ACE HFX
+HID_PHYS=usb-0000:0c:00.0-2/input2
+91830a7da3a7cddccc62f017dfc1259088dad9e2847e1171167f45720f310455  /sys/class/hidraw/hidraw2/device/report_descriptor
+hidraw3 different
+HID_ID=0003:00000B05:00001B7E
+HID_NAME=ASUSTeK ROG FALCHION ACE HFX
+HID_PHYS=usb-0000:0c:00.0-2/input3
+723a2aeca1141b583002f9324491d0b932bf21dad669237d8ba20d58b757ac09  /sys/class/hidraw/hidraw3/device/report_descriptor
+hidraw4 different
+HID_ID=0003:00001532:000000E6
+HID_NAME=Razer Razer Viper V4 Pro
+HID_PHYS=usb-0000:0c:00.0-3/input0
+5f791924b6d4b9c9f99bc50efb548f4cf0a8bd2ff35802fa75c327291b156586  /sys/class/hidraw/hidraw4/device/report_descriptor
+hidraw5 different
+HID_ID=0003:00001532:000000E6
+HID_NAME=Razer Razer Viper V4 Pro
+HID_PHYS=usb-0000:0c:00.0-3/input1
+83e5c819e656f9055e0d551d169e91e0528c76316e476f928d1876caac49e04b  /sys/class/hidraw/hidraw5/device/report_descriptor
+hidraw6 different
+HID_ID=0003:00001532:000000E6
+HID_NAME=Razer Razer Viper V4 Pro
+HID_PHYS=usb-0000:0c:00.0-3/input2
+a638a07d99bb58fa0734d44e7b20ac7327bd0b92aec401420ceafbae0c552915  /sys/class/hidraw/hidraw6/device/report_descriptor
+hidraw7 different
+HID_ID=0003:00001532:000000E6
+HID_NAME=Razer Razer Viper V4 Pro
+HID_PHYS=usb-0000:0c:00.0-3/input3
+4ee9aa0193623bf5fb1b08dec2cc7a5c415580c306064eaadd815d887b1c7ddc  /sys/class/hidraw/hidraw7/device/report_descriptor
+hidraw8 different
+HID_ID=0003:00001532:000000E6
+HID_NAME=Razer Razer Viper V4 Pro
+HID_PHYS=usb-0000:0c:00.0-3/input4
+054d8f8b6a072e9e57e9769f58d033a072162618741eeb95b6b55837b8e7b402  /sys/class/hidraw/hidraw8/device/report_descriptor
+hidraw9 different
+HID_ID=0003:00000B05:000019AF
+HID_NAME=AsusTek Computer Inc. AURA LED Controller
+HID_PHYS=usb-0000:0c:00.0-6/input2
+f78759b3d21d777b3b77e516524779e6048b6ecf73757b8147d238952abf02f4  /sys/class/hidraw/hidraw9/device/report_descriptor
+

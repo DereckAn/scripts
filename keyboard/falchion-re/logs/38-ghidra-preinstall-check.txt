@@ -1,0 +1,39 @@
+Date: 2026-08-29
+Scope: read-only host package and Java inspection; no installation performed
+
+Host:
+CachyOS Linux, Arch-compatible rolling release
+
+Commands:
+command -v pacman yay paru flatpak java javac
+pacman -Si ghidra
+pacman -Si jdk21-openjdk
+pacman -Q ghidra jdk-openjdk jdk21-openjdk jdk25-openjdk jre-openjdk
+java -version
+archlinux-java status
+
+Results:
+- `ghidra` is not installed.
+- Signed repository package `ghidra` version 12.1.2-2.1 is available from
+  `cachyos-extra-znver4`.
+- Ghidra download size: approximately 355.42 MiB.
+- Ghidra installed size: approximately 742.11 MiB.
+- Package dependency: `java-environment>=21`.
+- `jdk21-openjdk` version 21.0.11.u10-2 is available from `cachyos-znver4`.
+- JDK 21 download size: approximately 337.04 MiB.
+- JDK 21 installed size: approximately 507.56 MiB.
+- Current Java is OpenJDK runtime 26.0.2.
+- Installed Java package is `jre-openjdk 26.0.2.u10-2`; no Java development kit
+  package was installed at inspection time.
+- `archlinux-java status` reports `java-26-openjdk` as the default environment.
+
+Official references checked:
+- Ghidra Getting Started (requirements and installation):
+  https://github.com/NationalSecurityAgency/ghidra/blob/master/GhidraDocs/GettingStarted.md
+- Arch Linux Ghidra package:
+  https://archlinux.org/packages/extra/x86_64/ghidra/
+- Arch package file list confirms launchers `/usr/bin/ghidra` and
+  `/usr/bin/ghidra-analyzeHeadless`, plus a desktop entry.
+
+No packages were downloaded or installed, no system Java selection was changed,
+and the keyboard was not accessed.

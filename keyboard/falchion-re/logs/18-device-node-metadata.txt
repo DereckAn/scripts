@@ -1,0 +1,16 @@
+== /dev/hidraw0 ==
+ls: cannot access '/dev/hidraw0': No such file or directory
+stat: cannot statx '/dev/hidraw0': No such file or directory
+== /dev/hidraw1 ==
+ls: cannot access '/dev/hidraw1': No such file or directory
+stat: cannot statx '/dev/hidraw1': No such file or directory
+== /dev/hidraw2 ==
+ls: cannot access '/dev/hidraw2': No such file or directory
+stat: cannot statx '/dev/hidraw2': No such file or directory
+== /dev/hidraw3 ==
+ls: cannot access '/dev/hidraw3': No such file or directory
+stat: cannot statx '/dev/hidraw3': No such file or directory
+== /dev/bus/usb/006/002 ==
+ls: cannot access '/dev/bus/usb/006/002': No such file or directory
+stat: cannot statx '/dev/bus/usb/006/002': No such file or directory
+

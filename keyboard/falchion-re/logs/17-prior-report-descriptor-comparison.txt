@@ -1,0 +1,15 @@
+== prior report-desc-0.txt ==
+00000000: 0632 ff09 74a1 01a1 0385 0275 0815 0026  .2..t......u...&
+00000010: ff00 953f 0975 8102 7508 1500 26ff 0095  ...?.u..u...&...
+00000020: 3f09 7691 02c0 c0                        ?.v....
+== prior report-desc-ff00.txt ==
+00000000: 0600 ff09 01a1 0109 0275 0895 4015 0026  .........u..@..&
+00000010: ff00 8102 0903 7508 9540 1500 26ff 0091  ......u..@..&...
+00000020: 02c0                                     ..
+== sizes and hashes ==
+195 keyboard/falchion-re/notes/report-desc-0.txt
+190 keyboard/falchion-re/notes/report-desc-ff00.txt
+385 total
+6276aefdebd05870c32c92f210f33a9c648ea9f3255fabb137ece7f8338a1446  keyboard/falchion-re/notes/report-desc-0.txt
+0fbc0a12f6152aa00709dbe208bb6ccfeca51e02723615ae71290cb6b83bccde  keyboard/falchion-re/notes/report-desc-ff00.txt
+

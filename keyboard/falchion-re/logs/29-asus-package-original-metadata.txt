@@ -1,0 +1,9 @@
+== stat ==
+path=/home/dereck/Downloads/ROG_FALCHION_ACE_HFX.zip size=238446426 mode=644 owner=dereck group=dereck mtime=2026-08-29 02:44:35.261041963 -0600
+== file ==
+/home/dereck/Downloads/ROG_FALCHION_ACE_HFX.zip: Zip archive data, at least v2.0 to extract, compression method=store
+== sha256 ==
+a3e895dd4389e6725b15b0c0af6d6644a470a8359c4086a206490b74e9e9d7b9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX.zip
+== expected ASUS SHA-256 ==
+A3E895DD4389E6725B15B0C0AF6D6644A470A8359C4086A206490B74E9E9D7B9
+

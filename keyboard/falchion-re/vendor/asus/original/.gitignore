@@ -1,0 +1,2 @@
+# Preserve the large original package locally without accidental normal Git staging.
+*.zip

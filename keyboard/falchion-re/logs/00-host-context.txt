@@ -1,0 +1,15 @@
+2026-08-29T02:11:22-06:00
+Linux cachyos-x8664 7.2.0-1-cachyos #1 SMP PREEMPT_DYNAMIC Thu, 20 Aug 2026 06:06:30 +0000 x86_64 GNU/Linux
+NAME="CachyOS Linux"
+PRETTY_NAME="CachyOS"
+ID=cachyos
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;23;147;209"
+HOME_URL="https://cachyos.org/"
+DOCUMENTATION_URL="https://wiki.cachyos.org/"
+SUPPORT_URL="https://discuss.cachyos.org/"
+BUG_REPORT_URL="https://github.com/cachyos"
+PRIVACY_POLICY_URL="https://terms.archlinux.org/docs/privacy-policy/"
+LOGO=cachyos
+

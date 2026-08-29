@@ -1,0 +1,48 @@
+== /sys/bus/usb/devices/6-2:1.0 ==
+-- ep_81 --
+bEndpointAddress=81
+bmAttributes=03
+wMaxPacketSize=0008
+interval=125us
+type=Interrupt
+direction=in
+== /sys/bus/usb/devices/6-2:1.1 ==
+-- ep_0d --
+bEndpointAddress=0d
+bmAttributes=03
+wMaxPacketSize=0040
+interval=1ms
+type=Interrupt
+direction=out
+-- ep_85 --
+bEndpointAddress=85
+bmAttributes=03
+wMaxPacketSize=0040
+interval=125us
+type=Interrupt
+direction=in
+== /sys/bus/usb/devices/6-2:1.2 ==
+-- ep_8c --
+bEndpointAddress=8c
+bmAttributes=03
+wMaxPacketSize=0015
+interval=125us
+type=Interrupt
+direction=in
+== /sys/bus/usb/devices/6-2:1.3 ==
+-- ep_8e --
+bEndpointAddress=8e
+bmAttributes=03
+wMaxPacketSize=0013
+interval=1ms
+type=Interrupt
+direction=in
+== /sys/bus/usb/devices/6-2:1.4 ==
+-- ep_0f --
+bEndpointAddress=0f
+bmAttributes=03
+wMaxPacketSize=0040
+interval=1ms
+type=Interrupt
+direction=out
+

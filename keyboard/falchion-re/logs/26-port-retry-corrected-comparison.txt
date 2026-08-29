@@ -1,0 +1,19 @@
+== corrected USB descriptor comparison ==
+old_hex_chars=318 new_hex_chars=318
+USB DESCRIPTORS: IDENTICAL
+== corrected HID report descriptor comparisons ==
+interface=0 old_hex_chars=136 new_hex_chars=136 result=IDENTICAL
+interface=1 old_hex_chars=68 new_hex_chars=68 result=IDENTICAL
+interface=2 old_hex_chars=364 new_hex_chars=364 result=IDENTICAL
+interface=3 old_hex_chars=46 new_hex_chars=46 result=IDENTICAL
+== verbose lsusb comparison ==
+--- logs/15-lsusb-falchion-verbose.txt	2026-08-29 02:13:20.896908070 -0600
++++ logs/22-port-retry-lsusb-verbose.txt	2026-08-29 02:30:14.473303075 -0600
+@@ -1,5 +1,5 @@
+ 
+-Bus 006 Device 002: ID 0b05:1b7e ASUSTek Computer, Inc. ROG FALCHION ACE HFX
++Bus 006 Device 008: ID 0b05:1b7e ASUSTek Computer, Inc. ROG FALCHION ACE HFX
+ Negotiated speed: High Speed (480Mbps)
+ Device Descriptor:
+   bLength                18
+

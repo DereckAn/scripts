@@ -1,0 +1,8 @@
+# Generated raw slices; recreate them from the preserved vendor BIN.
+imports/*.bin
+
+# Ghidra project databases are local analysis state and can grow substantially.
+project/
+
+# Headless runtime logs are preserved separately under ../logs/.
+runtime-logs/

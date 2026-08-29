@@ -1,0 +1,64 @@
+== /sys/bus/usb/devices/6-2:1.0 ==
+bInterfaceNumber=00
+bAlternateSetting= 0
+bInterfaceClass=03
+bInterfaceSubClass=01
+bInterfaceProtocol=01
+bNumEndpoints=01
+modalias=usb:v0B05p1B7Ed0159dc00dsc00dp00ic03isc01ip01in00
+driver=/sys/bus/usb/drivers/usbhid
+== /sys/bus/usb/devices/6-2:1.1 ==
+bInterfaceNumber=01
+bAlternateSetting= 0
+bInterfaceClass=03
+bInterfaceSubClass=00
+bInterfaceProtocol=00
+bNumEndpoints=02
+modalias=usb:v0B05p1B7Ed0159dc00dsc00dp00ic03isc00ip00in01
+driver=/sys/bus/usb/drivers/usbhid
+== /sys/bus/usb/devices/6-2:1.2 ==
+bInterfaceNumber=02
+bAlternateSetting= 0
+bInterfaceClass=03
+bInterfaceSubClass=00
+bInterfaceProtocol=00
+bNumEndpoints=01
+modalias=usb:v0B05p1B7Ed0159dc00dsc00dp00ic03isc00ip00in02
+driver=/sys/bus/usb/drivers/usbhid
+== /sys/bus/usb/devices/6-2:1.3 ==
+bInterfaceNumber=03
+bAlternateSetting= 0
+bInterfaceClass=03
+bInterfaceSubClass=00
+bInterfaceProtocol=00
+bNumEndpoints=01
+modalias=usb:v0B05p1B7Ed0159dc00dsc00dp00ic03isc00ip00in03
+driver=/sys/bus/usb/drivers/usbhid
+== /sys/bus/usb/devices/6-2:1.4 ==
+bInterfaceNumber=04
+bAlternateSetting= 0
+bInterfaceClass=03
+bInterfaceSubClass=00
+bInterfaceProtocol=00
+bNumEndpoints=01
+modalias=usb:v0B05p1B7Ed0159dc00dsc00dp00ic03isc00ip00in04
+driver=(none)
+== /sys/bus/usb/devices/6-6:1.0 ==
+bInterfaceNumber=00
+bAlternateSetting= 0
+bInterfaceClass=ff
+bInterfaceSubClass=ff
+bInterfaceProtocol=ff
+bNumEndpoints=00
+modalias=usb:v0B05p19AFd0100dc00dsc00dp00icFFiscFFipFFin00
+driver=(none)
+== /sys/bus/usb/devices/6-6:1.2 ==
+bInterfaceNumber=02
+bAlternateSetting= 0
+bInterfaceClass=03
+bInterfaceSubClass=00
+bInterfaceProtocol=00
+bNumEndpoints=01
+modalias=usb:v0B05p19AFd0100dc00dsc00dp00ic03isc00ip00in02
+driver=/sys/bus/usb/drivers/usbhid
+

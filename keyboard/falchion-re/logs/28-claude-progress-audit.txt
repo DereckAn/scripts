@@ -1,0 +1,51 @@
+== Falchion workspace inventory ==
+d 0 2026-08-24T03:35:40.7388777710 keyboard/falchion-re/captures
+d 0 2026-08-24T03:35:40.7388777710 keyboard/falchion-re/dumps
+d 0 2026-08-24T03:35:40.7396389160 keyboard/falchion-re/tool
+d 134 2026-08-24T17:10:49.5562257720 keyboard/falchion-re/notes
+d 44 2026-08-24T03:35:40.7396465950 keyboard/falchion-re
+f 1699 2026-08-24T17:10:49.5483844440 keyboard/falchion-re/notes/findings.md
+f 190 2026-08-24T17:09:37.9813960720 keyboard/falchion-re/notes/report-desc-ff00.txt
+f 195 2026-08-24T03:45:00.0987363340 keyboard/falchion-re/notes/report-desc-0.txt
+f 20326 2026-08-24T03:43:32.2155914330 keyboard/falchion-re/notes/usb-descriptors.txt
+== relevant commits ==
+f28a7a2 (HEAD -> main) escribiendo todo loscomponentes que tenemos
+307e921 Empezando con el plan para modificar firmware the asus
+== tracked note sizes ==
+  467 16753 keyboard/falchion-ace-hfx-re-guide.md
+   38  1699 keyboard/falchion-re/notes/findings.md
+    3   195 keyboard/falchion-re/notes/report-desc-0.txt
+    3   190 keyboard/falchion-re/notes/report-desc-ff00.txt
+  457 20326 keyboard/falchion-re/notes/usb-descriptors.txt
+  968 39163 total
+== ignored/untracked Falchion files ==
+== updater/firmware/capture artifacts anywhere in workspace ==
+== offline analysis tools ==
+7z=/usr/bin/7z
+binwalk=(absent)
+file=/usr/bin/file
+strings=/usr/bin/strings
+objdump=/usr/bin/objdump
+ghidra=(absent)
+tshark=/usr/bin/tshark
+wireshark=/usr/bin/wireshark
+openocd=(absent)
+== safety/correctness review lines ==
+keyboard/falchion-re/notes/findings.md:22:| 1.4   | **0xFF32** | Report ID 2, 63B IN + 63B OUT | 0x0f OUT | report-desc-0.txt |
+keyboard/falchion-re/notes/findings.md:25:- DFU available: **NO** — `dfu-util -l` finds nothing; no USB bootloader exposed.
+keyboard/falchion-re/notes/findings.md:37:- Which vendor iface (0xFF00 vs 0xFF32) does Armoury Crate use? → Phase 3 capture decides.
+keyboard/falchion-ace-hfx-re-guide.md:13:Do the **non-destructive** work first. Every step in Phase 1–3 is read-only or reversible. You don't touch firmware until you've proven you need to, and you don't touch firmware without a backup and a recovery path.
+keyboard/falchion-ace-hfx-re-guide.md:54:SUBSYSTEM=="usb", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1b7e", MODE="0666"
+keyboard/falchion-ace-hfx-re-guide.md:55:SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1b7e", MODE="0666"
+keyboard/falchion-ace-hfx-re-guide.md:144:sudo dfu-util -a 0 -U dumps/falchion-stock-$(date +%F).bin
+keyboard/falchion-ace-hfx-re-guide.md:199:   detect the Falchion Ace HFX, and let it apply any pending firmware/config update so
+keyboard/falchion-ace-hfx-re-guide.md:287:- A **checksum/CRC** at the end (if your replayed packets get rejected but captured ones work, this is why — sum the bytes, try simple additive/XOR/CRC8 first)
+keyboard/falchion-ace-hfx-re-guide.md:302:d.write(report)
+keyboard/falchion-ace-hfx-re-guide.md:321:1. Send a remap targeting a locked Fn key, using the same packet structure that works for normal keys
+keyboard/falchion-ace-hfx-re-guide.md:348:- Set the load base address correctly (usually `0x08000000` for STM32; check your MCU's memory map)
+keyboard/falchion-ace-hfx-re-guide.md:375:sudo dfu-util -a 0 -s 0x08000000:leave -D dumps/patched.bin
+keyboard/falchion-ace-hfx-re-guide.md:378:openocd -f interface/stlink.cfg -f target/stm32XXx.cfg \
+keyboard/falchion-ace-hfx-re-guide.md:379:  -c "program dumps/patched.bin 0x08000000 verify reset exit"
+keyboard/falchion-ace-hfx-re-guide.md:450:- DFU available: yes/no
+keyboard/falchion-ace-hfx-re-guide.md:465:- **Phase 1–3 is a weekend or two** of methodical work if the protocol is simple, longer if there's a checksum or handshake to figure out.
+

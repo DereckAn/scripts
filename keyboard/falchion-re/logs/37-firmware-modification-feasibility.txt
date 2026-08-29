@@ -1,0 +1,102 @@
+Date: 2026-08-29
+Scope: offline firmware/updater static analysis plus primary-source research
+Keyboard access: none
+Packaged executables run: none
+
+== Official SONiX primary source ==
+
+Document:
+SNC7320 Series Product Brief, version 2.3, 2024-04-24
+https://www.sonix.com.tw/webapi/fl218645/snc7320_brief_data_sheet_V2.3.pdf
+
+Relevant vendor-stated facts:
+- Two independently programmable ARM Cortex-M3 processors, Core 0 and Core 1,
+  each up to 162 MHz.
+- One SWD port.
+- Core 0 has 64 KiB ROM and 64 KiB PRAM; Core 1 has 128 KiB ROM.
+- 256 KiB shared AHB SRAM and 4 KiB mailbox RAM.
+- External SPI-NOR controller supports up to 256 MiB, 1/2/4-bit modes, and XIP.
+- ROM/RAM remapping is supported.
+- The vendor SDK uses Keil MDK-ARM.
+
+Search queries were restricted to sonix.com.tw and targeted SNC73270/SNC7320,
+SWD, SPI NOR, PRAM, and memory-map information. The public brief did not expose
+a detailed numeric memory map or the SN_FWIN/SNC7320A container format.
+
+== Firmware code and responsibility evidence ==
+
+Local decoders identify valid Thumb-2/Cortex-M instructions at:
+- file 0x12f4: primary bootloader reset handler;
+- file 0x124a8: application candidate-A reset handler;
+- file 0x21000: start of candidate-B executable code.
+
+Region string classification:
+- 0x00000-0x0ffff: bootloader, USB stack, flash handling, boot priority, and CRC
+  verification messages.
+- 0x10000-0x1ffff: SN_FWIN header, vector table, fault diagnostics, RTOS hooks,
+  USB processing, and flash-ID handling.
+- 0x20000-0x3ffff: keyboard implementation including vendor feature reports,
+  key interfaces, Fn processing, macros, profiles, power management, and sleep.
+- 0x61000-0x70fff: exact copy of the first 64 KiB bootloader region.
+- 0x74000-0x78fff plus terminal data at 0x7bffc: additional initialized data/code
+  whose loading and integrity semantics remain unresolved.
+
+Plain identity data in candidate-B:
+- 0x3f665: `ASUSTeK`
+- 0x3f66f: `ROG FALCHION ACE HFX`
+- 0x3f4f3: unique adjacent little-endian USB VID:PID `0b05:1b7e`
+
+The candidate-A stored value at header +0x2c is standard IEEE CRC-32 over file
+0x11000-0x168ab and matches exactly: 0x5e75c17a.
+
+The candidate-B stored value 0x1a76c116 does not equal standard IEEE CRC-32 over
+its apparent file range 0x21000-0x3f753 (actual 0x60c95a7b), nor any natural
+prefix ending by 0x40000. Its interpretation remains unresolved.
+
+Terminal words 0xfb665ae3 and 0x5d27c5a9 do not match standard reflected or
+non-reflected CRC-32 over the obvious enclosing ranges tested. Do not patch or
+recalculate them using an assumed algorithm.
+
+== Cryptographic/signature evidence ==
+
+Static imports/strings were checked in:
+- FW_Update_Tool_M605.exe
+- InterruptTransfer.dll
+- peripheral_fwu_pro.exe
+- HidInterruptHandle.dll
+- M605_V01_00_58.bin
+
+No firmware-path RSA, ECDSA, AES, public-key, certificate-verification, or Windows
+cryptographic API dependency was identified. Certificate strings in the Windows
+binaries belong to their Authenticode code-signing certificates, not visibly to
+firmware authentication. The firmware contains CRC/checksum messages but no
+identified signature-verification message or embedded public key.
+
+This is evidence that modification may be accepted with corrected integrity
+metadata, but it is not proof that no hidden or device-ROM authentication exists.
+
+== Updater behavior evidence ==
+
+Relevant native updater strings, in operational order:
+- `Binary size is Wrong !!!`
+- `Same FW Version! Skip Update...`
+- `Jump to Bootloader`
+- `Start Erase...`
+- `Start Programming...`
+- `Read checksum...`
+- `Programming Success!`
+- `Programming Success! (no check checksum)`
+- `FW Update Complete!`
+- `Get New Version =`
+
+The updater accepts parameters that enable/disable version checks (`CVER`) and
+other behavior, and its command line declares boot/application sizes and page
+size. No signature-specific failure string was identified.
+
+== Safety conclusion ==
+
+The image is neither globally encrypted nor compressed and contains ordinary
+Thumb code and plain data tables, so offline binary modification is technically
+possible. Flashing a modified image is not yet safe because the complete
+integrity scheme, dual-core load process, downgrade behavior, recovery method,
+and preservation of the installed 1.59/U5 contents are unresolved.

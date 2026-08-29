@@ -1,0 +1,859 @@
+Warning: truncated output (original token count: 87823)
+Total output lines: 2162
+
+== directory ==
+path=/home/dereck/Downloads/ROG_FALCHION_ACE_HFX size=216 mode=755 owner=dereck group=dereck mtime=2025-09-05 10:44:26.000000000 -0600
+== files ==
+55 2021-06-07T08:08:02.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/keyboard/index.js.LICENSE.txt
+97 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_d_m-ee709.png
+97 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_d_m-ee709.png
+99 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_d_m-991b8.png
+99 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_d_m-991b8.png
+99 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_d_m-991b8.png
+99 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_d_m-991b8.png
+106 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_d_r-10a9e.png
+106 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_d_r-10a9e.png
+109 2024-08-20T17:05:24.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/Dependence.ini
+122 2024-09-26T14:48:18.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Setup.ini
+122 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_d_l-93aa8.png
+122 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_d_l-93aa8.png
+128 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_d_l-bf3d6.png
+128 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_d_l-bf3d6.png
+130 2024-03-01T09:59:10.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/Setup.ini
+130 2025-01-17T08:29:18.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/config.ini
+141 2024-04-12T15:19:22.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Process.ini
+141 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_n_m-6ad97.png
+141 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_n_m-6ad97.png
+145 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_n-ed17f.svg
+147 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/decrease_h_p-f74e9.svg
+147 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/decrease_n-9d9df.svg
+148 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_d-3cb5d.svg
+148 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_h-d9c43.svg
+148 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_p-eb6b6.svg
+153 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_d_l-b8304.png
+153 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_d_l-b8304.png
+154 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_n-f8472.svg
+155 2025-08-29T07:43:02.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/config.ini
+156 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/circle_h-39683.svg
+156 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/circle_p-39683.svg
+157 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_d-31d54.svg
+157 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_h-65e10.svg
+157 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_p-bc4c9.svg
+158 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_h_m-3e59d.png
+158 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_p_m-ad678.png
+158 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/line-32d83.svg
+158 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_h_m-3e59d.png
+158 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_p_m-ad678.png
+160 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_unck_h-d95cb.svg
+160 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_unck_n-fc7b5.svg
+161 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_n_m-92593.png
+161 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_n_m-92593.png
+164 2025-08-08T11:16:26.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/config.ini
+164 2025-08-08T11:16:26.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/config.ini
+166 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_d_n-817e4.svg
+166 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_d_s-04ea1.svg
+172 2025-01-17T08:29:18.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/Setup.ini
+172 2025-08-29T07:43:02.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/Setup.ini
+178 2024-08-13T16:54:12.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/config.ini
+178 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_h_m-8e8f4.png
+178 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_h_m-8e8f4.png
+182 2025-07-15T15:24:30.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/config.ini
+185 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/increase_h_p-890d1.svg
+185 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/increase_n-78f12.svg
+187 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_p_m-2d267.png
+187 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_p_m-2d267.png
+194 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/media_b-f7335.svg
+194 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/media_w-fe8ff.svg
+199 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_d_r-9f832.png
+199 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_d_r-9f832.png
+212 2025-09-05T11:11:02.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/VersionList.txt
+218 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_s-93220.svg
+223 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/default_b-7650a.svg
+223 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/default_w-6935f.svg
+224 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/musiceffect_h-d8707.svg
+224 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/musiceffect_n-aab24.svg
+224 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/musiceffect_s-9caeb.svg
+229 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_p_m-ae66d.png
+229 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_p_m-ae66d.png
+236 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/launch_b-bfb92.svg
+236 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/launch_w-ff128.svg
+238 2024-04-08T11:31:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/English.ini
+238 2024-04-12T15:19:22.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/English.ini
+238 2024-08-13T16:46:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/English.ini
+238 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/inputtext_b-8a054.svg
+238 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/inputtext_w-4f5fa.svg
+239 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/matrix_h-c1a6e.svg
+239 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/matrix_n-a95eb.svg
+239 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/matrix_s-24513.svg
+241 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_down-b64c4.svg
+243 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_h_m-bae7c.png
+243 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_h_m-bae7c.png
+243 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flashanddash_h-f8090.svg
+243 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flashanddash_n-10108.svg
+243 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flashanddash_s-1881f.svg
+244 2024-08-13T16:46:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/MainSdkFileList.ini
+246 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_d-a024b.svg
+246 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_n-a392e.svg
+247 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_system_bar_6.0back_p-23a0f.png
+249 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_h-9f23b.svg
+249 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_p-a5543.svg
+250 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_system_bar_6.0back_h-4aa52.png
+252 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_system_bar_6.0back_n-ea5e9.png
+256 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_n-a5f76.svg
+258 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/aurasync_h-3d622.svg
+258 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/aurasync_n-5fc7d.svg
+258 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/aurasync_s-bd835.svg
+258 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/breathing_h-249f6.svg
+258 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/breathing_n-43c02.svg
+258 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/breathing_s-6f555.svg
+259 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/customize_h-5c2b2.svg
+259 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/customize_n-ba98f.svg
+259 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/customize_s-6c817.svg
+260 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_n_m-06a6b.png
+260 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_n_m-06a6b.png
+274 2025-03-21T07:17:58.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/keyboard/MD5.ini
+281 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_u_n-bb39f.svg
+284 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_u_s-f087f.svg
+294 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rain_h-73d40.svg
+294 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rain_n-a8d88.svg
+294 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rain_s-fc937.svg
+299 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/zoom_b-3a90b.svg
+299 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/zoom_w-9a9aa.svg
+301 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/battery_mode_h-60545.svg
+301 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/battery_mode_n-1d846.svg
+301 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/battery_mode_s-6b147.svg
+311 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_n_r-7f275.svg
+314 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_h_r-52b93.svg
+314 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_p_r-e6402.svg
+314 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/mouse_b-2ef14.svg
+314 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/mouse_w-729da.svg
+323 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_n_l-5f85c.svg
+325 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/new_small-c6678.svg
+326 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_h_l-7522b.svg
+326 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_p_l-4b7ad.svg
+330 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/src/_ref/caps.json
+330 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_ck_h-a5d79.svg
+330 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_ck_p-3fc6f.svg
+338 2025-03-21T07:17:58.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/Setup.ini
+341 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/currents_h-0f6fe.svg
+341 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/currents_n-11472.svg
+341 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/currents_s-433a8.svg
+353 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/strobing_h-b32a3.svg
+353 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/strobing_n-7eeb1.svg
+353 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/strobing_s-a35cd.svg
+357 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.html
+357 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/index.html
+357 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/file_n-59a12.svg
+360 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/file_h-68f77.svg
+360 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/file_p-d7edf.svg
+360 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/marco_b-d60de.svg
+360 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/marco_w-6304d.svg
+361 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/circle_n-b5fe2.svg
+363 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/clear_n-5ab4a.svg
+373 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_r_two_n-b5e4f.svg
+376 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_r_two_s-129be.svg
+376 2025-09-05T10:57:40.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/config.ini
+380 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ic_charging-559e4.svg
+380 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ic_full-e594c.svg
+383 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ic_lowbattery-561cf.svg
+387 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/shortcut_b-5fc53.svg
+387 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/shortcut_w-a11c3.svg
+389 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/drizzle_h-564a9.svg
+389 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/drizzle_n-cc32b.svg
+389 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/drizzle_s-5d5cc.svg
+398 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/aura_icn-7c00a.svg
+419 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/statshotkey_b-6361c.svg
+419 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/statshotkey_w-77ea9.svg
+421 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/850-bundle-15a17.js
+426 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_off_n-a726b.svg
+429 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_off_d-b08ce.svg
+429 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_off_h-9c2fd.svg
+432 2024-08-13T16:46:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Process.ini
+446 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/129-bundle-dd7d2.js
+446 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tab_select-2ad3a.svg
+449 2025-08-29T07:43:48.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/service.js.LICENSE.txt
+457 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_d_r-245ba.png
+457 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_d_r-245ba.png
+459 2024-04-08T11:31:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/Process.ini
+473 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_r_d_n-f1dd9.svg
+480 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/moving_flash_h-034f9.svg
+480 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/moving_flash_n-703e4.svg
+480 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/moving_flash_s-04aad.svg
+490 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.css
+490 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_l_t_n-c6dd8.svg
+492 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/chatmode_h-669a3.svg
+492 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/chatmode_n-27186.svg
+492 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/chatmode_s-2fd04.svg
+493 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_l_d_n-7973c.svg
+493 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_l_t_s-a7157.svg
+496 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_r_t_n-e36e6.svg
+501 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/static_h-43ba0.svg
+501 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/static_n-e2322.svg
+503 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_p_l-658dd.png
+503 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_p_l-658dd.png
+507 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_n_l-d3d2b.png
+507 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_n_l-d3d2b.png
+509 2024-04-08T11:31:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/Setup.iss
+509 2024-04-08T11:31:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/Setup.iss
+513 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/random_h-aa05c.svg
+513 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/random_n-6e128.svg
+513 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/random_s-71fc9.svg
+514 2024-04-12T15:19:22.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Setup.iss
+516 2024-08-13T16:46:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Setup.iss
+527 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/hint_h-24a19.svg
+527 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/hint_n-bd4aa.svg
+527 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/hint_p-f8603.svg
+543 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_l_d_s-23fa5.svg
+545 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_r_d_s-903b3.svg
+547 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/cross_h-dbc5f.svg
+547 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/cross_n-69f42.svg
+547 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/cross_s-55c85.svg
+553 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_r_t_s-be4e3.svg
+554 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/left-299cf.svg
+560 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/aclogo_b-6b702.svg
+568 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_h-08340.svg
+568 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_p-166c8.svg
+579 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/bluetooth-d2712.svg
+581 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/help_h-41286.svg
+581 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/help_n-4a492.svg
+581 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/help_p-f73a2.svg
+586 2024-09-06T09:49:58.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/FrameworkFileList.ini
+588 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/right-3e343.svg
+599 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rainbow_h-9f649.svg
+599 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rainbow_n-fcea5.svg
+599 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rainbow_s-312e2.svg
+613 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/point-3077b.svg
+613 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_on_n-3077b.svg
+616 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_on_h-3f5c7.svg
+621 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/aclogo_w-52426.svg
+624 2024-08-13T16:54:22.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/layout.bin
+624 2025-07-15T15:24:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/layout.bin
+631 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/back_ic_n-0d6d1.svg
+641 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/comet_h-5e547.svg
+641 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/comet_n-7a347.svg
+641 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/comet_s-56def.svg
+643 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/current function-4d83c.svg
+646 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/back_ic_h-7c46e.svg
+646 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/back_ic_p-67409.svg
+652 2025-08-08T11:16:46.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/layout.bin
+663 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/disable_b-fcb06.svg
+663 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/disable_w-a793d.svg
+667 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/static_s-2bbf1.svg
+698 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/quicksand_h-96e9b.svg
+698 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/quicksand_n-69a98.svg
+698 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/quicksand_s-633e5.svg
+699 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_h_l-ba587.png
+699 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_h_l-ba587.png
+711 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/v_slider_n-4ea09.svg
+717 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/keyedit_check-4d0f8.svg
+732 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wing_h-03ac3.svg
+732 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wing_n-e1e49.svg
+732 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wing_s-0cca5.svg
+733 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow_n-1fd60.svg
+745 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_d-327f6.svg
+745 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_h-95a16.svg
+745 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_n-50f7e.svg
+745 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_p-fb80b.svg
+748 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/neon_h-ed35c.svg
+748 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/neon_n-7840a.svg
+748 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/neon_s-830c5.svg
+753 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/program_stop-8178f.svg
+770 2025-09-05T10:59:26.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/Setup.ini
+789 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/mid-400b4.svg
+797 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_h_r-1ec15.png
+797 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_h_r-1ec15.png
+799 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_p_r-98365.png
+799 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flux_h-c8543.svg
+799 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flux_n-77f64.svg
+799 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flux_s-bc0ca.svg
+799 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_p_r-98365.png
+804 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/smart_h-c3331.svg
+804 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/smart_n-d1894.svg
+804 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/smart_s-88af5.svg
+815 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/key_b-0d6b3.svg
+815 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/key_w-43e4b.svg
+830 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flare_h-94746.svg
+830 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flare_n-ff1df.svg
+830 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flare_s-7aa18.svg
+857 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/colorcycle_h-dcac9.svg
+857 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/colorcycle_n-583aa.svg
+857 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/colorcycle_s-f18ec.svg
+859 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_h_l-6892f.png
+859 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_h_l-6892f.png
+872 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_p_l-675e8.png
+872 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_p_l-675e8.png
+873 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pulse_h-4f642.svg
+873 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pulse_n-14cfb.svg
+873 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pulse_s-256df.svg
+881 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/starrynight_h-9d7ef.svg
+881 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/starrynight_n-acfc6.svg
+881 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/starrynight_s-1951e.svg
+895 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/wired-f7731.svg
+895 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twinkle_h-e9ce7.svg
+895 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twinkle_n-bd97f.svg
+895 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twinkle_s-6eba4.svg
+915 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_n_r-30cca.png
+915 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_n_r-30cca.png
+935 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flicker_h-29513.svg
+935 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flicker_n-f18f1.svg
+935 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/flicker_s-17ea6.svg
+957 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ripple_h-0fe9d.svg
+957 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ripple_n-16b4d.svg
+957 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ripple_s-91a65.svg
+965 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/beam_h-2a03b.svg
+965 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/beam_n-748c3.svg
+965 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/beam_s-ec8a5.svg
+998 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_n_l-2f1cf.png
+998 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_n_l-2f1cf.png
+1004 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twill-0965b.svg
+1007 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/glowing_yo_h-5e213.svg
+1007 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/glowing_yo_n-4d421.svg
+1007 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/glowing_yo_s-74410.svg
+1009 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/cyber_grid_h-c4a99.svg
+1009 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/cyber_grid_n-dd814.svg
+1009 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/cyber_grid_s-8b975.svg
+1016 2025-08-18T12:48:00.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardHal/RLSSetting.ini
+1027 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_d_c_r-1d190.png
+1027 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_btn2_d_c_r-1d190.png
+1032 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/brightness_b-9aaad.svg
+1032 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/brightness_w-81bc6.svg
+1033 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_n_r-1e6a0.png
+1033 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_n_r-1e6a0.png
+1048 2021-06-07T08:07:42.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/RLSSetting.ini
+1050 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/modtab_w-ce52a.svg
+1053 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sunset_h-1ce65.svg
+1053 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sunset_n-42515.svg
+1053 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sunset_s-e1beb.svg
+1054 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/modtab_b-6bb40.svg
+1079 2024-04-12T15:19:22.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/RLSSetting.ini
+1083 2024-08-13T16:46:38.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/RLSSetting.ini
+1089 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dks_w-a89ca.svg
+1093 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dks_b-08f43.svg
+1102 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow3-d2bc5.svg
+1111 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow1-345e0.svg
+1113 2025-04-17T16:50:48.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/RLSSetting.ini
+1116 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow4-cdae3.svg
+1128 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/arrow2-31740.svg
+1211 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/customize_btn_delete-207e1.svg
+1214 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_n-e2ab2.svg
+1241 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_h-60ef6.svg
+1241 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_p-d4839.svg
+1242 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_d-359f2.svg
+1244 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/spark_h-31ac0.svg
+1244 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/spark_n-3f16d.svg
+1244 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/spark_s-e9a03.svg
+1288 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/snow_h-6ec35.svg
+1288 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/snow_n-fcdd2.svg
+1288 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/snow_s-e171e.svg
+1324 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_p_r-54187.png
+1324 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_p_r-54187.png
+1337 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_h_r-5b44f.png
+1337 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_h_r-5b44f.png
+1346 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Simplified Chinese.ini
+1354 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Traditional Chinese.ini
+1370 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_p_l-ebae2.png
+1370 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_p_l-ebae2.png
+1374 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_h_r-6d377.png
+1374 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_h_r-6d377.png
+1385 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/v_slider_h_p-96593.svg
+1400 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tide_h-fcc3a.svg
+1400 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tide_n-1d3f2.svg
+1400 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tide_s-247e1.svg
+1404 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_n-e7cd5.svg
+1407 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_d-355c2.svg
+1407 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_h-eeffc.svg
+1407 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_p-792ce.svg
+1450 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_d-9f18d.svg
+1474 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_p_r-122a5.png
+1474 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn2_p_r-122a5.png
+1502 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_n-0cbb5.svg
+1505 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_h-6242a.svg
+1505 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_p-11c84.svg
+1509 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/850-bundle-3ba1e.css
+1515 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/lever_up-e753a.svg
+1525 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/edit_h-e5344.svg
+1525 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/edit_n-3ad42.svg
+1526 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Korean.ini
+1535 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/RF2.4GHz-30553.svg
+1590 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Japanese.ini
+1654 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/lever_down-8b263.svg
+1654 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/recative_h-e2dad.svg
+1654 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/recative_n-6082f.svg
+1654 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/recative_s-a68e1.svg
+1662 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/usb-18d4a.svg
+1697 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_n_l-1b01c.png
+1697 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_n_l-1b01c.png
+1763 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_n_r-b78c4.png
+1763 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_n_r-b78c4.png
+1789 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_n_c_r-f1d41.png
+1789 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_btn2_n_c_r-f1d41.png
+1797 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_clockwise_n-3a65a.svg
+1800 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_clockwise_s-a6b4f.svg
+1820 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_sw_refresh_h-48d72.svg
+1820 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_sw_refresh_n-2af20.svg
+1880 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Thai.ini
+1901 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn_virtual kb_h-cd367.svg
+1901 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn_virtual kb_n-bb764.svg
+1901 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn_virtual kb_p-4e0f4.svg
+1906 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/English.ini
+1906 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Russian.ini
+1930 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Danish.ini
+1932 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Indonesian.ini
+1940 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_anticlockwise_s-e1ed8.svg
+1950 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Czech.ini
+1966 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dir_anticlockwise_n-46548.svg
+1998 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Finnish.ini
+2008 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Romanian.ini
+2022 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.js.LICENSE.txt
+2030 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Portuguese.ini
+2030 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Ukrainian.ini
+2042 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Norwegian.ini
+2050 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Swedish.ini
+2082 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Turkish.ini
+2114 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Italian.ini
+2114 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Polish.ini
+2119 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/lever_mid-027a4.svg
+2144 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/French.ini
+2144 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Spanish.ini
+2192 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/German.ini
+2232 2023-08-11T08:49:04.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Dutch.ini
+2304 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tabbar_logo-ae56d.png
+2318 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/chromatic_tide_h-2e7cb.svg
+2318 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/chromatic_tide_n-1caa8.svg
+2318 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/chromatic_tide_s-5b7b8.svg
+2330 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_p_c_r-6ef05.png
+2330 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_btn2_p_c_r-6ef05.png
+2427 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_h_c_r-ad3c1.png
+2427 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/asus_ac_btn2_h_c_r-ad3c1.png
+2478 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/index.js.LICENSE.txt
+2530 2025-07-15T15:24:36.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Setup.ini
+2534 2024-08-13T16:54:18.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Setup.ini
+2612 2025-08-08T11:16:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/setup.ini
+2642 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/copilot_b-d6a4d.svg
+2643 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/copilot_w-447b8.svg
+3094 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_h_l-15ce9.png
+3094 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/btn1_h_l-15ce9.png
+3127 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/eva_n-b8f25.svg
+3172 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/eva_h-9cb29.svg
+3172 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/eva_s-63e48.svg
+3654 2025-09-05T11:11:46.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Config.ini
+3658 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wave_h-94d5d.svg
+3658 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wave_n-a38c4.svg
+3658 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wave_s-00cd3.svg
+3669 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/push-49cc9.svg
+3671 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/7086-bundle-ec767.js
+4288 2025-01-17T08:29:32.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/729-bundle-ce49c.css
+4421 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/eva2_h-b60a8.svg
+4421 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/eva2_n-82f8b.svg
+4421 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/eva2_s-63474.svg
+4925 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/openwebsite_b-2f925.svg
+4925 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/openwebsite_w-b4416.svg
+5340 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/lever_side-94f0a.svg
+6028 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/lever_side_wired-499ef.svg
+6244 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ROGFonts-Regular-ade61.woff
+7748 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ROGFonts-Regular-a90e2.otf
+8439 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/dynamic_light_logo-dbe6b.svg
+8661 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slide right-46957.svg
+8803 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slide left-513de.svg
+8811 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/single mid tab-e398d.svg
+9175 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/7086-bundle-06e10.css
+9918 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/74-bundle-ec8df.js
+9920 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/209-bundle-09f48.js
+9920 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/231-bundle-2c968.js
+9921 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/4041-bundle-cf46d.js
+9921 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/429-bundle-ae70e.js
+9921 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/6481-bundle-79619.js
+9921 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/8712-bundle-239bb.js
+9921 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/9694-bundle-5e069.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/2463-bundle-f2be1.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/3031-bundle-1f821.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/4909-bundle-af29e.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/5242-bundle-c56dd.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/6400-bundle-de991.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/8461-bundle-7016f.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/8662-bundle-6490a.js
+9922 2025-08-29T07:43:52.0000000000 /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/9313-bundle-f475a.js
+9923 2…57823 tokens truncated…6e82aa7da27902bde3381b2  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/marco_w-6304d.svg
+32d8a214eab975ade52fe62d218a0e5301c2ce406ee96f9124507b777ea94ed1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/matrix_h-c1a6e.svg
+a331bc3f0ebfd3c332574ad07c12302f2b2c1248ac8708e8643f563e5b80e426  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/matrix_n-a95eb.svg
+0d300c4e85833a639a0fb9d44028c9d6dcbee9939412c19f9ebbd8220c56dbfb  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/matrix_s-24513.svg
+1554015cf9750e95eb1daf777fcee0253a410f1c98ee5da705576d89982e65e5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/media_b-f7335.svg
+981437b7cbb2d82cc48c6b192387961a46a4b3a73f648e687f56e4a9ed5a855c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/media_w-fe8ff.svg
+1b7cf5d3c715ac3599400144304a3e8a046f3d4031629a81e3f8e385dde6290b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/mid-400b4.svg
+e249b79a4602e7d0ed1ee13b74b3565c14e96bebb76c28e29c7881e5b7ccf0c9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/modelapp_logo-8eed2.png
+0ff904394a137bf0bda4089d1e80fe2b88bf7f2a87780922464e3403e48e29c4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/modtab_b-6bb40.svg
+ca3f4c9234bfdcace699fb118bcb47becac03b7a7e6633350aa44bb3bf52b5d6  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/modtab_w-ce52a.svg
+eb7efd2b574e0a516fa405ea1e0396881b2138cd096c166ff2c2aeaae739b833  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_d-31d54.svg
+1677dc89698e7e2edec6c7c8c447ff3d46b0b94cb261325b58567659cb81c376  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_h-65e10.svg
+a1e7379907c6918ad310b9f05adbe1f64bf1278541eae7deff73611f9bcfd006  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_n-f8472.svg
+aef0a62a7ed3c6bda9afbee35e9ef9087cee71fa701834d7f42145b23fe8c672  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/more_p-bc4c9.svg
+1de49768d235d58b3be17cbc81c3321ee7fd7278ec6e46799817f27b77d6420d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/mouse_b-2ef14.svg
+5ef7c3f6218f96451f6e2b563624de19d49854b58d5b168db82045a448eb3b2a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/mouse_w-729da.svg
+94e9770e3cd6aab3e6eab2cf84990fa4b1c5505449381f845dc1639d11b4ee4a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/moving_flash_h-034f9.svg
+11ab4956ac50cb82e33aefc7984b6ea8f8e3bc36fc6ffed76861b846f792912e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/moving_flash_n-703e4.svg
+1dd71ef0e4aa7cbd0640140dfc9ed99eec1a6f6c878bc52adc60b94859172448  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/moving_flash_s-04aad.svg
+2853a32490442d67a4849ebf4670d892cb9617af2df6a595f8b2a394d8b268e3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/musiceffect_h-d8707.svg
+87d33be48d71edb43f0426c3c46a41d005a0460ef35aa266796bac3e163ce95a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/musiceffect_n-aab24.svg
+e295f595866cf67aac573b69378583ec83f1a90cdf3b5e6eb4a39db32796f9f6  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/musiceffect_s-9caeb.svg
+2f552c3e3eea281d7862a16c270d97ec6e861c8a4854f509fa1766b1f33bcf72  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/neon_h-ed35c.svg
+6239ae6a4997a07bc40a67222dd8c82ebf96c7109e11c54d679cc1279de56dda  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/neon_n-7840a.svg
+da05eaf2edecb8ccb4b5dc2a4e92d944c9db71a25965366c37fdef64e042fb13  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/neon_s-830c5.svg
+40fd7200623f726562b3b95ff1e4da2b7624a99eec714e51a99200565a74cc24  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/new_small-c6678.svg
+e3f655dc994b82d65d85ec9194d96f9e373c55b95ef91a5fd8337caafd3eee99  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Czech.xml
+14a3129deb06e93ee8e64d644a389db26f39bd1834601ad0bbf23613e571e68e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Danish.xml
+4ac6fcaa1e64ac8ea7f758180cf4beec8f850b9e7da9215a1d964832a243bc14  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Dutch.xml
+6150c520362726d9e7ae3908b2b1bedc1771008667ef547227d73e38e33035ff  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/English.xml
+d44831931b6335e88e6eac396cd289a2774b72d674e5aba67d45cc61fe8f4aaf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Finnish.xml
+c12dc253b462f6ec90292e726ed2c4f27dfcf032046d08b84d5b2568ebc205c0  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/French.xml
+88cfa9dcc3c16fe50be008556d56a65d5ea116777288698d1b2be2f4df23ff80  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/German.xml
+7c15a560775750efd77ac05352c41ef3bb20d885963da9a6b4b4259731b73d2a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Indonesia.xml
+5129435797dfdeb5490564c90b2bacfb2948824b99ce820903341dc64c227f11  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Italian.xml
+e433b9a7b747f1e5262b07b34516de995aba148d8220c4d12a32557bb1a7d9b6  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Japanese.xml
+5410df405a7f2a11ed63324488c404ff5c63ce3021acb5a7bb9e90f763dd30d7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Korean.xml
+23025cce2c41eb4da1da3890d6b12cb960c73458fba3d7aa656e3e5519ee4cf1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Norwegian.xml
+c44fe067b03c45c22c237879f1bf0d07027c53228811cd67275b155110f1ee8c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Polish.xml
+60250a4bb2b7e72f48a6164bed7b55ced8a8dcc41394a1dc35d9fc9eb330e93a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Portuguese.xml
+60eae61d6801626ea0b0f9dfa3bc7708bf8ae8b42e5581ac8f1102b920861928  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Romanian.xml
+afb92db38cd89577829e3b9329f8ccbeaeb059b6334cb2d6e7538d84ccf84363  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Russian.xml
+280191c3b91626ea8c5a6ba00f0404f364b8ae17fd48c13ad3e667250eda3a6b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Simplified Chinese.xml
+639a5f1e00c73fd4ed8dfec34e00703c572729aa25f341f1826fb39a1ea79319  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Slovakian.xml
+25c770b13f2deca0f84611e87a0d5736b054f11716b573bcf76f32c5dd419128  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Spanish.xml
+8bfcbba98c305f55c06afe0cfec9969ddbf6746695585c0b051eb821a28db976  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Swedish.xml
+3bc206f5bacdc50e2bf51b69802befb7f3e2eaf9b67b61497cbe2d81c56dc91e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Thai.xml
+7f79c02045b1c4cd8f3be81a4faa06080dcbbc4f00586a307e7dc53c2d7d013e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Traditional Chinese.xml
+46519f3aa30e35551f1c7a1ae6e886d4d7fad7628d5e8631f62700367229d819  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Turkish.xml
+2e22cbbd779dcd9856842a5ce45ce07cb45b196befee4a232cdecc18f11deadf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/node_modules/ac-components/src/_ref/language/Ukrainian.xml
+62a5e5492fe65193fc31b31f23f4bdf7e02bb03694fcb43455612447541abab7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_d-359f2.svg
+b3d1db5c7300a479655cbdb99f033af64925bfa438ddf729d9e9607da3bff906  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_h-60ef6.svg
+7a777f949f5ade4b6461c7475fabf88860259c207884b02edf3793ced8afeec7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_n-e2ab2.svg
+acf29c3ef9c87b59468afb607192ddff3184d14a412addbc230ade71e3fbe903  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/off_p-d4839.svg
+4088c452a40371a4739d3377eba69be41b37ba1cc7a4a08bea33b9a7c3b8940b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_d-9f18d.svg
+9e72b94d4832859f98ae8f358f0945b6878e9af040ff326c26634f16a5b8b9c1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_h-6242a.svg
+95c147efde1548121f70c662fe8d322fe157d4ba4fae9ffe4d4d7b69d5bb5a69  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_n-0cbb5.svg
+c5ddc5c1ddcf134b1f8a164a696d53b6cc24a9e4f8e49876e9b8e88bac517194  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/on_p-11c84.svg
+c022dfa6187ec8f3475dd025cff89ab7647964e54592bed488f201f0eab84399  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/openwebsite_b-2f925.svg
+faadf4ec4abcbf9c632e2ac882a165b877539970e53a9c03109867a299f4bbbc  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/openwebsite_w-b4416.svg
+2a0151fc20246c451a6351b4f82935310e001920a0082ae47b9a5a7edcd724e8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_d_n-817e4.svg
+67bccc599248532640a8f0c7d90fc8a1885ab9cab105baa83b1de911d1b0f83b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_d_s-04ea1.svg
+3720379385e94a2e35eccc1004d21856115b4e005461f81b5258fde100d99de1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_n-a5f76.svg
+6c483cf4828130ab4bd40b65b3151043ba237e1c9046c9abacc634a7ecc8ecf7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/patten_control_s-93220.svg
+5e1d8ceaed3e1f3d9b26b7a683f81496e13b51745f410b64e662716ad6a25b68  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/point-3077b.svg
+9643aa020b9109cbf14d9aa946f1fa7016684aca418e02b2afbbaaeba6062245  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pollingrate-82ba9.png
+c8b510fef9dec284f513fa29d4a23b0a8761618958d7bf04e6f65e6462df34ae  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/program_stop-8178f.svg
+c8c22bc8a90ddb361fb8e6229fd10a16d6d841455b753e00157ecc5b3bfd5db4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pulse_h-4f642.svg
+1104ee6d1d9619d5ab527e89d81efa53ada6901ad76201563a7a4b98ed953cd4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pulse_n-14cfb.svg
+a8db5dd2ceea954ab928b0e8f07b76d1755322bcc82f2185c85573fca2ef0220  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/pulse_s-256df.svg
+91cf863674a0e3ce19c59b9479108eb3ae955268dd63d30832e40c5219ebbd74  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/push-49cc9.svg
+2b3d9a131cda0d449fad9294cbce756cde77f871c8f94e65cc9b144dcf1fa354  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/quicksand_h-96e9b.svg
+2ade2dccd67ef7db58f153f80257e476db1f71320601a4f96be01c986ad8292f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/quicksand_n-69a98.svg
+565c5055cc412a4c9dd42f86f9cdf4adaa1937264c3e5c0c3174c402f9a4efd8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/quicksand_s-633e5.svg
+9819a436138f25327bd0669b228b1fc37b126f2149f39be60ee05b16a183a617  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_off_d-b08ce.svg
+aa7d0f0c0227cb488451a2a4ae13d0c2c3bc8e5b1a2c69bc498de566f295a5ef  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_off_h-9c2fd.svg
+60faa6d63ff37b638fbd83fc20f49115eac921d322ef3399bbdd873e530ccdf6  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_off_n-a726b.svg
+5d2027d92c768a103729521efca7894e53e0f67f29d3fc4bcc42419a27c5e069  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_on_h-3f5c7.svg
+5e1d8ceaed3e1f3d9b26b7a683f81496e13b51745f410b64e662716ad6a25b68  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/radio_on_n-3077b.svg
+95edde2f242847aa44701b03f72dfa9a2a56e643b32cbaad5397bb15a773fc87  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rain_h-73d40.svg
+f655d22672b50969621338156814a9ed6ab5d2d5077d460c9f21fd9f2797d4f9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rain_n-a8d88.svg
+8c491e53eb8336a7ddedd982782e79886c3e320e50c5965bf3febbb671eaf317  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rain_s-fc937.svg
+d7a65121978f29dd12cf290e1e6dce75a6da80ba76f230e86c50fbcb920585b8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rainbow_h-9f649.svg
+15bce83a79898fa92bd041f62eca340b29ff4f13608e99702f07599f4df702ab  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rainbow_n-fcea5.svg
+bd54ab5bd4fa74b627549547c982496c84a3dd51dca88ad93ed3b98dd70f8029  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/rainbow_s-312e2.svg
+2a88ee9fc56ec471264ab61ee01b8bf6620f3221c07aebeca40e4b17af724628  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/random_h-aa05c.svg
+78374169030722481a63314ed16c5e6910465e606dfb41279f936b67648b4ec3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/random_n-6e128.svg
+5094ca96af98df59f854e748058777ffe5a77b9b658f1b5cfae2394b187a6ebd  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/random_s-71fc9.svg
+33643439ce97e9f56df7c831cb2a78f16f77e3d0a6dff51db0e612649f97b977  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/recative_h-e2dad.svg
+3f41c74357d161e4bcb1d23192ef815dcedfe160917c892d15906ed62d358aa9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/recative_n-6082f.svg
+c59b17cb643d95b8afbeee28124bcce8210edd0f806c2886f28a1b6d6ab2e8db  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/recative_s-a68e1.svg
+4851edc181ac68cbab79152fd645cce646f2fcd2b9cac2add19d9bca90818890  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/right-3e343.svg
+7c08ba4f959581bc3c9e340fe885d1018c8d5c856466cc90b47a9c84a5a00e0b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ripple_h-0fe9d.svg
+14f166cf7fd62095cf1a756f5a06fcba2a576ba93f958b3eca134a22cfed0ac0  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ripple_n-16b4d.svg
+848c60e77ad08f7d74f9476a238489da0d044567c1b215602f62a8b67870b62f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/ripple_s-91a65.svg
+933b44b0622079c5a47c415691a93069113bc97ff801bb4cc5bf5aae568428c0  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_d_l-b8304.png
+5c441f7339a98f85bf527c7d5d946cffde69e0891e65a207b1f366cb091a351a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_d_m-ee709.png
+31c191ff2d833289aa2aca7526e306351f0003cd2af3c7fc13c50e8222ab3643  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_d_r-10a9e.png
+a5f4d9a502fb7e7759ac95b15c7e185420cb8fdcbea8876787b4e14e52a4be49  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_h_l-6892f.png
+09a8bcf242879c953881183f03e94fccf51545c2b24d28013ba0e70db1ed60a5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_h_m-3e59d.png
+fbf2b525173c17a32ceb1d6719965540ae67fab1b9ebd6764aa3b885d87d2d43  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_h_r-1ec15.png
+363757f473d521c1403275211441049349f179785b70da2a7589afef2cfce311  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_n_l-2f1cf.png
+44eec9666ebad5264ea17a58e4e9ac2cd372208e4324188d01b6a86ec188da80  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_n_m-92593.png
+bed6d1d60cc1b219e172c902fc82b4282ff500ef2c204b5991f31fc32dbedb19  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_n_r-30cca.png
+7e533d7d622d8262cc8ca2701aa612cc8dcb2e11317750c69e00415447bbc781  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_p_l-675e8.png
+5bec5af29777eb6a73123fec0497d706f11f625b2554983b3472868f6bda1d96  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_p_m-ad678.png
+55254720a71a5dcdce5c380c9fad0748dcae32d44c0cfc9e679fb24d6efbf95c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sbtn_p_r-98365.png
+a89caf459cf111d80c2582bda99bc6af6f80d951e88c5bb65e1de04c0699e377  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_d-355c2.svg
+18f8f628e7f917248c9dcfd56a91601dc304f3e602e4c7ab62aa15994bc4ea57  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_h-eeffc.svg
+b966f42f9c4dd03be9ec622cb2372174ffca62e4717373bb18b2ea30bc10acbc  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_n-e7cd5.svg
+ae2113387ddea916750dbc0e6d01fd55041ab3a8354698896c9df19f22958f18  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/scenario_pf_p-792ce.svg
+bfba2000e48a837e426ed74d7f644516077c0c1c16f045269164a69884feaa85  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_d-a024b.svg
+9788ddfeae76dba59bb2102408dbd69c92d407317eaa0124fe90e0ee3914de4e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_h-9f23b.svg
+66838a7a0efde86c89278566bea9efc73e91ad39a21449523e5033e0b9c92566  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_n-a392e.svg
+2f8986a0e4914ceb1e4eeb284837d20876da8a15a750aba02cfe21ef59d90263  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/select_p-a5543.svg
+bcb2cbcdebff3febeab6a30a0a1abcb0c6473c7a91c5916777d8c105c9ed386c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_ck_h-a5d79.svg
+67088eaffeae6aa3309c692af7e314f5c159f46cbea340484d17f3bfda240f4c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_ck_p-3fc6f.svg
+e37b529e7aa8f0d878c138606a384dbe584bc036a79cc992bba49a29ded4f6ae  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_unck_h-d95cb.svg
+712002d1a83d4e513374bf0a094c7efde69c328658439261165ed637b37bc93f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/selection_unck_n-fc7b5.svg
+4b4cce2256a14efd6e46802dd5ceb938b2a5d73eba8b7c284018057c8def5391  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/shortcut_b-5fc53.svg
+3f713548fbc5bbcd8abacbf2d1b3f7aea0b76503f95cee020c6cc1a0cff1fbf1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/shortcut_w-a11c3.svg
+b152dd7733cfb523f8d9a80795c09133f0ea611dc99720387d612aaadbb48d59  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/single mid tab-e398d.svg
+e3bb0ab9f24dfc3e6acd298893c0709abad348b0ca3c314ed21b8eed2f308826  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slide left-513de.svg
+a5f1565946fd330116b849eedea415bedb5d2f69a710793859ed476e1011ac01  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slide right-46957.svg
+05169d96c6584b0a2f16a156944d0ed9c41f7aef95b2007ba1b48575ad21ec77  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_d-327f6.svg
+ca85170e11277fb99f154ac2ab703bbac9cab182c9925ec854f7b138b6bbe28e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_h-95a16.svg
+16cf92d2d0589ee2a6a56ee5927937f78559126dcac992f21804f128b1b42142  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_n-50f7e.svg
+9242839c0a864588ea8527a15eb1106d6ecd16412d83e03f2cab052a8208edfe  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/slider_p-fb80b.svg
+0537b4e86e259d015b416d5771cf79fa407bf4d4d15764c9c5265e081b97145a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/smart_h-c3331.svg
+48b153969df0c302b808a25b4d7e8499f496dbf0ba8a9b3c6dc060b9a572043c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/smart_n-d1894.svg
+7079aaf72c7c05a350065d4bd2683f9a81b451d08631acb75e8dd155428079fa  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/smart_s-88af5.svg
+062edfb8d3562fa183f654b27705b9456a919de67b4751c19dded29369987354  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/snow_h-6ec35.svg
+e483f4225437ab55a28949b623134d73a17eba3f4dfae467c74ad91eb386c477  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/snow_n-fcdd2.svg
+10b2f723661e954a80b71670e9e6063cf1634315b248dba5caa6e39610e92791  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/snow_s-e171e.svg
+c2b6074790e762cf6eedd8e2c95d8c17a8a145403dafae490d754e07731d99b5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/spark_h-31ac0.svg
+b94b5efaec2e7ccb5953fe18ccce6fbd7576b455541d56da0d9a833a63e0a8a3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/spark_n-3f16d.svg
+57bce1b292a891b44ffa7ca4b9620b31d273f880f26078696e8fce34210c3ac2  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/spark_s-e9a03.svg
+604707dc33c69da2faff933bfa80c02088f47283b58a2662b9ede861fb65ffd7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/src/_ref/caps.json
+3de3eccd1a1f9d9de7364aae4375cecdbbcb77e42bc2b4c638a5ce0fc751a4b2  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/src/_ref/default.json
+11bd6fe6a2a8a54e7675cf4dab77c97f8405eaa1bc2f9d85ed30bde55374d827  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/starrynight_h-9d7ef.svg
+cc469e2a190bfeae501b5845b14d6e4a25266073dc2b9ad53f63140f7c49e355  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/starrynight_n-acfc6.svg
+11e91de9cccfa6e0b70e1ee02d6da7341db6ed7517ad20c810bcdf5d153d7b1c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/starrynight_s-1951e.svg
+2095d93be489af21686ed5204a4bd15952340c7fd6a0c32cd5116401af8230e7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/static_h-43ba0.svg
+6a8e7a43cc42dd134185146dd1e8c2e36d2190f78112bb78c1f85aabf4597165  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/static_n-e2322.svg
+d31a3f7313c8e2b5e665836d0d28af53578aacc95808e377fbd5aa6e2514179b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/static_s-2bbf1.svg
+1207b1ec0ab53cf78544776ff0f7f344c8f0f3c09ca80f69d28d632bb484e5f6  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/statshotkey_b-6361c.svg
+4997456b39bac6ded28dfae3ee8ef5aa048cd2fb53cbff65300ca1b383212725  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/statshotkey_w-77ea9.svg
+f6d5eab41d4dc347b4d97507bd6890610e1a27c886e9335f4434351911d1998b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/strobing_h-b32a3.svg
+36753bc0e8232b5c30e4ef720869c89ea90958719294c69af6933ddcee6e7f5b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/strobing_n-7eeb1.svg
+449166a88c46be9b2bbb44d0c0551ffde33ab714beb045c681adf4941943959a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/strobing_s-a35cd.svg
+e69df750e561188c6d7015639dd2c1b891a01f9bd036d9bbe942f905ac9c7d97  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sunset_h-1ce65.svg
+c20c26663dfb810db58aa1f1165bb91f505c081eb9e30f52be83ffc284d66f98  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sunset_n-42515.svg
+0c36dcfffcb7d7615af12755487b0e63ab486c15af587d4655a22526240faa20  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/sunset_s-e1beb.svg
+16f5769bc313d36250dda42fba8da52ace692e264d404bda85de4ee4382c7a70  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tab_select-2ad3a.svg
+9130e7bee32e1023b7c644c77fb4b502b89b53577063ad4c752c4338875dc5a4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tabbar_logo-ae56d.png
+bf23816575fb343f5fe917250248176970d11139e552c9cafd2bf89cf2f8454f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tide_h-fcc3a.svg
+79cd47d5cb714f615c2d857de1502e572d2444198f36eb6039ef1cbbb9ac029b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tide_n-1d3f2.svg
+5644242751fbcc65ba0f696a2546be294786b9e072ec6ccc4d631fe873554f24  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/tide_s-247e1.svg
+8483ba31e066558ce277bbf8c6565cfced0e8ca1da6af70cee2d30efac9f6f7d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twill-0965b.svg
+4b372fa1fc19c0a35573bc6bf717e58ae9cc78e2a101ae1899cac48767a75097  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twinkle_h-e9ce7.svg
+e58232022131380bf36861f585be23ced74d70db5d3fc2995395a91df7ec198b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twinkle_n-bd97f.svg
+32b6509e9b8d6b1d51588f75f8b5747fc5a33c777745d39cb4a24a778134e935  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/twinkle_s-6eba4.svg
+475b2f802de9df7ca998f00abb1e5595dbb9af210c6989d2dcdb3dc75b6f6e46  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_d-3cb5d.svg
+0503985a5d77c07c3b5f6d548947f60b7c559d54723383236da7bb27c6d8ed9e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_h-d9c43.svg
+3c6e95c6b8abd70ab23967eded410754149b6fc1646b58d367e31bd807c4983c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_n-ed17f.svg
+b5a9cd4d0440de068c7cd64405f957dae71e1d9a9cf89eea15911988cad2db40  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/unselect_p-eb6b6.svg
+273731e9e51e6dcb9376a4d01f352a0741bbc4aec83871827f6652f6e7031ee1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/update-422d1.png
+e8f1ce500c2076353dd6e3ec06cdafd4ab72d2dfddfe44ac6db32673d21ef4bb  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/usb-18d4a.svg
+73a70752da0d9fb925168b3198403689ab19420af49c656c8c03f4498fad7e23  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/v_slider_h_p-96593.svg
+0553298c65211083343ea113da2ca60f14d7ab3bb8d524b4ac031a1fadf81edd  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/v_slider_n-4ea09.svg
+df70c534137ef5ab388f3ecb43ab009ba3f3060a3f1cce9944d08ca182c34ef5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wave_h-94d5d.svg
+0e7fdc38d6bc0c152de774403c279a6500641ea1c171b7aa803bc5e4a6d838d1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wave_n-a38c4.svg
+062ae987cf08c116233c394fb7976f10fe796453c91c6c18513a9f4e6904eb5d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wave_s-00cd3.svg
+5c3813f6ec2cfdcfffbdad9797fe4fdc52de1efbddab675a810243d646f48669  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wing_h-03ac3.svg
+70c958aba4091b5e171b87c63a9f32c82fde129104ffcffffbfe71c8c0ed45f7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wing_n-e1e49.svg
+13569ec20e15a81d229e62978816f8547e23184e7616d94dfee9bdec3a9f4674  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/wing_s-0cca5.svg
+503a3757a16b637b8551a6ce9c48b59de28ce4735ba311913ae126f2ed3ee5b4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/zoom_b-3a90b.svg
+7ce6edd90df849277f35908e5f9f194aa294bd772ebe11486178b48ecece1b03  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/resources/zoom_w-9a9aa.svg
+d3ca4cba6a1c36ec14e2a6529996672709076ea6a91adfa0818b3989ee8b41dc  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/service.js
+2cf873b4e14bce3c42bc4cb904aa144490ab71ddfc5b331ec5bf3cdecae8aeca  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/7038/service.js.LICENSE.txt
+3e03afad6826998327d33bef13ddbe73284c64b03d31b929f941ea00a34391b3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/CheckSumHelper.dll
+fef2cd58609cff9d9bf30bafdf2946626a44d7d47eb9ed48c887eed42ea4b21a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/Setup.exe
+9f5fd3cddc463cd93fa652fdb4b4c6ac4470e3fadf78d77c40aa946db834f382  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/7038/Setup.ini
+4a588b152061e67a9fa39fb169c676166a61f251bd6ac6d51cf4a5276486ed86  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/DeviceUninstall.dll
+4af9c05e010ebd5d8e2bc34388d627621538d2bce9b49c40474f18bdbe5cfb4e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/HomePage.exe
+13d95b5348fbeb1c08e1c5de0e234780a4b66218043cfbbc87ad02d0e0b6598f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/Setup.exe
+2475495b6e888ec72d56bb900edfe9733d2d49b4b658a67d2f37cb638d7598ca  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/Setup.ini
+4b105b5625fc106f763a624b7f91ff3c3ea96e5e608b2b01df7268c5f037db05  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/Shortcut.exe
+3e03afad6826998327d33bef13ddbe73284c64b03d31b929f941ea00a34391b3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/CheckSumHelper.dll
+fef2cd58609cff9d9bf30bafdf2946626a44d7d47eb9ed48c887eed42ea4b21a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/Setup.exe
+10a3a42adf9f6b53629cb2da6247fd27f95091ad15170a4bbc9dde2f7b30e353  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/Setup.ini
+ce3edbffd0a68ffd4d13a475c8b21af1a7196c1c390142e08159e59f37378e50  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/129-bundle-dd7d2.js
+0690b03584499cf6cc8443a585fd98a3b1b2ca2411d1993a7c2747153976d7de  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/729-bundle-67abc.js
+20b7a5117299e21cc62d8cb572212117d3360ec706ec8c4a91938c776603f49d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/729-bundle-ce49c.css
+4eb0816df35ed99db9bcad334f1332d8e9c339b2349375e3186e21b7745087bb  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/850-bundle-15a17.js
+5ca68b794185694efce4db29f50b3c124106ce6b6097d97374e95517f83e1ca8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/850-bundle-3ba1e.css
+2db137d78e31c8a83581b5c9201a8fb745a5b3d8714574e8dfb6c27db204ff2d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/MD5.ini
+225e0f45550e89a9f7b0f90c563183fd37e755a13072c7444ca3594af79084e7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/config.ini
+ceb45b88cfce191074da1d6509910ab4870028c0162ed7ff306b4c1932abc763  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.css
+1f43f085ca02fc25e7e8fbea53803d795deb1325fc77b0646ae0e12e80570873  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.html
+8f102ab7f445ac5ccf83cf9b8c86ab59aa907bd24388d23fd396d2b417c48f88  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.js
+7f5919fb1b697fc4afe622c6bcaa4124fb2d2619cc76a34b9a89aa15f2f23e81  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/index.js.LICENSE.txt
+a389a4aae50f9c5ca087c98c2e6e85e67b6c81f8adfd85136207477303da43be  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/10up-40577.svg
+287681097ff3f73c8a5fb9423048305b90f2d3a7007c2f6e3e27f0f6d3a343ba  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Czech-dd964.xml
+bdd7f2409a70a012be11e7ae19bd52d25078fb192a231754f3da7c547a2abfce  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Danish-85d49.xml
+53ae25f843199c5bbeb221853531efe97e93d9593d155e0dd8b204ec42923b8e  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Dutch-ba296.xml
+58438f92abe1c6d1d68b498b314f46859a11ae79002d8c67f9e70a5de4f9412c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/English-e1b9b.xml
+46070f9732685e5efd3ad3ee9a8b37ad3ad310447fb47d6d98c877221b7dcbc4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Finnish-84f3e.xml
+d0a7ea66c68a680dcf5ab06eb2078684967fa7a4d9fe5a5c5e8d5c8ee373133d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/French-c7837.xml
+425ba192f983db81aa5792ba80d92c38adf6bc5afa32af130123feb66048f535  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/German-91660.xml
+b813590ac2ac75377598bade714357cf57799e6b4d0829650b3655c37a4098c4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Indonesia-0a5b2.xml
+bb2fcff72f6e8a8a29b5025f91bcb7815bf25793fa19b29c97eaa4b4c0031a18  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Italian-c3c38.xml
+c18d9ef2636367f7820ca36297c3abe789bac36c9d5938532a841dad1ea64dd4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Japanese-441ac.xml
+61f41a2826b663385cd3331c33d4f774b806bbe6c1ec64a1a23de531921660a8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Korean-ea20e.xml
+2346177e4ddad148271721a588729cd62a43610bc917297deed09e695366b3b5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Norwegian-96998.xml
+f98e5914482aaa85df1e53ed2e064eebf823ff3d14d2b39d68eaebee16456b92  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Polish-0d166.xml
+8c894183f7a72646fb727fb8bd7fbfcd8590f965604f970e3d861e7704a5a94d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Portuguese-13603.xml
+e3ae718157e3de1e880be3a7a4dc231b499b7931b80be9e65675e40135c39636  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/RF2.4GHz-30553.svg
+7d8da33b6ea524b3159d7fcc6c20260353e40142e41c2358ac4ec0b3af4ebba5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Romanian-06228.xml
+fe501f1a6bda455458bb731d8156f95a86adae3485d67215e6f60d42c32baf40  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Russian-2b09a.xml
+9d80d7a79313bf3c81663ea552ae940b9d493caf1a783039b3c11258859e079d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Simplified Chinese-4ab8c.xml
+6ff13539bd4d6ef4e5d1e6f0c7781c2f196512818a3280a01d73e377f8549d46  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Slovakian-935c5.xml
+0478ac2a86931d7a06a49c1135594f37ff950569b318aeeeec42fae67921c3c7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Spanish-8b1e2.xml
+874d1f544922a7cf31653a1c25c0cd6c06a59d3067544139e4950b65875f9b5a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Swedish-9fb46.xml
+2af70e16207a8d274a04be054c1fd13788f837d7bc06309cc80ecab12294da8a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Thai-56932.xml
+0ef1ce2e0d0d8f0dd213ca6c7e442fe4fd871615fe87f1510c2f129fbf7a62bf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Traditional Chinese-19fb7.xml
+1d3e523a65e2283f5b67451b1d847ed0694ef4de96a771ebda3cd767bdad9720  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Turkish-804f2.xml
+06d9a68690693b0aa80326537c401fbd70ad3a072aaa3b4e64255fece89d17c8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/Ukrainian-d3a78.xml
+9b578ae0d7d6ea138d4b86a57bbecae756add967909eac8793987f0e04df53f1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_d_c_r-1d190.png
+ddd0e05b8424d2148662d2f7a25352da8be51ff82356fcbb9cbc37194a86c004  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_h_c_r-ad3c1.png
+286d70e8dfc397843865c2478e632796c9f1131e67eb577469bfe059e52702c5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_n_c_r-f1d41.png
+25197b9062d57228d472b0aa65d007e9f0211770a3b68592bec4112443d855c8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/asus_ac_btn2_p_c_r-6ef05.png
+99fba1cc9d8dd7409677da7d77160a729da222196d3f91d536a4b3dec1929ed1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/bluetooth-d2712.svg
+9fbc6d45673d325e1e3792a6b544dea15d2924184d36a8865c35aa689fab66d5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_d_l-bf3d6.png
+2a9017890e3a644c58ed2cd1d40a3684c76b06ae838bd22f9c6df1ca3f8549cb  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_d_m-991b8.png
+1d081e5a3809a1829b265cc07a129d916dc7883d39855f323b9a080d903a0259  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_d_r-9f832.png
+d2d67ffa3976006f0e2b80880a8deeb90a5bc330fb9659bba13a6e7d578c0d94  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_h_l-15ce9.png
+0298645544e9c8f37ab74cd11bbe58ec9c5bc2dfbf30ddddd09cec53d943e98a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_h_m-bae7c.png
+525c1fdd68fdaf3aa2fd7e6a290daf77e537c97071473ee7cbc5c942c7224128  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_h_r-5b44f.png
+6837e247d3fa91ecc77cfd3e42c1b5b51e8b186200569db6c4030147f6c5b302  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_n_l-1b01c.png
+83edaa45a601775c688f83052cc2c3586b29add13f61f4a43d8e540b943f7624  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_n_m-06a6b.png
+468de7088f7e83bf59253b7ffdf2324fdf2ba7a2c1b2db5a95a49ebf386ef44c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_n_r-b78c4.png
+a79e0da2c893aeaa5ac1f03f593c3ece458a5127bc410875ce878c12a1fa4065  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_p_l-ebae2.png
+99f5da80f965816ff2366bccc8d3e3aee9765055c1e5a0fa313dec9c2f9b2acc  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_p_m-ae66d.png
+11c74bf6286603285031819af5b242fc0952d2cd07c82565c9c233cf5ebdfba4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn1_p_r-54187.png
+ff0b75ec2c9cb2e7e6c88a9a8a18008a086d39c3bdeab3ecb2a522a5baf83fc3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_d_l-93aa8.png
+2a9017890e3a644c58ed2cd1d40a3684c76b06ae838bd22f9c6df1ca3f8549cb  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_d_m-991b8.png
+1c4bd25492039e1042430de8c7a9051862ec6a3cc27caed099472de0adb3e9f4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_d_r-245ba.png
+7936a3542cc8943febbb5a893da7592532b01012ea5796d906b31c195c6350e8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_h_l-ba587.png
+da12568aaef90bf98955a6b7500b4450809bd578f8e953960ce9b174a17a4558  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_h_m-8e8f4.png
+6540bb8e0dcc9f9afaef38f87b8477f14aba5787531c7a3a6f7dc27504df0d2d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_h_r-6d377.png
+4588261f8db603a60f3ee287f65e65315211126bb81dcc8678a6409136908ae4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_n_l-d3d2b.png
+cf4d1894adbb56dd8b623d5e3b8c85af86ab1b5ec75863a4136cb36b0651f180  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_n_m-6ad97.png
+62df2c7b5b047e8c2cddb02a5d3cb74eeefa2c51436cc4c74f840859df556131  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_n_r-1e6a0.png
+9a2ec89ef51ed33dac67ba2ef2ca2df137171275ee0f64574ee49eb87f834172  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_p_l-658dd.png
+774ba3fc06d2f4688a145c9d3f52433da694fb99940ac9886a185608691f44f9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_p_m-2d267.png
+21026e8696c4fd5519cca629edc2c412a9992d47b98cf9eea60a80778b634293  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/btn2_p_r-122a5.png
+232ce32593cfc31c18ac662693a3a1719c82c2bf5a5a32119edec3de977c79cd  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/error_icn-f89b7.png
+f5e4bd38f846b6a2dda6ca3f5133c4067ce1db622e0c57aa402bf991da8e5634  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/kb_M603-ee60b.svg
+068c8a8292e169ae4cdcf0b050f8dd5f5476857b8e0007c2113fd78416613a59  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/loading-a706c.gif
+af0549e4600190e1bf96db465d88d84a5f648a8fb71bea8b5eb705dd52cdaf76  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/main_bg-cac7e.png
+933b44b0622079c5a47c415691a93069113bc97ff801bb4cc5bf5aae568428c0  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_d_l-b8304.png
+5c441f7339a98f85bf527c7d5d946cffde69e0891e65a207b1f366cb091a351a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_d_m-ee709.png
+31c191ff2d833289aa2aca7526e306351f0003cd2af3c7fc13c50e8222ab3643  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_d_r-10a9e.png
+a5f4d9a502fb7e7759ac95b15c7e185420cb8fdcbea8876787b4e14e52a4be49  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_h_l-6892f.png
+09a8bcf242879c953881183f03e94fccf51545c2b24d28013ba0e70db1ed60a5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_h_m-3e59d.png
+fbf2b525173c17a32ceb1d6719965540ae67fab1b9ebd6764aa3b885d87d2d43  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_h_r-1ec15.png
+363757f473d521c1403275211441049349f179785b70da2a7589afef2cfce311  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_n_l-2f1cf.png
+44eec9666ebad5264ea17a58e4e9ac2cd372208e4324188d01b6a86ec188da80  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_n_m-92593.png
+bed6d1d60cc1b219e172c902fc82b4282ff500ef2c204b5991f31fc32dbedb19  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_n_r-30cca.png
+7e533d7d622d8262cc8ca2701aa612cc8dcb2e11317750c69e00415447bbc781  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_p_l-675e8.png
+5bec5af29777eb6a73123fec0497d706f11f625b2554983b3472868f6bda1d96  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_p_m-ad678.png
+55254720a71a5dcdce5c380c9fad0748dcae32d44c0cfc9e679fb24d6efbf95c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/sbtn_p_r-98365.png
+3432d08efb15f5c918bd8ac88e09cf86dcf8addb6c63e0c7c400e1e92e0580c0  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/src/_ref/caps.json
+cdea04df1aa75b8c35a4c4a38f20ee8da42e3589f75d1f7cfda15490fb7179af  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Device/m605/m605/m605/resources/wired-f7731.svg
+15721875f3175006bd6cd61c83a799cee024ec0983c7a048e0df2857baee5c5a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/FWUpdateSetup.exe
+3bfeffd05d110a232e1166c2bbb1fda9b1e0eb553d26eb90140a762a14d634d4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/Dependence.ini
+9bb8f484d337bf81deae97d4a19b709c8c83463e8f946ce5849a82afef4fa33c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/FW/HidInterruptHandle.dll
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/FW/M605_V01_00_58.bin
+40de34851f0d693c90a3b5b5eb4c1e4250ba316a99ce470ae7c75ffe0040c480  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/FW/peripheral_fwu_pro.exe
+676cd5b3cc8aa2d2e3e426ad2586276b682e2579af86edab84257ed24ebdf090  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/FW_Update_Tool_M605.exe
+de3644ddfd8499454c21842376df851d66eab82b32985ce8ce0d18c7c7de5029  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/InterruptTransfer.dll
+43c9d50036d2d2e9fc8da831bfb5b4750166c556fdaab39ffb1a9b2c851d5893  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/config.ini
+2bd0a2fd8779237e387fdece356cf3bd9251dbc7c744b2cf2c1f067942b32adf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Setup.ini
+15721875f3175006bd6cd61c83a799cee024ec0983c7a048e0df2857baee5c5a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/FWUpdateSetup.exe
+64760654f3f53b9131b4031cd096924991eb01b88a771cf618d9c87c51710a89  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/Setup.ini
+126c0128a2980f00e41b2ffaf6ab718b045c5ead9bba2e382dc3a3ab798c5afc  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/Tools/GetDeviceVersion.exe
+dd37cb14c0f261f585d26d5d053f3cae338125fc4126c239c384b3ef153b00bd  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/Tools/KbFWUpdate.dll
+76f5e4ddeacc101ae7e53d25537262929cbb3988b8eb7a534e761c001ee11482  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/Tools/ROGWeChat.exe
+7b0f229e7659ab5ea72804c8468c7f5c24d180b85fda586e47ef0b663fb2eba1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Tools/Tools/cpprest141_2_10.dll
+3d29481792a685f5573bfd1a1d15ee9068413c4253054c15e18e0ff74784ae82  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/CheckSumHelper.dll
+0feac26dd9ef4e52321b4e46b870492413af7f75b0129d3f88be46f1830d0058  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/English.ini
+b9948316bc99270f30b59d96d84ee0049d0d685b9ae3aff2f3ca7c34b9dbfc87  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/FrameworkFileList.ini
+b9ec0c3e366726adf992edf5d9c0f077127abba81989a639d62b40cf737ba7a3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/FrameworkServiceSetup.exe
+ad7100d169d465efb695d13cecb58c19cd897de092cb416ce87ce3dcb10c6055  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/Process.ini
+1c7a53029d58841f3ab7f0450ec8750665240a1676f0cc804c783e2cedb832bf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/RLSSetting.ini
+feb4ff8b2c8282e3f0dee3ff8437967ede037ebc5411f99f864450ff3ffaa60c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/Setup.iss
+a54c66d18a2fd388ee23651950b8c0c2fe48d9b84303b20d1267ebc41d711c93  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/config.ini
+cdb316d7f9aa2d854eb28f7a333426a55cc65fa7d31b0bdf8ae108e611583d29  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/0x0409.ini
+54c990170cdfc003c7731e7f7a82a6a630821d792e17994fe28c10abbd18d94d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/ISSetup.dll
+feb4ff8b2c8282e3f0dee3ff8437967ede037ebc5411f99f864450ff3ffaa60c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/Setup.iss
+4d5a28c03d7e1247b6f09a7f081ab037b0457da1bd248dc5a448986478e25e58  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/VersionHelper.dll
+a54c66d18a2fd388ee23651950b8c0c2fe48d9b84303b20d1267ebc41d711c93  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/config.ini
+f4d7dd116f002915a72fd7cfb29cf30c6cfb295f7f245664501ce61f8bc1edfd  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/data1.cab
+6fe75e804e238fcb95620f3d5fe4fe977bd187d5db3ccb768affda8dde3aced9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/data1.hdr
+ceec775edfac207d8b8dbcf76c48479fe16ef9d65d6cc7e41fbd878b31b664f7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/data2.cab
+38fa35775c540f6b364f4ae2790930ce32e2f093408db81f6a6b39289ee24d97  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/layout.bin
+63228676d600b04aff0fbd2a3594e21e200f3fd0681b5989d89aadc308c223d5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/setup.exe
+ddb4da9c9cb54cb794c58de4259e84aa0d9350b80b19261f974164f8b6c62d23  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/setup.ini
+a9448ce7273b5029dd8968752c8c7bffd0136482c6aa0f0a0a1d62f1008ce40f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Framework/install/setup.inx
+f446e58098621c9cf4def9e5fad6b753052e2d098f791a86dec62f2169681fa7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Czech.ini
+7a3237a8baced1c48a111045cef1efd8712c3135a54915c9f20aba626fe8554b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Danish.ini
+44c02d8b47645e045bdaab70840c7aa80484869c60deb3215e437af92707cea3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Dutch.ini
+514dca5f1b01d56a73e20cf3d69bd0150f09fd92c65dce3e047202d99433277c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/English.ini
+99912206e695e4234ddee87fb0b71a69fea33e422d79748f8dd8230183f3eacc  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Finnish.ini
+5364b58637c3bfa53b648328f6cb53c7d45f101b40520c229b5342fa075cd45c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/French.ini
+b051e536a697712d5f5f87e2c79d83b17bd9cb20c3267919480c05a150e9483f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/German.ini
+8711e974d4a36d59fbe0d361aa4c39a8631b3f25e14f0d984a6abe36c289bfbd  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Indonesian.ini
+229228544b20f46c51bcd296312a0312a0a59be2520f7be3ffc8c89fb69cca16  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Italian.ini
+eca53d3c922bd1f60362216f62a42069d492bcf75cda99be6783bd5bfeaa8469  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Japanese.ini
+2434db29855e80378d3b35a79d149a0e811cccf578efc92d43de5abc2f442610  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Korean.ini
+0b9db0197fbac1b4ad6d3414c62810d3fbe77a136d3fafe05d12d9113a8285c1  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Norwegian.ini
+67aa78fedaf9be47d34e8e8ef9fb0c4eae390931c54e4894c809731d8d9a41a7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Polish.ini
+f4bbd29eb78af372d434887e384ef9058f120205ced4bd0f300858ecb24f93ea  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Portuguese.ini
+f2863515a3621a78a6c57f72c121b9000a8071aaa578ed6adcc5233cad17ae92  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Romanian.ini
+832259460d1d6dd3fec8784ed90302f23fb1f777c66fb4b5b1d9931da0039a1b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Russian.ini
+c5b3135991aab684aa3aa092ec3d9962e30ae698b3e1ece384acdf2bf9f881bf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Simplified Chinese.ini
+a01c084ac6b63ca79c8924ccc59d59f406274cff675a37478d8d8e6c99337f53  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Spanish.ini
+b98bfd666ec6dc56675331d61b7b1908b45dd09a6ee869efa4075d2454122de7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Swedish.ini
+dd7a2f76eb9633cf17e29924f5d7954c43a157535bcf5d9784cc56245bf8c770  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Thai.ini
+5b72559cd8f96670d4468df9e18f63c4c9d80c5eb42a85b69c697cbf8b0b8569  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Traditional Chinese.ini
+3c20da375bbf32bb1802553ca7b8994c81c7c761eceae797d86bbd462b351c01  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Turkish.ini
+61aa226092c274e883df2cca1ae3fe4f0794d4585eb132c0da7344db7158637f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/MultiLang/Ukrainian.ini
+3e03afad6826998327d33bef13ddbe73284c64b03d31b929f941ea00a34391b3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/CheckSumHelper.dll
+28483e5426dbfd4d7d649704ef8b256e1071e62c088d6d3095e2ae9e29fd1db8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/RLSSetting.ini
+fef2cd58609cff9d9bf30bafdf2946626a44d7d47eb9ed48c887eed42ea4b21a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/Setup.exe
+0b08588cbb4320b2a3f2e4b7c4356e0ba96c5aff8d8d8cdf729f228d81861e93  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/Setup.ini
+f288bea164acaa994105c9412f85a52d91ebea1f932d4a01e802a23de7023a9a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/VersionHelper.dll
+8737f9056650631b8c782e410f0c6964838ffcb2faf20d797cceac2a2468cebf  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/keyboard/MD5.ini
+5ff6785cd8a8871274cfa577d5dd29972256a3aa9b1a0a7cdb0fe19821fe6d47  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/keyboard/index.js
+e262a5b87d68f7b57230b66b50c79b602a56fc167291c61e26b3005f8be9809d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/FWKBPlugin/keyboard/index.js.LICENSE.txt
+f4bac126a47b6848e60e4e1eb38a99583169d1a42710b3423c7fbda0f8ed447a  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardHal/AacKbSetup.exe
+39d6af7aa1fbca00a6fb19424bcc0f2d6c10bf52903cb3a509fc2439f839370f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardHal/Hal/AacKbSetup.exe
+c2ed4f28ee0ea58525e7c14dd7897634bb281e897278720fc323b63d041072a2  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardHal/RLSSetting.ini
+cdb316d7f9aa2d854eb28f7a333426a55cc65fa7d31b0bdf8ae108e611583d29  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/0x0409.ini
+3e03afad6826998327d33bef13ddbe73284c64b03d31b929f941ea00a34391b3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/CheckSumHelper.dll
+0feac26dd9ef4e52321b4e46b870492413af7f75b0129d3f88be46f1830d0058  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/English.ini
+4aeac9bf330e30f7f50ed10a99d921c6fc6af4e72b60965756283cf735db0248  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/ISSetup.dll
+95a4af479edf4a12e81c873e16f2b9aac557d970492866448308e9e762289a7c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Process.ini
+254b4306f2af5967e0a474e22aaa6e3dd02c0197135123ea1dd0d35cfecee0de  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/RLSSetting.ini
+7781a858c1504e0aec83ee005405f3d829b7db2064c9175992515e8b3da2a23f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/SdkSetup.exe
+b4062a73e2fee3a8acae8eef2e2ecd6ba9541ea3dbf62496cbadd6c24c62b8d9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Setup.exe
+18f384123dde984048d02cfdbcf17a75dedceb4508cdc91951a2ffd90dd971b6  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Setup.ini
+34675afbfa815327040cd73b7121c9625f78bdb3db48b3e9352cad4c4deb23ae  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/Setup.iss
+9960a0b24db1ee39c149cc4df0319411b7631b7a9027450eefbd0c49b82d469c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/VersionHelper.dll
+165d1e84f6e23f6395fd15deb22712ce51f5cb8aeef4341b9ce4a1519ea6302b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/config.ini
+1aedde7ac79fcf169f0f45d290aa97817db2a73d7215e5c41d8fe56b30afc003  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/data1.cab
+f1ca4910dd32cf01a7455a76ee11f3540c4bd8bf730d50403af166a396142b90  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/data1.hdr
+8a56ee019097f7b2826f5d80370d50aea7a8dff3ff00be3aa0c340589ee258e5  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/data2.cab
+d5798f2522ce458bb72ed505e6a3a8a36aa6133994b3aeb6a5649f2631fcd61b  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/layout.bin
+14a06c2b02d1bbe47107cb8230516317c91b2b7e46ca2f94ad9df9b34ad956e8  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/KeyboardSDK/setup.inx
+cdb316d7f9aa2d854eb28f7a333426a55cc65fa7d31b0bdf8ae108e611583d29  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/0x0409.ini
+3e03afad6826998327d33bef13ddbe73284c64b03d31b929f941ea00a34391b3  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/CheckSumHelper.dll
+0feac26dd9ef4e52321b4e46b870492413af7f75b0129d3f88be46f1830d0058  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/English.ini
+5bef6b2ea8340d1013dff9909cac34fa9d88e1e1926207884c7e7fec2681a2a4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/ISSetup.dll
+56cb9707e2faf14057dadc497168cab2ff60fb68c0e21f31a4b73548acd08299  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/MainSdkFileList.ini
+d59defb863c0562aabb7eba1f1a17507de42f5788cf708e6afd47733b3d11540  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Process.ini
+43e693d66e43a90e6d97dfa08c9be1780a3ac42d8681cbddfc74f0c6f09561e4  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/RLSSetting.ini
+3b379035f7ff13ccf27934aa20a2b53180ee861036ce1ef02cbe70d33715733c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/SdkSetup.exe
+c27199c0aa231f975bf2d96c9b804e06f562868835e2738b9c8d6e72c17eaad9  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Setup.exe
+fcf1f42d86a4323300df3c73b05cb61770090dccd4a835c1189809932c9bc091  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Setup.ini
+be927b6711f26d1c9d91d2d57c25c56c732458bccaff27dc2712af43a93cd7a7  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/Setup.iss
+9960a0b24db1ee39c149cc4df0319411b7631b7a9027450eefbd0c49b82d469c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/VersionHelper.dll
+2e752385685491239ecff23db051d6a28c8e24d98557bb88cf5cb763cba696af  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/config.ini
+e35174e8e89901ccf973e81b9e353b1e73fae80c456a116ea106473ff732c31f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/data1.cab
+36901020d8a9463ea4521a811fbf55abafc5965747949a4f2327e58c9cb64b42  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/data1.hdr
+0a4ba868062a45a8e17424227cf8015f934d6301051f6fc2429961530f071393  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/data2.cab
+1b76cac1b340440a674adacfbe692219f762ff583ef876bf5d6982bb2d659b1c  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/layout.bin
+6c0eaf189c7a219e8a48085e4a24ce2141e8c59408f48f4dabb2d9d743bd1656  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/SDK_HAL/MainSDK/setup.inx
+4dfe83c91124cd542f4222fe2c396cabeac617bb6f59bdcbdf89fd6f0df0a32f  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Tools/vc_redist.x64.exe
+c61cef97487536e766130fa8714dd1b4143f6738bfb71806018eee1b5fe6f057  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Tools/vc_redist.x86.exe
+9db43ce64a73f8530fb13b64b89ac286f12a4514a1de757056bb1a8ca8917e8d  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/VersionList.txt
+15ae7092ff15c32ee5c3666b608db2955c5192b9b2cecea55db73530ffde8d24  /home/dereck/Downloads/ROG_FALCHION_ACE_HFX/WebACLog.dll
+

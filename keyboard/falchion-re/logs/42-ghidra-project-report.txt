@@ -1,0 +1,269 @@
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (471 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (971 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /bootloader_primary.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionProjectReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionProjectReport.java (HeadlessAnalyzer)  
+INFO  FalchionProjectReport.java> PROGRAM bootloader_primary.bin (GhidraScript)  
+INFO  FalchionProjectReport.java>   language=ARM:LE:32:Cortex (GhidraScript)  
+INFO  FalchionProjectReport.java>   compiler=default (GhidraScript)  
+INFO  FalchionProjectReport.java>   image_base=00000000 (GhidraScript)  
+INFO  FalchionProjectReport.java>   block=firmware start=00000000 end=0000efff size=0xf000 (GhidraScript)  
+INFO  FalchionProjectReport.java>   functions=303 (GhidraScript)  
+INFO  FalchionProjectReport.java>   instructions=17010 (GhidraScript)  
+INFO  FalchionProjectReport.java>   known_entry=000002f4 function_at=none function_containing=FUN_000002d4 (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_strings: (GhidraScript)  
+INFO  FalchionProjectReport.java>     000051f8 [BLD] On Flash: 0x%08X, Actully : 0x%08X\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     000065f0 HID-INT (GhidraScript)  
+INFO  FalchionProjectReport.java>     00006bcc HID Function (GhidraScript)  
+INFO  FalchionProjectReport.java>     00006c14 \r[USBD_HID](error) add function fail\r\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     000071ac HID-INT (GhidraScript)  
+INFO  FalchionProjectReport.java>     000071b4 \r[USBD_HID](error)Unable to allocate int in desc EP\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     000073a4 \r[USBD_HID](error)Unable to allocate int out desc EP\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00007b38 \r[USBD_HID](error)Unknown request 0x%x\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00007b64 \r[USBD_HID](error)usb_ep_queue error on ep%02d\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00007d3c --- Warning! unknow flash may cause unpredictable error! ---\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00008084 [BLD] boot priority: %d mismatch: 0x%08X\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     000080b0 [BLD] boot priority: %d found: 0x%08X\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00008de4 \rERROR!!The trb size of request over default setting(ep%d)!!\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000bd24 HID Device (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000bdd0 can't initialize usbd repeatedly\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000bf24 usbd_resume\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000bfd8 usbd_suspend\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_string_count=17 (GhidraScript)  
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (479 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (946 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /app_candidate_a.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionProjectReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionProjectReport.java (HeadlessAnalyzer)  
+INFO  FalchionProjectReport.java> PROGRAM app_candidate_a.bin (GhidraScript)  
+INFO  FalchionProjectReport.java>   language=ARM:LE:32:Cortex (GhidraScript)  
+INFO  FalchionProjectReport.java>   compiler=default (GhidraScript)  
+INFO  FalchionProjectReport.java>   image_base=00000000 (GhidraScript)  
+INFO  FalchionProjectReport.java>   block=firmware start=00000000 end=000058ab size=0x58ac (GhidraScript)  
+INFO  FalchionProjectReport.java>   functions=94 (GhidraScript)  
+INFO  FalchionProjectReport.java>   instructions=4161 (GhidraScript)  
+INFO  FalchionProjectReport.java>   known_entry=000014a8 function_at=CandidateA_Reset_Handler function_containing=CandidateA_Reset_Handler (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_strings: (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000138c Fault Type: (%d) defined in "cortex_fault_e"\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000194c %s:usbd mode %d not support\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00001970 usbd_process (GhidraScript)  
+INFO  FalchionProjectReport.java>     00001980 usbd_process task (GhidraScript)  
+INFO  FalchionProjectReport.java>     00001998 usbd_ep0_process (GhidraScript)  
+INFO  FalchionProjectReport.java>     000019ac usbd_process usbd_ep0_process (GhidraScript)  
+INFO  FalchionProjectReport.java>     00001c68 not support flash clk divider is 1 \r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00001c90 flash id:%x \r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00002494 --- Warning! unknow flash may cause unpredictable error! ---\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_string_count=9 (GhidraScript)  
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (529 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1007 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /app_candidate_b.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionProjectReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionProjectReport.java (HeadlessAnalyzer)  
+INFO  FalchionProjectReport.java> PROGRAM app_candidate_b.bin (GhidraScript)  
+INFO  FalchionProjectReport.java>   language=ARM:LE:32:Cortex (GhidraScript)  
+INFO  FalchionProjectReport.java>   compiler=default (GhidraScript)  
+INFO  FalchionProjectReport.java>   image_base=00000000 (GhidraScript)  
+INFO  FalchionProjectReport.java>   block=firmware start=00000000 end=0001e753 size=0x1e754 (GhidraScript)  
+INFO  FalchionProjectReport.java>   functions=579 (GhidraScript)  
+INFO  FalchionProjectReport.java>   instructions=32734 (GhidraScript)  
+INFO  FalchionProjectReport.java>   known_entry=00000000 function_at=CandidateB_Entry function_containing=CandidateB_Entry (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_strings: (GhidraScript)  
+INFO  FalchionProjectReport.java>     000003b7 @Flash ID: 0x%4X\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000817c Macro_SAddr_Over (GhidraScript)  
+INFO  FalchionProjectReport.java>     000081ac Macro_RAddr_Over (GhidraScript)  
+INFO  FalchionProjectReport.java>     00008d4c USB_PM_Rs (GhidraScript)  
+INFO  FalchionProjectReport.java>     00008d58 USB_Demo_Mode (GhidraScript)  
+INFO  FalchionProjectReport.java>     00008d70 Enter sleep (GhidraScript)  
+INFO  FalchionProjectReport.java>     00008f48 Wake-up (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000dcb4 =FlashID (GhidraScript)  
+INFO  FalchionProjectReport.java>     0000dcc0 =NoFlash (GhidraScript)  
+INFO  FalchionProjectReport.java>     00014a5c \rERROR!!The trb size of request over default setting(ep%d)!!\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00015ff8 usbd_wdt (GhidraScript)  
+INFO  FalchionProjectReport.java>     00016470 =boot (GhidraScript)  
+INFO  FalchionProjectReport.java>     00017218 send usbd_ep0_Queue error\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00017234 send usbd_irq_Queue error\n (GhidraScript)  
+INFO  FalchionProjectReport.java>     00017d24 HID-INT (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018368 HID-INT (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018768 \r[USBD_HID](error)Unable to allocate int in desc EP\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     000187a0 \r[USBD_HID](error) create trans_done semaphore fail\r\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018814 \r[USBD_HID](error) %s fail\r\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     0001883c \r[USBD_HID](error)Unknown request 0x%x\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018c78 \r[USBD_HID](error)ep int-out loss data\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018cac HID Function (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018cec \r[USBD_HID](error) add function fail\r\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018d1c \r[USBD_HID](error)Invalid struct or interface num\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     00018e20 \r[USBD_HID](error)receive report timeout\n\r (GhidraScript)  
+INFO  FalchionProjectReport.java>     0001e665 ASUSTeK (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_string_count=26 (GhidraScript)  
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (523 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1001 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /ram_image_18038000.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionProjectReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionProjectReport.java (HeadlessAnalyzer)  
+INFO  FalchionProjectReport.java> PROGRAM ram_image_18038000.bin (GhidraScript)  
+INFO  FalchionProjectReport.java>   language=ARM:LE:32:Cortex (GhidraScript)  
+INFO  FalchionProjectReport.java>   compiler=default (GhidraScript)  
+INFO  FalchionProjectReport.java>   image_base=00000000 (GhidraScript)  
+INFO  FalchionProjectReport.java>   block=firmware start=18038000 end=1803ffff size=0x8000 (GhidraScript)  
+INFO  FalchionProjectReport.java>   functions=54 (GhidraScript)  
+INFO  FalchionProjectReport.java>   instructions=4598 (GhidraScript)  
+INFO  FalchionProjectReport.java>   known_entry=180381c0 function_at=none function_containing=FUN_180381a0 (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_strings: (GhidraScript)  
+INFO  FalchionProjectReport.java>     18038f00 Fault Type: (%d) defined in "cortex_fault_e"\r\n (GhidraScript)  
+INFO  FalchionProjectReport.java>   relevant_string_count=1 (GhidraScript)  

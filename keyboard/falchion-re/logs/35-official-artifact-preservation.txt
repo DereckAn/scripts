@@ -1,0 +1,37 @@
+Date: 2026-08-29
+Operation: local preservation copy and read-only verification
+Keyboard access: none
+Packaged executables run: none
+
+Source ZIP:
+/home/dereck/Downloads/ROG_FALCHION_ACE_HFX.zip
+
+Preserved ZIP:
+keyboard/falchion-re/vendor/asus/original/ROG_FALCHION_ACE_HFX.zip
+
+Source firmware:
+/home/dereck/Downloads/ROG_FALCHION_ACE_HFX/Firmware/Bin/Firmware/7038/FW/M605_V01_00_58.bin
+
+Preserved firmware:
+keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+
+Verification output:
+ZIP byte comparison: MATCH
+BIN byte comparison: MATCH
+keyboard/falchion-re/vendor/asus/original/ROG_FALCHION_ACE_HFX.zip  238446426 bytes  mtime=2026-08-29 02:44:35.261041963 -0600
+keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin  507904 bytes  mtime=2025-09-04 11:29:46.000000000 -0600
+a3e895dd4389e6725b15b0c0af6d6644a470a8359c4086a206490b74e9e9d7b9  keyboard/falchion-re/vendor/asus/original/ROG_FALCHION_ACE_HFX.zip
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+
+Commands:
+mkdir -p keyboard/falchion-re/vendor/asus/original keyboard/falchion-re/dumps/vendor
+cp --no-clobber --preserve=timestamps SOURCE_ZIP DESTINATION_ZIP
+cp --no-clobber --preserve=timestamps SOURCE_BIN DESTINATION_BIN
+cmp --silent SOURCE_ZIP DESTINATION_ZIP
+cmp --silent SOURCE_BIN DESTINATION_BIN
+stat -c '%n\t%s bytes\tmtime=%y' DESTINATION_ZIP DESTINATION_BIN
+sha256sum DESTINATION_ZIP DESTINATION_BIN
+
+Safety note:
+The copy and verification operated only on ordinary host files. No USB command,
+firmware updater, firmware write, erase, reset, or bootloader transition occurred.

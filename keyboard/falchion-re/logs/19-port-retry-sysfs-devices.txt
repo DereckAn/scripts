@@ -1,0 +1,34 @@
+2026-08-29T02:29:56-06:00
+== /sys/bus/usb/devices/6-2 ==
+busnum=6
+devnum=8
+devpath=2
+idVendor=0b05
+idProduct=1b7e
+manufacturer=ASUSTeK
+product=ROG FALCHION ACE HFX
+serial=            
+bcdDevice=0159
+speed=480
+bDeviceClass=00
+bDeviceSubClass=00
+bDeviceProtocol=00
+bNumConfigurations=1
+bNumInterfaces= 5
+== /sys/bus/usb/devices/6-6 ==
+busnum=6
+devnum=5
+devpath=6
+idVendor=0b05
+idProduct=19af
+manufacturer=AsusTek Computer Inc.
+product=AURA LED Controller
+serial=9876543210
+bcdDevice=0100
+speed=12
+bDeviceClass=00
+bDeviceSubClass=00
+bDeviceProtocol=00
+bNumConfigurations=1
+bNumInterfaces= 2
+

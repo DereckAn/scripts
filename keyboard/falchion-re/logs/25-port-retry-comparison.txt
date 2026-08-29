@@ -1,0 +1,19 @@
+== verbose descriptor diff (first connection vs other keyboard port) ==
+--- logs/15-lsusb-falchion-verbose.txt	2026-08-29 02:13:20.896908070 -0600
++++ logs/22-port-retry-lsusb-verbose.txt	2026-08-29 02:30:14.473303075 -0600
+@@ -1,5 +1,5 @@
+ 
+-Bus 006 Device 002: ID 0b05:1b7e ASUSTek Computer, Inc. ROG FALCHION ACE HFX
++Bus 006 Device 008: ID 0b05:1b7e ASUSTek Computer, Inc. ROG FALCHION ACE HFX
+ Negotiated speed: High Speed (480Mbps)
+ Device Descriptor:
+   bLength                18
+== saved first descriptor blob vs current descriptor blob ==
+DIFFERENT
+== current interface count/classes ==
+6-2:1.0 class=03
+6-2:1.1 class=03
+6-2:1.2 class=03
+6-2:1.3 class=03
+6-2:1.4 class=03
+
