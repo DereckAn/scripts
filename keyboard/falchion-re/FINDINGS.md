@@ -2,7 +2,18 @@
 
 Investigation date: 2026-08-29 (America/Mexico_City)
 Host: CachyOS Linux, kernel 7.2.0-1-cachyos
-Safety scope: USB-only, read-only diagnostics. No firmware update, HID data/feature report request, vendor control command, DFU detach/upload/download, USB reset, driver detach, permission change, erase, program, or SPI transaction was performed.
+
+This is the authoritative current status document. Files under `notes/` preserve
+earlier protocol work and are synchronized to this document, but some of their
+hardware observations cannot be independently replayed because the cited PCAP
+captures are not present in the repository.
+
+Safety scope for the 2026-08-29 investigation: USB-only, read-only diagnostics.
+No firmware update, HID data/feature report request, vendor control command, DFU
+detach/upload/download, USB reset, driver detach, permission change, erase,
+program, or SPI transaction was performed. Earlier protocol research recorded
+device-writing HID experiments; those were not repeated here and are not part of
+the preservation-safe procedure.
 
 ## Current answer: can the installed firmware be backed up through USB?
 
@@ -91,7 +102,31 @@ Retry evidence: `logs/19-port-retry-sysfs-devices.txt` through `logs/24-port-ret
 
 These facts must not be treated as proof that U5 contains the complete executable firmware. It could hold firmware, assets, configuration, calibration data, or a subset. The SNC73270 may also contain internal nonvolatile memory; that remains unresolved.
 
-## Audit of the earlier Claude Code work
+## Earlier protocol research and evidence status
+
+The earlier Windows/Armoury Crate work in `notes/protocol.md` adds useful evidence
+that is independent of the 2026-08-29 firmware-container analysis:
+
+- interface 1 / usage page `0xFF00` was used as a 64-byte vendor HID transport;
+- startup query and configuration opcodes were recorded, including `12 00`,
+  `51 21`, and the persistent commit command `50 55`;
+- a controlled historical test reportedly changed an ordinary Fn-layer binding
+  while reserved Fn bindings were silently ignored despite an echoed response;
+- Armoury Crate's UI was reported to block those reserved bindings before sending
+  USB traffic.
+
+The current USB descriptor logs independently confirm the transport shape, but
+the cited PCAP files are absent from the repository and do not appear in reachable
+Git history. Therefore the exact command counts, packet sequences, and behavioral
+A/B results are retained as **previously observed on hardware**, not as results
+that can currently be reproduced from repository evidence alone. The decoded
+profile snapshots, key map, notes, and PowerShell tools are present.
+
+None of the recorded HID write commands are preservation-safe. In particular,
+omitting `50 55` only avoids the known persistent commit; `51 21` still changes
+live device state. `Fn + Caps` is a settings factory reset, not firmware recovery.
+
+## Historical audit of the earlier Claude Code work
 
 Reviewed sources:
 
@@ -110,7 +145,7 @@ Reviewed sources:
 - Created a sensible high-level research sequence: enumerate, preserve firmware, capture the vendor protocol, then consider firmware modification only if necessary.
 - Selected Windows USBPcap/Wireshark as the intended Armoury Crate observation path.
 
-### Incorrect, stale, or overclaimed items
+### Incorrect, stale, or overclaimed items identified by the audit
 
 - `report-desc-0.txt` is a 39-byte vendor-page `0xFF32` descriptor, but the USB descriptor saved two minutes earlier declares interface 4's HID report descriptor length as 327 bytes. It therefore cannot be interface 4 from that enumeration.
 - That 39-byte descriptor matches none of the currently connected hidraw devices. Its source is unknown, most likely a different device selected when `hidraw0` was used without first resolving VID:PID and interface ancestry.
@@ -118,7 +153,7 @@ Reviewed sources:
 - “No USB bootloader exposed” is too broad. Verified: no DFU target in normal mode. Unresolved: a separate bootloader mode or proprietary updater protocol.
 - The prior `MODE=0666` permission claim was not re-verified in the managed environment and is broader than necessary for a future tool.
 
-### Safety problems in the guide
+### Safety problems identified by the audit (now corrected in the guide)
 
 - The instruction to let Armoury Crate “apply any pending firmware/config update” directly conflicts with preserving the installed original firmware. Do not follow it.
 - Phases 1–3 are described as read-only/reversible, but Phase 3 includes changing settings, replaying HID writes, and remapping keys. Those are writes and must be moved behind a backup/recovery gate.
@@ -126,16 +161,18 @@ Reviewed sources:
 - The STM32 load address `0x08000000`, STM32 OpenOCD target, and ST-Link flashing example are generic placeholders, not validated for the SONiX SNC73270. They must not be used unless the actual architecture, memory map, debug transport, and flash algorithm are verified.
 - The DFU upload outcome table is oversimplified: a protected or unsupported target may fail in several ways, and all-zero/all-`0xFF` output alone does not establish a specific readout-protection level.
 
-### Work that is still missing
+### Current gaps after later work
 
-- No official ASUS updater package, original download hash, extracted updater directory, firmware candidate, or offline analysis report exists in the workspace.
-- `keyboard/falchion-re/dumps/`, `captures/`, and `tool/` are empty.
-- No installed-firmware dump or external U5 flash dump exists.
-- No Windows USBPcap capture, idle baseline, single-variable capture, or updater-session capture exists.
-- No protocol opcode table, packet decoder, checksum analysis, or verified readback command exists.
-- No test-pad map, board photographs, SNC73270 memory-map/debug documentation, or proof of where executable firmware resides has been recorded.
-- No recovery probe or programmer has been tested.
-- The earlier hardware TODOs were not updated with the later observed SNC73270, ZB25VQ32BTIG, U7, and U12 markings.
+The original missing-work snapshot is preserved in `logs/28-claude-progress-audit.txt`.
+The package, firmware image, analyzer, hardware markings, and Ghidra work now exist.
+Remaining gaps are:
+
+- no exact installed-1.59 firmware dump or external U5 dump;
+- no raw Windows PCAP preserved in this repository;
+- no verified firmware-readback command;
+- no test-pad/signal map or safe hardware readback wiring plan;
+- no tested probe/programmer or bootloader-independent recovery path;
+- unresolved Candidate B integrity and runtime/loading details.
 
 ### Offline-analysis readiness at the 2026-08-29 notes audit (superseded)
 
@@ -143,7 +180,9 @@ Reviewed sources:
 - At the time of that audit, `binwalk`, Ghidra, and OpenOCD were not installed.
   Ghidra and JDK 21 were installed and verified later the same day; see the
   current Ghidra status below.
-- The missing tools are not blockers yet because there is currently no updater or firmware artifact to analyze. Nothing should be installed until an actual artifact requires it.
+- At that time the missing tools were not blockers because no updater or firmware
+  artifact had yet been examined. This statement is superseded by the preserved
+  package, firmware image, and current Ghidra installation.
 
 Audit evidence: `logs/27-claude-notes-report-desc-provenance.txt` and `logs/28-claude-progress-audit.txt`.
 
@@ -308,8 +347,9 @@ work should be distinguished:
    USB, Hall-effect scanning, board GPIO/power control, and the boot protocol are
    not yet documented.
 
-The vendor updater checks exact binary size, can skip equal versions, enters PID
-`1b7f`, erases, programs, reads a checksum, and then checks the reported version.
+The vendor updater checks exact binary size, can skip equal versions, sends a
+proprietary jump-to-bootloader command that causes re-enumeration at PID `1b7f`,
+erases, programs, reads a checksum, and then checks the reported version.
 It also contains a `Programming Success! (no check checksum)` path. No updater
 executable was run.
 
@@ -351,15 +391,29 @@ Four derived slices of the preserved vendor image were imported as
 
 The preserved source BIN was not modified. Verified vector/entry labels were
 added only to the Ghidra database. Ghidra created the previously missing
-`CandidateA_Reset_Handler` at `0x14a8` and `CandidateB_Entry` at `0x0`. For the
-bootloader and RAM image, the exact reset addresses fall inside existing
+`CandidateA_Reset_Handler` at `0x14a8` and a provisional
+`CandidateB_Start_Function` at `0x0`. Candidate B begins with a valid Thumb
+function prologue, but no vector or call path yet proves it is the payload's true
+entry point. For the bootloader and RAM image, the exact reset addresses fall inside existing
 auto-created functions, so those functions were preserved and exact entry
 labels were added instead. Candidate B reanalysis emitted one isolated p-code
 decode warning at `0x24f2`, but analysis completed and saved successfully.
 
 Evidence: `logs/38-ghidra-preinstall-check.txt` through
-`logs/43-firmware-layout-with-ram-image.txt`; workspace instructions:
+`logs/45-ghidra-synchronized-project-report.txt`; workspace instructions:
 `ghidra/README.md`.
+
+### Documentation synchronization
+
+After integrating earlier commit `87e22df`, the historical protocol notes were
+reconciled with the later hardware, updater, firmware, and Ghidra evidence. The
+original reverse-engineering guide now points here as authoritative, generic
+STM32/DFU flashing recipes were removed, device-write tools are clearly
+quarantined, missing-PCAP provenance is explicit, and obsolete claims about the
+MCU, firmware availability, and SWD-only recovery were replaced. No historical raw
+log was rewritten.
+
+Evidence: `logs/46-documentation-synchronization-audit.txt`.
 
 ## Uncertain or superseded assumptions
 
@@ -382,10 +436,16 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 
 ## Recommended next steps
 
-1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recoverable image even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
+1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recovery candidate even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
 2. **Decide whether to install fwupd:** installation changes the host, so ask first. Its value is limited because the current descriptors do not advertise DFU, but it can confirm whether a supported fwupd plugin recognizes the device.
-3. **Research bootloader entry offline first:** inspect ASUS updater binaries, manuals, and USB captures for alternate VID:PID values or a documented physical boot key. Do not send a detach/vendor command merely to experiment.
-4. **Capture normal vendor protocol read-only:** observe enumeration and Armoury Crate traffic without replaying commands. This may reveal an updater handshake and whether readback commands exist.
+3. **Research bootloader entry offline first:** the updater establishes PID `1b7f`
+   and contains a jump-to-bootloader path, but its exact command and any physical
+   boot-key method remain unresolved. Do not send a detach/vendor command merely
+   to experiment.
+4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
+   exist, copy and hash them. Future captures should observe enumeration and
+   Armoury Crate traffic without replaying commands. This may reveal the updater
+   handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
 

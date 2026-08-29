@@ -1,5 +1,10 @@
 # Key indices and the config file format
 
+Last synchronized: 2026-08-29. The hardware-test results in this file were
+recorded during earlier protocol work. The cited raw PCAPs are not present in the
+repository; see [`../FINDINGS.md`](../FINDINGS.md) for current evidence and safety
+status.
+
 Two **different** key-addressing schemes are in play. They have not been reconciled.
 
 | scheme | used by | form | status |
@@ -58,15 +63,16 @@ The last two conflict — the same target byte gave different characters on diff
 keys. Either the field is not a plain key index, or Armoury Crate interactions between those
 two tests mutated state.
 
-**Clean experiment to settle it:**
+**Deferred write experiment that could settle it:**
 
-1. Factory reset: `Fn + Caps`, hold until the LEDs blink green.
-2. Replug.
-3. Pick one source key. Send `51 21 <src> 9F <tgt> 00 0A 00` for `tgt` = 1..15, one at a time.
-4. Read each with `tools/keywatch.ps1`.
-5. **Do not open Armoury Crate at any point.**
+1. Establish a separate approved settings-test plan outside firmware preservation.
+2. Record a baseline and understand how settings will be restored.
+3. Vary only the target byte on one source and observe each result.
+4. Keep Armoury Crate closed so it cannot mutate state between samples.
 
-Nothing needs committing — uncommitted writes apply immediately and clear on replug.
+This experiment sends vendor-HID writes and may reset settings. It is not
+read-only. Earlier testing found that uncommitted changes cleared on replug, but
+that observation is not a firmware-recovery guarantee.
 
 ---
 

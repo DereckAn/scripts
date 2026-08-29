@@ -56,7 +56,7 @@ public class FalchionSeedEntries extends GhidraScript {
             seedFunction(0x000014a8L, "CandidateA_Reset_Handler");
         }
         else if (name.equals("app_candidate_b.bin")) {
-            seedFunction(0x00000000L, "CandidateB_Entry");
+            seedFunction(0x00000000L, "CandidateB_Start_Function");
         }
         else if (name.equals("ram_image_18038000.bin")) {
             label(0x18038000L, "RAM_Image_Vector_Table");

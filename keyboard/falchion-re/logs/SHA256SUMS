@@ -43,3 +43,6 @@ fa50255a473e49f62da401b754544396798ea7c99c3c0e33a6e9cec7aacbe001  logs/40-ghidra
 12ab86e53d2960680cc6680a9fa32f4460aca3e844410c6f1d6d5b37fff0c81a  logs/41-ghidra-entry-reanalysis.txt
 414e5db422d109d94eb28d606c52c2d6d437ebea2dbb367835e8feaabfadb54a  logs/42-ghidra-project-report.txt
 00b9539e73a397f4bc89fda43e4d0f536e2854260b0a659480f2d57b95c4d06a  logs/43-firmware-layout-with-ram-image.txt
+ae8207fc698c7769c3f12b037605442011982708ce56a303f0f79fd0e4960b04  logs/44-ghidra-candidate-b-label-correction.txt
+acefa336103b4aa174bb4f78f01e156c29c9014b7e6b76069fbf4aab34f6d19e  logs/45-ghidra-synchronized-project-report.txt
+7a2b20e2da634860feb23f5311af293421f8086a897bea8b312dff68c533247d  logs/46-documentation-synchronization-audit.txt

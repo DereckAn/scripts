@@ -7,15 +7,10 @@
   a leading 0x00 report-ID placeholder followed by the 64-byte payload. Then reads one
   input report with a timeout.
 
-  By default it does NOT send the 0x50 0x55 commit, so nothing is written to flash and a
-  replug clears any change. Pass -Commit to persist.
-
-.EXAMPLE
-  # set Fn+1 to emit "9"  (src idx 2 = the "1" key, tgt idx 10 = "9")
-  .\send.ps1 -Bytes '51 21 02 9F 0A 00 0A 00'
-
-.EXAMPLE
-  .\send.ps1 -Bytes '12 00'            # GetVersion query
+  WARNING: every invocation writes an undocumented vendor-HID report. Omitting -Commit
+  avoids the recorded 0x50 0x55 persistent commit but does not make the command read-only;
+  live device state may still change. Retained for historical protocol reproducibility.
+  Do not run during firmware preservation without a separate approved write-test plan.
 #>
 [CmdletBinding()]
 param(
@@ -127,9 +122,9 @@ try {
   } elseif ($r[0] -eq 0xFF -and $r[1] -eq 0xAA) {
     Write-Host "`n=> FF AA -- DEVICE REJECTED THE COMMAND (firmware-level lock)" -ForegroundColor Red
   } elseif ($r[0] -eq $payload[0] -and $r[1] -eq $payload[1]) {
-    Write-Host "`n=> header echoed -- DEVICE ACCEPTED THE COMMAND" -ForegroundColor Green
+    Write-Host "`n=> header echoed -- delivery observed; effect/acceptance UNKNOWN" -ForegroundColor Yellow
     $same = $true; 0..7 | ForEach-Object { if ($r[$_] -ne $payload[$_]) { $same = $false } }
-    if ($same) { Write-Host "   full 8-byte echo (identical to request)" -ForegroundColor Green }
+    if ($same) { Write-Host "   full 8-byte echo (identical to request; not proof of effect)" -ForegroundColor Yellow }
   } else {
     Write-Host "`n=> unexpected reply shape" -ForegroundColor Yellow
   }
@@ -140,7 +135,7 @@ try {
     $r2 = Send-Cmd $h $c $TimeoutMs
     Write-Host "IN     $(Hex $r2)" -ForegroundColor Green
   } else {
-    Write-Host "`n(no 0x50 0x55 commit sent -- nothing written to flash; replug to clear)" -ForegroundColor DarkGray
+    Write-Host "`n(no 0x50 0x55 persistent commit requested; live state may have changed)" -ForegroundColor DarkGray
   }
 }
 finally { [void][RawHid]::CloseHandle($h) }

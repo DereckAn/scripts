@@ -1,7 +1,15 @@
-# ROG Falchion Ace HFX — protocol specification
+# ROG Falchion Ace HFX — historical protocol notebook
 
 Device: `0b05:1b7e`, firmware `bcdDevice = 1.59`
-Last updated: 2026-08-27
+Last synchronized: 2026-08-29
+
+Current project status and safety decisions live in [`../FINDINGS.md`](../FINDINGS.md).
+This notebook preserves earlier Windows capture and device-test observations; it
+is not a preservation-safe command procedure. The cited raw PCAP files are absent
+from the repository, so `[V]` and `[C]` below mean *recorded as verified/captured
+during the earlier work*, not independently reproducible from the current checkout.
+The current Linux descriptor logs do independently confirm the USB transport
+layout.
 
 Every claim below is tagged:
 **[V]** verified on hardware · **[C]** from a packet capture · **[S]** static analysis of ASUS's DLL · **[?]** unresolved
@@ -93,7 +101,9 @@ OUT 25 00      IN 25 00 00...
 OUT 25 01      IN 25 01 00...
 ```
 
-`12 00` is reproducible standalone — it is the safest liveness probe:
+`12 00` was recorded as a standalone version query. Do not send it merely as a
+liveness probe during preservation; it is still an undocumented vendor-HID
+transaction:
 
 ```powershell
 .\tools\send.ps1 -Bytes '12 00'
@@ -136,8 +146,10 @@ Captured from Armoury Crate, with the resulting config-file change:
 An uncommitted `51 21` takes effect **immediately in RAM**. Verified: sent
 `51 21 34 9F 04 00 0A 00` with no commit, `Fn+M` changed straight away.
 
-`50 55` only persists to flash. This makes experimentation cheap and safe — **replug to
-revert anything uncommitted.**
+`50 55` was observed to persist configuration to flash. Without it, `51 21` still
+changes live device state immediately. Replugging was observed to revert those
+uncommitted changes, but that does **not** make the command read-only or
+preservation-safe.
 
 ---
 
@@ -178,9 +190,10 @@ The last two conflict: **the same target byte produced different characters on d
 source keys.** That should not happen for a simple position lookup, so either the target
 field is not a plain key index, or Armoury Crate interactions between tests mutated state.
 
-**To resolve:** factory-reset (`Fn+Caps`, hold until LEDs blink green), replug, then send a
-clean series varying only the target byte on one source key, testing each with
-`tools/keywatch.ps1` and never opening Armoury Crate in between.
+**Deferred experiment:** a clean series varying only the target byte on one source
+key could resolve this, but it requires settings resets and vendor-HID writes. It
+must not be attempted during preservation and requires a separate explicit test
+plan and approval.
 
 ---
 
@@ -208,7 +221,7 @@ cover some other error path we never triggered.
 
 ---
 
-## 6. Reserved keys (firmware-enforced)
+## 6. Reserved keys (historically observed device-side filtering)
 
 From the official manual. These are the ones the firmware silently refuses to remap:
 
@@ -232,8 +245,8 @@ Fn + Up / Down               Brightness up / down
 Fn + R-Ctrl (Copilot)        Menu
 ```
 
-`Fn + Caps` is a **hardware factory reset** — the recovery path that does not need Armoury
-Crate.
+`Fn + Caps` is a hardware-triggered **settings factory reset**. It does not require
+Armoury Crate, but it is not firmware or bootloader recovery.
 
 ---
 
@@ -349,4 +362,9 @@ Capture these logs live with `tools/haltrace.ps1` to label packets by method nam
 - How the file's `(row, col)` space maps to the wire's flat index.
 - `12 03 / 12 12 / 12 08 / 12 16 / 12 14` query meanings.
 - The `0xFFC0` event channel payload format (21-byte input reports).
-- MCU part number — case never opened. No DFU interface is exposed.
+- Current hardware markings are SNC73270 plus ZB25VQ32BTIG external SPI NOR; pad
+  mapping and safe readback wiring remain unresolved.
+- No DFU interface is exposed in normal mode. The official updater instead
+  describes proprietary HID bootloader PID `0b05:1b7f`.
+- The raw PCAP files cited by the earlier capture work are not preserved in this
+  repository.

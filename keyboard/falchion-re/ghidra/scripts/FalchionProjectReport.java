@@ -11,7 +11,7 @@ import ghidra.program.model.listing.Listing;
 import ghidra.program.model.mem.MemoryBlock;
 
 public class FalchionProjectReport extends GhidraScript {
-    private long knownResetAddress(String name) {
+    private long knownAnalysisAddress(String name) {
         if (name.equals("bootloader_primary.bin")) {
             return 0x000002f4L;
         }
@@ -51,12 +51,12 @@ public class FalchionProjectReport extends GhidraScript {
         println("  functions=" + functions.getFunctionCount());
         println("  instructions=" + instructionCount);
 
-        long resetValue = knownResetAddress(name);
-        if (resetValue >= 0) {
-            Address reset = currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(resetValue);
-            Function at = functions.getFunctionAt(reset);
-            Function containing = functions.getFunctionContaining(reset);
-            println("  known_entry=" + reset + " function_at=" +
+        long analysisValue = knownAnalysisAddress(name);
+        if (analysisValue >= 0) {
+            Address analysisAddress = currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(analysisValue);
+            Function at = functions.getFunctionAt(analysisAddress);
+            Function containing = functions.getFunctionContaining(analysisAddress);
+            println("  known_analysis_address=" + analysisAddress + " function_at=" +
                 (at == null ? "none" : at.getName()) + " function_containing=" +
                 (containing == null ? "none" : containing.getName()));
         }

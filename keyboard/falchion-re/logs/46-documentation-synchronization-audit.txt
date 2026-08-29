@@ -1,0 +1,89 @@
+2026-08-29T04:02:33-06:00
+## main...origin/main
+ M keyboard/falchion-ace-hfx-re-guide.md
+ M keyboard/falchion-re/FINDINGS.md
+ M keyboard/falchion-re/ghidra/README.md
+ M keyboard/falchion-re/ghidra/scripts/FalchionProjectReport.java
+ M keyboard/falchion-re/ghidra/scripts/FalchionSeedEntries.java
+ M keyboard/falchion-re/logs/COMMANDS.md
+ M keyboard/falchion-re/notes/findings.md
+ M keyboard/falchion-re/notes/key-matrix.md
+ M keyboard/falchion-re/notes/protocol.md
+ M keyboard/falchion-re/tools/README.md
+ M keyboard/falchion-re/tools/send.ps1
+?? keyboard/falchion-re/logs/44-ghidra-candidate-b-label-correction.txt
+?? keyboard/falchion-re/logs/45-ghidra-synchronized-project-report.txt
+?? keyboard/falchion-re/logs/46-documentation-synchronization-audit.txt
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin 507904 bytes
+keyboard/falchion-re/vendor/asus/original/ROG_FALCHION_ACE_HFX.zip 238446426 bytes
+path=/home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+size=507904 (0x7c000) expected=0x7c000 match=True
+sha256=6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d expected_match=True
+
+markers:
+  SNC7320A: 0x00000, 0x60000, 0x61000
+  SN_BCFG: 0x00200, 0x60200, 0x61200
+  SN_FWIN: 0x0907c, 0x10000, 0x6a07c
+
+SNC7320A header candidates:
+  header=0x00000 target_field=0x60001000 size_field=0x10000 target_as_file_offset=0x01000
+  header=0x60000 target_field=0x60062000 size_field=0x10000 target_as_file_offset=0x62000
+  header=0x61000 target_field=0x60001000 size_field=0x10000 target_as_file_offset=0x01000
+
+SN_FWIN header at 0x10000:
+  embedded_format_version='v1.0.00'
+  raw words +0x10..+0x4c:
+    +0x10: 0x60011000
+    +0x14: 0xffffffff
+    +0x18: 0x00000001
+    +0x1c: 0xffffffff
+    +0x20: 0x00000000
+    +0x24: 0x60011000
+    +0x28: 0x000058ac
+    +0x2c: 0x5e75c17a
+    +0x30: 0x18000000
+    +0x34: 0x60021000
+    +0x38: 0x0001e754
+    +0x3c: 0x1a76c116
+    +0x40: 0x18000000
+    +0x44: 0x60021000
+    +0x48: 0x00000000
+    +0x4c: 0x00000000
+
+candidate payload records (format interpretation remains provisional):
+  candidate-A: address=0x60011000 file=0x11000 length=0x58ac end=0x168ac stored=0x5e75c17a crc32=0x5e75c17a match=True
+  candidate-B: address=0x60021000 file=0x21000 length=0x1e754 end=0x3f754 stored=0x1a76c116 crc32=0x60c95a7b match=False
+
+verified vector-table candidates:
+primary bootloader: file=0x01000 initial_sp=0x1802b230 reset=0x000002f5 plausible_cortex_m=True
+application candidate-A: file=0x11000 initial_sp=0x18036140 reset=0x000014a9 plausible_cortex_m=True
+embedded bootloader code: file=0x62000 initial_sp=0x1802b230 reset=0x000002f5 plausible_cortex_m=True
+RAM-resident image (runtime base 0x18038000): file=0x74000 initial_sp=0x1803e458 reset=0x180381c1 plausible_cortex_m=True
+
+exact repetition checks:
+  complete first 64 KiB vs embedded copy: 0x00000-0x10000 == 0x61000-0x71000: True
+  bootloader code/data after first header page: 0x01000-0x10000 == 0x62000-0x71000: True
+
+4 KiB page groups:
+  0x00000-0x17000: content
+  0x17000-0x21000: all-FF
+  0x21000-0x40000: content
+  0x40000-0x60000: all-00
+  0x60000-0x71000: content
+  0x71000-0x74000: all-00
+  0x74000-0x79000: content
+  0x79000-0x7b000: all-00
+  0x7b000-0x7c000: content
+
+terminal words (integrity meaning unresolved):
+  file=0x0fffc value=0xfb665ae3
+  file=0x70ffc value=0xfb665ae3
+  file=0x7bffc value=0x5d27c5a9
+active_stale_claim_scan_exit=1 (1 means no matches)
+keyboard/falchion-re/FINDINGS.md:395:`CandidateB_Start_Function` at `0x0`. Candidate B begins with a valid Thumb
+keyboard/falchion-re/ghidra/scripts/FalchionSeedEntries.java:59:            seedFunction(0x00000000L, "CandidateB_Start_Function");
+capture_directory=keyboard/falchion-re/captures type=directory
+0
+capture_history_scan_exit=0 (empty output means no reachable capture commit)
+git_diff_check_exit=0

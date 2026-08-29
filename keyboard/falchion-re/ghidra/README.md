@@ -34,7 +34,7 @@ All source offsets refer to `dumps/vendor/M605_V01_00_58.bin`.
 |---|---:|---:|---|
 | `bootloader_primary.bin` | `0x01000-0x0ffff` | `0x00000000` | Primary bootloader code/data after its container page; vector at base, reset `0x000002f5` |
 | `app_candidate_a.bin` | `0x11000-0x168ab` | `0x00000000` | Small application image; vector at base, reset `0x000014a9`; USB/system coordination |
-| `app_candidate_b.bin` | `0x21000-0x3f753` | `0x00000000` (provisional) | Large executable payload containing keyboard behavior and USB identity; no vector at its start |
+| `app_candidate_b.bin` | `0x21000-0x3f753` | `0x00000000` (provisional) | Large executable payload containing keyboard behavior and USB identity; valid function at its start, but no vector or verified true entry |
 | `ram_image_18038000.bin` | `0x74000-0x7bfff` | `0x18038000` | Independently executable RAM image; vector at base, reset `0x180381c1` |
 
 The base of candidate B remains provisional. PC-relative Thumb code decodes

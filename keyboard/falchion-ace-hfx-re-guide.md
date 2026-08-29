@@ -1,23 +1,25 @@
 # ROG Falchion Ace HFX — Reverse Engineering Guide
 
-> ## STATUS — 2026-08-27: Phases 0–3 complete
+> ## STATUS — synchronized 2026-08-29
 >
-> **Results live in [`falchion-re/notes/`](falchion-re/notes/). Read those first — this file
-> is the original plan, not the findings.**
+> **Current results live in
+> [`falchion-re/FINDINGS.md`](falchion-re/FINDINGS.md). Read that first. This file
+> is a roadmap and historical plan, not the authoritative findings or a command
+> checklist.**
 >
 > - [`notes/findings.md`](falchion-re/notes/findings.md) — summary, status, open questions
 > - [`notes/protocol.md`](falchion-re/notes/protocol.md) — full protocol spec
 > - [`notes/key-matrix.md`](falchion-re/notes/key-matrix.md) — key indices + config format
 > - [`tools/README.md`](falchion-re/tools/README.md) — tooling + environment gotchas
 >
-> **Phase 3.6 outcome: BOTH locks are real.** Armoury Crate blocks client-side *and* the
-> firmware silently ignores reserved-key remaps when sent directly. Unlocking the reserved Fn
-> keys **does** require Phase 4. Everything else (all non-reserved keys, actuation, rapid
-> trigger, dead zone, profiles, polling rate) is reachable today with no firmware work.
+> Earlier device testing recorded both an Armoury Crate UI restriction and
+> device-side filtering of reserved Fn remaps. The cited raw PCAPs are missing, so
+> this remains a strong historical observation rather than a result independently
+> reproducible from the current checkout.
 >
-> **Before any Phase 4 work:** Phase 2 was never completed. There is no DFU interface and no
-> verified firmware backup, so there is currently **no recovery path except SWD**. Resolve
-> that first.
+> An authentic ASUS 1.00.58 image is preserved and offline Ghidra work has begun.
+> It is not an exact backup of installed version 1.59, and neither USB downgrade,
+> SWD recovery, nor external-flash restoration has been proven. Do not flash.
 
 **Goal:** Replace Armoury Crate with a cross-platform config tool, and unlock the Fn keys that ASUS won't let you remap.
 
@@ -29,13 +31,22 @@
 
 ## Guiding principle
 
-Do the **non-destructive** work first. Every step in Phase 1–3 is read-only or reversible. You don't touch firmware until you've proven you need to, and you don't touch firmware without a backup and a recovery path.
+Do the **non-destructive** work first. Enumeration, passive capture, and offline
+analysis can be read-only. Replaying HID reports, changing settings, factory
+resetting, entering a bootloader, and changing host permissions are not read-only
+and require separate approval. Do not touch firmware without an exact backup and a
+proven recovery path.
 
 **Never flash anything before completing Phase 2.**
 
 ---
 
 ## Phase 0 — Setup
+
+The commands in this phase change the host by installing packages, loading kernel
+modules, changing group membership, or creating permissions. They are retained as
+historical setup notes, not pre-approved actions. Use the narrowest access rule
+possible and explain each host change before applying it.
 
 ### 0.1 Install tools
 
@@ -70,8 +81,7 @@ echo usbmon | sudo tee /etc/modules-load.d/usbmon.conf
 Create `/etc/udev/rules.d/99-asus-keyboard.rules`:
 
 ```
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1b7e", MODE="0666"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1b7e", MODE="0666"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1b7e", TAG+="uaccess"
 ```
 
 Then:
@@ -154,54 +164,48 @@ Two routes:
 
 ## Phase 2 — Backup and recovery prep (DO THIS BEFORE ANY WRITE)
 
-### 2.1 Attempt a firmware dump
+### 2.1 Installed-firmware backup status
 
-If a DFU interface exists:
+Normal mode exposes no DFU interface, so the generic DFU upload experiment does
+not apply to this keyboard. An error or an all-zero/all-`0xFF` result would not by
+itself identify a specific readout-protection state.
 
-```bash
-# Read-only attempt. This does NOT write anything.
-sudo dfu-util -a 0 -U dumps/falchion-stock-$(date +%F).bin
-```
+No installed-1.59 dump exists. Proprietary HID readback is unresolved. Future
+hardware readback must start with a wiring/power/isolation plan for U5 and the
+SNC73270, then use repeated read-only dumps with identical hashes. Never issue SPI
+Write Enable, Program, or Erase commands during preservation.
 
-Three possible outcomes — record which one:
+### 2.2 Official firmware reference — completed offline
 
-| Outcome | Meaning | Implication |
-|---|---|---|
-| Full dump succeeds | No read-out protection | You have a golden backup. Best case. |
-| Reads all `0x00`/`0xFF` | RDP Level 1 active | Flash reads are blocked. No stock backup from the chip. |
-| Errors / no DFU iface | No exposed bootloader | May need SWD access to dump at all. |
+The official ASUS Armoury Crate Gear 1.0.1.15 ZIP is preserved locally with its
+published hash. It contains `M605_V01_00_58.bin`, a 507,904-byte combined
+bootloader/application image. The BIN is version 1.00.58, while the connected
+keyboard reports 1.59. It is valuable reference/recovery material, but it is not
+an installed-firmware backup and downgrade acceptance is unknown.
 
-If you get a dump: **verify it's real** (`xxd dumps/*.bin | head -50` — you should see a plausible vector table, not all zeros), then copy it to at least two other locations. This file is your entire safety net.
+See `falchion-re/vendor/asus/ARTIFACTS.md` and the authoritative findings. Never
+run the packaged updater during preservation.
 
-### 2.2 Get the official firmware as a secondary backup
+### 2.3 Plan hardware readback and recovery
 
-Even if RDP blocked you, ASUS's own updater may contain the firmware image:
+The SONiX family advertises SWD, but probe compatibility, pad locations, target
+support, readout protection, and safe connection procedure are not established.
+Do not assume a generic ST-Link/OpenOCD configuration can read or restore this
+MCU. U5 may be approachable with a suitable 3.3 V SPI programmer, but it must not
+be powered or driven against the board without a verified isolation plan.
 
-1. Download the Falchion Ace HFX firmware updater from ASUS support
-2. Extract it:
-   ```bash
-   # try these in order
-   7z x updater.exe -o./extracted
-   binwalk -e updater.exe
-   ```
-3. Look for `.bin` / `.hex` / large blobs in the output
-4. `binwalk` the candidates to check for ARM firmware signatures
-
-Store anything you find in `dumps/`.
-
-### 2.3 Get an SWD programmer (order it now, before you need it)
-
-- **ST-Link V2 clone** (~$5–8) or a **Raspberry Pi Pico** flashed as a debug probe (you may already have one)
-- This is your Tier-2 recovery path: if you ever corrupt the bootloader, USB flashing dies but SWD still works
-- Software: `sudo pacman -S openocd`
-
-Do not start Phase 4 without this in hand.
+Acquiring a probe is not itself a recovery path. Recovery is established only
+after a non-destructive read, repeated identical dumps, understood writable
+regions, and a tested restore method on an acceptable setup.
 
 ---
 
-## Phase 3 — Protocol reverse engineering (this is the main event)
+## Phase 3 — Protocol reverse engineering
 
-**This phase alone probably solves your problem.** No firmware changes, zero brick risk.
+Passive capture and offline decoding do not write the keyboard. Replaying packets,
+changing Armoury Crate settings, and sending raw reports do write live or persistent
+configuration and are outside the preservation-safe phase. Earlier experiments are
+documented in `falchion-re/notes/protocol.md`; do not repeat them by default.
 
 ### 3.1 Set up capture on the Armoury Crate side
 
@@ -214,9 +218,9 @@ On the **Windows PC**:
 1. **Install Wireshark for Windows** (https://www.wireshark.org/download.html).
    During install, **check the "Install USBPcap" box** — that's the USB capture
    driver Wireshark needs. **Reboot** afterward (USBPcap installs a kernel driver).
-2. **Install Armoury Crate** (ASUS support site or Microsoft Store). Launch it, let it
-   detect the Falchion Ace HFX, and let it apply any pending firmware/config update so
-   you're observing the normal, up-to-date protocol.
+2. **Install Armoury Crate only on a deliberately chosen capture host.** Disable or
+   decline firmware updates. Do not let it update or normalize the keyboard while
+   the installed firmware is being preserved.
 3. **Plug the keyboard directly into a USB port** on the Windows PC (avoid hubs — one
    less layer in the capture). Confirm Armoury Crate sees it and you can change settings.
 
@@ -303,102 +307,79 @@ Typical structure you're looking for (64-byte reports are common):
 ```
 
 Build up a table in `notes/protocol.md` as you identify fields. Watch for:
-- A **checksum/CRC** at the end (if your replayed packets get rejected but captured ones work, this is why — sum the bytes, try simple additive/XOR/CRC8 first)
+- A **checksum/CRC** at the end; test candidate algorithms offline against multiple
+  captured packets rather than probing the keyboard
 - A **"commit"/"save to EEPROM"** command sent after config changes
 - Sequence numbers or handshake/init packets sent at app startup
 
-### 3.5 Replay and verify
+### 3.5 Replay and verify — deferred write phase
 
-Once you think you understand a packet, send it yourself. Quick Python prototype:
+This section describes the historical method, not an approved current action.
+Any HID write can change device state; an undocumented packet may do more than its
+observed example. Do not run a replay until preservation/recovery gates and a
+specific packet-level test plan are approved.
 
-```python
-import hid
+The historical write tool is retained as `falchion-re/tools/send.ps1`, clearly
+quarantined in its README and help text. A future approved replay plan must specify
+the exact report bytes, expected effect, restoration method, and stop conditions.
 
-VID, PID = 0x0B05, 0x1B7E
+### 3.6 Historical key-lock test
 
-d = hid.Device(VID, PID)   # may need to select the right usage page/interface
-report = bytes([0x00, 0x51, 0x28, 0x00, 0x04] + [0x00]*59)  # example only
-d.write(report)
-print(d.read(64, timeout=1000))
-```
+Earlier work recorded an echoed-but-ignored reserved-key write and a successful
+ordinary Fn-layer write. The raw PCAP is missing, so preserve the result as a
+historical hardware observation. Repeating the test is a device-write experiment,
+not a read-only diagnostic.
 
-If `hid.Device(VID, PID)` grabs the wrong interface, enumerate and pick by usage page:
-
-```python
-for i in hid.enumerate(VID, PID):
-    print(i['path'], hex(i['usage_page']), hex(i['usage']), i['interface_number'])
-```
-
-The vendor interface is typically usage page `0xFF00`+.
-
-**Verify by replaying a known-good capture first** (something you already made via Armoury Crate). If that works, your transport is correct and you can start experimenting.
-
-### 3.6 THE KEY TEST — are the Fn keys really locked?
-
-Once you can send working remap packets:
-
-1. Send a remap targeting a locked Fn key, using the same packet structure that works for normal keys
-2. Reboot the keyboard (unplug/replug) and test the key
-3. Read back the config if the protocol supports it
-
-**Outcomes:**
-- **Works** → Lock was UI-only. **You're done.** Skip Phase 4 entirely, go build your tool.
-- **Device ACKs but key doesn't change** → Firmware silently ignores it. Firmware-level lock.
-- **Device NAKs / returns error** → Firmware actively rejects it. Firmware-level lock.
-
-Record which. This decides whether you continue to Phase 4.
+Future confirmation should preferably come from recovering the original PCAPs or
+locating the filtering logic offline in Candidate B. A new hardware write test is
+not required merely to continue static analysis.
 
 ---
 
-## Phase 4 — Firmware modification (ONLY if Phase 3.6 says the lock is in firmware)
+## Phase 4 — Offline firmware reverse engineering
 
-⚠️ **Prerequisites before starting:** verified firmware backup (2.1 or 2.2), SWD programmer in hand, SWD pads located.
+Offline analysis has started; device modification has not. Ghidra 12.1.2 and JDK
+21 are installed, and the prepared project is documented in
+`falchion-re/ghidra/README.md`.
 
-If you don't have a backup, seriously weigh whether unlockable Fn keys are worth a permanently altered keyboard.
+### Current image map
 
-### 4.1 Load firmware into Ghidra
+- primary bootloader code after the first container page: file `0x01000`, runtime
+  base `0x00000000`;
+- application candidate A: file `0x11000`, vector at its start, reset
+  `0x000014a9`;
+- application candidate B: file `0x21000`, valid Thumb code and keyboard/USB data,
+  provisional base zero and no verified entry vector;
+- RAM image: file `0x74000`, runtime base `0x18038000`, reset `0x180381c1`.
 
-```bash
-# Ghidra from AUR
-paru -S ghidra
-```
+The firmware uses SONiX `0x600xxxxx` flash/XIP references and memory-remapping
+features. Generic STM32 base addresses, targets, flash algorithms, and OpenOCD
+commands are invalid for this device and have been removed from this guide.
 
-- Import the `.bin` with the correct architecture (ARM Cortex-M, little endian, thumb)
-- Set the load base address correctly (usually `0x08000000` for STM32; check your MCU's memory map)
-- Let auto-analysis run
+### Safe offline goals
 
-### 4.2 Find the USB report handler
+1. Map the bootloader's container validation and update-region selection.
+2. Resolve Candidate B's load/call path and integrity calculation.
+3. Locate the vendor-HID configuration dispatcher and the recorded `51 21`
+   handling path.
+4. Identify the reserved-Fn filtering logic and distinguish code from embedded
+   tables/data.
+5. Produce candidate patches only as separate offline artifacts with exact source
+   offsets, original bytes, and recalculated integrity metadata.
 
-Strategy:
-- The vector table is at the base address; the reset handler is the second word
-- Look for the USB interrupt handler and follow to where OUT reports are processed
-- Search for the opcode byte you identified in Phase 3.4 — it'll appear as an immediate in a comparison instruction
-- That comparison is your entry point into the remap handler
+### Flashing remains blocked
 
-### 4.3 Find the lock check
+Do not create or run a flashing command yet. Before any device modification, all
+of the following must be true:
 
-- Inside the remap handler, look for a bounds check or a lookup table filtering key indices
-- A locked-key list will often appear as a small table of key indices, or a range comparison
-- The check will be a `CMP` + conditional branch that skips the write
+- exact installed firmware or equivalent recoverable state is preserved;
+- every relevant integrity field is understood;
+- updater erase/program regions and downgrade behavior are known;
+- a bootloader-independent recovery method is demonstrated;
+- the user explicitly approves the exact write operation and target.
 
-### 4.4 Patch
-
-- Simplest patch: NOP out the conditional branch, or invert it
-- Note the exact file offset and original bytes in `notes/patches.md`
-- Recompute any firmware checksum if the bootloader validates one (check for a length/CRC field near the vector table — if the bootloader rejects your patched image, this is why)
-
-### 4.5 Flash carefully
-
-```bash
-# via DFU if available
-sudo dfu-util -a 0 -s 0x08000000:leave -D dumps/patched.bin
-
-# or via SWD (safer, and works even if you break the bootloader)
-openocd -f interface/stlink.cfg -f target/stm32XXx.cfg \
-  -c "program dumps/patched.bin 0x08000000 verify reset exit"
-```
-
-**Test recovery before you need it:** after your first successful flash, immediately practice restoring the stock backup. Knowing your recovery path works is worth the ten minutes.
+The ASUS 1.00.58 image is reference/recovery material, not proof that recovery
+works. `Fn + Caps` resets settings only.
 
 ---
 
@@ -434,20 +415,19 @@ Publish the repo and the protocol documentation. Every other Falchion Ace HFX ow
 ## Quick reference — decision tree
 
 ```
-Identify MCU + find vendor HID interface
+Identify MCU + normal-mode USB interfaces
   │
-  ├─ Attempt firmware dump  ──► got backup?  ──► store in 3 places
-  │                              no backup?  ──► try ASUS updater extraction
-  │                                              still nothing? ──► Phase 4 is one-way. Decide carefully.
+  ├─ Preserve exact installed state if a safe read path is proven
+  │      └─ no proven path yet; official 1.00.58 image is not an exact backup
   │
-  ├─ Capture Armoury Crate traffic
-  ├─ Decode packet structure
-  ├─ Replay verified packets
+  ├─ Preserve passive Armoury Crate captures (raw PCAPs currently missing)
+  ├─ Decode packet structure offline
+  ├─ Keep report replay behind a separate write-test approval
   │
-  └─ Test locked Fn key remap
-       ├─ WORKS       ──► Skip Phase 4. Build tool. Done.
-       ├─ IGNORED     ──► Firmware lock. Phase 4 (needs backup + SWD).
-       └─ REJECTED    ──► Firmware lock. Phase 4 (needs backup + SWD).
+  └─ Analyze official firmware offline in Ghidra
+         ├─ resolve integrity + load paths
+         ├─ locate reserved-Fn filtering
+         └─ do not flash until exact backup and recovery are proven
 ```
 
 ---

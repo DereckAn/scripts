@@ -3,6 +3,11 @@
 Windows-side tooling for the Falchion Ace HFX work. See `../notes/protocol.md` for what the
 bytes mean.
 
+These tools preserve earlier protocol work; they are not all approved for the
+current firmware-preservation phase. Passive capture, offline decode, config-file
+snapshotting, and key observation do not send keyboard commands. `send.ps1` does
+and must not be used without a separate explicit write-test plan and approval.
+
 | script | elevated? | writes to keyboard? | purpose |
 |---|---|---|---|
 | `snap-config.ps1` | no | no | decode + diff Armoury Crate's on-disk profile |
@@ -14,23 +19,25 @@ bytes mean.
 
 ---
 
-## send.ps1 — the important one
+## send.ps1 — quarantined device-write tool
 
 Opens `MI_01` (usage page 0xFF00) and writes a 65-byte report (`0x00` placeholder + 64-byte
 payload), then reads the reply.
 
-```powershell
-.\send.ps1 -Bytes '12 00'                      # GetVersion — safe liveness probe
-.\send.ps1 -Bytes '51 21 18 9F 09 00 0A 00'    # remap Fn+I
-.\send.ps1 -Bytes '51 21 18 9F 09 00 0A 00' -Commit   # ...and persist to flash
-```
+The script is retained for reproducibility, but command examples are intentionally
+not presented as instructions to run. Recorded traffic associates `12 00` with a
+version query, `51 21` with a live binding change, and optional `-Commit` with
+`50 55` persistent storage. All are undocumented vendor-HID transactions.
 
 **Safety model:**
 
-- By default it does **not** send `0x50 0x55`, so nothing is written to flash. The change
-  still takes effect immediately in RAM — **replug to revert.**
-- `-Commit` persists. Recovery from a bad committed state: **`Fn + Caps`, hold until the LEDs
-  blink green** (hardware factory reset, documented in the manual, no Armoury Crate needed).
+- By default it does **not** send the recorded `0x50 0x55` persistent commit, but a
+  configuration command still changes live device state. It is not read-only.
+- `-Commit` is a known persistent settings write and is prohibited during
+  preservation.
+- `Fn + Caps` resets settings only. It is not recovery from damaged firmware or a
+  failed bootloader.
+- The echoed reply does not establish that a command was accepted or harmless.
 
 **Do not trust the ACK.** The device echoes the request header verbatim even when it discards
 the write. Always verify with `keywatch.ps1` or by observing the key. See protocol.md §5.

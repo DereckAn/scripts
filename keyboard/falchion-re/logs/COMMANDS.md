@@ -48,6 +48,9 @@ All commands below were run on 2026-08-29. Device-facing access was read-only. S
 | `41-ghidra-entry-reanalysis.txt` | `ghidra-analyzeHeadless -process ...` for candidates A and B | Reanalysis completed and saved; one isolated candidate-B decode warning recorded |
 | `42-ghidra-project-report.txt` | `ghidra-analyzeHeadless -process ... -readOnly -noanalysis -postScript FalchionProjectReport.java` for four programs | Verified language, memory blocks, entry recognition, function/instruction counts, and relevant strings |
 | `43-firmware-layout-with-ram-image.txt` | `python3 tool/analyze_sonix_firmware.py` | Read-only parser rerun after adding the verified `0x74000` RAM-image vector |
+| `44-ghidra-candidate-b-label-correction.txt` | `ghidra-analyzeHeadless -process app_candidate_b.bin -noanalysis -postScript FalchionSeedEntries.java` | Renamed the provisional local Ghidra function from `CandidateB_Entry` to the evidence-bounded `CandidateB_Start_Function`; source BIN and keyboard untouched |
+| `45-ghidra-synchronized-project-report.txt` | `ghidra-analyzeHeadless -process ... -readOnly -noanalysis -postScript FalchionProjectReport.java` for four programs | Confirmed synchronized analysis labels and memory mappings in explicit read-only mode |
+| `46-documentation-synchronization-audit.txt` | `date`; `git status`; firmware SHA-256; read-only analyzer; active-document stale-claim scan; file-presence checks | Post-pull documentation/evidence synchronization audit; no keyboard access |
 
 Repository/context commands also run: `pwd`, `rg --files -g AGENTS.md`, `rg --files`, `git status --short`, `sed` on existing Falchion notes, `mkdir -p logs`, `diff` on prior captures, and `sha256sum logs/*.txt`. Reading the newly created logs with `sed`, `wc`, and `tail` did not access the USB device.
 
