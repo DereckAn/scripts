@@ -104,6 +104,20 @@ This is strong prior evidence for both a UI restriction and device-side filterin
 but the raw PCAP evidence is missing. Treat it as a historical observation pending
 capture preservation or offline identification of the same check in firmware.
 
+Offline Candidate B analysis now independently identifies that device-side
+check. `VendorHID_CommandDispatcher` at `0x1fbe` accepts `0x51/0x21` sources
+through `0xbc`, translates source and target through runtime tables, updates a
+per-key record, and builds an echoed 64-byte response. It does not consult the
+reserved-key list on this path.
+
+`IsKeyUnsupportedForLayer` at `0x1f6e` separately searches a 6-entry list for
+base selectors and a 57-entry list for Fn/other selectors. Configuration-load
+code skips matching mappings and contains the diagnostic strings `R_NSK_M` and
+`R_NSK_FnM`. This statically explains how a command can be echoed but later have
+no effective Fn binding. The 63 entries reside at runtime RAM `0x1801c810`; their
+contents and initializer are not yet recovered from the package, so the exact
+locked-key membership remains unresolved.
+
 An echoed response is not proof that a change took effect. Target-key encoding is
 also unresolved: the same target byte reportedly produced inconsistent results in
 different tests.
@@ -137,7 +151,8 @@ and reset operations remain prohibited unless explicitly planned and approved.
   or driving the board incorrectly?
 - Does SNC73270 SWD permit read-only access, and which probe/software supports it?
 - What are Candidate B's true execution/load semantics and integrity calculation?
-- Where is the reserved-Fn filtering logic in Candidate B?
+- How are the reserved-key lists at runtime RAM `0x1801c810` initialized, and
+  what are their exact 63 entries?
 - What is the target-key encoding for `51 21`?
 - Can the missing PCAP files be recovered from the Windows capture system and
   preserved with hashes?

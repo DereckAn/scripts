@@ -176,7 +176,14 @@ row 5   Ctrl=59  Win=60  Alt=61  Space=62  Alt=63  Fn=64  ROG=65
 Directly confirmed: **Backspace=14, Q=17, I=24, O=25, Enter=43, N=51, M=52.**
 Digits confirmed on the target side (see below).
 
-### Target index — UNRESOLVED **[?]**
+### Target index — runtime-table encoding partly resolved **[S][?]**
+
+Candidate B static analysis shows that bytes 4-5 form a 16-bit target. Values
+through `0x00bc` are passed through the same runtime translation table used for
+the source index (table base `0x1801bff6`). Special values `0x00ff`, `0x00c7`,
+`0x00c8`, and `0x00d3` take separate paths and are stored in an internal
+`0xA000`-class encoding. This proves the target is not simply copied into the
+active key record, but the runtime table contents have not yet been recovered.
 
 Contradictory observations, all from `51 21`:
 
@@ -218,6 +225,23 @@ cover some other error path we never triggered.
 
 > **Any tool built on this protocol must verify by reading back or observing the key.
 > Never treat the echo as success.**
+
+### Static explanation of the silent ignore **[S]**
+
+The `0x51/0x21` command handler at Candidate B `0x2662-0x27d4` validates the
+source/layer fields, updates the translated per-key record, marks state dirty,
+and calls the 64-byte response sender. It does not call the reserved-key check.
+
+A separate function at `0x1f6e` searches one of two runtime policy arrays. The
+base path has 6 32-bit entries; the Fn/other path has 57. Configuration-load and
+apply code calls it before activating a mapping and skips matches, alongside the
+strings `R_NSK_M` and `R_NSK_FnM`. Thus the static firmware structure supports
+the historical result: packet acceptance/echo and effective binding policy are
+separate decisions.
+
+The arrays begin at RAM `0x1801c810`. Their values are not yet available in the
+offline image, so the manual-derived list below has not been matched
+entry-for-entry to firmware data.
 
 ---
 

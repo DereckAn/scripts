@@ -1,0 +1,2688 @@
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (444 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (937 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /app_candidate_b.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionDispatcherReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionDispatcherReport.java (HeadlessAnalyzer)  
+INFO  FalchionDispatcherReport.java> PROGRAM app_candidate_b.bin (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 00001fbe..00002040 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fbe  push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr} (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fc2  ldr r4,[0x00002174]  refs=[READ->00002174] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fc4  ldrb r0,[r4,#0x0]  refs=[READ->1802337c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fc6  cmp r0,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fc8  beq 0x000020bc  refs=[CONDITIONAL_JUMP->000020bc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fca  bl 0x0000fc16  refs=[UNCONDITIONAL_CALL->0000fc16] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fce  mov r0,r4  refs=[PARAM->1802337c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fd0  ldr.w r9,[0x0000214c]  refs=[READ->0000214c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fd4  ldrb r2,[r0,#0x0]  refs=[READ->1802337c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fd6  movs r6,#0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fd8  ldr.w r10,[0x00002158]  refs=[READ->00002158] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fdc  sub.w r9,r9,#0x5 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fe0  movs r5,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fe2  sub.w r1,r0,#0x30 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fe6  mov.w r8,#0xff (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fea  mov.w r12,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001fee  add.w r7,r9,#0x1c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001ff2  cmp r2,#0x52 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001ff4  beq 0x000020e0  refs=[CONDITIONAL_JUMP->000020e0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001ff6  bgt 0x00002022  refs=[CONDITIONAL_JUMP->00002022] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001ff8  movw r0,#0xa9b8 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001ffc  cmp r2,#0x41 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00001ffe  beq 0x000020e2  refs=[CONDITIONAL_JUMP->000020e2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002000  bgt 0x00002014  refs=[CONDITIONAL_JUMP->00002014] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002002  cmp r2,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002004  beq 0x00002052  refs=[CONDITIONAL_JUMP->00002052] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002006  cmp r2,#0x12 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002008  beq 0x00002066  refs=[CONDITIONAL_JUMP->00002066] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000200a  cmp r2,#0x22 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000200c  beq 0x000020e4  refs=[CONDITIONAL_JUMP->000020e4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000200e  cmp r2,#0x25 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002010  bne 0x000020e6  refs=[CONDITIONAL_JUMP->000020e6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002012  b 0x000022be  refs=[UNCONDITIONAL_JUMP->000022be] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002014  cmp r2,#0x43 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002016  beq 0x000020e8  refs=[CONDITIONAL_JUMP->000020e8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002018  cmp r2,#0x50 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000201a  beq 0x00002110  refs=[CONDITIONAL_JUMP->00002110] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000201c  cmp r2,#0x51 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000201e  bne 0x00002010  refs=[CONDITIONAL_JUMP->00002010] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002020  b 0x0000248e  refs=[UNCONDITIONAL_JUMP->0000248e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002022  cmp r2,#0xb0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002024  beq.w 0x000039ea  refs=[CONDITIONAL_JUMP->000039ea] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002028  bgt 0x00002040  refs=[CONDITIONAL_JUMP->00002040] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000202a  cmp r2,#0x53 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000202c  beq 0x00002112  refs=[CONDITIONAL_JUMP->00002112] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000202e  cmp r2,#0x54 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002030  beq 0x00002114  refs=[CONDITIONAL_JUMP->00002114] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002032  cmp r2,#0x71 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002034  beq.w 0x00003954  refs=[CONDITIONAL_JUMP->00003954] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002038  cmp r2,#0x73 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000203a  bne 0x00002010  refs=[CONDITIONAL_JUMP->00002010] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000203c  b.w 0x00003a2e  refs=[UNCONDITIONAL_JUMP->00003a2e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002040  cmp r2,#0xc0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 000023c0..00002510 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023c0  movs r1,#0x82 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023c2  movs r0,#0x43 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023c4  bl 0x00000a70  refs=[UNCONDITIONAL_CALL->00000a70] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023c8  ldrb.w r0,[r6,#0x81]!  refs=[READ->18022cb5] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023cc  orr r0,r0,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023d0  b 0x0000239e  refs=[UNCONDITIONAL_JUMP->0000239e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023d2  movs r3,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023d4  mov r2,r3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023d6  movs r1,#0x82 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023d8  str r5,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023da  movs r0,#0x43 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023dc  b 0x00002252  refs=[UNCONDITIONAL_JUMP->00002252] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023de  ldrb r0,[r4,#0x1]  refs=[READ->1802337d] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023e0  cmp r0,#0x55 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023e2  beq 0x00002428  refs=[CONDITIONAL_JUMP->00002428] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023e4  bgt 0x000023f0  refs=[CONDITIONAL_JUMP->000023f0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023e6  cmp r0,#0x30 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023e8  beq 0x000023fa  refs=[CONDITIONAL_JUMP->000023fa] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023ea  cmp r0,#0x40 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023ec  bne 0x00002310  refs=[CONDITIONAL_JUMP->00002310] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023ee  b 0x0000240a  refs=[UNCONDITIONAL_JUMP->0000240a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023f0  cmp r0,#0x60 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023f2  beq 0x00002440  refs=[CONDITIONAL_JUMP->00002440] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023f4  cmp r0,#0x61 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023f6  bne 0x00002310  refs=[CONDITIONAL_JUMP->00002310] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023f8  b 0x0000246a  refs=[UNCONDITIONAL_JUMP->0000246a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023fa  ldr r0,[0x000025a0]  refs=[READ->000025a0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023fc  adds r0,#0x84 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000023fe  ldrb r1,[r0,#0x0]  refs=[READ->18022cb8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002400  cmp r1,#0x3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002402  beq 0x00002426  refs=[CONDITIONAL_JUMP->00002426] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002404  movs r1,#0x3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002406  strb r1,[r0,#0x0]  refs=[WRITE->18022cb8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002408  b 0x0000241c  refs=[UNCONDITIONAL_JUMP->0000241c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000240a  ldr r0,[0x000025a0]  refs=[READ->000025a0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000240c  adds r0,#0x84 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000240e  ldrb r1,[r0,#0x0]  refs=[READ->18022cb8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002410  cmp r1,#0x5 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002412  beq 0x00002426  refs=[CONDITIONAL_JUMP->00002426] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002414  movs r1,#0x5 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002416  strb r1,[r0,#0x0]  refs=[WRITE->18022cb8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002418  ldrb r1,[r4,#0x4]  refs=[READ->18023380] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000241a  b 0x00002530  refs=[UNCONDITIONAL_JUMP->00002530] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000241c  strb r5,[r0,#0x8]  refs=[WRITE->18022cc0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000241e  ldrb r1,[r0,#0x9]  refs=[READ->18022cc1] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002420  orr r1,r1,#0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002424  strb r1,[r0,#0x9]  refs=[WRITE->18022cc1] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002426  b 0x00002534  refs=[UNCONDITIONAL_JUMP->00002534] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002428  ldr r0,[0x000025a0]  refs=[READ->000025a0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000242a  adds r0,#0x84 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000242c  ldrb r1,[r0,#0x0]  refs=[READ->18022cb8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000242e  cmp r1,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002430  beq 0x00002508  refs=[CONDITIONAL_JUMP->00002508] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002432  strb.w r12,[r0,#0x0]  refs=[WRITE->18022cb8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002436  strb r5,[r0,#0x8]  refs=[WRITE->18022cc0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002438  ldrb r1,[r0,#0x9]  refs=[READ->18022cc1] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000243a  bic r1,r1,#0xc (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000243e  b 0x00002420  refs=[UNCONDITIONAL_JUMP->00002420] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002440  ldr r0,[0x0000259c]  refs=[READ->0000259c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002442  adds r0,#0xd4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002444  bl 0x0000072c  refs=[UNCONDITIONAL_CALL->0000072c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002448  movs r1,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000244a  ldr r0,[0x000025b4]  refs=[READ->000025b4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000244c  bl 0x00000584  refs=[UNCONDITIONAL_CALL->00000584] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002450  movs r1,#0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002452  ldr r0,[0x000025b4]  refs=[READ->000025b4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002454  bl 0x00000584  refs=[UNCONDITIONAL_CALL->00000584] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002458  ldr r0,[0x000025b8]  refs=[READ->000025b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000245a  adds r3,r4,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000245c  strb r6,[r0,#0x0]  refs=[WRITE->1801e68d] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000245e  strb r6,[r0,#0x1]  refs=[WRITE->1801e68e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002460  movs r0,#0x3c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002462  str r0,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002464  ldrh r2,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002466  movs r1,#0x60 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002468  b 0x0000248a  refs=[UNCONDITIONAL_JUMP->0000248a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000246a  ldrb r0,[r7,#0x6]  refs=[READ->1801e6aa] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000246c  ldr r1,[0x000025bc]  refs=[READ->000025bc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000246e  ldrb r1,[r1,r0]  refs=[DATA->1801bf92] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002470  strb r1,[r7,#0x5]  refs=[WRITE->1801e6a9] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002472  bl 0x0000075a  refs=[UNCONDITIONAL_CALL->0000075a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002476  ldr r0,[0x0000259c]  refs=[READ->0000259c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002478  strh r5,[r0,#0x2]  refs=[WRITE->18021db6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000247a  ldrb r0,[r7,#0x5]  refs=[READ->1801e6a9] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000247c  bl 0x00000b28  refs=[UNCONDITIONAL_CALL->00000b28] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002480  movs r0,#0x3c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002482  str r0,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002484  ldrh r2,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002486  adds r3,r4,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002488  movs r1,#0x61 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000248a  movs r0,#0x50 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000248c  b 0x00002252  refs=[UNCONDITIONAL_JUMP->00002252] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000248e  ldrb r2,[r4,#0x1]  refs=[READ->1802337d] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002490  mov lr,r2 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002492  cmp r2,#0x4f (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002494  beq 0x0000258c  refs=[CONDITIONAL_JUMP->0000258c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002496  bgt 0x000024dc  refs=[CONDITIONAL_JUMP->000024dc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002498  cmp r2,#0x23 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000249a  beq 0x0000258e  refs=[CONDITIONAL_JUMP->0000258e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000249c  bgt 0x000024ba  refs=[CONDITIONAL_JUMP->000024ba] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000249e  cmp r2,#0x20 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024a0  beq 0x0000253e  refs=[CONDITIONAL_JUMP->0000253e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024a2  bgt 0x000024b0  refs=[CONDITIONAL_JUMP->000024b0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024a4  cbz r2,0x00002506  refs=[CONDITIONAL_JUMP->00002506] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024a6  cmp r2,#0xc (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024a8  beq 0x00002590  refs=[CONDITIONAL_JUMP->00002590] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024aa  cmp r2,#0x18 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ac  bne 0x000023ec  refs=[CONDITIONAL_JUMP->000023ec] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ae  b 0x00002c9a  refs=[UNCONDITIONAL_JUMP->00002c9a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024b0  cmp r2,#0x21 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024b2  beq 0x000024b8  refs=[CONDITIONAL_JUMP->000024b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024b4  cmp r2,#0x22 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024b6  bne 0x000023ec  refs=[CONDITIONAL_JUMP->000023ec] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024b8  b 0x00002662  refs=[UNCONDITIONAL_JUMP->00002662] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ba  ldr.w r8,[0x000025b8]  refs=[READ->000025b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024be  cmp r2,#0x2d (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024c0  add.w r8,r8,#0x27 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024c4  beq 0x00002592  refs=[CONDITIONAL_JUMP->00002592] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024c6  bgt 0x000024d2  refs=[CONDITIONAL_JUMP->000024d2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024c8  cmp r2,#0x24 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ca  beq 0x000025c4  refs=[CONDITIONAL_JUMP->000025c4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024cc  cmp r2,#0x2c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ce  bne 0x000023ec  refs=[CONDITIONAL_JUMP->000023ec] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024d0  b 0x00002970  refs=[UNCONDITIONAL_JUMP->00002970] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024d2  cmp r2,#0x31 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024d4  beq 0x000025c6  refs=[CONDITIONAL_JUMP->000025c6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024d6  cmp r2,#0x42 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024d8  bne 0x000023ec  refs=[CONDITIONAL_JUMP->000023ec] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024da  b 0x00002cd8  refs=[UNCONDITIONAL_JUMP->00002cd8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024dc  cmp r2,#0x55 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024de  beq 0x000025c8  refs=[CONDITIONAL_JUMP->000025c8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024e0  bgt 0x000024f6  refs=[CONDITIONAL_JUMP->000024f6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024e2  ldr r1,[0x000025c0]  refs=[READ->000025c0,PARAM->1801e8b0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024e4  sub.w r2,r2,#0x50 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024e8  cmp r2,#0x5 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ea  bcs 0x0000255a  refs=[CONDITIONAL_JUMP->0000255a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024ec  tbb [pc,r2]  refs=[COMPUTED_JUMP->0000258a,COMPUTED_JUMP->00002690,COMPUTED_JUMP->000024fa,COMPUTED_JUMP->000026a8,COMPUTED_JUMP->000025e4,COMPUTED_JUMP->00002656,COMPUTED_JUMP->00002508,COMPUTED_JUMP->00002544,COMPUTED_JUMP->000025d4,COMPUTED_JUMP->00002520,COMPUTED_JUMP->0000262c,COMPUTED_JUMP->00002692,COMPUTED_JUMP->000026d8,COMPUTED_JUMP->000026b6,COMPUTED_JUMP->00002532,COMPUTED_JUMP->000024f2,COMPUTED_JUMP->00002534,COMPUTED_JUMP->00002622,COMPUTED_JUMP->00002696,COMPUTED_JUMP->000026b0,COMPUTED_JUMP->000026ae,COMPUTED_JUMP->000026e0,COMPUTED_JUMP->000026e8,COMPUTED_JUMP->000025f0,COMPUTED_JUMP->0000254a,COMPUTED_JUMP->00002500,COMPUTED_JUMP->000026d2,COMPUTED_JUMP->0000253e,COMPUTED_JUMP->000025ba,COMPUTED_JUMP->000024f8,COMPUTED_JUMP->00002538,COMPUTED_JUMP->000025e6,COMPUTED_JUMP->00002548,COMPUTED_JUMP->0000260a,COMPUTED_JUMP->0000258c,COMPUTED_JUMP->000026b4,COMPUTED_JUMP->00002552,COMPUTED_JUMP->000025de,COMPUTED_JUMP->00002574,COMPUTED_JUMP->00002600,COMPUTED_JUMP->000026ea,COMPUTED_JUMP->0000259a,COMPUTED_JUMP->000025d6,COMPUTED_JUMP->00002502,COMPUTED_JUMP->0000255e,COMPUTED_JUMP->00002582,COMPUTED_JUMP->00002634,COMPUTED_JUMP->00002590,COMPUTED_JUMP->000024f4,COMPUTED_JUMP->0000255c,COMPUTED_JUMP->00002694,COMPUTED_JUMP->000026c0,COMPUTED_JUMP->000026d0,COMPUTED_JUMP->000026ec,COMPUTED_JUMP->000026e6,COMPUTED_JUMP->000026e4,DATA->000024f0,DATA->000024a0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024f6  cmp r2,#0x58 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024f8  beq 0x000025ca  refs=[CONDITIONAL_JUMP->000025ca] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024fa  bgt 0x0000250a  refs=[CONDITIONAL_JUMP->0000250a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024fc  cmp r2,#0x56 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000024fe  beq 0x000025e2  refs=[CONDITIONAL_JUMP->000025e2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002500  cmp r2,#0x57 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002502  bne 0x000024ac  refs=[CONDITIONAL_JUMP->000024ac] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002504  b 0x00002cda  refs=[UNCONDITIONAL_JUMP->00002cda] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002506  b 0x00002514  refs=[UNCONDITIONAL_JUMP->00002514] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002508  b 0x00002534  refs=[UNCONDITIONAL_JUMP->00002534] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000250a  cmp r2,#0x59 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000250c  beq 0x000025e4  refs=[CONDITIONAL_JUMP->000025e4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000250e  cmp r2,#0x90 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002510  bne 0x000024ac  refs=[CONDITIONAL_JUMP->000024ac] (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 00002640..00002690 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002640  ldrb r0,[r0,r1] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002642  ldr r1,[0x000029b8]  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002644  add.w r0,r1,r0, lsl #0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002648  strh.w r5,[r0,#0x2c2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000264c  b 0x00002632  refs=[UNCONDITIONAL_JUMP->00002632] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000264e  ldr r2,[0x000029b4]  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002650  orr r0,r0,#0xa000 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002654  ldrb r1,[r2,r1] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002656  ldr r2,[0x000029b8]  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002658  add.w r1,r2,r1, lsl #0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000265c  strh.w r0,[r1,#0x2c2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002660  b 0x00002632  refs=[UNCONDITIONAL_JUMP->00002632] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002662  ldrb r1,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002664  cmp r1,#0xbc (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002666  bhi 0x0000274a  refs=[CONDITIONAL_JUMP->0000274a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002668  ldrb r0,[r4,#0x3]  refs=[READ->1802337f] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000266a  cbz r0,0x00002672  refs=[CONDITIONAL_JUMP->00002672] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000266c  cmp r0,#0x9f (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000266e  bne 0x0000274a  refs=[CONDITIONAL_JUMP->0000274a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002670  movs r0,#0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002672  ldrb r2,[r4,#0x4]  refs=[READ->18023380] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002674  mov r3,r11 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002676  ldrb.w r12,[r4,#0x5]  refs=[READ->18023381] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000267a  bfi r3,r2,#0x0,#0x8 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000267e  bfi r3,r12,#0x8,#0x8 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002682  mov r9,r3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002684  uxth r3,r3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002686  cmp r3,#0xbc (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002688  bhi 0x000026a6  refs=[CONDITIONAL_JUMP->000026a6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000268a  ldr r2,[0x000029b4]  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000268c  add.w r12,r0,r0, lsl #0x3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002690  ldr.w r8,[0x000029b8]  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 00002760..000027c0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002762  ldrb.w r12,[r12,r1] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002766  add.w r3,r3,r12, lsl #0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000276c  movs r0,#0xd4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000276e  b 0x000026d6  refs=[UNCONDITIONAL_JUMP->000026d6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002770  orr r2,r2,#0x8000 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002774  strh r2,[r1,#0x8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002776  cmp.w lr,#0x21 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000277a  beq 0x00002784  refs=[CONDITIONAL_JUMP->00002784] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000277c  cmp.w lr,#0x22 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002780  beq 0x00002788  refs=[CONDITIONAL_JUMP->00002788] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002782  b 0x000027a2  refs=[UNCONDITIONAL_JUMP->000027a2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002784  strb r5,[r1,#0xc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002786  b 0x000027a2  refs=[UNCONDITIONAL_JUMP->000027a2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002788  ldrb r3,[r4,#0x7]  refs=[READ->18023383] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000278a  mov r2,r9 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000278c  bfi r2,r3,#0x0,#0x8 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002790  ldrb r3,[r4,#0x8]  refs=[READ->18023384] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002792  bfi r2,r3,#0x8,#0x8 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002796  uxth r2,r2 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002798  movs r3,#0xa (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000279a  udiv r2,r2,r3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000279e  strb r2,[r1,#0xd] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027a0  strb r6,[r1,#0xc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027a2  ldr r1,[0x000029c8]  refs=[READ->000029c8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027a4  strb r6,[r1,r0]  refs=[DATA->1801e68d,WRITE->1801e761,WRITE->1801e68e,WRITE->18029045] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027a6  movs r0,#0x3c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027a8  str r0,[sp,#0x0]  refs=[WRITE->Stack[0x0]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027aa  ldrh r2,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027ac  adds r3,r4,#0x4  refs=[PARAM->18023380] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027ae  mov r1,lr (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027b0  movs r0,#0x51 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027b2  bl 0x00000a70  refs=[UNCONDITIONAL_CALL->00000a70] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027b6  ldrb r0,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027b8  ldr r6,[0x000029b4]  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027ba  ldrb r0,[r6,r0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027bc  bl 0x0001bdba  refs=[UNCONDITIONAL_CALL->0001bdba] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000027c0  ldrb r0,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 00002be0..00002c40 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002be0  movs r1,#0x4f (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002be2  b 0x000030c4  refs=[UNCONDITIONAL_JUMP->000030c4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002be4  ldrb r1,[r7,#0x6]  refs=[READ->1801e6aa] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002be6  ldr r0,[0x00002e58]  refs=[READ->00002e58] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002be8  ldrb r3,[r4,#0x4]  refs=[READ->18023380] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bea  ldr.w r2,[r0,r1,lsl #0x2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bee  bfi r2,r3,#0x9,#0x7 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bf2  str.w r2,[r0,r1,lsl #0x2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bf6  movs r1,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bf8  movs r0,#0x2 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bfa  bl 0x00006d10  refs=[UNCONDITIONAL_CALL->00006d10] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002bfe  movs r0,#0x3c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c00  str r0,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c02  adds r3,r4,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c04  ldrh r2,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c06  movs r1,#0x50 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c08  b 0x000030c4  refs=[UNCONDITIONAL_JUMP->000030c4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c0a  ldr r1,[0x00002e5c]  refs=[READ->00002e5c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c0c  movs r0,#0x3c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c0e  adds r3,r4,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c10  str r0,[r1,#0x0]  refs=[WRITE->1801e78c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c12  str r0,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c14  ldrh r2,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c16  movs r1,#0x51 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c18  b 0x000030c4  refs=[UNCONDITIONAL_JUMP->000030c4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c1a  ldrb r0,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c1c  cmp r0,#0x5 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c1e  bcs 0x00002c7a  refs=[CONDITIONAL_JUMP->00002c7a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c20  tbb [pc,r0]  refs=[COMPUTED_JUMP->00002c2a,COMPUTED_JUMP->00002c38,COMPUTED_JUMP->00002c3e,COMPUTED_JUMP->00002c4a,COMPUTED_JUMP->00002c60,DATA->00002c24] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c2a  movs r0,#0x3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c2c  movs r2,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c2e  str r0,[sp,#0x8]  refs=[WRITE->Stack[-0x30]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c30  mov.w lr,#0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c34  movs r0,#0x2 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c36  b 0x00002c6c  refs=[UNCONDITIONAL_JUMP->00002c6c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c38  movs r2,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c3a  str r6,[sp,#0x8]  refs=[WRITE->Stack[-0x30]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c3c  b 0x00002c46  refs=[UNCONDITIONAL_JUMP->00002c46] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c3e  movs r0,#0x2 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00002c40  mov.w lr,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 00003170..000031c0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003170  strb r1,[r3,#0x5] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003172  strb r0,[r3,#0x4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003174  b 0x00003190  refs=[UNCONDITIONAL_JUMP->00003190] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003176  ldr r1,[0x000032cc]  refs=[READ->000032cc,PARAM->1801fecc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003178  add.w r0,r1,r0, lsl #0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000317c  ldrb r3,[r0,#0x4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000317e  cmp r3,r11 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003180  bne 0x000031b2  refs=[CONDITIONAL_JUMP->000031b2] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003182  movs r2,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003184  strb r2,[r0,#0x5] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003186  strb r5,[r0,#0x4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003188  add.w r0,r1,r11, lsl #0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000318c  strb r2,[r0,#0x5] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000318e  strb r5,[r0,#0x4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003190  movs r1,#0x1 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003192  ldr r0,[0x000032cc]  refs=[READ->000032cc,PARAM->1801fecc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003194  bl 0x0000aab0  refs=[UNCONDITIONAL_CALL->0000aab0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003198  ldr r0,[0x000032d0]  refs=[READ->000032d0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000319a  adds r3,r4,#0x4  refs=[PARAM->18023380] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000319c  movs r1,#0x55 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   0000319e  strb r6,[r0,#0x0]  refs=[WRITE->1801e70b] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031a0  strb.w r6,[r9,#0x4]  refs=[WRITE->1801e68c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031a4  movs r0,#0x3c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031a6  str r0,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031a8  ldrh r2,[r4,#0x2]  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031aa  movs r0,#0x51 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031ac  bl 0x00000a70  refs=[UNCONDITIONAL_CALL->00000a70] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031b0  b 0x000031b8  refs=[UNCONDITIONAL_JUMP->000031b8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031b2  movs r0,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031b4  bl 0x00000ad8  refs=[UNCONDITIONAL_CALL->00000ad8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031b8  adr r0,[0x32d4] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031ba  b 0x0000367c  refs=[UNCONDITIONAL_JUMP->0000367c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031bc  ldr r0,[0x000032cc]  refs=[READ->000032cc,PARAM->1801fecc] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   000031be  bl 0x000005c6  refs=[UNCONDITIONAL_CALL->000005c6] (GhidraScript)  
+INFO  FalchionDispatcherReport.java> REGION 00003fa0..00004002 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fa0  strb r1,[r4,#0xd]  refs=[WRITE->18023389] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fa2  lsrs r1,r0,#0x10 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fa4  strb r1,[r4,#0xe]  refs=[WRITE->1802338a] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fa6  lsrs r0,r0,#0x18 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fa8  strb r0,[r4,#0xf]  refs=[WRITE->1802338b] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003faa  ldr r0,[0x00004074]  refs=[READ->00004074] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fac  ldr r0,[r0,#0x0]  refs=[READ->1801ea44] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fae  strb r0,[r4,#0x10]  refs=[WRITE->1802338c] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fb0  lsrs r1,r0,#0x8 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fb2  strb r1,[r4,#0x11]  refs=[WRITE->1802338d] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fb4  lsrs r1,r0,#0x10 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fb6  lsrs r0,r0,#0x18 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fb8  strb r1,[r4,#0x12]  refs=[WRITE->1802338e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fba  strb r0,[r4,#0x13]  refs=[WRITE->1802338f] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fbc  movs r0,#0x10 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fbe  adds r3,r4,#0x4 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fc0  movs r2,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fc2  str r0,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fc4  b 0x0000408e  refs=[UNCONDITIONAL_JUMP->0000408e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fc6  b 0x00003ff8  refs=[UNCONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fc8  ldrb r0,[r4,#0x4]  refs=[READ->18023380] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fca  cmp r0,#0x55 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fcc  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fce  ldrb r0,[r4,#0x5]  refs=[READ->18023381] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fd0  cmp r0,#0x50 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fd2  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fd4  ldrb r0,[r4,#0x6]  refs=[READ->18023382] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fd6  cmp r0,#0x44 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fd8  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fda  ldrb r0,[r4,#0x7]  refs=[READ->18023383] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fdc  cmp r0,#0x41 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fde  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fe0  ldrb r0,[r4,#0x8]  refs=[READ->18023384] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fe2  cmp r0,#0x54 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fe4  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fe6  ldrb r0,[r4,#0x9]  refs=[READ->18023385] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fe8  cmp r0,#0x45 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fea  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fec  ldrb r0,[r4,#0xa]  refs=[READ->18023386] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003fee  cmp r0,#0x42 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ff0  bne 0x00003ff8  refs=[CONDITIONAL_JUMP->00003ff8] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ff2  ldrb r0,[r4,#0xb]  refs=[READ->18023387] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ff4  cmp r0,#0x4c (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ff6  beq 0x00004078  refs=[CONDITIONAL_JUMP->00004078] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ff8  movs r3,#0x0 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ffa  mov r2,r3 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ffc  str r5,[sp,#0x0]  refs=[WRITE->Stack[-0x38]] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00003ffe  b 0x0000409e  refs=[UNCONDITIONAL_JUMP->0000409e] (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   00004000  b 0x000040c0  refs=[UNCONDITIONAL_JUMP->000040c0] (GhidraScript)  
+INFO  FalchionDispatcherReport.java> DECOMPILE function=FUN_00001fbe entry=00001fbe (GhidraScript)  
+WARN  Decompiling 00001fbe, pcode error at 000024f2: Unable to resolve constructor at 000024f2 (DecompileCallback)  
+INFO  FalchionDispatcherReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionDispatcherReport.java> 
+/* WARNING: Instruction at (ram,0x000026d0) overlaps instruction at (ram,0x000026ce)
+    */
+/* WARNING: Control flow encountered bad instruction data */
+/* WARNING: Removing unreachable block (ram,0x000025c0) */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 FUN_00001fbe(undefined **param_1,int param_2,uint param_3,undefined **param_4)
+
+{
+  byte bVar1;
+  ushort uVar2;
+  undefined **ppuVar3;
+  undefined1 *puVar4;
+  int iVar5;
+  int iVar6;
+  int iVar7;
+  int iVar8;
+  int *piVar9;
+  undefined1 *puVar10;
+  int iVar11;
+  code cVar12;
+  char cVar13;
+  byte bVar14;
+  ushort uVar15;
+  undefined2 uVar16;
+  code *pcVar17;
+  uint uVar18;
+  undefined4 uVar19;
+  undefined **ppuVar20;
+  undefined **ppuVar21;
+  int iVar22;
+  char *pcVar23;
+  int iVar24;
+  undefined **ppuVar25;
+  undefined *puVar26;
+  int iVar27;
+  short sVar28;
+  ushort uVar29;
+  undefined **ppuVar30;
+  undefined **ppuVar31;
+  uint uVar32;
+  int iVar33;
+  byte *pbVar34;
+  byte *extraout_r3;
+  byte *pbVar35;
+  byte *pbVar36;
+  byte bVar37;
+  int iVar38;
+  undefined **ppuVar39;
+  undefined1 *puVar40;
+  uint unaff_r11;
+  int iVar41;
+  bool bVar42;
+  bool bVar43;
+  bool bVar44;
+  bool bVar45;
+  bool bVar46;
+  int local_34;
+  uint local_30;
+  undefined **local_2c;
+  
+  pbVar36 = DAT_00002174;
+  local_34 = param_2;
+  if (*DAT_00002174 == 0) {
+LAB_00002c80:
+    return CONCAT44(local_34,param_1);
+  }
+  local_30 = param_3;
+  local_2c = param_4;
+  FUN_0000fc16();
+  iVar27 = DAT_0000405c;
+  iVar11 = DAT_0000404c;
+  puVar10 = DAT_00004040;
+  piVar9 = DAT_00003bf0;
+  iVar8 = DAT_00003bb8;
+  iVar7 = DAT_00003bac;
+  pbVar35 = DAT_00003750;
+  iVar6 = DAT_00003728;
+  iVar5 = DAT_000032a4;
+  iVar33 = DAT_00002e40;
+  iVar24 = DAT_000029c8;
+  puVar4 = _DAT_000025b8;
+  ppuVar3 = DAT_000025a0;
+  iVar22 = DAT_00002158;
+  iVar38 = FUN_00002148;
+  bVar14 = *pbVar36;
+  bVar37 = 1;
+  puVar40 = (undefined1 *)(FUN_00002148 + -5);
+  ppuVar39 = (undefined **)0xff;
+  iVar41 = 4;
+  if (bVar14 == 0x52) {
+    if (pbVar36[1] != 0x90) goto LAB_000033aa;
+    if ((*(byte *)((int)DAT_00003718 + -0x11) & 3) != 0) {
+      bVar14 = FUN_0000c14e();
+      pbVar36[4] = bVar14;
+      bVar14 = FUN_0000c16a();
+      pbVar36[5] = bVar14;
+    }
+    param_1 = &SysTick;
+    FUN_00000a70(0x52,0x90,0,pbVar36 + 4);
+    thunk_FUN_00000684(pbVar36[4]);
+    thunk_FUN_00000684(pbVar36[5]);
+    pcVar23 = s_SC_G_A_00003720;
+    goto LAB_00003cb0;
+  }
+  if (bVar14 < 0x53) {
+    pcVar17 = (code *)0xa9b8;
+    if (bVar14 == 0x41) {
+      if (pbVar36[1] == 0) {
+        *(byte *)((int)DAT_00003718 + -0x11) = *(byte *)((int)DAT_00003718 + -0x11) & 0xfc;
+        param_1 = (undefined **)0x0;
+        FUN_00000a70(0x41,0,0);
+        pcVar23 = s_SC_D_A_00003744;
+      }
+      else {
+        if (pbVar36[1] != 1) goto LAB_000033aa;
+        *(byte *)((int)DAT_00003718 + -0x11) = (*(byte *)((int)DAT_00003718 + -0x11) & 0xfc) + 1;
+        param_1 = (undefined **)0x0;
+        FUN_00000a70(0x41,1,0);
+        pcVar23 = s_SC_E_A_0000373c;
+      }
+      goto LAB_00003cb0;
+    }
+    if (bVar14 < 0x42) {
+      if (bVar14 == 4) {
+        if (*DAT_00002178 != '\0') {
+          FUN_0000f448(DAT_00002174);
+        }
+        goto LAB_000040c0;
+      }
+      if (bVar14 == 0x12) {
+        bVar14 = pbVar36[1];
+        if (bVar14 == 0x12) {
+          local_2c = (undefined **)0x0;
+          FUN_0000eabe(0,&local_2c,1);
+          if ((undefined **)((int)&UsageFault + 1) < local_2c) {
+            thunk_FUN_00000684((uint)local_2c & 0xff);
+            local_2c = (undefined **)0x0;
+          }
+          pbVar36[4] = (byte)*(code *)(DAT_00002594 + (int)local_2c);
+          pbVar36[5] = (byte)local_2c;
+          param_1 = (undefined **)0x2;
+          sVar28 = *(short *)(pbVar36 + 2);
+          bVar14 = 0x12;
+        }
+        else if (bVar14 < 0x13) {
+          switch(bVar14) {
+          case 0:
+            if (*(short *)(pbVar36 + 2) != 0) goto LAB_000040c0;
+            uVar19 = *(undefined4 *)(FUN_00002148 + 0x1b);
+            *(undefined4 *)(pbVar36 + 4) = *(undefined4 *)(FUN_00002148 + 0x17);
+            *(undefined4 *)(pbVar36 + 8) = uVar19;
+            bVar14 = pbVar36[10];
+            if (bVar14 == 0) {
+              bVar14 = 6;
+            }
+            pbVar36[10] = bVar14;
+            bVar14 = 0;
+            param_1 = &NMI;
+            sVar28 = 0;
+            break;
+          default:
+            goto LAB_000020e6;
+          case 3:
+            pbVar36[4] = 0;
+            param_1 = (undefined **)0x1;
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 3;
+            break;
+          case 5:
+            pbVar36[4] = (byte)*(undefined4 *)(_FUN_00002148 + 0xc);
+            pbVar36[5] = 0xff;
+            sVar28 = 0;
+            bVar14 = 5;
+            param_1 = (undefined **)0x2;
+            break;
+          case 7:
+            pbVar36[4] = 1;
+            param_1 = (undefined **)0x1;
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 7;
+            break;
+          case 8:
+            pbVar36[4] = (*(byte *)(FUN_00002148 + -2) & 0x30) == 0;
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 8;
+            param_1 = (undefined **)(code *)0x1;
+          }
+        }
+        else if (bVar14 == 0x13) {
+          iVar41 = FUN_0000ea0a(0,pbVar36 + 4,1);
+          if (iVar41 == 0) goto LAB_00003ff8;
+          FUN_000088ea();
+          param_1 = &SysTick;
+          sVar28 = *(short *)(pbVar36 + 2);
+          bVar14 = 0x13;
+        }
+        else {
+          if (bVar14 == 0x14) {
+            sVar28 = *(short *)(pbVar36 + 2);
+            if (sVar28 == 0) {
+              pbVar36[4] = *(short *)(DAT_00002598 + 0x18) == -0x5648;
+              sVar28 = 0;
+              param_1 = (undefined **)(code *)0x1;
+            }
+            else {
+              bVar37 = 0x30;
+              if (sVar28 != 1) {
+                bVar44 = sVar28 == 2;
+                goto LAB_000021e0;
+              }
+              FUN_0000ecb6(&DAT_00011000,pbVar36 + 4,0xc);
+              iVar41 = 0;
+              do {
+                if (pbVar36[iVar41 + 4] == 0x20) {
+                  pbVar36[iVar41 + 4] = 0x30;
+                }
+                iVar41 = iVar41 + 1;
+              } while (iVar41 < 0xc);
+              sVar28 = 1;
+              param_1 = &HardFault;
+            }
+            goto LAB_0000224e;
+          }
+          if (bVar14 == 0x15) {
+            pbVar36[4] = (byte)*(code *)(DAT_0000259c + 0x13e) & 0xf;
+            param_1 = &SysTick;
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 0x15;
+          }
+          else {
+            bVar43 = bVar14 == 0x16;
+            if (!bVar43) goto LAB_00002010;
+            pbVar36[4] = *(char *)(FUN_00002148 + 0x1e) == -0x4b;
+            param_1 = &SysTick;
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 0x16;
+          }
+        }
+      }
+      else {
+        if (bVar14 != 0x22) {
+          bVar43 = bVar14 == 0x25;
+          goto LAB_00002010;
+        }
+        bVar43 = pbVar36[1] == 1;
+LAB_0000228a:
+        bVar44 = false;
+        if (bVar43) {
+          uVar18 = 0;
+          do {
+            if ((uint)*(ushort *)(DAT_00002594 + 0x1b + uVar18 * 2) ==
+                (*(ushort *)(DAT_00002598 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4) & 0x1ff) >> 6)
+            {
+              pbVar36[4] = (byte)uVar18;
+              break;
+            }
+            uVar18 = uVar18 + 1;
+          } while (uVar18 < 5);
+          param_1 = (undefined **)0x1;
+          pbVar35 = pbVar36 + 4;
+          bVar14 = 1;
+          sVar28 = *(short *)(pbVar36 + 2);
+          uVar19 = 0x22;
+          goto LAB_000033a4;
+        }
+LAB_000021e0:
+        if (!bVar44) goto LAB_000033aa;
+        FUN_0000ecb6(&DAT_00012000,pbVar36 + 4,0xc);
+        iVar41 = 0;
+        do {
+          if (pbVar36[iVar41 + 4] == 0x20) {
+            pbVar36[iVar41 + 4] = bVar37;
+          }
+          iVar41 = iVar41 + 1;
+        } while (iVar41 < 0xc);
+        sVar28 = 2;
+        param_1 = &HardFault;
+LAB_0000224e:
+        bVar14 = 0x14;
+      }
+      pbVar35 = pbVar36 + 4;
+      uVar19 = 0x12;
+      goto LAB_000033a4;
+    }
+    if (bVar14 == 0x43) {
+      bVar14 = pbVar36[1];
+      if (bVar14 == 0x80) {
+        if (((byte)*(code *)((int)DAT_000025a0 + 0x81) & 1) != 0) {
+          bVar14 = 0x80;
+          goto LAB_000023da;
+        }
+        param_1 = &PendSV;
+        FUN_00000a70(0x43,0x80,0,(code *)((int)DAT_000025a0 + 1));
+        cVar12 = (code)((byte)*(code *)((int)ppuVar3 + 0x81) | 1);
+      }
+      else {
+        if (bVar14 < 0x81) {
+          if (bVar14 == 0) {
+            *(code *)DAT_000025a0 = (code)0x0;
+            param_1 = (undefined **)0x0;
+            FUN_00000a70(0x43,0,0);
+            pcVar23 = (char *)FUN_000025a4;
+            goto LAB_00003cb0;
+          }
+          bVar43 = bVar14 == 1;
+          pcVar17 = (code *)DAT_000025a0;
+LAB_00002310:
+          if (!bVar43) goto LAB_0000228a;
+          *pcVar17 = (code)0x1;
+          FUN_0001bd92((code *)((int)pcVar17 + 1),0x80);
+          param_1 = (undefined **)0x0;
+          FUN_00000a70(0x43,1,0);
+          pcVar23 = s_KL_E_A_000025ac;
+          goto LAB_00003cb0;
+        }
+        if (bVar14 == 0x81) {
+          if ((int)((uint)(byte)*(code *)((int)DAT_000025a0 + 0x81) << 0x1e) < 0) {
+            bVar14 = 0x81;
+LAB_000023da:
+            param_1 = (undefined **)0x0;
+            pbVar35 = (byte *)0x0;
+            sVar28 = 0;
+            uVar19 = 0x43;
+            goto LAB_000033a4;
+          }
+          param_1 = &PendSV;
+          FUN_00000a70(0x43,0x81,0,(code *)((int)DAT_000025a0 + 0x39));
+          cVar12 = (code)((byte)*(code *)((int)ppuVar3 + 0x81) | 2);
+        }
+        else {
+          bVar43 = bVar14 == 0x82;
+          if (!bVar43) goto LAB_0000228a;
+          if ((int)((uint)(byte)*(code *)((int)DAT_000025a0 + 0x81) << 0x1d) < 0) {
+            bVar14 = 0x82;
+            goto LAB_000023da;
+          }
+          param_1 = &MemManage;
+          FUN_00000a70(0x43,0x82,0,(code *)((int)DAT_000025a0 + 0x71));
+          cVar12 = (code)((byte)*(code *)((int)ppuVar3 + 0x81) | 4);
+        }
+      }
+      *(code *)((int)ppuVar3 + 0x81) = cVar12;
+      goto LAB_000040c0;
+    }
+    if (bVar14 == 0x50) {
+      pcVar17 = (code *)(uint)pbVar36[1];
+      if ((undefined **)pcVar17 == (undefined **)0x55) {
+        pcVar17 = (code *)(DAT_000025a0 + 0x21);
+        if (*pcVar17 == (code)0x4) {
+switchD_000024ec_caseD_2508:
+        }
+        else {
+          *pcVar17 = (code)0x4;
+          *(code *)(ppuVar3 + 0x23) = (code)0x0;
+          cVar12 = (code)((byte)*(code *)((int)ppuVar3 + 0x8d) & 0xf3);
+LAB_00002420:
+          *(byte *)((int)pcVar17 + 9) = (byte)cVar12 | 1;
+        }
+      }
+      else {
+        if ((undefined **)0x55 < pcVar17) {
+          if ((undefined **)pcVar17 == (undefined **)0x60) {
+            FUN_0000072c(DAT_0000259c + 0x35);
+            FUN_00000584(DAT_000025b4,0);
+            FUN_00000584(DAT_000025b4,1);
+            puVar4 = _DAT_000025b8;
+            *_DAT_000025b8 = 1;
+            puVar4[1] = 1;
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 0x60;
+          }
+          else {
+            bVar43 = (undefined **)pcVar17 == (undefined **)0x61;
+            if (!bVar43) goto LAB_00002310;
+            *(undefined1 *)(FUN_00002148 + 0x1c) =
+                 *(undefined1 *)(DAT_000025bc + (uint)*(byte *)(FUN_00002148 + 0x1d));
+            FUN_0000075a();
+            *(undefined2 *)((int)DAT_0000259c + 2) = 0;
+            FUN_00000b28(*(undefined1 *)(iVar38 + 0x1c));
+            sVar28 = *(short *)(pbVar36 + 2);
+            bVar14 = 0x61;
+          }
+          param_1 = &SysTick;
+          pbVar35 = pbVar36 + 4;
+          uVar19 = 0x50;
+          goto LAB_000033a4;
+        }
+        if ((undefined **)pcVar17 != &Reserved5) {
+          bVar43 = (undefined **)pcVar17 == &IRQ;
+          goto LAB_000023ec;
+        }
+        pcVar17 = (code *)(DAT_000025a0 + 0x21);
+        if (*pcVar17 != (code)0x3) {
+          *pcVar17 = (code)0x3;
+LAB_0000241c:
+          *(code *)((int)pcVar17 + 8) = (code)0x0;
+          cVar12 = *(code *)((int)pcVar17 + 9);
+          goto LAB_00002420;
+        }
+      }
+switchD_000024ec_caseD_2534:
+      *(byte *)((int)pcVar17 + 9) = (byte)*(code *)((int)pcVar17 + 9) | 2;
+      goto LAB_000040c0;
+    }
+    bVar43 = bVar14 == 0x51;
+    if (!bVar43) goto LAB_00002010;
+    ppuVar30 = (undefined **)(uint)pbVar36[1];
+    if (ppuVar30 == (undefined **)0x4f) {
+switchD_000024ec_caseD_258c:
+      if (pbVar36[5] == 0) {
+        iVar41 = 0;
+      }
+      else {
+        if (pbVar36[5] != 0x9f) goto LAB_000033aa;
+        iVar41 = 1;
+      }
+      if (pbVar36[4] < 0xbd) {
+        local_30 = (uint)*(byte *)((uint)pbVar36[4] +
+                                  DAT_00002e54 + *(int *)(DAT_00002e50 + 8) * 0x86);
+        iVar22 = DAT_00002158 + iVar41 * 0xd84 + local_30 * 0x20;
+        bVar14 = pbVar36[6];
+        uVar29 = *(ushort *)(iVar22 + 8);
+        uVar15 = uVar29 & 0xff80 | bVar14 & 0x7f;
+        *(ushort *)(iVar22 + 8) = uVar15;
+        uVar2 = *(ushort *)(DAT_00002e58 + (uint)*(byte *)(iVar38 + 0x1d) * 4);
+        if ((bVar14 & 0x7f) == uVar2 >> 9) {
+          uVar15 = uVar29 & 0x7f80 | uVar2 >> 9;
+        }
+        else {
+          uVar15 = uVar15 | 0x8000;
+        }
+        *(ushort *)(iVar22 + 8) = uVar15;
+        *(undefined1 *)(DAT_00002e34 + -0x4f + iVar41) = 1;
+        sVar28 = *(short *)(pbVar36 + 2);
+        bVar14 = 0x4f;
+        pcVar17 = (code *)&SysTick;
+        goto LAB_000030c4;
+      }
+      goto LAB_000033aa;
+    }
+    ppuVar21 = DAT_000029b4;
+    if ((undefined **)0x4f < ppuVar30) {
+      if (ppuVar30 != (undefined **)0x55) {
+        if (ppuVar30 < (undefined **)0x56) {
+          ppuVar31 = ppuVar30 + -0x14;
+          bVar44 = &Reset < ppuVar31;
+          bVar46 = SBORROW4((int)ppuVar31,5);
+          bVar42 = (int)((int)ppuVar30 + -0x55) < 0;
+          bVar43 = ppuVar31 == (undefined **)((int)&Reset + 1);
+          ppuVar25 = DAT_000025c0;
+          goto LAB_000024ea;
+        }
+LAB_000024f6:
+        bVar46 = SBORROW4((int)ppuVar30,0x58);
+        bVar42 = (int)(ppuVar30 + -0x16) < 0;
+        bVar45 = ppuVar30 == (undefined **)0x58;
+        ppuVar31 = ppuVar30;
+switchD_000024ec_caseD_24f8:
+        bVar43 = false;
+        if (!bVar45) {
+switchD_000024ec_caseD_24fa:
+          if (bVar43 || bVar42 != bVar46) {
+            if (ppuVar31 == (undefined **)0x56) {
+              FUN_000005c6(DAT_000032cc);
+              FUN_0000aab0(DAT_000032cc,1);
+              *DAT_000032d0 = 1;
+              *(undefined1 *)(iVar38 + -1) = 1;
+              param_1 = &SysTick;
+              FUN_00000a70(0x51,0x56,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+              pcVar23 = s_S_ST_DEF_000032dc;
+            }
+            else {
+switchD_000024ec_caseD_2500:
+              bVar43 = ppuVar31 == (undefined **)0x57;
+switchD_000024ec_caseD_2502:
+              if (bVar43) {
+                *(uint *)(DAT_000032a4 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4) =
+                     *(uint *)(DAT_000032a4 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4) & 0xfffeffff
+                     | (pbVar36[4] & 1) << 0x10;
+                FUN_0000aab0(DAT_000032cc,1);
+                FUN_0000e7c2(DAT_000032e8,iVar5);
+                param_1 = &SysTick;
+                FUN_00000a70(0x51,0x57,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+                thunk_FUN_00000684((*(uint *)(iVar5 + (uint)*(byte *)(iVar38 + 0x1d) * 4) & 0x1ffff)
+                                   >> 0x10);
+                pcVar23 = (char *)0x32ec;
+              }
+              else {
+LAB_000024ac:
+                if (!bVar43) goto LAB_000023ec;
+                if (*(int *)(DAT_00003300 + 0x30) == 1) {
+                  *(undefined4 *)(DAT_00003300 + 0x38) = 5;
+                }
+                iVar41 = DAT_00003304;
+                bVar14 = pbVar36[2];
+                *(byte *)(DAT_00003304 + 5) = bVar14;
+                bVar37 = pbVar36[4];
+                *(byte *)(iVar41 + 6) = bVar37;
+                *(byte *)(iVar41 + 0x19d) = bVar14;
+                *(byte *)(iVar41 + 0x19e) = bVar37;
+                param_1 = (undefined **)0x2;
+                FUN_00000a70(0x51,0x18,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+                thunk_FUN_00000684(*(undefined1 *)(iVar41 + 5));
+                thunk_FUN_00000684(*(undefined1 *)(iVar41 + 6));
+                pcVar23 = s__MS_A_00003308;
+              }
+            }
+          }
+          else {
+            if (ppuVar31 == (undefined **)0x59) {
+switchD_000024ec_caseD_25e4:
+              uVar19 = 0;
+              if (pbVar36[5] != 0) {
+                if (pbVar36[5] != 0x9f) goto LAB_000033aa;
+                uVar19 = 1;
+              }
+              bVar14 = pbVar36[6];
+              if (bVar14 == 0) {
+                bVar14 = 6;
+              }
+              else if (5 < bVar14) goto LAB_000033aa;
+              bVar37 = pbVar36[7];
+              if (bVar37 == 0) {
+                bVar37 = 6;
+              }
+              else if (5 < bVar37) goto LAB_000033aa;
+              if (pbVar36[4] < 0xbd) {
+                local_34 = 3;
+                FUN_0000f91c(1,pbVar36[4],bVar37,bVar14,uVar19);
+                sVar28 = *(short *)(pbVar36 + 2);
+                bVar14 = 0x59;
+                pcVar17 = (code *)&SysTick;
+                goto LAB_000030c4;
+              }
+              goto LAB_000033aa;
+            }
+            bVar43 = ppuVar31 == (undefined **)0x90;
+            if (!bVar43) goto LAB_000024ac;
+            if ((*(byte *)(DAT_000032a0 + -2) & 3) != 0) {
+              FUN_0000c158(pbVar36[4]);
+              FUN_0000c174(pbVar36[5]);
+            }
+            param_1 = &SysTick;
+            FUN_00000a70(0x51,0x90,0,pbVar36 + 4);
+            thunk_FUN_00000684(pbVar36[4]);
+            thunk_FUN_00000684(pbVar36[5]);
+            pcVar23 = s_SC_S_A_000032f8;
+          }
+          goto LAB_00003cb0;
+        }
+        bVar14 = pbVar36[4];
+        if (bVar14 == 0) {
+          bVar14 = 6;
+        }
+        else if (5 < bVar14) goto LAB_000033aa;
+        bVar37 = pbVar36[5];
+        if (bVar37 == 0) {
+          bVar37 = 6;
+        }
+        else if (5 < bVar37) goto LAB_000033aa;
+        local_34 = 3;
+        FUN_0000f91c(0,0,bVar37,bVar14,0);
+        sVar28 = *(short *)(pbVar36 + 2);
+        bVar14 = 0x58;
+        pcVar17 = (code *)&SysTick;
+        goto LAB_000030c4;
+      }
+      if (*(ushort *)(pbVar36 + 4) < 0xbd) {
+        local_2c = (undefined **)(uint)*(byte *)(DAT_000032b0 + (uint)*(ushort *)(pbVar36 + 4));
+        thunk_FUN_00000684();
+        thunk_FUN_000006da(s__TEMP1_S_KC_000032b4);
+      }
+      if (*(ushort *)(pbVar36 + 6) < 0xbd) {
+        unaff_r11 = (uint)*(byte *)(DAT_000032b0 + (uint)*(ushort *)(pbVar36 + 6));
+        thunk_FUN_00000684();
+        thunk_FUN_000006da(s__TEMP2_S_KC_000032c0);
+      }
+      iVar41 = DAT_000032cc;
+      if (((local_2c + -1 < (undefined **)0x8e) ||
+          (local_2c + -0x38 <= (undefined **)((int)&Reset + 3))) &&
+         ((unaff_r11 - 4 < 0x8e || (unaff_r11 - 0xe0 < 8)))) {
+        if (pbVar36[8] == 1) {
+          iVar41 = DAT_000032cc + (int)local_2c * 2;
+          if ((*(byte *)(iVar41 + 5) >> 3 != 0) ||
+             (iVar22 = DAT_000032cc + unaff_r11 * 2, *(byte *)(iVar22 + 5) >> 3 != 0))
+          goto LAB_000031b2;
+          *(byte *)(iVar41 + 5) = (*(byte *)(iVar41 + 5) & 7) + 8 & 0xf8;
+          *(char *)(iVar41 + 4) = (char)unaff_r11;
+          *(byte *)(iVar22 + 5) = (*(byte *)(iVar22 + 5) & 7) + 8 & 0xf8;
+          *(char *)(iVar22 + 4) = (char)local_2c;
+        }
+        else {
+          if ((pbVar36[8] != 0) ||
+             (iVar22 = DAT_000032cc + (int)local_2c * 2, *(byte *)(iVar22 + 4) != unaff_r11))
+          goto LAB_000031b2;
+          *(undefined1 *)(iVar22 + 5) = 0;
+          *(undefined1 *)(iVar22 + 4) = 0;
+          iVar41 = iVar41 + unaff_r11 * 2;
+          *(undefined1 *)(iVar41 + 5) = 0;
+          *(undefined1 *)(iVar41 + 4) = 0;
+        }
+        FUN_0000aab0(DAT_000032cc,1);
+        *DAT_000032d0 = 1;
+        *(undefined1 *)(iVar38 + -1) = 1;
+        param_1 = &SysTick;
+        FUN_00000a70(0x51,0x55,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+      }
+      else {
+LAB_000031b2:
+        FUN_00000ad8(0);
+      }
+      pcVar23 = (char *)0x32d4;
+      goto LAB_00003cb0;
+    }
+    if (ppuVar30 != (undefined **)((int)&Reserved2 + 3)) {
+      if (ppuVar30 < &Reserved3) {
+        if (ppuVar30 == &Reserved2) {
+switchD_000024ec_caseD_253e:
+          pcVar17 = (code *)(uint)pbVar36[4];
+          ppuVar25 = (undefined **)(uint)pbVar36[5];
+switchD_000024ec_caseD_2544:
+          ppuVar31 = (undefined **)((uint)pcVar17 & 0xff);
+switchD_000024ec_caseD_2548:
+          ppuVar31 = (undefined **)((uint)ppuVar31 & 0xffff00ff | ((uint)ppuVar25 & 0xff) << 8);
+          ppuVar25 = (undefined **)(uint)pbVar36[2];
+          if ((undefined **)0xbc < ppuVar25) goto LAB_000033aa;
+switchD_000024ec_caseD_2552:
+          if (pbVar36[3] == 0) {
+switchD_000024ec_caseD_255c:
+            ppuVar31 = (undefined **)((uint)ppuVar31 & 0xffff);
+switchD_000024ec_caseD_255e:
+            if (ppuVar31 < (undefined **)0xbd) {
+              ppuVar31 = (undefined **)(uint)(byte)*(code *)((int)ppuVar31 + DAT_000025bc + 100);
+LAB_0000257e:
+              pcVar17 = (code *)(uint)(byte)*(code *)(DAT_000025bc + 100 + (int)ppuVar25);
+              ppuVar25 = DAT_0000259c;
+switchD_000024ec_caseD_2582:
+              *(short *)((int)ppuVar25 + (int)pcVar17 * 2 + 0xd4) = (short)ppuVar31;
+switchD_000024ec_caseD_258a:
+            }
+            else {
+              if ((undefined **)pcVar17 == (undefined **)0xff) {
+                if (ppuVar25 == &IRQ) {
+switchD_000024ec_caseD_25e6:
+                  pcVar17 = (code *)0xa0d3;
+                  ppuVar25 = (undefined **)
+                             ((int)DAT_000029b8 + (uint)(byte)*(code *)(DAT_000029b4 + 0x10) * 2);
+                }
+                else {
+                  pcVar17 = (code *)(uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25);
+switchD_000024ec_caseD_25d4:
+                  ppuVar25 = DAT_000029b8;
+switchD_000024ec_caseD_25d6:
+                  ppuVar25 = (undefined **)((int)ppuVar25 + (int)pcVar17 * 2);
+                }
+              }
+              else {
+                if ((undefined **)pcVar17 != (undefined **)0xc7) {
+                  bVar43 = (undefined **)pcVar17 == (undefined **)0xc8;
+switchD_000024ec_caseD_2574:
+                  if ((!bVar43) && ((undefined **)pcVar17 != (undefined **)0xd3)) goto LAB_0000257e;
+                }
+                pcVar17 = (code *)((uint)pcVar17 | 0xa000);
+                ppuVar31 = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25);
+switchD_000024ec_caseD_2600:
+                ppuVar25 = (undefined **)((int)DAT_000029b8 + (int)ppuVar31 * 2);
+              }
+LAB_000025dc:
+              *(short *)(ppuVar25 + 0x35) = (short)pcVar17;
+            }
+          }
+          else {
+            if (pbVar36[3] != 0x9f) goto LAB_000033aa;
+            ppuVar31 = (undefined **)((uint)ppuVar31 & 0xffff);
+switchD_000024ec_caseD_260a:
+            if (ppuVar31 < (undefined **)0xbd) {
+              ppuVar31 = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar31);
+LAB_00002626:
+              *(short *)((int)DAT_000029b8 +
+                        (uint)(byte)*(code *)((int)ppuVar21 + (int)ppuVar25) * 2 + 0x2c2) =
+                   (short)ppuVar31;
+            }
+            else if ((undefined **)pcVar17 == (undefined **)0xff) {
+              *(undefined2 *)
+               ((int)DAT_000029b8 +
+               (uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25) * 2 + 0x2c2) = 0;
+            }
+            else {
+              if (((undefined **)pcVar17 != (undefined **)0xc7) &&
+                 ((undefined **)pcVar17 != (undefined **)0xc8)) {
+                bVar43 = (undefined **)pcVar17 == (undefined **)0xd3;
+switchD_000024ec_caseD_2622:
+                if (!bVar43) goto LAB_00002626;
+              }
+              pcVar17 = (code *)((uint)pcVar17 | 0xa000);
+              ppuVar25 = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25);
+switchD_000024ec_caseD_2656:
+              *(short *)((int)DAT_000029b8 + (int)ppuVar25 * 2 + 0x2c2) = (short)pcVar17;
+            }
+          }
+          pcVar17 = (code *)&SysTick;
+switchD_000024ec_caseD_2634:
+          uVar16 = *(undefined2 *)(pbVar36 + 2);
+          ppuVar30 = &Reserved2;
+          param_1 = (undefined **)pcVar17;
+        }
+        else {
+          if (ppuVar30 < (undefined **)((int)&Reserved2 + 1)) {
+            if (ppuVar30 == (undefined **)0x0) {
+              ppuVar25 = (undefined **)(uint)pbVar36[4];
+              if (ppuVar25 == (undefined **)((int)&Reset + 2)) {
+                ppuVar25 = (undefined **)0x0;
+              }
+              bVar44 = (undefined **)((int)&Reset + 1) < ppuVar25;
+              bVar46 = SBORROW4((int)ppuVar25,6);
+              bVar42 = (int)((int)ppuVar25 + -6) < 0;
+              bVar43 = ppuVar25 == (undefined **)((int)&Reset + 2);
+              ppuVar31 = ppuVar30;
+              local_2c = ppuVar25;
+              do {
+                if (!bVar44) {
+                  pcVar17 = (code *)(DAT_000025a0 + 0x21);
+                  if (*pcVar17 == (code)0x2) goto switchD_000024ec_caseD_2534;
+                  *pcVar17 = (code)0x2;
+                  goto LAB_00002530;
+                }
+LAB_000024ea:
+                if (bVar44) goto LAB_000033aa;
+                ppuVar20 = (undefined **)0xa9b8;
+                pbVar35 = extraout_r3;
+                bVar45 = bVar43;
+                switch(&BYTE_000024f0 + (uint)(byte)*(code *)(ppuVar31 + 0x93c) * 2) {
+                case (byte *)0x24f2:
+                    /* WARNING: Bad instruction - Truncating control flow here */
+                  halt_baddata();
+                case (byte *)0x24f4:
+                  ppuVar30 = (undefined **)((FUN_00002148 + 0x17) * 8);
+                  goto LAB_000024f6;
+                case (byte *)0x24f8:
+                  goto switchD_000024ec_caseD_24f8;
+                case (byte *)0x24fa:
+                  goto switchD_000024ec_caseD_24fa;
+                case (byte *)0x2500:
+                  goto switchD_000024ec_caseD_2500;
+                case (byte *)0x2502:
+                  goto switchD_000024ec_caseD_2502;
+                case (byte *)0x2508:
+                  goto switchD_000024ec_caseD_2508;
+                case (byte *)0x2532:
+                  goto switchD_000024ec_caseD_2532;
+                case (byte *)0x2534:
+                  goto switchD_000024ec_caseD_2534;
+                case (byte *)0x2538:
+                  pcVar17 = (code *)ppuVar20;
+                  goto switchD_000024ec_caseD_2534;
+                case (byte *)0x253e:
+                  goto switchD_000024ec_caseD_253e;
+                case (byte *)0x2544:
+                  goto switchD_000024ec_caseD_2544;
+                case (byte *)0x2548:
+                  goto switchD_000024ec_caseD_2548;
+                case (byte *)0x254a:
+                  ppuVar31 = (undefined **)((int)&HardFault + 3);
+                  pcVar17 = (code *)ppuVar20;
+                  goto switchD_000024ec_caseD_2548;
+                case (byte *)0x2552:
+                  goto switchD_000024ec_caseD_2552;
+                case (byte *)0x255c:
+                  goto switchD_000024ec_caseD_255c;
+                case (byte *)0x255e:
+                  goto switchD_000024ec_caseD_255e;
+                case (byte *)0x2574:
+                  goto switchD_000024ec_caseD_2574;
+                case (byte *)0x2582:
+                  goto switchD_000024ec_caseD_2582;
+                case (byte *)0x258a:
+                  goto switchD_000024ec_caseD_258a;
+                case (byte *)0x258c:
+                  goto switchD_000024ec_caseD_258c;
+                case (byte *)0x2590:
+                  goto switchD_000024ec_caseD_2590;
+                case (byte *)0x259a:
+                  pbVar34 = (byte *)0x0;
+                  pbVar36 = extraout_r3;
+                  goto code_r0x000022d6;
+                case (byte *)0x25ba:
+                  goto LAB_000025c4;
+                case (byte *)0x25d4:
+                  goto switchD_000024ec_caseD_25d4;
+                case (byte *)0x25d6:
+                  goto switchD_000024ec_caseD_25d6;
+                case (byte *)0x25de:
+                  pbVar36 = (byte *)((int)ppuVar31 << 3);
+                  goto LAB_000025dc;
+                case (byte *)0x25e4:
+                  goto switchD_000024ec_caseD_25e4;
+                case (byte *)0x25e6:
+                  goto switchD_000024ec_caseD_25e6;
+                case (byte *)0x25f0:
+                  goto switchD_000024ec_caseD_25e6;
+                case (byte *)0x2600:
+                  goto switchD_000024ec_caseD_2600;
+                case (byte *)0x260a:
+                  goto switchD_000024ec_caseD_260a;
+                case (byte *)0x2622:
+                  goto switchD_000024ec_caseD_2622;
+                case (byte *)0x262c:
+                  ppuVar21 = (undefined **)0x15370;
+                  goto LAB_00002626;
+                case (byte *)0x2634:
+                  goto switchD_000024ec_caseD_2634;
+                case (byte *)0x2656:
+                  goto switchD_000024ec_caseD_2656;
+                case (byte *)0x2690:
+                  goto switchD_000024ec_caseD_2690;
+                case (byte *)0x2692:
+                  *(short *)(pbVar36 + 0x18) = (short)pbVar36;
+                  pcVar17 = (code *)ppuVar20;
+                case (byte *)0x2694:
+                  goto switchD_000024ec_caseD_2694;
+                case (byte *)0x2696:
+                  goto switchD_000024ec_caseD_2696;
+                case (byte *)0x26a8:
+                  goto switchD_000024ec_caseD_26a8;
+                case (byte *)0x26ae:
+                  goto switchD_000024ec_caseD_26ae;
+                case (byte *)0x26b0:
+                  goto switchD_000024ec_caseD_26b0;
+                case (byte *)0x26b4:
+                  goto switchD_000024ec_caseD_26b4;
+                case (byte *)0x26b6:
+                  goto switchD_000024ec_caseD_26b6;
+                case (byte *)0x26c0:
+                  pcVar17 = (code *)ppuVar20;
+                  goto switchD_000024ec_caseD_26b6;
+                case (byte *)0x26d0:
+                  pbVar36 = (byte *)((int)ppuVar25 << 9);
+                  pcVar17 = (code *)ppuVar20;
+                case (byte *)0x26d2:
+                  goto switchD_000024ec_caseD_26d2;
+                case (byte *)0x26d8:
+                  goto switchD_000024ec_caseD_26d8;
+                case (byte *)0x26e0:
+                  pcVar17 = (code *)ppuVar20;
+                  ppuVar31 = (undefined **)0x2;
+                  goto switchD_000024ec_caseD_26d8;
+                case (byte *)0x26e4:
+                  iVar41 = 0;
+                  if (pbVar36[5] != 0) {
+                    if (pbVar36[5] != 0x9f) goto LAB_000033aa;
+                    iVar41 = 1;
+                  }
+                  if (0xbc < pbVar36[4]) goto LAB_000033aa;
+                  local_30 = (uint)*(byte *)((uint)pbVar36[4] +
+                                            DAT_000032ac + *(int *)(DAT_000032a8 + 8) * 0x86);
+                  if (pbVar36[8] == 0) {
+                    iVar38 = DAT_00002158 + iVar41 * 0xd84 + local_30 * 0x20;
+                    *(ushort *)(iVar38 + 10) = *(ushort *)(iVar38 + 10) & 0x3fff;
+                  }
+                  else {
+                    iVar38 = DAT_00002158 + iVar41 * 0xd84 + local_30 * 0x20;
+                    *(ushort *)(iVar38 + 10) =
+                         *(ushort *)(iVar38 + 10) & 0x3fff | (pbVar36[7] + 1) * 0x4000;
+                  }
+                  sVar28 = *(short *)(pbVar36 + 2);
+                  if (sVar28 == 0) {
+                    iVar38 = iVar22 + iVar41 * 0xd84 + local_30 * 0x20;
+                    *(ushort *)(iVar38 + 10) =
+                         *(ushort *)(iVar38 + 10) & 0xc000 | pbVar36[6] & 0x7f |
+                         (pbVar36[6] & 0x7f) << 7;
+                  }
+                  else if (sVar28 == 1) {
+                    iVar38 = iVar22 + iVar41 * 0xd84 + local_30 * 0x20;
+                    *(ushort *)(iVar38 + 10) =
+                         *(ushort *)(iVar38 + 10) & 0xc07f | (pbVar36[6] & 0x7f) << 7;
+                  }
+                  else {
+                    if (sVar28 != 2) goto LAB_000033aa;
+                    iVar38 = iVar22 + iVar41 * 0xd84 + local_30 * 0x20;
+                    *(ushort *)(iVar38 + 10) = *(ushort *)(iVar38 + 10) & 0xff80 | pbVar36[6] & 0x7f
+                    ;
+                  }
+                  *(undefined1 *)(DAT_000032a0 + iVar41) = 1;
+                  bVar14 = 0x54;
+                  pcVar17 = (code *)&SysTick;
+                  goto LAB_000030c4;
+                case (byte *)0x26e6:
+                  if (pbVar36[7] == 0) {
+                    iVar41 = 0;
+                  }
+                  else {
+                    if (pbVar36[7] != 1) goto LAB_000033aa;
+                    iVar41 = 1;
+                  }
+                  puVar26 = *ppuVar25;
+                  uVar18 = 0;
+                  sVar28 = *(short *)(pbVar36 + 2);
+                  goto LAB_00002fd0;
+                case (byte *)0x26e8:
+                  switch(pbVar36[2]) {
+                  case 0:
+                    ppuVar31 = (undefined **)0x0;
+                    local_30 = 3;
+                    ppuVar30 = (undefined **)0x1;
+                    iVar41 = 2;
+                    break;
+                  case 1:
+                    ppuVar31 = (undefined **)0x0;
+                    local_30 = 1;
+                    goto LAB_00002c46;
+                  case 2:
+                    ppuVar30 = (undefined **)0x0;
+                    local_30 = 2;
+LAB_00002c46:
+                    iVar41 = 1;
+                    break;
+                  case 3:
+                    local_30 = 7;
+                    param_1 = (undefined **)0x2;
+                    ppuVar31 = (undefined **)0x0;
+                    iVar41 = 3;
+                    local_34 = 4;
+                    ppuVar30 = (undefined **)(code *)0x1;
+                    break;
+                  case 4:
+                    param_1 = (undefined **)0x0;
+                    iVar41 = 1;
+                    local_34 = 2;
+                    local_30 = 4;
+                    break;
+                  default:
+                    goto switchD_00002c20_default;
+                  }
+                  bVar14 = pbVar36[iVar41 + 4];
+                  if (bVar14 == 0) {
+                    uVar18 = 1;
+                  }
+                  else if (bVar14 == 1) {
+                    uVar18 = 2;
+                  }
+                  else {
+                    if (bVar14 != 2) {
+switchD_00002c20_default:
+                      FUN_00000ad8(0);
+                      goto LAB_00002c80;
+                    }
+                    uVar18 = 3;
+                  }
+                  puVar26 = *ppuVar25;
+                  for (uVar32 = 0; uVar32 < (uint)((int)puVar26 * 5); uVar32 = uVar32 + 1) {
+                    if ((local_30 & 1) != 0) {
+                      if ((uVar18 & 1) != 0) {
+                        iVar41 = iVar22 + uVar32 * 0x20;
+                        *(ushort *)(iVar41 + 8) =
+                             *(ushort *)(iVar41 + 8) & 0x7f80 | (pbVar36 + (int)ppuVar31)[4] & 0x7f;
+                      }
+                      if ((int)(uVar18 << 0x1e) < 0) {
+                        iVar41 = iVar22 + uVar32 * 0x20;
+                        *(ushort *)(iVar41 + 0xd8c) =
+                             *(ushort *)(iVar41 + 0xd8c) & 0x7f80 |
+                             (pbVar36 + (int)ppuVar31)[4] & 0x7f;
+                      }
+                    }
+                    if ((int)(local_30 << 0x1e) < 0) {
+                      if ((uVar18 & 1) != 0) {
+                        *(ushort *)(iVar22 + uVar32 * 0x20 + 10) =
+                             (pbVar36 + (int)ppuVar30)[4] & 0x7f |
+                             ((pbVar36 + (int)ppuVar30)[4] & 0x7f) << 7;
+                      }
+                      if ((int)(uVar18 << 0x1e) < 0) {
+                        *(ushort *)(iVar22 + uVar32 * 0x20 + 0xd8e) =
+                             (pbVar36 + (int)ppuVar30)[4] & 0x7f |
+                             ((pbVar36 + (int)ppuVar30)[4] & 0x7f) << 7;
+                      }
+                    }
+                    if ((int)(local_30 << 0x1d) < 0) {
+                      if ((uVar18 & 1) != 0) {
+                        iVar41 = iVar22 + uVar32 * 0x20;
+                        *(byte *)(iVar41 + 6) =
+                             *(byte *)(iVar41 + 6) & 0x78 | pbVar36[local_34 + 4] & 7;
+                        *(byte *)(iVar41 + 7) =
+                             *(byte *)(iVar41 + 7) & 0x78 |
+                             (byte)((code *)((int)param_1 + (int)pbVar36))[4] & 7;
+                      }
+                      if ((int)(uVar18 << 0x1e) < 0) {
+                        iVar41 = iVar22 + uVar32 * 0x20;
+                        *(byte *)(iVar41 + 0xd8a) =
+                             *(byte *)(iVar41 + 0xd8a) & 0x78 | pbVar36[local_34 + 4] & 7;
+                        *(byte *)(iVar41 + 0xd8b) =
+                             *(byte *)(iVar41 + 0xd8b) & 0x78 |
+                             (byte)((code *)((int)param_1 + (int)pbVar36))[4] & 7;
+                      }
+                    }
+                  }
+                  if ((local_30 & 1) != 0) {
+                    *(uint *)(DAT_00002e58 + (uint)*(byte *)(iVar38 + 0x1d) * 4) =
+                         *(uint *)(DAT_00002e58 + (uint)*(byte *)(iVar38 + 0x1d) * 4) & 0xffff01ff |
+                         ((pbVar36 + (int)ppuVar31)[4] & 0x7f) << 9;
+                    FUN_00006d10(2,0);
+                  }
+                  if ((int)(local_30 << 0x1e) < 0) {
+                    if ((uVar18 & 1) != 0) {
+                      *(undefined1 *)(DAT_00002e34 + -0x4f) = 1;
+                      iVar24 = DAT_00002e60;
+                      iVar41 = DAT_00002e50;
+                      iVar33 = iVar22 + (uint)*(byte *)(DAT_00002e60 +
+                                                        *(int *)(DAT_00002e50 + 8) * 0x100 + 0x1a) *
+                                        0x20;
+                      *(ushort *)(iVar33 + 10) = (*(ushort *)(iVar33 + 10) & 0x3fff) + 0x4000;
+                      iVar33 = iVar22 + (uint)*(byte *)(iVar24 + *(int *)(iVar41 + 8) * 0x100 + 4) *
+                                        0x20;
+                      *(ushort *)(iVar33 + 10) = (*(ushort *)(iVar33 + 10) & 0x3fff) + 0x4000;
+                      iVar33 = iVar22 + (uint)*(byte *)(iVar24 + *(int *)(iVar41 + 8) * 0x100 + 0x16
+                                                       ) * 0x20;
+                      *(ushort *)(iVar33 + 10) = (*(ushort *)(iVar33 + 10) & 0x3fff) + 0x4000;
+                      iVar22 = iVar22 + (uint)*(byte *)(iVar24 + *(int *)(iVar41 + 8) * 0x100 + 7) *
+                                        0x20;
+                      *(ushort *)(iVar22 + 10) = (*(ushort *)(iVar22 + 10) & 0x3fff) + 0x4000;
+                    }
+                    if ((int)(uVar18 << 0x1e) < 0) {
+                      *(undefined1 *)(DAT_000032a0 + 1) = 1;
+                    }
+                  }
+                  if ((int)(local_30 << 0x1d) < 0) {
+                    *(uint *)(DAT_000032a4 + (uint)*(byte *)(iVar38 + 0x1d) * 4) =
+                         *(uint *)(DAT_000032a4 + (uint)*(byte *)(iVar38 + 0x1d) * 4) & 0xff81ffff |
+                         ((byte)((code *)((int)param_1 + (int)pbVar36))[4] & 7) << 0x11 |
+                         (pbVar36[local_34 + 4] & 7) << 0x14;
+                    FUN_0000f7d2(0,0);
+                  }
+                  sVar28 = *(short *)(pbVar36 + 2);
+                  bVar14 = 0x52;
+                  goto LAB_00002ef8;
+                case (byte *)0x26ea:
+                  *DAT_00002e5c = 0x3c;
+                  sVar28 = *(short *)(pbVar36 + 2);
+                  bVar14 = 0x51;
+                  pcVar17 = (code *)&SysTick;
+                  goto LAB_000030c4;
+                case (byte *)0x26ec:
+                  *(uint *)(DAT_00002e58 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4) =
+                       *(uint *)(DAT_00002e58 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4) &
+                       0xffff01ff | (pbVar36[4] & 0x7f) << 9;
+                  FUN_00006d10(2,0);
+                  sVar28 = *(short *)(pbVar36 + 2);
+                  bVar14 = 0x50;
+                  pcVar17 = (code *)&SysTick;
+                  goto LAB_000030c4;
+                }
+              } while( true );
+            }
+            if (ppuVar30 != &HardFault) {
+              bVar43 = ppuVar30 == &UsageFault;
+              goto LAB_000024ac;
+            }
+switchD_000024ec_caseD_2590:
+            sVar28 = *(short *)(pbVar36 + 2);
+            if (sVar28 == 0) {
+              *DAT_00003718 = 1000;
+LAB_000033c4:
+              iVar41 = DAT_0000371c;
+              *(undefined1 *)(DAT_0000371c + 1) = 1;
+              *(byte *)(iVar41 + 2) = pbVar36[4];
+            }
+            else if (sVar28 == 1) goto LAB_000033c4;
+            bVar14 = 0xc;
+            pcVar17 = (code *)0x1;
+            goto LAB_000030c4;
+          }
+          if ((ppuVar30 != (undefined **)((int)&Reserved2 + 1)) &&
+             (bVar43 = ppuVar30 == (undefined **)((int)&Reserved2 + 2), !bVar43)) goto LAB_000023ec;
+          ppuVar25 = (undefined **)(uint)pbVar36[2];
+          if ((undefined **)0xbc < ppuVar25) goto LAB_000033aa;
+          pcVar17 = CandidateB_Start_Function;
+          if (pbVar36[3] != 0) {
+            if (pbVar36[3] != 0x9f) goto LAB_000033aa;
+            pcVar17 = (code *)0x1;
+          }
+          ppuVar31 = (undefined **)(uint)(byte)*(ushort *)(pbVar36 + 4);
+          pbVar35 = (byte *)(uint)*(ushort *)(pbVar36 + 4);
+          if (pbVar35 < (byte *)0xbd) {
+            iVar41 = (int)pcVar17 * 9;
+            ppuVar31 = DAT_000029b4;
+switchD_000024ec_caseD_2690:
+            ppuVar39 = DAT_000029b8;
+switchD_000024ec_caseD_2694:
+            pbVar35 = (byte *)(uint)(byte)*(code *)((int)ppuVar31 + (int)pbVar35);
+switchD_000024ec_caseD_2696:
+            ppuVar31 = (undefined **)
+                       ((int)ppuVar39 +
+                       (uint)(byte)*(code *)((int)ppuVar31 + (int)ppuVar25) * 2 +
+                       ((int)pcVar17 * 0x100 - iVar41) * 2);
+switchD_000024ec_caseD_26d2:
+            *(short *)(ppuVar31 + 0x35) = (short)pbVar35;
+            ppuVar31 = DAT_000029bc;
+          }
+          else {
+            bVar43 = ppuVar31 == (undefined **)0xff;
+switchD_000024ec_caseD_26a8:
+            if (bVar43) {
+              uVar18 = (uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25);
+              iVar41 = uVar18 * 2 + (int)pcVar17 * 0x1ee;
+            }
+            else {
+              if (ppuVar31 != (undefined **)0xc7) {
+switchD_000024ec_caseD_26ae:
+                bVar43 = ppuVar31 == (undefined **)0xc8;
+switchD_000024ec_caseD_26b0:
+                if (!bVar43) {
+                  bVar43 = ppuVar31 == (undefined **)0xd3;
+switchD_000024ec_caseD_26b4:
+                  if (!bVar43) {
+switchD_000024ec_caseD_26b6:
+                    ppuVar31 = (undefined **)
+                               ((int)DAT_000029b8 +
+                               (uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25) * 2 +
+                               (int)pcVar17 * 0x1ee);
+                    goto switchD_000024ec_caseD_26d2;
+                  }
+                }
+              }
+              uVar18 = (uint)ppuVar31 | 0xa000;
+              iVar41 = (uint)(byte)*(code *)((int)DAT_000029b4 + (int)ppuVar25) * 2 +
+                       (int)pcVar17 * 0x1ee;
+            }
+            *(short *)((code *)((int)DAT_000029b8 + iVar41) + 0xd4) = (short)uVar18;
+            ppuVar31 = DAT_000029bc;
+          }
+switchD_000024ec_caseD_26d8:
+          local_30 = (uint)(byte)*(code *)((int)ppuVar25 + DAT_000029c0 + (int)ppuVar31[2] * 0x86);
+          iVar41 = iVar22 + (int)pcVar17 * 0xd84 + local_30 * 0x20;
+          *(undefined1 *)(iVar41 + 4) = 0;
+          uVar2 = *(ushort *)(iVar41 + 8);
+          uVar29 = pbVar36[6] & 0x7f;
+          uVar15 = uVar2 & 0xff80 | uVar29;
+          *(ushort *)(iVar41 + 8) = uVar15;
+          if (uVar29 == *(ushort *)(DAT_000029c4 + (uint)*(byte *)(iVar38 + 0x1d) * 4) >> 9) {
+            uVar29 = uVar2 & 0x7f80 | uVar29;
+          }
+          else {
+            uVar29 = uVar15 | 0x8000;
+          }
+          *(ushort *)(iVar41 + 8) = uVar29;
+          if (ppuVar30 == (undefined **)((int)&Reserved2 + 1)) {
+            *(undefined1 *)(iVar41 + 0xc) = 0;
+          }
+          else if (ppuVar30 == (undefined **)((int)&Reserved2 + 2)) {
+            *(char *)(iVar41 + 0xd) = (char)(*(ushort *)(pbVar36 + 7) / 10);
+            *(undefined1 *)(iVar41 + 0xc) = 1;
+          }
+          *(code *)(DAT_000029c8 + (int)pcVar17) = (code)0x1;
+          param_1 = &SysTick;
+          uVar16 = *(undefined2 *)(pbVar36 + 2);
+        }
+        FUN_00000a70(0x51,ppuVar30,uVar16,pbVar36 + 4);
+        ppuVar3 = DAT_000029b4;
+        FUN_0001bdba(*(code *)((int)DAT_000029b4 + (uint)pbVar36[2]));
+        FUN_0001bdba(*(undefined2 *)
+                      ((int)DAT_000029b8 +
+                      (uint)(byte)*(code *)((int)ppuVar3 + (uint)pbVar36[2]) * 2 + 0xd4));
+        pcVar23 = s__KC_S_T_A_000029cc;
+        goto LAB_00003cb0;
+      }
+      if (ppuVar30 == (undefined **)((int)&SVCall + 1)) {
+        uVar18 = (uint)pbVar36[4];
+        if (((uVar18 == 0) || (uVar18 == 2)) || (uVar18 == 4)) {
+          if (((uint)*(ushort *)(DAT_00002e40 + 2) & 1 << uVar18) == 0) {
+            FUN_0000075a(*(undefined1 *)(FUN_00002148 + 0x1d));
+            *(ushort *)(iVar33 + 2) = *(ushort *)(iVar33 + 2) | (ushort)(1 << pbVar36[4]);
+          }
+          *(byte *)((uint)*(byte *)(DAT_00002e34 + (uint)pbVar36[4]) +
+                    *(int *)(puVar4 + (uint)pbVar36[4] * 4 + 0x27) + -1) = pbVar36[5];
+          if ((uint)*(byte *)(iVar38 + 0x1c) == (uint)pbVar36[4]) {
+            FUN_0000c188(*(undefined1 *)
+                          (*(int *)(puVar4 + (uint)*(byte *)(iVar38 + 0x1c) * 4 + 0x27) + 1),
+                         iVar33 + 4);
+          }
+        }
+        sVar28 = *(short *)(pbVar36 + 2);
+        bVar14 = 0x2d;
+        pcVar17 = (code *)&SysTick;
+      }
+      else if (ppuVar30 < (undefined **)((int)&SVCall + 2)) {
+        if (ppuVar30 != &Reserved3) {
+          bVar43 = ppuVar30 == &SVCall;
+          if (!bVar43) goto LAB_000023ec;
+          uVar18 = (uint)pbVar36[2];
+          if ((uVar18 == 4) || (uVar18 == 5)) {
+            bVar14 = pbVar36[3];
+            if (bVar14 == 0) {
+              if (*(char *)(FUN_00002148 + -3) == '\x1e') {
+                iVar41 = *(int *)(_DAT_000025b8 + uVar18 * 4 + 0x27);
+                *(undefined4 *)(iVar41 + 0x1e) = *(undefined4 *)(pbVar36 + 4);
+                *(undefined2 *)(iVar41 + 0x22) = *(undefined2 *)(pbVar36 + 8);
+                *(byte *)(iVar41 + 0x24) = pbVar36[10];
+                *(undefined1 *)(iVar38 + -3) = 0x25;
+                bVar14 = pbVar36[2];
+                if (*(char *)(DAT_00002e34 + (uint)bVar14) == '&') {
+LAB_00002a40:
+                  iVar41 = DAT_00002e34;
+                  *(undefined1 *)(iVar38 + -3) = 0;
+                  *(byte *)(iVar41 + -0x51) = *(byte *)(iVar41 + -0x51) & 0xf3;
+                  *(byte *)(iVar38 + 0x1c) = bVar14;
+                  FUN_00000b28();
+                  goto LAB_00002a5a;
+                }
+              }
+            }
+            else {
+              if (bVar14 == 1) {
+                if (*(char *)(FUN_00002148 + -3) != '\x0e') goto LAB_00002a0a;
+                FUN_0001bda6(*(int *)(_DAT_000025b8 + uVar18 * 4 + 0x27) + 0xe,pbVar36 + 4,0x10);
+                cVar13 = *(char *)(iVar38 + -3) + '\x10';
+LAB_00002a06:
+                *(char *)(iVar38 + -3) = cVar13;
+LAB_00002a5a:
+                param_1 = &SysTick;
+                uVar18 = (uint)*(ushort *)(pbVar36 + 2);
+                pbVar35 = pbVar36 + 4;
+                goto LAB_00002a62;
+              }
+              if (bVar14 == 2) {
+                iVar41 = *(int *)(_DAT_000025b8 + uVar18 * 4 + 0x27);
+                goto LAB_00002a78;
+              }
+            }
+LAB_00002aba:
+            FUN_00000ad8(0);
+          }
+          else {
+            if (uVar18 == 7) {
+              if (pbVar36[3] == 0) {
+                if (*(char *)(FUN_00002148 + -3) == '\x0e') {
+                  iVar41 = *(int *)(_DAT_000025b8 + 0x43);
+                  *(undefined4 *)(iVar41 + 0xe) = *(undefined4 *)(pbVar36 + 4);
+                  *(undefined4 *)(iVar41 + 0x12) = *(undefined4 *)(pbVar36 + 8);
+                  *(undefined4 *)(iVar41 + 0x16) = *(undefined4 *)(pbVar36 + 0xc);
+                  *(undefined1 *)(iVar38 + -3) = 0x1a;
+                  bVar14 = pbVar36[2];
+                  if (*(char *)(DAT_00002e34 + (uint)bVar14) == '\x1b') goto LAB_00002a40;
+                }
+                else {
+LAB_00002a0a:
+                  *(undefined1 *)(FUN_00002148 + -3) = 0;
+                }
+              }
+              else if (pbVar36[3] == 1) {
+                iVar41 = *(int *)(_DAT_000025b8 + 0x43);
+LAB_00002a78:
+                FUN_0001bda6(iVar41 + (uint)*(byte *)(FUN_00002148 + -3),pbVar36 + 4,0xe);
+                cVar13 = '\x0e';
+                goto LAB_00002a06;
+              }
+              goto LAB_00002aba;
+            }
+            iVar41 = DAT_000029c8 + 0x4f;
+            FUN_0001bda6(*(undefined4 *)(_DAT_000025b8 + (uint)*(ushort *)(pbVar36 + 2) * 4 + 0x27),
+                         pbVar36 + 4,*(byte *)(iVar41 + (uint)*(ushort *)(pbVar36 + 2)) - 1);
+            *(byte *)(iVar24 + -2) = *(byte *)(iVar24 + -2) & 0xf3;
+            *(byte *)(iVar38 + 0x1c) = pbVar36[2];
+            FUN_00000b28();
+            uVar18 = (uint)*(ushort *)(pbVar36 + 2);
+            param_1 = (undefined **)(uint)*(byte *)(iVar41 + uVar18);
+            pbVar35 = *(byte **)(puVar4 + uVar18 * 4 + 0x27);
+LAB_00002a62:
+            FUN_00000a70(0x51,0x2c,uVar18,pbVar35);
+          }
+          thunk_FUN_00000684(pbVar36[2]);
+          pcVar23 = (char *)0x2e38;
+          goto LAB_00003cb0;
+        }
+LAB_000025c4:
+        uVar18 = (uint)pbVar36[2];
+        if (0xbc < uVar18) goto LAB_000033aa;
+        if (pbVar36[3] == 0) {
+          iVar41 = 0;
+        }
+        else {
+          if (pbVar36[3] != 0x9f) goto LAB_000033aa;
+          iVar41 = 1;
+        }
+        local_30 = (uint)*(byte *)(uVar18 + DAT_000029c0 + (int)DAT_000029bc[2] * 0x86);
+        iVar38 = DAT_00002158 + iVar41 * 0xd84 + local_30 * 0x20;
+        *(undefined1 *)(iVar38 + 4) = 2;
+        uVar32 = (uint)(byte)*(ushort *)(pbVar36 + 5);
+        local_2c = (undefined **)(uint)*(ushort *)(pbVar36 + 5);
+        if (local_2c < (undefined **)0xbd) {
+          local_2c = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + (int)local_2c);
+        }
+        else if (uVar32 == 0xff) {
+          local_2c = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + uVar18);
+        }
+        else if (((uVar32 == 199) || (uVar32 == 200)) || (uVar32 == 0xd3)) {
+          local_2c = (undefined **)(uVar32 | 0xa000);
+        }
+        if (pbVar36[4] == 0) {
+          *(short *)(iVar38 + 0x20) = (short)local_2c;
+        }
+        else {
+          *(short *)(iVar38 + 0x1e) = (short)local_2c;
+        }
+        *(char *)(iVar38 + 0x22) = (char)(*(ushort *)(pbVar36 + 7) / 10);
+        *(undefined1 *)(DAT_000029c8 + iVar41) = 1;
+        FUN_00004a1c(local_30);
+        sVar28 = *(short *)(pbVar36 + 2);
+        bVar14 = 0x24;
+        pcVar17 = (code *)&SysTick;
+      }
+      else if (ppuVar30 == (undefined **)((int)&Reserved5 + 1)) {
+        uVar29 = (ushort)pbVar36[4];
+        if ((uVar29 != 3) && (uVar29 != 0)) goto LAB_000033aa;
+        *(ushort *)(DAT_00002e40 + 0x4f8) =
+             *(ushort *)(DAT_00002e40 + 0x4f8) & 0xfff0 | uVar29 & 0xf;
+        *DAT_00002e44 = (char)(1 << (uVar29 & 0xf));
+        thunk_FUN_000006da(s__S_PR_U_00002e48);
+        sVar28 = 0;
+        bVar14 = 0x31;
+        pcVar17 = (code *)0x1;
+      }
+      else {
+        bVar43 = ppuVar30 == (undefined **)((int)&IRQ + 2);
+        if (!bVar43) {
+LAB_000023ec:
+          if (!bVar43) goto LAB_00002310;
+          pcVar17 = (code *)(DAT_000025a0 + 0x21);
+          if (*pcVar17 != (code)0x5) {
+            *pcVar17 = (code)0x5;
+            ppuVar25 = (undefined **)(uint)pbVar36[4];
+LAB_00002530:
+            pcVar17 = (code *)(ppuVar3 + 0x21);
+            *(code *)((int)ppuVar3 + 0x85) = SUB41(ppuVar25,0);
+switchD_000024ec_caseD_2532:
+            goto LAB_0000241c;
+          }
+          goto switchD_000024ec_caseD_2534;
+        }
+        if (pbVar36[4] == 0) {
+          *(undefined2 *)(DAT_00003710 + 0x18) = 0;
+        }
+        else {
+          *(undefined2 *)(DAT_00003710 + 0x18) = 0xa9b8;
+        }
+        FUN_0000e6aa(DAT_00003714,DAT_00003710,1);
+        sVar28 = 0;
+        bVar14 = 0x42;
+        pcVar17 = (code *)0x1;
+      }
+LAB_000030c4:
+      pbVar35 = pbVar36 + 4;
+      uVar19 = 0x51;
+      param_1 = (undefined **)pcVar17;
+      goto LAB_000033a4;
+    }
+    uVar18 = (uint)pbVar36[2];
+    if (uVar18 < 0xbd) {
+      if (pbVar36[3] == 0) {
+        iVar41 = 0;
+      }
+      else {
+        if (pbVar36[3] != 0x9f) goto LAB_000033aa;
+        iVar41 = 1;
+      }
+      local_30 = (uint)*(byte *)(uVar18 + DAT_000029c0 + (int)DAT_000029bc[2] * 0x86);
+      iVar38 = DAT_00002158 + iVar41 * 0xd84 + local_30 * 0x20;
+      *(undefined1 *)(iVar38 + 4) = 1;
+      *(byte *)(iVar38 + 0xe) = pbVar36[4];
+      *(byte *)(iVar38 + 0xf) = pbVar36[5];
+      uVar32 = (uint)(byte)*(ushort *)(pbVar36 + 6);
+      local_2c = (undefined **)(uint)*(ushort *)(pbVar36 + 6);
+      if (local_2c < (undefined **)0xbd) {
+        local_2c = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + (int)local_2c);
+      }
+      else if (uVar32 == 0xff) {
+        local_2c = (undefined **)(uint)(byte)*(code *)((int)DAT_000029b4 + uVar18);
+      }
+      else if (((uVar32 == 199) || (uVar32 == 200)) || (uVar32 == 0xd3)) {
+        local_2c = (undefined **)(uVar32 | 0xa000);
+      }
+      bVar14 = pbVar36[9];
+      *(short *)(iVar38 + (uint)bVar14 * 2 + 0x12) = (short)local_2c;
+      iVar38 = DAT_000029c8;
+      *(byte *)((uint)bVar14 + iVar22 + iVar41 * 0xd84 + local_30 * 0x20 + 0xf) = pbVar36[8];
+      *(undefined1 *)(iVar38 + iVar41) = 1;
+      FUN_00004a1c();
+      sVar28 = *(short *)(pbVar36 + 2);
+      bVar14 = 0x23;
+LAB_00002ef8:
+      pcVar17 = (code *)&SysTick;
+      goto LAB_000030c4;
+    }
+LAB_000033aa:
+    FUN_00000ad8(0);
+    goto LAB_000040c0;
+  }
+  if (bVar14 == 0xb0) {
+    bVar43 = pbVar36[1] == 0;
+    while (bVar43) {
+      bVar43 = false;
+      if ((((*(short *)(pbVar36 + 2) == 0) && (bVar43 = false, pbVar36[4] == 0x72)) &&
+          ((bVar43 = false, pbVar36[5] == 0x65 &&
+           ((bVar43 = false, pbVar36[6] == 0x73 && (bVar43 = false, pbVar36[7] == 0x65)))))) &&
+         (bVar43 = false, pbVar36[8] == 0x74)) {
+        DataSynchronizationBarrier(0xf);
+        *DAT_00003bd0 = *DAT_00003bd0 & 0x700 | DAT_00003bd4;
+        DataSynchronizationBarrier(0xf);
+        do {
+                    /* WARNING: Do nothing block with infinite loop */
+        } while( true );
+      }
+    }
+    goto LAB_000040c0;
+  }
+  if (bVar14 < 0xb1) {
+    if (bVar14 == 0x53) {
+      if (pbVar36[3] == 0) {
+        bVar14 = pbVar36[1];
+        if ((bVar14 < 0xbd) && (bVar37 = *(byte *)(DAT_0000374c + (uint)bVar14), bVar37 != 0xd0)) {
+          if (bVar37 < 0xd1) {
+            if ((bVar37 != 0x39) && ((bVar37 != 0x47 && (bVar37 != 0x53)))) {
+LAB_000035da:
+              *DAT_00003750 = bVar14;
+              pbVar34 = DAT_00003750;
+              pbVar35[7] = 0;
+              thunk_FUN_0000276c(pbVar34 + 8,400);
+              goto LAB_000035f4;
+            }
+          }
+          else if ((bVar37 != 0xe2) && (bVar37 != 0xe8)) goto LAB_000035da;
+        }
+        *DAT_00003750 = 0;
+        pbVar35[7] = 0;
+      }
+LAB_000035f4:
+      pbVar35 = DAT_00003750;
+      bVar14 = pbVar36[2];
+      bVar37 = DAT_00003750[7];
+      uVar18 = (uint)bVar37 + (uint)bVar14;
+      DAT_00003750[7] = (byte)uVar18;
+      if ((*pbVar35 == 0) || (0x65 < (uVar18 & 0xff))) {
+        thunk_FUN_00000684();
+        thunk_FUN_00000684(*pbVar35);
+        *pbVar35 = 0;
+        pbVar35[7] = 0;
+        FUN_00000ad8(0);
+        pcVar23 = s_ME_F_A_00003760;
+      }
+      else {
+        switchD_000024ec::caseD_26b4(pbVar35 + (uint)bVar37 * 4 + 8,pbVar36 + 4,(uint)bVar14 << 2);
+        if ((pbVar35[(uint)pbVar35[7] * 4 + 4] == 0xff) && (pbVar35[(uint)pbVar35[7] * 4 + 5] == 0))
+        {
+          local_2c = (undefined **)(uint)*(byte *)(DAT_0000374c + (uint)*pbVar35);
+          if (*pbVar35 - 0xa4 < 3) {
+            *pbVar35 = *(byte *)(DAT_0000374c + (uint)*pbVar35) + 0x6e;
+            FUN_00008848();
+          }
+          else {
+            *(ushort *)(DAT_00003754 + (int)local_2c * 2 + 0xd4) = *pbVar35 | 0xa000;
+          }
+          pbVar35[7] = pbVar35[7] - 1;
+          thunk_FUN_00000684((uint)local_2c & 0xff);
+          thunk_FUN_00000684(pbVar35[7]);
+        }
+        param_1 = &SysTick;
+        FUN_00000a70(0x53,*pbVar35,*(undefined2 *)(pbVar36 + 2),pbVar35 + (uint)bVar37 * 4 + 8);
+        pcVar23 = (char *)0x3758;
+      }
+      goto LAB_00003cb0;
+    }
+    if (bVar14 == 0x54) {
+      iVar41 = FUN_0000e246();
+      if ((iVar41 == 0) && (pbVar36[3] == 0)) {
+        if (pbVar36[5] == 0x9f) {
+          *(undefined4 *)(iVar38 + 0xb) = 1;
+        }
+        else if (pbVar36[5] == 0) {
+          *(undefined4 *)(iVar38 + 0xb) = 0;
+        }
+        if ((pbVar36[6] != 1) && (pbVar36[6] == 2)) {
+          *(int *)(iVar38 + 0xb) = *(int *)(iVar38 + 0xb) + 2;
+        }
+        iVar41 = DAT_0000374c;
+        iVar24 = FUN_00001f6e(*(undefined1 *)(DAT_0000374c + (uint)pbVar36[4]),
+                              *(undefined4 *)(iVar38 + 0xb));
+        pbVar35 = DAT_00003ba4;
+        if (iVar24 == 0) {
+          bVar14 = pbVar36[4];
+          pbVar34 = DAT_00003ba4 + -0x748;
+          *DAT_00003ba4 = bVar14;
+          *pbVar34 = bVar14;
+          pbVar35[*(int *)(iVar38 + 0xb) * 0x198 + 7] = 0;
+          uVar18 = (uint)*pbVar35;
+          if (uVar18 - 0xa4 < 3) {
+            local_2c = (undefined **)(uint)*(byte *)(iVar41 + uVar18);
+            uVar18 = (uint)((int)local_2c + -0x92) & 0xff;
+          }
+          FUN_00007de0(uVar18,1);
+          if (pbVar36[6] != 0) {
+            *DAT_00003ba8 = 1;
+            if (pbVar36[5] < 0xbd) {
+              local_30 = (uint)*(byte *)((uint)pbVar36[5] +
+                                        DAT_00003bb0 + *(int *)(DAT_00003bac + 8) * 0x86);
+              *(char *)(iVar22 + local_30 * 0x20 + 0x22) = (char)(*(ushort *)(pbVar36 + 7) / 10);
+            }
+          }
+        }
+        else {
+          FUN_00000ad8(0);
+        }
+      }
+      iVar41 = DAT_00003728;
+      iVar24 = *(int *)(iVar38 + 0xb);
+      pbVar35 = (byte *)(DAT_00003728 + 0x54);
+      bVar14 = pbVar36[2];
+      bVar37 = pbVar35[iVar24 * 0x198 + 7];
+      uVar18 = (uint)bVar37 + (uint)bVar14;
+      pbVar35[iVar24 * 0x198 + 7] = (byte)uVar18;
+      if ((*pbVar35 == 0) || (0x65 < (uVar18 & 0xff))) {
+        *pbVar35 = 0;
+        pbVar35[iVar24 * 0x198 + 7] = 0;
+        FUN_00000ad8(0);
+        pcVar23 = s_MEF_F_A_00003bc8;
+      }
+      else {
+        FUN_0001bda6(pbVar35 + (uint)bVar37 * 4 + iVar24 * 0x198 + 8,iVar41 + 0x6c1,
+                     (uint)bVar14 << 2);
+        iVar24 = *(int *)(iVar38 + 0xb);
+        iVar41 = (uint)pbVar35[iVar24 * 0x198 + 7] * 4 + iVar24 * 0x198;
+        if ((pbVar35[iVar41 + 4] == 0xff) && (pbVar35[iVar41 + 5] == 0)) {
+          bVar14 = *pbVar35;
+          local_2c = (undefined **)(uint)*(byte *)(DAT_00003bb4 + (uint)bVar14);
+          if (bVar14 - 0xa4 < 3) {
+            *pbVar35 = *(byte *)(DAT_00003bb4 + (uint)bVar14) + 0x6e;
+            FUN_00008848(local_2c);
+          }
+          else if (pbVar36[6] == 0) {
+            *(ushort *)(DAT_00003bb8 + iVar24 * 0x1ee + (int)local_2c * 2 + 0xd4) =
+                 (ushort)bVar14 | (ushort)(iVar24 << 8) | 0xa000;
+          }
+          else if (pbVar36[4] < 0xbd) {
+            local_30 = (uint)*(byte *)((uint)pbVar36[4] +
+                                      DAT_00003bb0 + *(int *)(DAT_00003bac + 8) * 0x86);
+            if (pbVar36[6] == 1) {
+              *(ushort *)(iVar22 + local_30 * 0x20 + 0x20) =
+                   (ushort)*pbVar35 | (ushort)(iVar24 << 8) | 0xa000;
+            }
+            else if (pbVar36[6] == 2) {
+              *(ushort *)(iVar22 + local_30 * 0x20 + 0x1e) =
+                   (ushort)*pbVar35 | (ushort)(iVar24 << 8) | 0xa000;
+            }
+          }
+          pbVar35[*(int *)(iVar38 + 0xb) * 0x198 + 7] =
+               pbVar35[*(int *)(iVar38 + 0xb) * 0x198 + 7] - 1;
+          iVar41 = FUN_0000e246();
+          if ((iVar41 == 0) && (iVar41 = FUN_0000e252(), pbVar34 = DAT_00003bbc, iVar41 != 0)) {
+            *DAT_00003bbc = *pbVar35;
+            iVar41 = *(int *)(iVar38 + 0xb);
+            pbVar34[iVar41 * 0x198 + 5] = pbVar35[iVar41 * 0x198 + 5];
+            pbVar34[iVar41 * 0x198 + 6] = pbVar35[iVar41 * 0x198 + 6];
+            pbVar34[iVar41 * 0x198 + 7] = pbVar35[iVar41 * 0x198 + 7];
+            FUN_0001bda6(pbVar34 + iVar41 * 0x198 + 8,pbVar35 + iVar41 * 0x198 + 8,400);
+          }
+          else if (pbVar36[3] == 0) {
+            *puVar40 = 1;
+          }
+          pbVar35 = DAT_00003ba4;
+          DAT_00003ba4[-0x60] = 0;
+          pbVar35[-0x58] = 0;
+          pbVar35[-0x57] = pbVar35[-0x57] & 0xfe;
+        }
+        param_1 = &SysTick;
+        FUN_00000a70(0x54,0,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+        pcVar23 = s_MEF_A_00003bc0;
+      }
+      goto LAB_00003cb0;
+    }
+    if (bVar14 != 0x71) {
+      bVar43 = false;
+      if (bVar14 == 0x73) {
+        if (pbVar36[4] == 0) {
+          *(undefined1 *)(FUN_00002148 + 0x1e) = 0xff;
+        }
+        else {
+          *(undefined1 *)(FUN_00002148 + 0x1e) = 0xb5;
+        }
+        FUN_0000e7c2(DAT_00003bd8,DAT_00003ba8 + 0x17);
+        FUN_0000fd20();
+        pcVar17 = (code *)0x1;
+        FUN_00000a70(0x73,0,0,pbVar36 + 4);
+        FUN_00004498(0x50,0,0,*(char *)(iVar38 + 0x1e) == -0x4b);
+        param_1 = (undefined **)pcVar17;
+        goto LAB_000040c0;
+      }
+      goto LAB_00002010;
+    }
+    bVar14 = pbVar36[1];
+    if (bVar14 == 0) {
+      uVar18 = (uint)*(ushort *)(DAT_00003bb0 + -10 + (uint)pbVar36[4] * 2);
+      bVar43 = 4 < uVar18;
+      local_30 = uVar18;
+switchD_00003a8c_default:
+      bVar44 = true;
+      if (bVar43) goto LAB_00003966;
+      *(bool *)(DAT_00003bb8 + uVar18 * 0xe + 0x4b2) = pbVar36[5] != 0;
+      FUN_00007004(uVar18,0,1);
+      sVar28 = *(short *)(pbVar36 + 2);
+      bVar14 = 0;
+    }
+    else {
+      if (bVar14 == 1) {
+        uVar18 = (uint)*(ushort *)(DAT_00003bb0 + -10 + (uint)pbVar36[4] * 2);
+        bVar44 = 4 < uVar18;
+        local_30 = uVar18;
+        if (!bVar44) {
+          FUN_000087c8(uVar18,*(undefined2 *)(pbVar36 + 5),*(undefined2 *)(pbVar36 + 7));
+          sVar28 = *(short *)(pbVar36 + 2);
+          bVar14 = 1;
+          goto LAB_00003986;
+        }
+      }
+      else {
+        if (bVar14 != 2) goto LAB_000033aa;
+        uVar18 = (uint)pbVar36[4];
+        bVar44 = 4 < uVar18;
+      }
+LAB_00003966:
+      if (bVar44) goto LAB_000033aa;
+      local_30 = (uint)*(ushort *)(DAT_00003bb0 + -10 + uVar18 * 2);
+      FUN_00007004(local_30,0);
+      sVar28 = *(short *)(pbVar36 + 2);
+      bVar14 = 2;
+    }
+LAB_00003986:
+    param_1 = &SysTick;
+    pbVar35 = pbVar36 + 4;
+    uVar19 = 0x71;
+    goto LAB_000033a4;
+  }
+  if (bVar14 == 0xc0) {
+    local_34 = DAT_00003728 + 0x3d;
+    if (pbVar36[1] == 0x81) {
+      pbVar35 = (byte *)((int)DAT_00003718 + -0x11);
+      if ((*pbVar35 & 0xf) >> 2 != 1) {
+        uVar18 = (*pbVar35 & 0xfffffff3) + 4;
+        *pbVar35 = (byte)uVar18;
+        *(undefined1 *)(iVar6 + 0x3c) = 0;
+        if ((uVar18 & 0x30) == 0) {
+          FUN_00000b28(0xf1);
+        }
+        thunk_FUN_000006da(s_SXY_A_00003734);
+      }
+      if (*(ushort *)(pbVar36 + 2) < 0x10) {
+        uVar18 = (uint)pbVar36[2];
+        pbVar34 = (byte *)(iVar6 + 0x3c);
+        bVar14 = *pbVar34;
+        *pbVar34 = (byte)(bVar14 + uVar18);
+        param_1 = (undefined **)((int)&BusFault + 3);
+        FUN_00000a70(0xc0,0x82,bVar14 + uVar18 & 0xff,local_34);
+        *pbVar34 = 0;
+      }
+      else {
+        uVar18 = 0xf;
+        *(char *)(iVar6 + 0x3c) = *(char *)(iVar6 + 0x3c) + '\x0f';
+      }
+      if ((*pbVar35 & 0x30) != 0) goto LAB_000040c0;
+      switchD_000024ec::caseD_26b4(DAT_00003728,pbVar36 + 4,0x3c);
+      thunk_FUN_00004258(1);
+      for (iVar41 = 0; iVar41 < (int)uVar18; iVar41 = iVar41 + 1) {
+        bVar14 = *(byte *)(iVar6 + iVar41 * 4);
+        FUN_0000bf72(bVar14 >> 3,bVar14 & 7,iVar6 + iVar41 * 4 + 1);
+      }
+    }
+    else {
+      if (pbVar36[1] != 0x83) goto LAB_000033aa;
+      uVar29 = *(ushort *)(pbVar36 + 2);
+      uVar18 = (uint)uVar29;
+      bVar14 = *(byte *)((int)DAT_00003718 + -0x11);
+      if ((bVar14 & 0xf) >> 2 != 1) {
+        *(byte *)((int)DAT_00003718 + -0x11) = (bVar14 & 0xf3) + 4;
+        *(undefined1 *)(iVar6 + 0x3c) = 0;
+        FUN_00000b28(0xf1);
+        thunk_FUN_000006da(s_SXY_A_F_0000372c);
+      }
+      uVar32 = (uVar18 & 0xfff) >> 8;
+      switchD_000024ec::caseD_26b4(DAT_00003728,pbVar36 + 4,uVar32 << 2);
+      if ((uVar29 >> 0xc == 1) || (*(uint *)(iVar38 + 7) < (uVar18 & 0xff))) {
+        param_1 = (undefined **)((int)&BusFault + 3);
+        FUN_00000a70(0xc0,0x82,*(undefined1 *)(iVar6 + 0x3c),local_34);
+        *(undefined1 *)(iVar6 + 0x3c) = 0;
+      }
+      *(uint *)(iVar38 + 7) = uVar18 & 0xff;
+      *(byte *)(iVar6 + 0x3c) = *(char *)(iVar6 + 0x3c) + (byte)((uVar18 << 0x14) >> 0x1c);
+      thunk_FUN_00004258(1);
+      for (iVar41 = 0; iVar41 < (int)uVar32; iVar41 = iVar41 + 1) {
+        bVar14 = *(byte *)(iVar6 + iVar41 * 4);
+        FUN_0000bf72(bVar14 >> 3,bVar14 & 7,iVar6 + iVar41 * 4 + 1);
+      }
+    }
+    thunk_FUN_00004258(0);
+    goto LAB_000040c0;
+  }
+  if (bVar14 != 0xfa) {
+    bVar43 = bVar14 == 0xfd;
+    if (bVar43) {
+      bVar14 = pbVar36[1];
+      if ((bVar14 != 0xa0) && (bVar14 != 0xa1)) {
+        if (bVar14 == 0xa2) {
+          if (pbVar36[4] != *DAT_00004114) {
+            *DAT_00004114 = pbVar36[4];
+          }
+          goto LAB_000040c0;
+        }
+        goto switchD_00003a8c_caseD_5;
+      }
+      param_1 = (undefined **)FUN_0001bdec(pbVar36 + 4,0x3c);
+      pbVar35 = pbVar36 + 4;
+      sVar28 = 0;
+      bVar14 = pbVar36[1];
+      uVar19 = 0xfd;
+      local_2c = param_1;
+    }
+    else {
+LAB_00002010:
+      if (!bVar43) {
+LAB_000020e6:
+        goto LAB_000033aa;
+      }
+      pbVar34 = pbVar36;
+      if (pbVar36[1] == 0) {
+        pcVar17 = (code *)(uint)*(byte *)(DAT_00002598 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4);
+code_r0x000022d6:
+        pbVar36[4] = (byte)((uint)((int)pcVar17 << 0x1a) >> 0x1f);
+        sVar28 = *(short *)(pbVar36 + 2);
+        bVar14 = 0;
+      }
+      else {
+        if (pbVar36[1] != 1) goto LAB_000040c0;
+        pbVar36[4] = (byte)((uint)(*(int *)(DAT_00002598 + (uint)*(byte *)(FUN_00002148 + 0x1d) * 4)
+                                  << 0xf) >> 0x1f);
+        sVar28 = *(short *)(pbVar36 + 2);
+        bVar14 = 1;
+      }
+      pbVar35 = pbVar34 + 4;
+      uVar19 = 0x25;
+      pbVar36 = pbVar34;
+      param_1 = (undefined **)(code *)0x1;
+    }
+    goto LAB_000033a4;
+  }
+  uVar18 = (uint)pbVar36[1];
+  if (uVar18 == 0) {
+    if (*(short *)(pbVar36 + 2) == -0x5a2d) {
+      *(undefined4 *)(DAT_00003bac + 0x10) = 1;
+      pcVar23 = s_FT_E_A_00003be8;
+    }
+    else {
+      *(undefined4 *)(DAT_00003bac + 0x10) = 0;
+      *DAT_00003bdc = *DAT_00003bdc & 0xfe;
+      pcVar23 = s_FT_D_A_00003be0;
+    }
+    thunk_FUN_000006da(pcVar23);
+    param_1 = (undefined **)0x0;
+    pbVar35 = (byte *)0x0;
+    sVar28 = *(short *)(pbVar36 + 2);
+    bVar14 = 0;
+    goto LAB_00003b6c;
+  }
+  if (*(int *)(DAT_00003bac + 0x10) == 0) goto LAB_000033aa;
+  if (uVar18 == 7) {
+    bVar14 = *(byte *)(FUN_00002148 + 0x1d);
+    bVar37 = pbVar36[4];
+    uVar18 = *(uint *)(DAT_0000404c + (uint)bVar14 * 4);
+    if (bVar37 == 0) {
+      uVar18 = uVar18 & 0xfffffff7;
+    }
+    else {
+      uVar18 = uVar18 | 8;
+    }
+    *(uint *)(DAT_0000404c + (uint)bVar14 * 4) = uVar18;
+    bVar1 = pbVar36[5];
+    if (bVar1 == 0) {
+      uVar18 = uVar18 & 0xfffffffb;
+    }
+    else {
+      uVar18 = uVar18 | 4;
+    }
+    *(uint *)(iVar11 + (uint)bVar14 * 4) = uVar18;
+    local_2c = (undefined **)((uint)bVar37 | (uint)bVar1 << 1);
+    FUN_0000ab78(0,&local_2c,1);
+    param_1 = (undefined **)0x2;
+    FUN_00000a70(0xfa,7,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+    pcVar23 = s_FT_LK_A_00004050;
+    goto LAB_00003cb0;
+  }
+  if (7 < uVar18) {
+    if (uVar18 == 0x30) goto switchD_00003a8c_caseD_0;
+    if (uVar18 < 0x31) {
+      if (uVar18 == 0xe) {
+        switch(*(undefined2 *)(pbVar36 + 2)) {
+        case 0:
+          uVar16 = FUN_000088d2(pbVar36 + 4,0xc);
+          pbVar36[0x10] = (byte)uVar16;
+          pbVar36[0x11] = (byte)((ushort)uVar16 >> 8);
+          pbVar36[0x12] = 0;
+          pbVar36[0x13] = 0;
+          FUN_0000ec40(&DAT_00011000,pbVar36 + 4,0x10);
+          sVar28 = 0;
+          param_1 = &HardFault;
+          break;
+        case 1:
+        case 2:
+          FUN_0000e4a4();
+          FUN_0000ecb6(&DAT_00011000,pbVar36 + 4,0x10);
+          param_1 = (undefined **)((int)&HardFault + 2);
+          sVar28 = *(short *)(pbVar36 + 2);
+          break;
+        case 3:
+          uVar16 = FUN_000088d2(pbVar36 + 4,0xc);
+          pbVar36[0x10] = (byte)uVar16;
+          pbVar36[0x11] = (byte)((ushort)uVar16 >> 8);
+          pbVar36[0x12] = 0;
+          pbVar36[0x13] = 0;
+          FUN_0000ec40(&DAT_00012000,pbVar36 + 4,0x10);
+          sVar28 = 3;
+          param_1 = &HardFault;
+          break;
+        case 4:
+          FUN_0000e48a();
+          FUN_0000ecb6(&DAT_00012000,pbVar36 + 4,0x10);
+          sVar28 = 4;
+          param_1 = (undefined **)((int)&HardFault + 2);
+          break;
+        default:
+          goto switchD_00003a8c_caseD_5;
+        }
+        pbVar35 = pbVar36 + 4;
+        bVar14 = 0xe;
+        goto LAB_00003b6c;
+      }
+      if (uVar18 == 0x10) {
+        switch(*(undefined2 *)(pbVar36 + 2)) {
+        case 0:
+          *(bool *)DAT_00004058 = pbVar36[4] != 0;
+          FUN_0000ed74();
+          sVar28 = 0;
+          pcVar17 = (code *)0x1;
+          break;
+        case 1:
+          FUN_000005fa(pbVar36 + 4);
+          sVar28 = 1;
+          pcVar17 = (code *)((int)&Reset + 1);
+          break;
+        case 2:
+          FUN_000006b4(pbVar36 + 4);
+          sVar28 = 2;
+          pcVar17 = (code *)((int)&HardFault + 3);
+          break;
+        case 3:
+          bVar14 = pbVar36[4];
+          uVar18 = (uint)bVar14;
+          if ((0x8d < uVar18 - 4) &&
+             (((7 < uVar18 - 0xe0 || (0x8d < pbVar36[5] - 4)) && (7 < pbVar36[5] - 0xe0))))
+          goto LAB_00003ff8;
+          bVar37 = pbVar36[5];
+          iVar41 = DAT_0000405c + uVar18 * 2;
+          *(byte *)(iVar41 + 4) = bVar37;
+          *(byte *)(iVar41 + 5) = (*(byte *)(iVar41 + 5) & 7) + 8 & 0xf8;
+          iVar27 = iVar27 + (uint)bVar37 * 2;
+          *(byte *)(iVar27 + 4) = bVar14;
+          *(byte *)(iVar27 + 5) = (*(byte *)(iVar27 + 5) & 7) + 8 & 0xf8;
+          *DAT_00004060 = 1;
+          *(undefined1 *)(iVar38 + -1) = 1;
+          sVar28 = 3;
+          pcVar17 = CandidateB_Start_Function;
+          break;
+        case 4:
+          FUN_000005c6(DAT_0000405c);
+          *(undefined1 *)(iVar38 + -1) = 1;
+          sVar28 = 4;
+          pcVar17 = CandidateB_Start_Function;
+          break;
+        default:
+          goto switchD_00003a8c_caseD_0;
+        }
+        pbVar35 = pbVar36 + 4;
+        bVar14 = 0x10;
+        param_1 = (undefined **)pcVar17;
+        goto LAB_00003b6c;
+      }
+    }
+    else {
+      if (uVar18 == 0x40) {
+        sVar28 = *(short *)(pbVar36 + 2);
+        if (sVar28 == 0) {
+          sVar28 = 0;
+          *(bool *)DAT_00004064 = pbVar36[4] != 0;
+          param_1 = (undefined **)0x1;
+        }
+        else if (sVar28 == 1) {
+          *(bool *)DAT_00004068 = pbVar36[4] != 0;
+          FUN_0000464e();
+          sVar28 = 1;
+          param_1 = (undefined **)(code *)0x1;
+        }
+        else {
+          if (sVar28 != 2) goto LAB_000040c0;
+          FUN_0000466e(pbVar36 + 5,pbVar36[4]);
+          sVar28 = 2;
+          param_1 = &SysTick;
+        }
+        pbVar35 = pbVar36 + 4;
+        bVar14 = 0x40;
+        goto LAB_00003b6c;
+      }
+      if (uVar18 == 0xf0) {
+        if (*(short *)(pbVar36 + 2) != 0) {
+          if (*(short *)(pbVar36 + 2) != 1) goto switchD_00003a8c_caseD_0;
+          if (((((pbVar36[4] != 0x55) || (pbVar36[5] != 0x50)) || (pbVar36[6] != 0x44)) ||
+              ((pbVar36[7] != 0x41 || (pbVar36[8] != 0x54)))) ||
+             ((pbVar36[9] != 0x45 || ((pbVar36[10] != 0x42 || (pbVar36[0xb] != 0x4c))))))
+          goto LAB_00003ff8;
+          if ((*DAT_00003bf0 == 0) || (*DAT_00003bf0 == -1)) {
+            sVar28 = 2;
+          }
+          else {
+            iVar41 = FUN_000101e2(1);
+            param_1 = (undefined **)0x0;
+            if (iVar41 != 0) {
+              sVar28 = 1;
+              goto LAB_0000408e;
+            }
+            sVar28 = 1;
+          }
+LAB_0000409e:
+          param_1 = (undefined **)0x0;
+          pbVar35 = (byte *)0x0;
+          bVar14 = 0xaa;
+          uVar19 = 0xff;
+          goto LAB_000033a4;
+        }
+        uVar19 = *DAT_0000406c;
+        pbVar36[4] = (byte)uVar19;
+        pbVar36[5] = (byte)((uint)uVar19 >> 8);
+        pbVar36[6] = (byte)((uint)uVar19 >> 0x10);
+        pbVar36[7] = (byte)((uint)uVar19 >> 0x18);
+        iVar41 = *piVar9;
+        pbVar36[8] = (byte)iVar41;
+        pbVar36[9] = (byte)((uint)iVar41 >> 8);
+        pbVar36[10] = (byte)((uint)iVar41 >> 0x10);
+        pbVar36[0xb] = (byte)((uint)iVar41 >> 0x18);
+        uVar19 = *DAT_00004070;
+        pbVar36[0xc] = (byte)uVar19;
+        pbVar36[0xd] = (byte)((uint)uVar19 >> 8);
+        pbVar36[0xe] = (byte)((uint)uVar19 >> 0x10);
+        pbVar36[0xf] = (byte)((uint)uVar19 >> 0x18);
+        uVar19 = *DAT_00004074;
+        pbVar36[0x10] = (byte)uVar19;
+        pbVar36[0x11] = (byte)((uint)uVar19 >> 8);
+        pbVar36[0x12] = (byte)((uint)uVar19 >> 0x10);
+        pbVar36[0x13] = (byte)((uint)uVar19 >> 0x18);
+        sVar28 = 0;
+        param_1 = &MemManage;
+LAB_0000408e:
+        pbVar35 = pbVar36 + 4;
+        bVar14 = 0xf0;
+        goto LAB_00003b6c;
+      }
+    }
+switchD_00003a8c_caseD_5:
+    goto LAB_000033aa;
+  }
+  bVar43 = true;
+  switch(uVar18) {
+  case 0:
+switchD_00003a8c_caseD_0:
+    goto LAB_000040c0;
+  case 1:
+    sVar28 = *(short *)(pbVar36 + 2);
+    if (sVar28 == 0) {
+      *(undefined1 *)(DAT_00003bb8 + 4) = 0x1e;
+      *(undefined1 *)(iVar8 + 5) = 100;
+      *(undefined1 *)(iVar8 + 6) = 0;
+      *(undefined1 *)(iVar8 + 7) = 0xff;
+      *(undefined1 *)(iVar8 + 8) = 0xff;
+      *(byte *)(iVar8 + 9) = pbVar36[4];
+      *(byte *)(iVar8 + 10) = pbVar36[5];
+      *(byte *)(iVar8 + 0xb) = pbVar36[6];
+      *(undefined1 *)(iVar8 + 0xc) = 0;
+      *(undefined1 *)(iVar8 + 0xd) = 0;
+      *(undefined1 *)(iVar8 + 0xe) = 0;
+      *(undefined1 *)(iVar8 + 0xf) = 0;
+      *(undefined1 *)(iVar8 + 0x10) = 0;
+      *(undefined1 *)(iVar8 + 0x11) = 0;
+      FUN_0000caf4(0);
+      param_1 = (undefined **)0x3;
+      FUN_00000a70(0xfa,1,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+      pcVar23 = s_FT_SC_A_00003bf4;
+    }
+    else {
+      if (sVar28 == 1) {
+        *DAT_00003bfc = pbVar36[4];
+        local_30 = (uint)pbVar36[5];
+        local_2c = (undefined **)(uint)pbVar36[6];
+        thunk_FUN_00001acc(local_30,local_2c,pbVar36[7]);
+        sVar28 = *(short *)(pbVar36 + 2);
+        pbVar35 = pbVar36 + 4;
+        bVar14 = 1;
+        param_1 = (undefined **)(code *)0x1;
+        goto LAB_00003b6c;
+      }
+      if (sVar28 != 2) goto switchD_00003a8c_caseD_0;
+      local_30 = pbVar36[4] & 7;
+      local_2c = (undefined **)((pbVar36[6] & 1) << 2 | (pbVar36[4] & 0x1f) >> 3);
+      FUN_0000ab78(&local_30,&local_2c,1);
+      local_2c = (undefined **)(uint)(pbVar36[5] >> 3);
+      FUN_0000cf6c(0xff,&local_2c,1);
+      param_1 = (undefined **)0x2;
+      FUN_00000a70(0xfa,1,2,pbVar36 + 4);
+      pcVar23 = s_FT_ICT_A_00004004;
+    }
+    break;
+  case 2:
+    if (*(short *)(pbVar36 + 2) == 1) {
+      param_1 = (undefined **)FUN_0000463e(pbVar36 + 4);
+      FUN_00000a70(0xfa,2,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+      pcVar23 = s_FT_GKM_A_00004010;
+    }
+    else {
+      if (*(short *)(pbVar36 + 2) != 3) goto LAB_000040c0;
+      bVar14 = FUN_000109ec(0x46);
+      pbVar36[4] = bVar14 ^ 1;
+      pbVar36[5] = 0;
+      bVar14 = FUN_000109ec(0x47);
+      pbVar36[6] = bVar14;
+      param_1 = (undefined **)0x3;
+      FUN_00000a70(0xfa,2,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+      pcVar23 = s_FT_GBS_A_0000401c;
+    }
+    break;
+  case 3:
+    if (*(short *)(pbVar36 + 2) == 0) {
+      pbVar36[4] = (byte)*(undefined4 *)(DAT_00003bac + 0x30);
+      pbVar36[5] = (byte)*(undefined4 *)(iVar7 + 0x34);
+      param_1 = (undefined **)0x2;
+      FUN_00000a70(0xfa,3,0,pbVar36 + 4);
+      pcVar23 = s_FT_PL_A_00004028;
+    }
+    else {
+      if (*(short *)(pbVar36 + 2) != 5) goto LAB_000040c0;
+      pbVar36[4] = (byte)*(undefined4 *)(DAT_00003bac + 100);
+      pcVar17 = (code *)0x1;
+      FUN_00000a70(0xfa,3,5,pbVar36 + 4);
+      pcVar23 = s_FT_TOUCH_A_00004030;
+      param_1 = (undefined **)pcVar17;
+    }
+    break;
+  case 4:
+    sVar28 = *(short *)(pbVar36 + 2);
+    switch(sVar28) {
+    case 0:
+      uVar19 = *(undefined4 *)(FUN_00002148 + 0x1b);
+      *(undefined4 *)(pbVar36 + 4) = *(undefined4 *)(FUN_00002148 + 0x17);
+      *(undefined4 *)(pbVar36 + 8) = uVar19;
+      bVar14 = pbVar36[10];
+      if (bVar14 == 0) {
+        bVar14 = 6;
+      }
+      pbVar36[10] = bVar14;
+      param_1 = &NMI;
+      break;
+    default:
+      goto LAB_000040c0;
+    case 3:
+      pbVar36[4] = 0xff;
+      pbVar36[5] = 0xff;
+      goto LAB_00003d06;
+    case 5:
+      if (*(int *)(DAT_00003bac + 8) == 2) {
+        pbVar36[4] = 4;
+      }
+      else {
+        pbVar36[4] = (byte)*(undefined4 *)(DAT_00003bac + 8);
+      }
+      pbVar36[5] = (byte)*(undefined4 *)(iVar7 + 0xc);
+LAB_00003d06:
+      param_1 = (undefined **)0x2;
+      break;
+    case 6:
+      local_2c = (undefined **)0x0;
+      FUN_0000e454();
+      FUN_0000eabe(0,&local_2c,1);
+      if ((undefined **)((int)&UsageFault + 1) < local_2c) {
+        local_2c = (undefined **)0x0;
+      }
+      pbVar36[4] = (byte)*(code *)(DAT_0000403c + (int)local_2c);
+      pbVar36[5] = (byte)local_2c;
+      param_1 = (undefined **)0x2;
+      sVar28 = *(short *)(pbVar36 + 2);
+      break;
+    case 7:
+      iVar41 = FUN_0000ea0a(0,pbVar36 + 4,1);
+      if (iVar41 == 0) {
+LAB_00003ff8:
+        sVar28 = 0;
+        goto LAB_0000409e;
+      }
+      local_30 = *(uint *)(iVar7 + 8);
+      FUN_000088ea();
+      if (*(uint *)(iVar7 + 8) != local_30) {
+        FUN_00000136(*(undefined4 *)(iVar7 + 8));
+      }
+      param_1 = &SysTick;
+      sVar28 = *(short *)(pbVar36 + 2);
+    }
+    pbVar35 = pbVar36 + 4;
+    bVar14 = 4;
+LAB_00003b6c:
+    uVar19 = 0xfa;
+LAB_000033a4:
+    FUN_00000a70(uVar19,bVar14,sVar28,pbVar35);
+    goto LAB_000040c0;
+  case 5:
+    goto switchD_00003a8c_caseD_5;
+  case 6:
+    *DAT_00004040 = 6;
+    puVar10[1] = 1;
+    puVar10[8] = 0;
+    puVar10[9] = puVar10[9] & 0xfd | 1;
+    pcVar17 = (code *)0x1;
+    FUN_00000a70(0xfa,6,*(undefined2 *)(pbVar36 + 2),pbVar36 + 4);
+    pcVar23 = s_FT_DF_A_00004044;
+    param_1 = (undefined **)pcVar17;
+    break;
+  default:
+    goto switchD_00003a8c_default;
+  }
+LAB_00003cb0:
+  thunk_FUN_000006da(pcVar23);
+LAB_000040c0:
+  *pbVar36 = 0;
+  return CONCAT44(local_34,param_1);
+LAB_00002fd0:
+  if ((uint)((int)puVar26 * 5) <= uVar18) goto LAB_00002fd4;
+  if (pbVar36[6] == 0) {
+    iVar38 = iVar22 + iVar41 * 0xd84 + uVar18 * 0x20;
+    uVar29 = *(ushort *)(iVar38 + 10) & 0x3fff;
+  }
+  else {
+    iVar38 = iVar22 + iVar41 * 0xd84 + uVar18 * 0x20;
+    uVar29 = *(ushort *)(iVar38 + 10) & 0x3fff | (pbVar36[5] + 1) * 0x4000;
+  }
+  *(ushort *)(iVar38 + 10) = uVar29;
+  if (sVar28 == 0) {
+    iVar38 = iVar22 + iVar41 * 0xd84 + uVar18 * 0x20;
+    *(ushort *)(iVar38 + 10) =
+         *(ushort *)(iVar38 + 10) & 0xc000 | pbVar36[4] & 0x7f | (pbVar36[4] & 0x7f) << 7;
+  }
+  else {
+    if (sVar28 == 1) {
+      iVar38 = iVar22 + iVar41 * 0xd84 + uVar18 * 0x20;
+      uVar29 = *(ushort *)(iVar38 + 10) & 0xc07f | (pbVar36[4] & 0x7f) << 7;
+    }
+    else {
+      if (sVar28 != 2) {
+        FUN_00000ad8(0);
+        goto LAB_00002fd4;
+      }
+      iVar38 = iVar22 + iVar41 * 0xd84 + uVar18 * 0x20;
+      uVar29 = *(ushort *)(iVar38 + 10) & 0xff80 | pbVar36[4] & 0x7f;
+    }
+    *(ushort *)(iVar38 + 10) = uVar29;
+  }
+  uVar18 = uVar18 + 1;
+  goto LAB_00002fd0;
+LAB_00002fd4:
+  *(undefined1 *)(DAT_000032a0 + iVar41) = 1;
+  sVar28 = *(short *)(pbVar36 + 2);
+  bVar14 = 0x53;
+  pcVar17 = (code *)&SysTick;
+  goto LAB_000030c4;
+}
+
+ (GhidraScript)  
+INFO  FalchionDispatcherReport.java> DECOMPILE function=FUN_00002718 entry=00002718 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionDispatcherReport.java> 
+undefined8
+FUN_00002718(int param_1,int param_2,ushort param_3,undefined4 param_4,undefined4 param_5,
+            undefined4 param_6)
+
+{
+  int iVar1;
+  undefined1 *unaff_r4;
+  undefined1 unaff_r5;
+  undefined1 unaff_r6;
+  int in_r12;
+  int unaff_lr;
+  
+  if ((param_3 & 0x7f) == *(ushort *)(DAT_000029c4 + in_r12 * 4) >> 9) {
+    param_3 = param_3 & 0x7fff;
+  }
+  else {
+    param_3 = param_3 | 0x8000;
+  }
+  *(ushort *)(param_2 + 8) = param_3;
+  if (unaff_lr == 0x21) {
+    *(undefined1 *)(param_2 + 0xc) = unaff_r5;
+  }
+  else if (unaff_lr == 0x22) {
+    *(char *)(param_2 + 0xd) = (char)(*(ushort *)(unaff_r4 + 7) / 10);
+    *(undefined1 *)(param_2 + 0xc) = unaff_r6;
+  }
+  *(undefined1 *)(DAT_000029c8 + param_1) = unaff_r6;
+  param_5 = 0x3c;
+  FUN_00000a70(0x51);
+  iVar1 = DAT_000029b4;
+  FUN_0001bdba(*(undefined1 *)(DAT_000029b4 + (uint)(byte)unaff_r4[2]));
+  FUN_0001bdba(*(undefined2 *)
+                (DAT_000029b8 + (uint)*(byte *)(iVar1 + (uint)(byte)unaff_r4[2]) * 2 + 0xd4));
+  thunk_FUN_000006da(s__KC_S_T_A_000029cc);
+  *unaff_r4 = unaff_r5;
+  return CONCAT44(param_6,param_5);
+}
+
+ (GhidraScript)  
+INFO  FalchionDispatcherReport.java> DECOMPILE function=thunk_FUN_00002718 entry=0001bd60 (GhidraScript)  
+INFO  FalchionDispatcherReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionDispatcherReport.java> 
+void thunk_FUN_00002718(void)
+
+{
+  FUN_00002718();
+  return;
+}
+
+ (GhidraScript)  

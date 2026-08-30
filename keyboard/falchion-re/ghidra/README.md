@@ -41,6 +41,18 @@ The base of candidate B remains provisional. PC-relative Thumb code decodes
 correctly at base zero, but cross-region references must be examined before the
 program is treated as a standalone core image.
 
+## Evidence-supported Candidate B labels
+
+The local project currently includes these conservative user labels:
+
+- `0x00000a70` — `VendorHID_SendResponse64`
+- `0x00001f6e` — `IsKeyUnsupportedForLayer`
+- `0x00001fbe` — `VendorHID_CommandDispatcher`
+
+The report and label scripts under `ghidra/scripts/` are reproducible. Report
+scripts are intended for `-readOnly -noanalysis`; the label script changes only
+the ignored local Ghidra project database.
+
 ## Safety
 
 Opening or analyzing these files in Ghidra is host-only and read-only with

@@ -8,6 +8,9 @@ earlier protocol work and are synchronized to this document, but some of their
 hardware observations cannot be independently replayed because the cited PCAP
 captures are not present in the repository.
 
+For a chronological account of the work, decisions, corrections, and evidence,
+see `TIMELINE.md`.
+
 Safety scope for the 2026-08-29 investigation: USB-only, read-only diagnostics.
 No firmware update, HID data/feature report request, vendor control command, DFU
 detach/upload/download, USB reset, driver detach, permission change, erase,
@@ -403,6 +406,52 @@ Evidence: `logs/38-ghidra-preinstall-check.txt` through
 `logs/45-ghidra-synchronized-project-report.txt`; workspace instructions:
 `ghidra/README.md`.
 
+### Candidate B vendor-HID and key-policy analysis
+
+Offline Ghidra analysis identifies `0x00001fbe` as the high-confidence
+vendor-HID command dispatcher. It reads the 64-byte request buffer at
+`0x1802337c`, dispatches top-level opcode `0x50` to a branch containing
+subcommand `0x55`, and dispatches opcode `0x51` to the keyboard-configuration
+handlers. The local Ghidra project labels this function
+`VendorHID_CommandDispatcher`.
+
+The `0x51/0x21` and `0x51/0x22` path is now bounded statically:
+
+- source byte 2 must be at most `0xbc`; byte 3 must be `0x00` or `0x9f`;
+- the 16-bit target in bytes 4-5 is translated through a runtime key table when
+  it is at most `0xbc`; special targets `0xff`, `0xc7`, `0xc8`, and `0xd3` have
+  separate internal encodings;
+- `0x21` clears a per-key mode byte, while `0x22` sets it and stores the
+  actuation value from bytes 7-8 divided by 10;
+- the handler marks profile state dirty and constructs a 64-byte response that
+  echoes opcode `0x51`, the subcommand, source, and payload.
+
+There is no explicit reserved-source rejection in this packet handler. Every
+source from `0x00` through `0xbc` reaches the same runtime-table translation.
+This agrees with the historical observation that a reserved remap could be
+echoed without becoming effective.
+
+Candidate B contains a separate predicate at `0x00001f6e`, now labeled
+`IsKeyUnsupportedForLayer`. It copies and searches one of two runtime lists: 6
+32-bit entries for layer selectors 0 or 2, and 57 entries for other selectors.
+The configuration-load state machine calls it with selector 0 for base mappings
+and selector 1 for Fn mappings; when it returns true, the mapping is skipped and
+the firmware uses diagnostic strings `R_NSK_M` or `R_NSK_FnM`. This is verified
+device-side reserved/unsupported-key policy logic and is the strongest current
+explanation for the historical "ACK but no effect" behavior.
+
+The 63 list entries begin at runtime RAM `0x1801c810`. Their contents are not
+present at that runtime address in the preserved package, and their initializer
+has not yet been resolved. Therefore the exact list cannot yet be equated
+entry-for-entry with the manual's reserved Fn combinations. Other key tables
+used by the handler also reside in runtime RAM, including the key translation
+table at `0x1801bff6`, key records at `0x18021db4`, and per-key index mapping at
+`0x1801c37c`.
+
+Evidence: `logs/47-ghidra-candidate-b-opcode-search.txt` through
+`logs/54-ghidra-protocol-labels.txt`. Reproducible reports and conservative label
+script are under `ghidra/scripts/`. All work was offline; no USB command was sent.
+
 ### Documentation synchronization
 
 After integrating earlier commit `87e22df`, the historical protocol notes were
@@ -448,6 +497,10 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
+7. **Resolve Candidate B runtime-data initialization offline:** trace how
+   `0x1801bff6` and the reserved-key lists at `0x1801c810` are populated. Recovering
+   those tables would make target encoding and the exact locked-key set
+   inspectable without replaying vendor commands.
 
 ## Evidence integrity
 

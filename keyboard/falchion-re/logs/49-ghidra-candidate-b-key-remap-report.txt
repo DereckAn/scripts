@@ -1,0 +1,374 @@
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (531 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1001 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /app_candidate_b.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionKeyRemapReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionKeyRemapReport.java (HeadlessAnalyzer)  
+INFO  FalchionKeyRemapReport.java> PROGRAM app_candidate_b.bin (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> PURPOSE offline read-only report; no device access and no project mutation (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> INSTRUCTIONS 00002662..000027d5 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002662  ldrb r1,[r4,#0x2]  owner=FUN_00001fbe@00001fbe  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002664  cmp r1,#0xbc  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002666  bhi 0x0000274a  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->0000274a] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002668  ldrb r0,[r4,#0x3]  owner=FUN_00001fbe@00001fbe  refs=[READ->1802337f] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000266a  cbz r0,0x00002672  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->00002672] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000266c  cmp r0,#0x9f  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000266e  bne 0x0000274a  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->0000274a] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002670  movs r0,#0x1  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002672  ldrb r2,[r4,#0x4]  owner=FUN_00001fbe@00001fbe  refs=[READ->18023380] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002674  mov r3,r11  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002676  ldrb.w r12,[r4,#0x5]  owner=FUN_00001fbe@00001fbe  refs=[READ->18023381] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000267a  bfi r3,r2,#0x0,#0x8  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000267e  bfi r3,r12,#0x8,#0x8  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002682  mov r9,r3  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002684  uxth r3,r3  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002686  cmp r3,#0xbc  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002688  bhi 0x000026a6  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->000026a6] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000268a  ldr r2,[0x000029b4]  owner=FUN_00001fbe@00001fbe  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000268c  add.w r12,r0,r0, lsl #0x3  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002690  ldr.w r8,[0x000029b8]  owner=FUN_00001fbe@00001fbe  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002694  ldrb r3,[r2,r3]  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002696  rsb r12,r12,r0, lsl #0x8  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000269a  ldrb r2,[r2,r1]  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000269c  add.w r12,r8,r12, lsl #0x1  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026a0  add.w r2,r12,r2, lsl #0x1  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026a4  b 0x000026d2  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->000026d2] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026a6  cmp r2,#0xff  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026a8  beq 0x00002730  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->00002730] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026aa  cmp r2,#0xc7  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ac  beq 0x0000274c  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->0000274c] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ae  cmp r2,#0xc8  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026b0  beq 0x0000274c  owner=FUN_00001fbe@00001fbe  refs=[CONDITIONAL_JUMP->0000274c] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026b2  cmp r2,#0xd3  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026b4  beq 0x0000274c  owner=caseD_26b4@000026b4  refs=[CONDITIONAL_JUMP->0000274c] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026b6  add.w r2,r0,r0, lsl #0x3  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ba  ldr.w r12,[0x000029b8]  owner=caseD_26b4@000026b4  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026be  rsb r2,r2,r0, lsl #0x8  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026c2  add.w r2,r12,r2, lsl #0x1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026c6  ldr.w r12,[0x000029b4]  owner=caseD_26b4@000026b4  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ca  ldrb.w r12,[r12,r1]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ce  add.w r2,r2,r12, lsl #0x1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026d2  strh.w r3,[r2,#0xd4]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026d6  ldr r2,[0x000029bc]  owner=caseD_26b4@000026b4  refs=[READ->000029bc] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026d8  ldr r2,[r2,#0x8]  owner=caseD_26b4@000026b4  refs=[READ->1801ee6c] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026da  add.w r3,r2,r2, lsl #0x1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026de  add.w r3,r3,r2, lsl #0x6  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026e2  b 0x000026ee  owner=caseD_26b4@000026b4  refs=[UNCONDITIONAL_JUMP->000026ee] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026e4  b 0x00002ee4  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->00002ee4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026e6  b 0x00002ee6  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->00002ee6] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026e8  b 0x00002c1a  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->00002c1a] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ea  b 0x00002c0a  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->00002c0a] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ec  b 0x00002be4  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->00002be4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026ee  ldr r2,[0x000029c0]  owner=caseD_26b4@000026b4  refs=[READ->000029c0] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026f0  add.w r2,r2,r3, lsl #0x1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026f4  ldrb r2,[r1,r2]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026f6  movw r1,#0x361  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026fa  mul r3,r0,r1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000026fe  add.w r1,r10,r3, lsl #0x2  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002702  add.w r1,r1,r2, lsl #0x5  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002706  str r2,[sp,#0x8]  owner=caseD_26b4@000026b4  refs=[WRITE->Stack[0x8]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002708  strb r5,[r1,#0x4]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000270a  ldrb r3,[r4,#0x6]  owner=caseD_26b4@000026b4  refs=[READ->18023382] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000270c  ldrh r2,[r1,#0x8]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000270e  bfi r2,r3,#0x0,#0x7  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002712  strh r2,[r1,#0x8]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002714  ldrb.w r12,[r7,#0x6]  owner=caseD_26b4@000026b4  refs=[READ->1801e6aa] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002718  ldr r7,[0x000029c4]  owner=FUN_00002718@00002718  refs=[READ->000029c4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000271a  and r3,r2,#0x7f  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000271e  ldrh.w r7,[r7,r12,lsl #0x2]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002722  ubfx r7,r7,#0x9,#0x7  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002726  cmp r3,r7  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002728  bne 0x00002770  owner=FUN_00002718@00002718  refs=[CONDITIONAL_JUMP->00002770] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000272a  bic r2,r2,#0x8000  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000272e  b 0x00002774  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_JUMP->00002774] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002730  ldr r2,[0x000029b4]  owner=FUN_00001fbe@00001fbe  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002732  add.w r3,r0,r0, lsl #0x3  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002736  ldr.w r12,[0x000029b8]  owner=FUN_00001fbe@00001fbe  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000273a  ldrb r2,[r2,r1]  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000273c  rsb r3,r3,r0, lsl #0x8  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002740  add.w r3,r12,r3, lsl #0x1  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002744  add.w r3,r3,r2, lsl #0x1  owner=FUN_00001fbe@00001fbe (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002748  b 0x0000276a  owner=FUN_00001fbe@00001fbe  refs=[UNCONDITIONAL_JUMP->0000276a] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000274a  b 0x000027e4  owner=FUN_00002510@00002510  refs=[UNCONDITIONAL_JUMP->000027e4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000274c  add.w r3,r0,r0, lsl #0x3  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002750  rsb r12,r3,r0, lsl #0x8  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002754  ldr r3,[0x000029b8]  owner=caseD_26b4@000026b4  refs=[READ->000029b8] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002756  orr r2,r2,#0xa000  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000275a  add.w r3,r3,r12, lsl #0x1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000275e  ldr.w r12,[0x000029b4]  owner=caseD_26b4@000026b4  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002762  ldrb.w r12,[r12,r1]  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002766  add.w r3,r3,r12, lsl #0x1  owner=caseD_26b4@000026b4 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000276c  movs r0,#0xd4  owner=FUN_0000276c@0000276c (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000276e  b 0x000026d6  owner=FUN_0000276c@0000276c  refs=[UNCONDITIONAL_JUMP->000026d6] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002770  orr r2,r2,#0x8000  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002774  strh r2,[r1,#0x8]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002776  cmp.w lr,#0x21  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000277a  beq 0x00002784  owner=FUN_00002718@00002718  refs=[CONDITIONAL_JUMP->00002784] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000277c  cmp.w lr,#0x22  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002780  beq 0x00002788  owner=FUN_00002718@00002718  refs=[CONDITIONAL_JUMP->00002788] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002782  b 0x000027a2  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_JUMP->000027a2] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002784  strb r5,[r1,#0xc]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002786  b 0x000027a2  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_JUMP->000027a2] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002788  ldrb r3,[r4,#0x7]  owner=FUN_00002718@00002718  refs=[READ->18023383] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000278a  mov r2,r9  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000278c  bfi r2,r3,#0x0,#0x8  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002790  ldrb r3,[r4,#0x8]  owner=FUN_00002718@00002718  refs=[READ->18023384] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002792  bfi r2,r3,#0x8,#0x8  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002796  uxth r2,r2  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   00002798  movs r3,#0xa  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000279a  udiv r2,r2,r3  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   0000279e  strb r2,[r1,#0xd]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027a0  strb r6,[r1,#0xc]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027a2  ldr r1,[0x000029c8]  owner=FUN_00002718@00002718  refs=[READ->000029c8] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027a4  strb r6,[r1,r0]  owner=FUN_00002718@00002718  refs=[DATA->1801e68d,WRITE->1801e761,WRITE->1801e68e,WRITE->18029045] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027a6  movs r0,#0x3c  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027a8  str r0,[sp,#0x0]  owner=FUN_00002718@00002718  refs=[WRITE->Stack[0x0]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027aa  ldrh r2,[r4,#0x2]  owner=FUN_00002718@00002718  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027ac  adds r3,r4,#0x4  owner=FUN_00002718@00002718  refs=[PARAM->18023380] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027ae  mov r1,lr  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027b0  movs r0,#0x51  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027b2  bl 0x00000a70  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_CALL->00000a70] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027b6  ldrb r0,[r4,#0x2]  owner=FUN_00002718@00002718  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027b8  ldr r6,[0x000029b4]  owner=FUN_00002718@00002718  refs=[READ->000029b4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027ba  ldrb r0,[r6,r0]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027bc  bl 0x0001bdba  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_CALL->0001bdba] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027c0  ldrb r0,[r4,#0x2]  owner=FUN_00002718@00002718  refs=[READ->1802337e] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027c2  ldr r1,[0x000029b8]  owner=FUN_00002718@00002718  refs=[READ->000029b8,PARAM->18021db4] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027c4  ldrb r0,[r6,r0]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027c6  add.w r0,r1,r0, lsl #0x1  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027ca  ldrh.w r0,[r0,#0xd4]  owner=FUN_00002718@00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027ce  bl 0x0001bdba  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_CALL->0001bdba] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027d2  adr r0,[0x29cc]  owner=FUN_00002718@00002718  refs=[PARAM->000029cc] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   000027d4  b 0x00002330  owner=FUN_00002718@00002718  refs=[UNCONDITIONAL_JUMP->00002330] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> LITERAL 000029b4 value=0x1801bff6 refs=[READ<-000025d0,READ<-000025e6,READ<-000025f8,READ<-0000260e,READ<-00002624,READ<-0000263e,READ<-0000264e,READ<-000027b8,READ<-000026c6,READ<-0000275e,READ<-0000268a,READ<-00002730,READ<-00002838,READ<-0000288a,READ<-00002908,READ<-0000295c] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> LITERAL 000029b8 value=0x18021db4 refs=[READ<-000025d4,READ<-000025e8,READ<-00002600,READ<-00002628,READ<-00002642,READ<-00002656,READ<-000027c2,READ<-000026ba,READ<-00002754,READ<-00002690,READ<-00002736] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> LITERAL 000029bc value=0x1801ee64 refs=[READ<-000026d6,READ<-000027ec,READ<-000028b6] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> LITERAL 000029c0 value=0x1801c37c refs=[READ<-000026ee,READ<-000027fa,READ<-000028c6] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> LITERAL 000029c4 value=0x18024ee0 refs=[READ<-00002718] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> LITERAL 000029c8 value=0x1801e68d refs=[READ<-000027a2,READ<-00002870,READ<-00002946,READ<-0000297e] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> FUNCTION FUN_00001fbe entry=00001fbe body=[[00001fbe, 0000206f] [00002088, 00002099] [000020bc, 000020bd] [000020e0, 000020e5] [000020e8, 000020e9] [00002110, 0000211b] [0000217c, 0000217f] [00002184, 000022cb] [000022ce, 000024ef] [000024f6, 0000250f] [00002514, 0000252f] [0000253e, 0000254b] [0000258c, 00002593] [000025ba, 000025bb] [000025c4, 000025cb] [000025e2, 000025e5] [00002662, 000026b3] [000026e4, 000026ed] [00002730, 00002749] [000027d6, 000027e3] [000027e6, 000029b1] [000029d8, 00002a4f] [00002a54, 00002b6b] [00002b6e, 00002c23] [00002c2a, 00002c99] [00002c9c, 00002d0d] [00002d10, 00002e33] [00002e64, 0000303b] [0000303e, 000030c5] [000030c8, 00003229] [00003310, 000033a3] [000033b2, 00003547] [0000354c, 0000367b] [0000367e, 0000370d] [00003768, 00003a69] [00003a6c, 00003a8f] [00003a98, 00003adf] [00003ae6, 00003ba1] [00003c00, 00003c71] [00003c74, 00003caf] [00003cb6, 00003cc9] [00003cd2, 00003df7] [00003dfe, 00004001] [00004078, 000040bf] [000040c6, 000040db]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> FUNCTION FUN_00002718 entry=00002718 body=[[00002718, 0000272f] [00002770, 000027d5] [00003cb0, 00003cb5] [000040c0, 000040c5]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0001bd68 type=COMPUTED_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> FUNCTION FUN_00000a70 entry=00000a70 body=[[00000a70, 00000ad7]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001f28 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001d0e type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001906 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001566 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00002348 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000324c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000328a type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000033a4 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00000ae6 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000027b2 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000232a type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000236e type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00002392 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000023c4 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00002a66 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000031ac type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000031de type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003214 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000033fc type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003480 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003504 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000358a type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000035a8 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003676 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000393e type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003a54 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003de4 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003b48 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003c18 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003c3c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003c66 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003d8c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003c94 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00003caa type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> FUNCTION FUN_0001bdba entry=0001bdba body=[[0001bdba, 0001bdc3]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007be8 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007c76 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000019c4 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000019ca type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000019d2 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001a80 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000016c8 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000016ce type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001860 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001866 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000018d4 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000018da type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001018 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000101e type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000115c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001162 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000013d0 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000013d6 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001522 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001528 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000148e type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00001494 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000010e2 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000010e8 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000027bc type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=000027ce type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000802c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000892e type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0000fa9c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007f3c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007f4c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007f62 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007f68 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007f88 type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=00007f9c type=UNCONDITIONAL_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> FUNCTION FUN_000006da entry=000006da body=[[000006da, 0000072b]] (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   reference from=0001bd54 type=COMPUTED_CALL (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> DECOMPILE function=FUN_00002718 entry=00002718 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> 
+undefined8
+FUN_00002718(int param_1,int param_2,ushort param_3,undefined4 param_4,undefined4 param_5,
+            undefined4 param_6)
+
+{
+  int iVar1;
+  undefined1 *unaff_r4;
+  undefined1 unaff_r5;
+  undefined1 unaff_r6;
+  int in_r12;
+  int unaff_lr;
+  
+  if ((param_3 & 0x7f) == *(ushort *)(DAT_000029c4 + in_r12 * 4) >> 9) {
+    param_3 = param_3 & 0x7fff;
+  }
+  else {
+    param_3 = param_3 | 0x8000;
+  }
+  *(ushort *)(param_2 + 8) = param_3;
+  if (unaff_lr == 0x21) {
+    *(undefined1 *)(param_2 + 0xc) = unaff_r5;
+  }
+  else if (unaff_lr == 0x22) {
+    *(char *)(param_2 + 0xd) = (char)(*(ushort *)(unaff_r4 + 7) / 10);
+    *(undefined1 *)(param_2 + 0xc) = unaff_r6;
+  }
+  *(undefined1 *)(DAT_000029c8 + param_1) = unaff_r6;
+  param_5 = 0x3c;
+  FUN_00000a70(0x51);
+  iVar1 = DAT_000029b4;
+  FUN_0001bdba(*(undefined1 *)(DAT_000029b4 + (uint)(byte)unaff_r4[2]));
+  FUN_0001bdba(*(undefined2 *)
+                (DAT_000029b8 + (uint)*(byte *)(iVar1 + (uint)(byte)unaff_r4[2]) * 2 + 0xd4));
+  thunk_FUN_000006da(s__KC_S_T_A_000029cc);
+  *unaff_r4 = unaff_r5;
+  return CONCAT44(param_6,param_5);
+}
+
+ (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> DECOMPILE function=FUN_00000a70 entry=00000a70 (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> 
+void FUN_00000a70(undefined1 param_1,undefined1 param_2,undefined4 param_3,undefined4 param_4,
+                 uint param_5)
+
+{
+  undefined1 local_98;
+  undefined1 local_97;
+  undefined1 local_96;
+  undefined1 local_95;
+  undefined1 auStack_94 [60];
+  undefined1 local_58;
+  undefined1 local_57;
+  undefined2 local_56;
+  undefined1 auStack_54 [60];
+  
+  thunk_FUN_0000276c(&local_58,0x40);
+  thunk_FUN_0000276c(&local_98,0x40);
+  if (0x3c < param_5) {
+    param_5 = 0x3c;
+  }
+  local_56 = (undefined2)param_3;
+  local_58 = param_1;
+  local_57 = param_2;
+  FUN_0001bda6(auStack_54,param_4,param_5);
+  local_96 = (undefined1)param_3;
+  local_95 = (undefined1)((uint)param_3 >> 8);
+  local_98 = param_1;
+  local_97 = param_2;
+  FUN_0001bda6(auStack_94,param_4,param_5);
+  FUN_00018baa(1,&local_98,0x40,0);
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> DECOMPILE function=FUN_0001bdba entry=0001bdba (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> 
+void FUN_0001bdba(void)
+
+{
+  (*(code *)0x695)();
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> DECOMPILE function=FUN_000006da entry=000006da (GhidraScript)  
+INFO  FalchionKeyRemapReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionKeyRemapReport.java> 
+void FUN_000006da(int param_1,int param_2,undefined4 param_3,undefined1 param_4)
+
+{
+  undefined1 *puVar1;
+  
+  *(undefined1 *)(param_2 + 0xf) = 0x24;
+  *(undefined1 *)(param_2 + 0x10) = *(undefined1 *)(param_1 + 3);
+  *(undefined1 *)(param_2 + 0x11) = *(undefined1 *)(param_1 + 4);
+  *(undefined1 *)(param_2 + 0x12) = *(undefined1 *)(param_1 + 5);
+  *(undefined1 *)(param_2 + 0x13) = *(undefined1 *)(param_1 + 6);
+  *(undefined2 *)(param_2 + 0x14) = *(undefined2 *)(param_1 + 7);
+  *(undefined2 *)(param_2 + 0x16) = *(undefined2 *)(param_1 + 9);
+  *(undefined2 *)(param_2 + 0x18) = *(undefined2 *)(param_1 + 0xb);
+  puVar1 = DAT_0000083c;
+  *(undefined2 *)(param_2 + 0x1a) = *(undefined2 *)(param_1 + 0xd);
+  *puVar1 = param_4;
+  return;
+}
+
+ (GhidraScript)  

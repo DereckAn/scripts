@@ -1,0 +1,76 @@
+DATE
+2026-08-29T22:06:44-06:00
+
+GIT_DIFF_CHECK
+
+SOURCE_FIRMWARE_SHA256
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+NEW_PROTOCOL_LABELS
+logs/54-ghidra-protocol-labels.txt:47:INFO  FalchionApplyProtocolLabels.java> renamed 00001f6e FUN_00001f6e -> IsKeyUnsupportedForLayer (GhidraScript)  
+logs/54-ghidra-protocol-labels.txt:48:INFO  FalchionApplyProtocolLabels.java> renamed 00001fbe FUN_00001fbe -> VendorHID_CommandDispatcher (GhidraScript)  
+logs/54-ghidra-protocol-labels.txt:49:INFO  FalchionApplyProtocolLabels.java> renamed 00000a70 FUN_00000a70 -> VendorHID_SendResponse64 (GhidraScript)  
+logs/54-ghidra-protocol-labels.txt:97:INFO  FalchionApplyProtocolLabels.java> already labeled 00001f6e IsKeyUnsupportedForLayer (GhidraScript)  
+logs/54-ghidra-protocol-labels.txt:98:INFO  FalchionApplyProtocolLabels.java> already labeled 00001fbe VendorHID_CommandDispatcher (GhidraScript)  
+logs/54-ghidra-protocol-labels.txt:99:INFO  FalchionApplyProtocolLabels.java> already labeled 00000a70 VendorHID_SendResponse64 (GhidraScript)  
+notes/findings.md:108:check. `VendorHID_CommandDispatcher` at `0x1fbe` accepts `0x51/0x21` sources
+notes/findings.md:113:`IsKeyUnsupportedForLayer` at `0x1f6e` separately searches a 6-entry list for
+notes/findings.md:117:no effective Fn binding. The 63 entries reside at runtime RAM `0x1801c810`; their
+notes/findings.md:154:- How are the reserved-key lists at runtime RAM `0x1801c810` initialized, and
+notes/findings.md:155:  what are their exact 63 entries?
+FINDINGS.md:413:`VendorHID_CommandDispatcher`.
+FINDINGS.md:432:`IsKeyUnsupportedForLayer`. It copies and searches one of two runtime lists: 6
+FINDINGS.md:433:32-bit entries for layer selectors 0 or 2, and 57 entries for other selectors.
+FINDINGS.md:440:The 63 list entries begin at runtime RAM `0x1801c810`. Their contents are not
+FINDINGS.md:498:   `0x1801bff6` and the reserved-key lists at `0x1801c810` are populated. Recovering
+ghidra/README.md:48:- `0x00000a70` — `VendorHID_SendResponse64`
+ghidra/README.md:49:- `0x00001f6e` — `IsKeyUnsupportedForLayer`
+ghidra/README.md:50:- `0x00001fbe` — `VendorHID_CommandDispatcher`
+notes/protocol.md:242:The arrays begin at RAM `0x1801c810`. Their values are not yet available in the
+
+STALE_OPEN_QUESTION
+
+NEW_LOG_LINE_COUNTS
+   103 logs/47-ghidra-candidate-b-opcode-search.txt
+  2688 logs/48-ghidra-candidate-b-dispatcher-report.txt
+   374 logs/49-ghidra-candidate-b-key-remap-report.txt
+   254 logs/50-firmware-pointer-byte-search.txt
+  1292 logs/51-ghidra-key-ram-reference-report.txt
+   999 logs/52-ghidra-candidate-b-key-config-init-report.txt
+   120 logs/53-ghidra-candidate-b-reserved-key-gate-report.txt
+    99 logs/54-ghidra-protocol-labels.txt
+  5929 total
+
+UNHASHED_TXT_LOGS_BEFORE_MANIFEST_UPDATE
+logs/47-ghidra-candidate-b-opcode-search.txt
+logs/48-ghidra-candidate-b-dispatcher-report.txt
+logs/49-ghidra-candidate-b-key-remap-report.txt
+logs/50-firmware-pointer-byte-search.txt
+logs/51-ghidra-key-ram-reference-report.txt
+logs/52-ghidra-candidate-b-key-config-init-report.txt
+logs/53-ghidra-candidate-b-reserved-key-gate-report.txt
+logs/54-ghidra-protocol-labels.txt
+logs/55-offline-protocol-analysis-audit.txt
+
+GIT_STATUS
+ M FINDINGS.md
+ M ghidra/README.md
+ M logs/COMMANDS.md
+ M notes/findings.md
+ M notes/protocol.md
+?? ghidra/scripts/FalchionApplyProtocolLabels.java
+?? ghidra/scripts/FalchionDispatcherReport.java
+?? ghidra/scripts/FalchionKeyConfigInitReport.java
+?? ghidra/scripts/FalchionKeyRemapReport.java
+?? ghidra/scripts/FalchionOpcodeSearch.java
+?? ghidra/scripts/FalchionRamTableReferences.java
+?? ghidra/scripts/FalchionReservedKeyGateReport.java
+?? logs/47-ghidra-candidate-b-opcode-search.txt
+?? logs/48-ghidra-candidate-b-dispatcher-report.txt
+?? logs/49-ghidra-candidate-b-key-remap-report.txt
+?? logs/50-firmware-pointer-byte-search.txt
+?? logs/51-ghidra-key-ram-reference-report.txt
+?? logs/52-ghidra-candidate-b-key-config-init-report.txt
+?? logs/53-ghidra-candidate-b-reserved-key-gate-report.txt
+?? logs/54-ghidra-protocol-labels.txt
+?? logs/55-offline-protocol-analysis-audit.txt

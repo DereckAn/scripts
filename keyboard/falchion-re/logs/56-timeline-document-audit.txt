@@ -1,0 +1,149 @@
+DATE
+2026-08-29T22:14:37-06:00
+
+TIMELINE_SIZE
+  434  2668 19447 TIMELINE.md
+
+TIMELINE_SECTIONS
+1:# ASUS ROG Falchion Ace HFX reverse-engineering timeline
+11:## Evidence and safety conventions
+31:## Current status at a glance
+46:## 2026-08-17 — Initial USB investigation
+61:## 2026-08-18 — Component and interface notes
+79:## 2026-08-26 — Armoury Crate protocol and key-map work
+100:## 2026-08-26 — Reserved Fn-key behavior
+112:## 2026-08-26 — Backup and recovery assessment
+123:## 2026-08-29 02:11–02:29 — Read-only Linux USB inspection
+154:## 2026-08-29 02:29–02:34 — Other connector retry
+169:## 2026-08-29 02:34–02:45 — Earlier-work audit
+187:## 2026-08-29 02:46–03:06 — Official ASUS package analysis and preservation
+227:## 2026-08-29 03:06–03:22 — Firmware structure and modification feasibility
+263:## 2026-08-29 03:22–04:02 — Ghidra setup and first project
+287:## 2026-08-29 04:02 — Documentation synchronization
+304:## 2026-08-29 21:55–22:06 — Candidate B vendor protocol analysis
+309:### Dispatcher identification
+323:### `0x51/0x21` and `0x51/0x22`
+341:### Unsupported-key policy
+372:## Corrections retained for auditability
+388:## Files and review order
+407:## Work not performed
+423:## Recommended continuation
+
+REQUIRED_FACT_ANCHORS
+33:- Normal USB identity: ASUS `0b05:1b7e`, device release `1.59`.
+38:- Official ASUS firmware 1.00.58 is preserved and hashed, but it is not a dump
+41:  `1b7e` and bootloader PID `1b7f`; it was never executed.
+131:- VID:PID `0b05:1b7e`, manufacturer `ASUSTeK`, product
+200:  `6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d`.
+202:The ZIP hash matched ASUS publication metadata. The firmware is version 1.00.58,
+218:- normal PID `1b7e`, bootloader PID `1b7f`;
+311:`0x00001fbe` was identified and labeled `VendorHID_CommandDispatcher`. It reads
+343:`0x00001f6e` was identified and labeled `IsKeyUnsupportedForLayer`. It copies
+354:The 63 policy entries begin at RAM `0x1801c810`. Their values and initializer
+366:- `0x00001f6e` — `IsKeyUnsupportedForLayer`;
+367:- `0x00001fbe` — `VendorHID_CommandDispatcher`.
+404:or another storage system. The 1.00.58 BIN, analyzer, documentation, scripts,
+407:## Work not performed
+414:- entered PID `1b7f` bootloader mode;
+419:- proven that the official 1.00.58 image is a safe downgrade or recovery path;
+423:## Recommended continuation
+426:initializes RAM `0x1801bff6` and `0x1801c810`. Recovering those tables would
+
+REFERENCED_FILES
+OK FINDINGS.md
+OK logs/COMMANDS.md
+OK logs/SHA256SUMS
+OK vendor/asus/ARTIFACTS.md
+OK ghidra/README.md
+OK notes/protocol.md
+OK notes/key-matrix.md
+OK dumps/vendor/M605_V01_00_58.bin
+
+GIT_DIFF_CHECK
+
+SOURCE_FIRMWARE_SHA256
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EXISTING_LOG_HASHES
+logs/00-host-context.txt: OK
+logs/01-lsusb.txt: OK
+logs/02-lsusb-tree.txt: OK
+logs/03-tool-availability.txt: OK
+logs/04-usb-sysfs-devices.txt: OK
+logs/05-usb-sysfs-interfaces.txt: OK
+logs/06-hidraw-sysfs.txt: OK
+logs/07-falchion-usb-descriptors-sysfs-xxd.txt: OK
+logs/08-falchion-endpoints-sysfs.txt: OK
+logs/09-falchion-hid-report-descriptors-xxd.txt: OK
+logs/10-falchion-udev-properties.txt: OK
+logs/11-dfu-util-list.txt: OK
+logs/12-fwupd-availability.txt: OK
+logs/13-interface-4-and-kernel-log.txt: OK
+logs/14-usbhid-dump-help.txt: OK
+logs/15-lsusb-falchion-verbose.txt: OK
+logs/16-dfu-util-list-direct.txt: OK
+logs/17-prior-report-descriptor-comparison.txt: OK
+logs/18-device-node-metadata.txt: OK
+logs/19-port-retry-sysfs-devices.txt: OK
+logs/20-port-retry-sysfs-interfaces.txt: OK
+logs/21-port-retry-lsusb-tree.txt: OK
+logs/22-port-retry-lsusb-verbose.txt: OK
+logs/23-port-retry-dfu-util-list.txt: OK
+logs/24-port-retry-cached-descriptors.txt: OK
+logs/25-port-retry-comparison.txt: OK
+logs/26-port-retry-corrected-comparison.txt: OK
+logs/27-claude-notes-report-desc-provenance.txt: OK
+logs/28-claude-progress-audit.txt: OK
+logs/29-asus-package-original-metadata.txt: OK
+logs/30-asus-package-archive-list.txt: OK
+logs/31-asus-package-extracted-inventory.txt: OK
+logs/32-asus-package-firmware-focused-inventory.txt: OK
+logs/33-asus-firmware-image-static-analysis.txt: OK
+logs/34-asus-updater-and-container-static-analysis.txt: OK
+logs/35-official-artifact-preservation.txt: OK
+logs/36-firmware-layout-analyzer.txt: OK
+logs/37-firmware-modification-feasibility.txt: OK
+logs/38-ghidra-preinstall-check.txt: OK
+logs/39-ghidra-install-verification.txt: OK
+logs/40-ghidra-seed-entries.txt: OK
+logs/41-ghidra-entry-reanalysis.txt: OK
+logs/42-ghidra-project-report.txt: OK
+logs/43-firmware-layout-with-ram-image.txt: OK
+logs/44-ghidra-candidate-b-label-correction.txt: OK
+logs/45-ghidra-synchronized-project-report.txt: OK
+logs/46-documentation-synchronization-audit.txt: OK
+logs/47-ghidra-candidate-b-opcode-search.txt: OK
+logs/48-ghidra-candidate-b-dispatcher-report.txt: OK
+logs/49-ghidra-candidate-b-key-remap-report.txt: OK
+logs/50-firmware-pointer-byte-search.txt: OK
+logs/51-ghidra-key-ram-reference-report.txt: OK
+logs/52-ghidra-candidate-b-key-config-init-report.txt: OK
+logs/53-ghidra-candidate-b-reserved-key-gate-report.txt: OK
+logs/54-ghidra-protocol-labels.txt: OK
+logs/55-offline-protocol-analysis-audit.txt: OK
+
+GIT_STATUS
+ M FINDINGS.md
+ M ghidra/README.md
+ M logs/COMMANDS.md
+ M logs/SHA256SUMS
+ M notes/findings.md
+ M notes/protocol.md
+?? TIMELINE.md
+?? ghidra/scripts/FalchionApplyProtocolLabels.java
+?? ghidra/scripts/FalchionDispatcherReport.java
+?? ghidra/scripts/FalchionKeyConfigInitReport.java
+?? ghidra/scripts/FalchionKeyRemapReport.java
+?? ghidra/scripts/FalchionOpcodeSearch.java
+?? ghidra/scripts/FalchionRamTableReferences.java
+?? ghidra/scripts/FalchionReservedKeyGateReport.java
+?? logs/47-ghidra-candidate-b-opcode-search.txt
+?? logs/48-ghidra-candidate-b-dispatcher-report.txt
+?? logs/49-ghidra-candidate-b-key-remap-report.txt
+?? logs/50-firmware-pointer-byte-search.txt
+?? logs/51-ghidra-key-ram-reference-report.txt
+?? logs/52-ghidra-candidate-b-key-config-init-report.txt
+?? logs/53-ghidra-candidate-b-reserved-key-gate-report.txt
+?? logs/54-ghidra-protocol-labels.txt
+?? logs/55-offline-protocol-analysis-audit.txt
+?? logs/56-timeline-document-audit.txt
