@@ -423,7 +423,8 @@ Recovered mappings include:
 | Runtime address | Candidate B offset | Full BIN offset | Contents |
 |---:|---:|---:|---|
 | `0x1801bff6` | `0x1bff6` | `0x3cff6` | 189-byte source/target translation table |
-| `0x1801c37c` | `0x1c37c` | `0x3d37c` | per-layout/per-profile key-index map |
+| `0x1801c37c` | `0x1c37c` | `0x3d37c` | three effective-KBID wire-ID-to-record-index windows |
+| `0x1801c50e` | `0x1c50e` | `0x3d50e` | three effective-KBID scan-position maps |
 | `0x1801c810` | `0x1c810` | `0x3d810` | 6 base-policy words followed by 57 Fn/other-policy words |
 
 The exact base-policy values are `e8, 53, 39, 47, e3, e2`. The exact Fn-policy
@@ -440,8 +441,48 @@ index tables and the policy predicate directly to `0x1801c810` and
 `0x1801c828`. The original base-zero program is retained for audit/comparison.
 
 Evidence: `logs/57-ghidra-runtime-key-table-reference-scan.txt` through
-`logs/65-ghidra-candidate-b-rebased-key-policy-report.txt`. Reproducible decoder:
+`logs/69-ghidra-candidate-b-corrected-kbid-map-report.txt`. Reproducible decoder:
 `tool/analyze_candidate_b_tables.py`.
+
+#### KBID selection and key-index-map structure
+
+The former “layout/profile” interpretation is now narrowed to an effective
+keyboard-ID (KBID) selector, not a user profile. Candidate B function
+`FUN_180088ea` obtains an input ID in the range `0..25`, translates it through a
+26-byte lookup at runtime address `0x00004fcd`, and stores the result at
+`0x1801ee6c`. That lookup is embedded in Candidate A at full BIN offset
+`0x15fcd`. Its only raw outputs are `0`, `1`, and `4`; the same function
+immediately normalizes `4` to `2`. Therefore the effective selector range is
+exactly `0..2`.
+
+For a wire source ID below `0xbd`, the dispatcher uses:
+
+```text
+record_index = byte[0x1801c37c + effective_kbid * 0x86 + wire_source]
+record        = 0x180202ac + layer * 0xd84 + record_index * 0x20
+```
+
+Each effective KBID consequently has a 189-byte logical window, but adjacent
+windows begin only `0x86` bytes apart and overlap by `0x37` (55) bytes. Their
+ranges are `0x1801c37c-0x1801c438`, `0x1801c402-0x1801c4be`, and
+`0x1801c488-0x1801c544`. This overlap is intentional code behavior, not three
+independent 134-byte rows.
+
+A separate scan-position table starts at `0x1801c50e` and uses three
+`0x100`-byte rows selected by the same effective KBID. The last 55 bytes of the
+third logical wire window share storage with the first 55 bytes of scan row 0.
+The scan rows end at `0x1801c80d`, followed by two zero padding bytes before the
+policy list. Fixed and dynamic references in `FUN_18000466` and
+`FUN_180057d2` establish the scan table's `0x100` stride.
+
+The analyzer now lists all 189 wire IDs with their translated internal code,
+record index for each KBID, and computed base/Fn record address. It also lists
+the 68 historical physical-key labels separately. Those names came from earlier
+protocol captures and must not be projected onto every KBID variant; several
+special/navigation positions do not align directly with the translation table.
+Record index `0x4b` occurs 67-68 times per logical window and is a strong
+fallback/dummy-record candidate, but its live runtime semantics remain
+unproven.
 
 ### Candidate B vendor-HID and key-policy analysis
 
@@ -465,9 +506,15 @@ The `0x51/0x21` and `0x51/0x22` path is now bounded statically:
   echoes opcode `0x51`, the subcommand, source, and payload.
 
 There is no explicit reserved-source rejection in this packet handler. Every
-source from `0x00` through `0xbc` reaches the same runtime-table translation.
+source from `0x00` through `0xbc` reaches the KBID-selected record-index map.
 This agrees with the historical observation that a reserved remap could be
 echoed without becoming effective.
+
+The target translation is now recovered from the official BIN. Ordinary target
+IDs `0x00..0xbc` use the 189-byte table at `0x1801bff6`; target `0xff` reuses the
+source translation; and `0xc7`, `0xc8`, and `0xd3` are stored with an
+`0xa000`-class internal encoding. Other values remain command-specific or
+rejected and must not be generalized.
 
 Candidate B contains a separate predicate at offset `0x1f6e`, runtime
 `0x18001f6e`, now labeled
@@ -483,7 +530,8 @@ The 63 list entries at `0x1801c810` are embedded in Candidate B and have now bee
 recovered. Their standard HID usages agree closely with the manual's reserved Fn
 combinations. The remaining `0xe8` value is vendor/custom. Other handler tables
 include the key translation table at `0x1801bff6`, key records at `0x18021db4`,
-and per-key index mapping at `0x1801c37c`.
+the remap-record base at `0x180202ac`, and per-key index mapping at
+`0x1801c37c`.
 
 Evidence: `logs/47-ghidra-candidate-b-opcode-search.txt` through
 `logs/54-ghidra-protocol-labels.txt`. Reproducible reports and conservative label
@@ -534,10 +582,11 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
-7. **Continue from the corrected Candidate B mapping:** decode the complete
-   `0x1801c37c` layout/profile map and relate every translation-table value to
-   wire source/target semantics. Keep Candidate B's true entry/call path and
-   integrity calculation separate—they remain unresolved.
+7. **Continue offline with Candidate B's load/integrity path:** the KBID maps and
+   ordinary target translation are now decoded. The next high-value static
+   target is the code that loads/verifies Candidate B, which may identify the
+   true entry path and explain integrity value `0x1a76c116` without touching the
+   keyboard.
 
 ## Evidence integrity
 

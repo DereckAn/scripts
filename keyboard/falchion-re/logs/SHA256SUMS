@@ -66,3 +66,8 @@ b26b5e56d50b42a15ed77e86a950d97d9fcb2b8124e1665eb181f84167f7a0c9  logs/62-ghidra
 f35042da9e94c9417b64e0cc9202b2782a18007fee4335c8ad807f8da0f53fee  logs/64-ghidra-candidate-b-runtime-dispatcher-seed.txt
 3348f9146f016345af1ee983647a0e3e2c3316acf85a0fd29912d90ff0b00fa6  logs/65-ghidra-candidate-b-rebased-key-policy-report.txt
 99c816ba0b6bc3b42b0f33de984166af231639eb6fca6fc29e4902e0330469c1  logs/66-candidate-b-runtime-mapping-audit.txt
+e5d5bc94b55cf1073909957b4dcd2064441e53a64274afcea03c89343ec6652a  logs/67-ghidra-candidate-b-kbid-map-report.txt
+03d959d574be03c12728cf5e254cf576f57fa22f67943201f7aaeaff98feeb15  logs/68-candidate-b-kbid-layout-analysis.txt
+dcaf111e86c9a8395e6488b55ea96a17de1004c0cdaf19978a14f10ac95b5ae8  logs/69-ghidra-candidate-b-corrected-kbid-map-report.txt
+cc45446e34afcd1282aa95de76797996fcb50b127aa394b3122c5c02953581cf  logs/70-ghidra-corrected-key-map-reference-scan.txt
+c6a22b81a9580ec6d387c71398592bbbf06b62a3743d730810ade8104c408020  logs/71-kbid-layout-analysis-audit.txt

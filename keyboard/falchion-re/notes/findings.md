@@ -106,9 +106,13 @@ capture preservation or offline identification of the same check in firmware.
 
 Offline Candidate B analysis now independently identifies that device-side
 check. `VendorHID_CommandDispatcher` at `0x1fbe` accepts `0x51/0x21` sources
-through `0xbc`, translates source and target through runtime tables, updates a
-per-key record, and builds an echoed 64-byte response. It does not consult the
-reserved-key list on this path.
+through `0xbc`, maps the source through an effective-KBID-selected record-index
+window, translates ordinary targets through a separate 189-byte table, updates
+a per-key record, and builds an echoed 64-byte response. It does not consult the
+reserved-key list on this path. The effective selector is `0`, `1`, or `2`; the
+three 189-byte source windows advance by `0x86` and therefore overlap by 55
+bytes. A separate three-row scan-position table at `0x1801c50e` uses a `0x100`
+stride.
 
 `IsKeyUnsupportedForLayer` at Candidate B offset `0x1f6e` (runtime
 `0x18001f6e`) separately searches a 6-entry list for
@@ -120,9 +124,9 @@ no effective Fn binding. Candidate B is now strongly mapped at runtime base
 (full BIN `0x3d810`). All 63 entries are recovered; the 57-entry Fn list closely
 matches the manual's locked function families.
 
-An echoed response is not proof that a change took effect. Target-key encoding is
-also unresolved: the same target byte reportedly produced inconsistent results in
-different tests.
+An echoed response is not proof that a change took effect. Ordinary target IDs
+`0x00..0xbc` now have a recovered static translation rule, but earlier live tests
+reported inconsistent effects and the active unit's effective KBID is not known.
 
 ### Preservation safety
 
@@ -154,9 +158,13 @@ and reset operations remain prohibited unless explicitly planned and approved.
 - Does SNC73270 SWD permit read-only access, and which probe/software supports it?
 - What is Candidate B's true entry/call path and integrity calculation? Its
   runtime base is now strongly supported as `0x18000000`.
-- What does every entry in the `0x1801c37c` layout/profile map mean, and how does
-  it complete the wire target-key encoding?
-- What is the target-key encoding for `51 21`?
+- Which effective KBID (`0`, `1`, or `2`) does this exact Falchion Ace HFX unit
+  select at runtime? Determining it from USB would require a separately reviewed
+  read-only method; no vendor query has been sent.
+- What runtime behavior does frequent record index `0x4b` represent: a dummy,
+  fallback, or valid shared record?
+- Which loader function verifies Candidate B and transfers control to its true
+  entry point, and how is integrity value `0x1a76c116` calculated?
 - Can the missing PCAP files be recovered from the Windows capture system and
   preserved with hashes?
 

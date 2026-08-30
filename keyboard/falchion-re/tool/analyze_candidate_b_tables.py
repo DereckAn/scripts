@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Decode Candidate B key translation and unsupported-key policy tables.
+"""Decode Candidate B key translation, layout, and unsupported-key tables.
 
 This is an offline, read-only analyzer for the preserved ASUS firmware image.
 It does not access USB or execute firmware.
@@ -8,6 +8,7 @@ It does not access USB or execute firmware.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import struct
 from pathlib import Path
@@ -19,9 +20,22 @@ EXPECTED_FIRMWARE_SHA256 = (
 CANDIDATE_B_FILE_OFFSET = 0x21000
 CANDIDATE_B_LENGTH = 0x1E754
 CANDIDATE_B_RUNTIME_BASE = 0x18000000
+CANDIDATE_A_FILE_OFFSET = 0x11000
+KBID_LOOKUP_ADDRESS = 0x00004FCD
+KBID_LOOKUP_LENGTH = 0x1A
 KEY_TRANSLATION_ADDRESS = 0x1801BFF6
 KEY_TRANSLATION_LENGTH = 0xBD
 KEY_INDEX_MAP_ADDRESS = 0x1801C37C
+KEY_INDEX_MAP_STRIDE = 0x86
+KEY_INDEX_MAP_COUNT = 3
+KEY_INDEX_LOGICAL_LENGTH = KEY_TRANSLATION_LENGTH
+SCAN_POSITION_MAP_ADDRESS = 0x1801C50E
+SCAN_POSITION_MAP_STRIDE = 0x100
+SCAN_POSITION_MAP_COUNT = 3
+REMAP_RECORD_BASE = 0x180202AC
+REMAP_LAYER_STRIDE = 0xD84
+REMAP_RECORD_STRIDE = 0x20
+FALLBACK_RECORD_CANDIDATE = 0x4B
 UNSUPPORTED_LIST_ADDRESS = 0x1801C810
 BASE_UNSUPPORTED_COUNT = 6
 FN_UNSUPPORTED_COUNT = 57
@@ -102,6 +116,14 @@ def full_file_offset(runtime_address: int) -> int:
     return CANDIDATE_B_FILE_OFFSET + candidate_offset(runtime_address)
 
 
+def record_address(layer: int, record_index: int) -> int:
+    return (
+        REMAP_RECORD_BASE
+        + layer * REMAP_LAYER_STRIDE
+        + record_index * REMAP_RECORD_STRIDE
+    )
+
+
 def format_sources(code: int, translation: bytes) -> str:
     sources = [
         f"{index}:{PHYSICAL_KEYS[index - 1]}"
@@ -132,6 +154,28 @@ def main() -> int:
     translation = candidate[
         translation_offset : translation_offset + KEY_TRANSLATION_LENGTH
     ]
+    kbid_lookup = firmware[
+        CANDIDATE_A_FILE_OFFSET + KBID_LOOKUP_ADDRESS :
+        CANDIDATE_A_FILE_OFFSET + KBID_LOOKUP_ADDRESS + KBID_LOOKUP_LENGTH
+    ]
+    effective_kbid_lookup = bytes(2 if value == 4 else value for value in kbid_lookup)
+
+    map_offset = candidate_offset(KEY_INDEX_MAP_ADDRESS)
+    layout_maps = tuple(
+        candidate[
+            map_offset + selector * KEY_INDEX_MAP_STRIDE :
+            map_offset + selector * KEY_INDEX_MAP_STRIDE + KEY_INDEX_LOGICAL_LENGTH
+        ]
+        for selector in range(KEY_INDEX_MAP_COUNT)
+    )
+    scan_map_offset = candidate_offset(SCAN_POSITION_MAP_ADDRESS)
+    scan_position_maps = tuple(
+        candidate[
+            scan_map_offset + selector * SCAN_POSITION_MAP_STRIDE :
+            scan_map_offset + (selector + 1) * SCAN_POSITION_MAP_STRIDE
+        ]
+        for selector in range(SCAN_POSITION_MAP_COUNT)
+    )
     policy_offset = candidate_offset(UNSUPPORTED_LIST_ADDRESS)
     policy_bytes = candidate[
         policy_offset : policy_offset + (BASE_UNSUPPORTED_COUNT + FN_UNSUPPORTED_COUNT) * 4
@@ -160,8 +204,26 @@ def main() -> int:
     print(
         "key_index_map="
         f"runtime=0x{KEY_INDEX_MAP_ADDRESS:08x} "
-        f"candidate_offset=0x{candidate_offset(KEY_INDEX_MAP_ADDRESS):x} "
-        f"file_offset=0x{full_file_offset(KEY_INDEX_MAP_ADDRESS):x}"
+        f"candidate_offset=0x{map_offset:x} "
+        f"file_offset=0x{full_file_offset(KEY_INDEX_MAP_ADDRESS):x} "
+        f"selector_count={KEY_INDEX_MAP_COUNT} "
+        f"selector_stride=0x{KEY_INDEX_MAP_STRIDE:x} "
+        f"logical_window_length=0x{KEY_INDEX_LOGICAL_LENGTH:x}"
+    )
+    print(
+        "scan_position_map="
+        f"runtime=0x{SCAN_POSITION_MAP_ADDRESS:08x} "
+        f"candidate_offset=0x{scan_map_offset:x} "
+        f"file_offset=0x{full_file_offset(SCAN_POSITION_MAP_ADDRESS):x} "
+        f"selector_count={SCAN_POSITION_MAP_COUNT} "
+        f"selector_stride=0x{SCAN_POSITION_MAP_STRIDE:x}"
+    )
+    print(
+        "remap_records="
+        f"runtime_base=0x{REMAP_RECORD_BASE:08x} "
+        f"layer_stride=0x{REMAP_LAYER_STRIDE:x} "
+        f"record_stride=0x{REMAP_RECORD_STRIDE:x} "
+        "contents_not_embedded_in_candidate_b=true"
     )
     print(
         "unsupported_lists="
@@ -170,6 +232,104 @@ def main() -> int:
         f"file_offset=0x{full_file_offset(UNSUPPORTED_LIST_ADDRESS):x} "
         f"base_count={len(base_policy)} fn_count={len(fn_policy)}"
     )
+
+    print("\nKBID_LOOKUP_FROM_CANDIDATE_A")
+    print(
+        f"runtime=0x{KBID_LOOKUP_ADDRESS:08x} "
+        f"file_offset=0x{CANDIDATE_A_FILE_OFFSET + KBID_LOOKUP_ADDRESS:x} "
+        f"length={len(kbid_lookup)}"
+    )
+    print("input_id raw_selector effective_selector")
+    for input_id, (raw_selector, effective_selector) in enumerate(
+        zip(kbid_lookup, effective_kbid_lookup)
+    ):
+        print(f"{input_id:02d} 0x{raw_selector:02x} {effective_selector}")
+    print("raw_selector_values=" + ",".join(str(x) for x in sorted(set(kbid_lookup))))
+    print(
+        "effective_selector_values="
+        + ",".join(str(x) for x in sorted(set(effective_kbid_lookup)))
+    )
+    print("normalization_rule=raw_selector_4_becomes_effective_selector_2")
+
+    print("\nKEY_INDEX_LOGICAL_WINDOWS")
+    print("selector start end overlap_with_next fallback_0x4b_count unique_indices")
+    for selector, layout_map in enumerate(layout_maps):
+        start = KEY_INDEX_MAP_ADDRESS + selector * KEY_INDEX_MAP_STRIDE
+        end = start + len(layout_map) - 1
+        overlap = max(0, len(layout_map) - KEY_INDEX_MAP_STRIDE)
+        counts = Counter(layout_map)
+        unique = ",".join(f"0x{x:02x}" for x in sorted(counts))
+        print(
+            f"{selector} 0x{start:08x} 0x{end:08x} "
+            f"{overlap if selector + 1 < len(layout_maps) else 0} "
+            f"{counts[FALLBACK_RECORD_CANDIDATE]} {unique}"
+        )
+    print(
+        "window_note=each selector accepts wire IDs 0x00..0xbc; "
+        "the 0x86 selector stride makes adjacent 0xbd-byte windows overlap by 0x37 bytes"
+    )
+    print(
+        "selector_2_tail_note=wire IDs 0x86..0xbc overlap the first 0x37 bytes "
+        "of the separate scan-position table at 0x1801c50e"
+    )
+    print(
+        "fallback_note=record index 0x4b is frequent and is a fallback/dummy candidate; "
+        "its runtime semantics are not yet statically proven"
+    )
+
+    print("\nALL_WIRE_IDS_SOURCE_MAP_AND_TARGET_TRANSLATION")
+    print(
+        "wire_id target_internal_code usage "
+        "layout0_record layout1_record layout2_record "
+        "layout0_base_addr layout1_base_addr layout2_base_addr"
+    )
+    for wire_id, internal_code in enumerate(translation):
+        records = tuple(layout_map[wire_id] for layout_map in layout_maps)
+        addresses = tuple(record_address(0, index) for index in records)
+        print(
+            f"0x{wire_id:02x} 0x{internal_code:02x} "
+            f"{usage_names.get(internal_code, 'UnknownOrVendor'):18s} "
+            f"0x{records[0]:02x} 0x{records[1]:02x} 0x{records[2]:02x} "
+            f"0x{addresses[0]:08x} 0x{addresses[1]:08x} 0x{addresses[2]:08x}"
+        )
+
+    print("\nHISTORICAL_WIRE_SOURCES_1_TO_68_WITH_LAYOUT_RECORDS")
+    print(
+        "source historical_physical_key target_internal_code usage "
+        "layout0_record layout1_record layout2_record "
+        "layout0_fn_addr layout1_fn_addr layout2_fn_addr"
+    )
+    for source, physical_key in enumerate(PHYSICAL_KEYS, start=1):
+        internal_code = translation[source]
+        records = tuple(layout_map[source] for layout_map in layout_maps)
+        fn_addresses = tuple(record_address(1, index) for index in records)
+        print(
+            f"{source:02d} {physical_key:12s} 0x{internal_code:02x} "
+            f"{usage_names.get(internal_code, 'UnknownOrVendor'):18s} "
+            f"0x{records[0]:02x} 0x{records[1]:02x} 0x{records[2]:02x} "
+            f"0x{fn_addresses[0]:08x} 0x{fn_addresses[1]:08x} "
+            f"0x{fn_addresses[2]:08x}"
+        )
+
+    print("\nTARGET_ENCODING_RULES_FROM_DISPATCHER")
+    print("wire_target_0x00_to_0xbc=translation_table[wire_target]")
+    print("wire_target_0xff=reuse_source_translation")
+    print("wire_targets_0xc7_0xc8_0xd3=wire_target_or_0xa000")
+    print("other_target_values=command_specific_or_rejected; do_not_generalize")
+
+    print("\nSCAN_POSITION_MAPS_SEPARATE_FROM_WIRE_ID_WINDOWS")
+    print("selector start end sha256 fallback_0x4b_count unique_indices")
+    for selector, scan_map in enumerate(scan_position_maps):
+        start = SCAN_POSITION_MAP_ADDRESS + selector * SCAN_POSITION_MAP_STRIDE
+        end = start + len(scan_map) - 1
+        counts = Counter(scan_map)
+        unique = ",".join(f"0x{x:02x}" for x in sorted(counts))
+        print(
+            f"{selector} 0x{start:08x} 0x{end:08x} "
+            f"{hashlib.sha256(scan_map).hexdigest()} "
+            f"{counts[FALLBACK_RECORD_CANDIDATE]} {unique}"
+        )
+        print(f"selector_{selector}_hex={scan_map.hex()}")
 
     print("\nWIRE_SOURCE_TRANSLATION_1_TO_68")
     print("source physical_key internal_code usage")

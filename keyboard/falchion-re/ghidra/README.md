@@ -45,6 +45,26 @@ tables inside the slice. The base-zero program is retained only to preserve the
 earlier analysis history. Candidate B still has no vector or verified true entry
 path; `CandidateB_Start_Function` is intentionally not named as an entry/reset.
 
+## Recovered KBID maps
+
+Candidate B uses an effective KBID selector at `0x1801ee6c`. Candidate A's
+26-byte lookup at runtime `0x00004fcd` yields `0`, `1`, or `4`; Candidate B
+normalizes `4` to `2`, leaving exactly three selectors.
+
+- `0x1801c37c`: three 189-byte logical wire-ID windows, selector stride `0x86`;
+  adjacent windows overlap by 55 bytes.
+- `0x1801c50e`: three 256-byte scan-position rows, selector stride `0x100`.
+- `0x1801c50e-0x1801c544`: storage shared by selector 2's wire-window tail and
+  scan-position row 0.
+- `0x180202ac + layer*0xd84 + record_index*0x20`: runtime record calculation
+  used by the dispatcher; the record contents are outside the embedded
+  Candidate B payload.
+
+`tool/analyze_candidate_b_tables.py` reproduces the lookup, logical windows,
+record addresses, translation rules, and scan-map hashes from the official BIN.
+`FalchionKbidMapReport.java` preserves the corresponding corrected-base Ghidra
+evidence.
+
 ## Evidence-supported Candidate B labels
 
 The corrected-base program currently includes these conservative user labels:

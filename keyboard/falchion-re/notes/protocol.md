@@ -176,15 +176,37 @@ row 5   Ctrl=59  Win=60  Alt=61  Space=62  Alt=63  Fn=64  ROG=65
 Directly confirmed: **Backspace=14, Q=17, I=24, O=25, Enter=43, N=51, M=52.**
 Digits confirmed on the target side (see below).
 
-### Target index — runtime-table encoding partly resolved **[S][?]**
+### Target index — ordinary runtime-table encoding recovered **[S][?]**
 
 Candidate B static analysis at corrected runtime base `0x18000000` shows that
 bytes 4-5 form a 16-bit target. Values
-through `0x00bc` are passed through the same runtime translation table used for
-the source index (table base `0x1801bff6`). Special values `0x00ff`, `0x00c7`,
+through `0x00bc` are passed through the runtime translation table at
+`0x1801bff6`. Special values `0x00ff`, `0x00c7`,
 `0x00c8`, and `0x00d3` take separate paths and are stored in an internal
-`0xA000`-class encoding. This proves the target is not simply copied into the
-active key record, but the runtime table contents have not yet been recovered.
+`0xA000`-class encoding. The 189-byte translation table is now recovered from
+the official BIN and decoded in `../logs/68-candidate-b-kbid-layout-analysis.txt`.
+For ordinary values, the rule is `internal_target = table[wire_target]`;
+`0x00ff` reuses the source translation. Other target values remain
+command-specific or rejected.
+
+Source selection is distinct from target translation. The dispatcher reads the
+effective KBID at `0x1801ee6c` and computes:
+
+```text
+record_index = byte[0x1801c37c + effective_kbid * 0x86 + wire_source]
+record        = 0x180202ac + layer * 0xd84 + record_index * 0x20
+```
+
+Candidate A's 26-byte KBID lookup yields raw selectors `0`, `1`, or `4`, and
+Candidate B normalizes `4` to `2`. Thus three logical source maps exist. Each
+accepts all 189 wire IDs but advances by only 134 bytes, so neighboring logical
+windows overlap by 55 bytes. A separate three-row scan-position map starts at
+`0x1801c50e` with a `0x100` selector stride and shares its first 55 bytes with
+the selector-2 wire window. These are KBID variants, not user profiles.
+
+The physical names below remain capture-derived labels for this keyboard. The
+static translation table does not make every special/navigation entry line up
+one-to-one, so it must not be treated as a universal physical-layout table.
 
 Contradictory observations, all from `51 21`:
 
@@ -246,7 +268,7 @@ The 57-entry Fn list includes F1-F12, digits, `-`/`=`, arrows, navigation keys,
 Esc, Tab, modifiers, Q/W/E/R/T/Y/U/P, A/S/D/F/G/H, Caps Lock, and a
 vendor/custom `0xe8` entry. These categories closely match the manual-derived
 list below. Exact decoded values are reproducible with
-`../tool/analyze_candidate_b_tables.py` and preserved in log 61.
+`../tool/analyze_candidate_b_tables.py` and preserved in logs 61 and 68.
 
 ---
 

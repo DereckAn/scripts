@@ -1,0 +1,136 @@
+2026-08-29T22:43:57-06:00
+
+SOURCE_FIRMWARE_SHA256
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+ANALYZER_REPRODUCTION
+log68_byte_identical=0
+
+EXISTING_LOG_HASH_VERIFICATION
+logs/00-host-context.txt: OK
+logs/01-lsusb.txt: OK
+logs/02-lsusb-tree.txt: OK
+logs/03-tool-availability.txt: OK
+logs/04-usb-sysfs-devices.txt: OK
+logs/05-usb-sysfs-interfaces.txt: OK
+logs/06-hidraw-sysfs.txt: OK
+logs/07-falchion-usb-descriptors-sysfs-xxd.txt: OK
+logs/08-falchion-endpoints-sysfs.txt: OK
+logs/09-falchion-hid-report-descriptors-xxd.txt: OK
+logs/10-falchion-udev-properties.txt: OK
+logs/11-dfu-util-list.txt: OK
+logs/12-fwupd-availability.txt: OK
+logs/13-interface-4-and-kernel-log.txt: OK
+logs/14-usbhid-dump-help.txt: OK
+logs/15-lsusb-falchion-verbose.txt: OK
+logs/16-dfu-util-list-direct.txt: OK
+logs/17-prior-report-descriptor-comparison.txt: OK
+logs/18-device-node-metadata.txt: OK
+logs/19-port-retry-sysfs-devices.txt: OK
+logs/20-port-retry-sysfs-interfaces.txt: OK
+logs/21-port-retry-lsusb-tree.txt: OK
+logs/22-port-retry-lsusb-verbose.txt: OK
+logs/23-port-retry-dfu-util-list.txt: OK
+logs/24-port-retry-cached-descriptors.txt: OK
+logs/25-port-retry-comparison.txt: OK
+logs/26-port-retry-corrected-comparison.txt: OK
+logs/27-claude-notes-report-desc-provenance.txt: OK
+logs/28-claude-progress-audit.txt: OK
+logs/29-asus-package-original-metadata.txt: OK
+logs/30-asus-package-archive-list.txt: OK
+logs/31-asus-package-extracted-inventory.txt: OK
+logs/32-asus-package-firmware-focused-inventory.txt: OK
+logs/33-asus-firmware-image-static-analysis.txt: OK
+logs/34-asus-updater-and-container-static-analysis.txt: OK
+logs/35-official-artifact-preservation.txt: OK
+logs/36-firmware-layout-analyzer.txt: OK
+logs/37-firmware-modification-feasibility.txt: OK
+logs/38-ghidra-preinstall-check.txt: OK
+logs/39-ghidra-install-verification.txt: OK
+logs/40-ghidra-seed-entries.txt: OK
+logs/41-ghidra-entry-reanalysis.txt: OK
+logs/42-ghidra-project-report.txt: OK
+logs/43-firmware-layout-with-ram-image.txt: OK
+logs/44-ghidra-candidate-b-label-correction.txt: OK
+logs/45-ghidra-synchronized-project-report.txt: OK
+logs/46-documentation-synchronization-audit.txt: OK
+logs/47-ghidra-candidate-b-opcode-search.txt: OK
+logs/48-ghidra-candidate-b-dispatcher-report.txt: OK
+logs/49-ghidra-candidate-b-key-remap-report.txt: OK
+logs/50-firmware-pointer-byte-search.txt: OK
+logs/51-ghidra-key-ram-reference-report.txt: OK
+logs/52-ghidra-candidate-b-key-config-init-report.txt: OK
+logs/53-ghidra-candidate-b-reserved-key-gate-report.txt: OK
+logs/54-ghidra-protocol-labels.txt: OK
+logs/55-offline-protocol-analysis-audit.txt: OK
+logs/56-timeline-document-audit.txt: OK
+logs/57-ghidra-runtime-key-table-reference-scan.txt: OK
+logs/58-ghidra-runtime-key-table-xrefs.txt: OK
+logs/59-ghidra-startup-and-copy-report.txt: OK
+logs/60-candidate-b-runtime-table-extraction.txt: OK
+logs/61-candidate-b-table-analysis.txt: OK
+logs/62-ghidra-candidate-b-runtime-base-import.txt: OK
+logs/63-ghidra-candidate-b-runtime-base-validation.txt: OK
+logs/64-ghidra-candidate-b-runtime-dispatcher-seed.txt: OK
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt: OK
+logs/66-candidate-b-runtime-mapping-audit.txt: OK
+
+STRUCTURE_ANCHORS
+tool/analyze_candidate_b_tables.py:269:        "the 0x86 selector stride makes adjacent 0xbd-byte windows overlap by 0x37 bytes"
+tool/analyze_candidate_b_tables.py:273:        "of the separate scan-position table at 0x1801c50e"
+FINDINGS.md:316:  stored value `0x1a76c116`, but standard CRC-32 over that apparent range is
+FINDINGS.md:416:length `0x1e754`, and stored integrity value `0x1a76c116`, followed by another
+FINDINGS.md:427:| `0x1801c50e` | `0x1c50e` | `0x3d50e` | three effective-KBID scan-position maps |
+FINDINGS.md:455:immediately normalizes `4` to `2`. Therefore the effective selector range is
+FINDINGS.md:462:record        = 0x180202ac + layer * 0xd84 + record_index * 0x20
+FINDINGS.md:466:windows begin only `0x86` bytes apart and overlap by `0x37` (55) bytes. Their
+FINDINGS.md:471:A separate scan-position table starts at `0x1801c50e` and uses three
+FINDINGS.md:533:the remap-record base at `0x180202ac`, and per-key index mapping at
+FINDINGS.md:588:   true entry path and explain integrity value `0x1a76c116` without touching the
+TIMELINE.md:411:advances their base by only `0x86`. The three windows consequently overlap by
+TIMELINE.md:412:`0x37` bytes. The last window ends at `0x1801c544`. A separate scan-position map
+TIMELINE.md:421:record        = 0x180202ac + layer * 0xd84 + record_index * 0x20
+ghidra/README.md:55:  adjacent windows overlap by 55 bytes.
+ghidra/README.md:56:- `0x1801c50e`: three 256-byte scan-position rows, selector stride `0x100`.
+ghidra/README.md:58:  scan-position row 0.
+ghidra/README.md:59:- `0x180202ac + layer*0xd84 + record_index*0x20`: runtime record calculation
+notes/findings.md:113:three 189-byte source windows advance by `0x86` and therefore overlap by 55
+notes/findings.md:114:bytes. A separate three-row scan-position table at `0x1801c50e` uses a `0x100`
+notes/findings.md:167:  entry point, and how is integrity value `0x1a76c116` calculated?
+notes/protocol.md:197:record        = 0x180202ac + layer * 0xd84 + record_index * 0x20
+notes/protocol.md:203:windows overlap by 55 bytes. A separate three-row scan-position map starts at
+
+STALE_ACTIVE_CLAIM_SCAN
+
+PATCH_CHECK
+
+NEW_LOG_MANIFEST_ENTRIES
+74:| `67-ghidra-candidate-b-kbid-map-report.txt` | `FalchionKbidMapReport.java` against corrected-base Candidate B with `-readOnly -noanalysis` | First-pass KBID/table report; its eight-chunk visual split was superseded after code proved overlapping wire windows and a separate scan map |
+75:| `68-candidate-b-kbid-layout-analysis.txt` | `python3 tool/analyze_candidate_b_tables.py dumps/vendor/M605_V01_00_58.bin` | Deterministically decoded Candidate A's 26-byte KBID lookup, three logical wire windows, target translation, record addresses, and three scan rows |
+76:| `69-ghidra-candidate-b-corrected-kbid-map-report.txt` | Corrected `FalchionKbidMapReport.java` with `-readOnly -noanalysis` | Verified three `0xbd` logical windows at `0x86` stride, shared 55-byte region, three `0x100` scan rows, and KBID-selection code |
+77:| `70-ghidra-corrected-key-map-reference-scan.txt` | Corrected `FalchionRamTableReferences.java` and `FalchionRuntimeTableXrefs.java` against corrected-base Candidate B with `-readOnly -noanalysis` | Verified the wire-only, shared wire/scan, and scan-only boundaries and their direct references |
+78:| `71-kbid-layout-analysis-audit.txt` | Analyzer reproduction; source hash; existing log-hash verification; stale-claim/boundary scans; `git diff --check`; manifest inventory | Final local-only consistency and evidence audit for the KBID/layout-map pass |
+
+UNHASHED_TEXT_LOGS_BEFORE_FINAL_HASH_UPDATE
+logs/67-ghidra-candidate-b-kbid-map-report.txt
+logs/68-candidate-b-kbid-layout-analysis.txt
+logs/69-ghidra-candidate-b-corrected-kbid-map-report.txt
+logs/70-ghidra-corrected-key-map-reference-scan.txt
+logs/71-kbid-layout-analysis-audit.txt
+
+GIT_STATUS
+ M FINDINGS.md
+ M TIMELINE.md
+ M ghidra/README.md
+ M ghidra/scripts/FalchionRamTableReferences.java
+ M ghidra/scripts/FalchionRuntimeTableXrefs.java
+ M logs/COMMANDS.md
+ M notes/findings.md
+ M notes/protocol.md
+ M tool/analyze_candidate_b_tables.py
+?? ghidra/scripts/FalchionKbidMapReport.java
+?? logs/67-ghidra-candidate-b-kbid-map-report.txt
+?? logs/68-candidate-b-kbid-layout-analysis.txt
+?? logs/69-ghidra-candidate-b-corrected-kbid-map-report.txt
+?? logs/70-ghidra-corrected-key-map-reference-scan.txt
+?? logs/71-kbid-layout-analysis-audit.txt

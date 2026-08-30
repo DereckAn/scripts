@@ -22,7 +22,9 @@ public class FalchionRuntimeTableXrefs extends GhidraScript {
 
     private static final Region[] REGIONS = {
         new Region("key_translation", 0x1801bff6L, 0x1801c0b2L),
-        new Region("key_index_map", 0x1801c37cL, 0x1801c7afL),
+        new Region("wire_map_before_shared_overlap", 0x1801c37cL, 0x1801c50dL),
+        new Region("shared_wire_scan_overlap", 0x1801c50eL, 0x1801c544L),
+        new Region("scan_position_map_after_overlap", 0x1801c545L, 0x1801c80dL),
         new Region("unsupported_key_lists", 0x1801c810L, 0x1801c90bL)
     };
 
