@@ -433,6 +433,53 @@ capture-derived 68-key view, and hashes/full bytes for the three scan rows.
 Logs 68 and 69 contain the deterministic analyzer output and the corrected
 read-only Ghidra report. No USB access or firmware execution occurred.
 
+## 2026-08-29 23:08–23:10 — Candidate A reset and scatter-load baseline
+
+Toward the outstanding Candidate B loader/integrity target, the boot path of
+`app_candidate_a.bin` was recovered first as a baseline. A read-only
+`-noanalysis` run of `FalchionCandidateALoaderReport.java` disassembled and
+decompiled the reset handler at `0x14a8`, the standard ARM `__scatterload`
+routine at `0x148`, and the region-descriptor table at `0x5750`.
+
+Three scatter regions were recovered: a block copy of `0x1e354` bytes from
+`0x60021000` to `0x18000000`, a `0x0b04`-byte decompress from `0x6003f354` to
+`0x1801e354`, and a `0x172e8`-byte zero-init at `0x1801ee58`. The copy source
+`0x60021000` → destination `0x18000000` independently corroborates the
+`0x18000000` runtime base used to rebase Candidate B in logs 62–70. The
+clock/PLL init `FUN_00001216` also bounds-checks the stack pointer to
+`[0x18000000, DAT_000014a4]` and faults otherwise — a startup guard, not
+Candidate B image verification. Candidate A's loader does not contain or compute
+`0x1a76c116`, which remains the next offline target.
+
+Logs 72 and 73 hold the loader report and the ephemeral scatter-handler
+disassembly. The read-only project was discarded; the source BIN and keyboard
+were untouched.
+
+## 2026-08-30 — SN_FWIN record table and Candidate B checksum status
+
+With the loader baseline in hand, the integrity path was pursued offline against
+the preserved BIN. The `SN_FWIN` header at file `0x10000` was decoded into a
+four-word record table `(flash_addr, length, crc32, ram_dest)` at `0x10024`:
+record A `(0x60011000, 0x58ac, 0x5e75c17a, 0x18000000)` and record B
+`(0x60021000, 0x1e754, 0x1a76c116, 0x18000000)`, followed by a zero terminator.
+
+Record A's IEEE CRC-32 over file `0x11000..0x168ac` reproduces `0x5e75c17a`
+exactly, locking the flash→file mapping and the algorithm (the reflected
+`0xedb88320` constant is present in `bootloader_primary.bin` at `0xc78c`).
+Record B's length `0x1e754` equals Candidate A's copy region `0x1e354` plus the
+`0x400` compressed decompress-source — B's full flash footprint, file
+`0x21000..0x3f754`. Standard CRC-32 over that range is `0x60c95a7b`, not the
+stored `0x1a76c116`; and B matched none of the tested variants, seeds, running
+CRCs, accumulators, or full-file range sweeps.
+
+The conclusion is that Candidate B is not verified over the container's stored B
+bytes as-is — unlike A, which verifies verbatim. The remaining explanations
+(device-flash bytes differing from the container, or a post-transform load
+buffer) require reading the bootloader verify routine, which is the identified
+next offline target. Log 74 and `tool/analyze_candidate_integrity.py` capture the
+deterministic analysis. No USB access or firmware execution occurred; the safety
+conclusion is unchanged.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

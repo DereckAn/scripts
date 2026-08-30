@@ -1,0 +1,28 @@
+PROGRAM analyze_candidate_integrity
+PURPOSE offline read-only SN_FWIN integrity-record analysis
+BIN /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+BIN_SIZE 0x7c000
+
+HEADER magic=b'SN_FWIN\x00v1.0.00\x00'
+RECORD_TABLE (4 words each: flash_addr length crc32 ram_dest)
+  @0x10024: addr=0x60011000 len=0x000058ac crc=0x5e75c17a dst=0x18000000
+  @0x10034: addr=0x60021000 len=0x0001e754 crc=0x1a76c116 dst=0x18000000
+  @0x10044: addr=0x60021000 len=0x00000000 crc=0x00000000 dst=0x00000000
+
+A_RANGE file 0x11000..0x168ac
+A_CRC32 calc=0x5e75c17a stored=0x5e75c17a match=True
+
+B_RANGE file 0x21000..0x3f754  (0x1e754 = copy 0x1e354 + compressed-source 0x400)
+B_STORED 0x1a76c116
+  B ieee_crc32(B)                    0x60c95a7b
+  B crc32(B, init=A_crc)             0x8b76fde3
+  B crc32(A+B)                       0x8b76fde3
+  B crc32(recB + B)                  0x7775017d
+  B crc32(B, init=len)               0xf44349dc
+  B crc32(copy-region 0x1e354)       0x9f556233
+B_RANGE_SWEEP ieee-crc32 hits over whole file: 0 []
+
+BOOTLOADER reflected-CRC32 constant 0xedb88320 at 0xc78c
+
+RESULT A_reproduces=True B_matches_any_file_crc=False
+CONCLUSION Candidate B's stored 0x1a76c116 is not an IEEE CRC-32 (or tested variant/seed/range) of the container's B bytes; the verified byte-source for B differs and must be read from the bootloader verify routine.

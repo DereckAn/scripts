@@ -71,3 +71,6 @@ e5d5bc94b55cf1073909957b4dcd2064441e53a64274afcea03c89343ec6652a  logs/67-ghidra
 dcaf111e86c9a8395e6488b55ea96a17de1004c0cdaf19978a14f10ac95b5ae8  logs/69-ghidra-candidate-b-corrected-kbid-map-report.txt
 cc45446e34afcd1282aa95de76797996fcb50b127aa394b3122c5c02953581cf  logs/70-ghidra-corrected-key-map-reference-scan.txt
 c6a22b81a9580ec6d387c71398592bbbf06b62a3743d730810ade8104c408020  logs/71-kbid-layout-analysis-audit.txt
+1ea0912b82dda0b3f993079a0b6f6ee48f95481b3c37c3069187bcd6c17b32bf  logs/72-ghidra-candidate-a-loader-report.txt
+12a9fccaece677a81e5bc0f322a314d006149df58697f8b529f4558469599d31  logs/73-ghidra-candidate-a-scatter-handler-report.txt
+6044660ab5f67ce0459a95cef41d4db991dcc0ee0fd00074b92e4d1d3066e1bd  logs/74-candidate-integrity-crc-analysis.txt

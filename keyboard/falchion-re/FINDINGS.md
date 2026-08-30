@@ -312,10 +312,13 @@ handlers decode as valid Cortex-M3 Thumb-2 code.
 - Candidate payload A is described by flash address `0x60011000`, length
   `0x58ac`, and stored value `0x5e75c17a`. Standard IEEE CRC-32 over the mapped
   file bytes matches that value exactly.
-- Candidate payload B appears to use address `0x60021000`, length `0x1e754`, and
-  stored value `0x1a76c116`, but standard CRC-32 over that apparent range is
-  `0x60c95a7b`. No natural prefix through `0x40000` matches the stored value.
-  The record interpretation or checksum process is therefore unresolved.
+- Candidate payload B uses address `0x60021000`, length `0x1e754`, and stored
+  value `0x1a76c116`, but standard CRC-32 over that range is `0x60c95a7b`. The
+  record structure is now fully decoded (see "SN_FWIN integrity record table"
+  below, log 74) and B's value was ruled out against every tested CRC-32
+  variant, seed, accumulator, and file range. The byte source verified for B is
+  therefore not the container's stored B region as-is; the exact derivation
+  remains unresolved pending the bootloader verify routine.
 - Terminal values `0xfb665ae3` (present in both bootloader copies) and
   `0x5d27c5a9` do not match the common CRC-32 variants over obvious enclosing
   ranges tested.
@@ -536,6 +539,93 @@ the remap-record base at `0x180202ac`, and per-key index mapping at
 Evidence: `logs/47-ghidra-candidate-b-opcode-search.txt` through
 `logs/54-ghidra-protocol-labels.txt`. Reproducible reports and conservative label
 script are under `ghidra/scripts/`. All work was offline; no USB command was sent.
+
+### Candidate A reset, scatter-load, and RAM base (logs 72–73)
+
+Offline read-only disassembly and decompilation of `app_candidate_a.bin` recovered
+Candidate A's startup and image-copy path. This is the boot/loader baseline that
+precedes the still-unsolved Candidate B integrity path; it does **not** itself
+contain or compute Candidate B's integrity field `0x1a76c116`.
+
+- **Reset handler** `CandidateA_Reset_Handler @ 0x14a8`: loads the stack pointer
+  from the VTOR table (`0xe000ed08` → table[0] → `sp`), calls the C-runtime/clock
+  init `FUN_00001216` (via literal `DAT_000014ec = 0x1217`), then branches to
+  `0x140` (via literal `DAT_000014f0 = 0x141`).
+- **`0x140`** calls the scatter loader `FUN_00000148 (0x148)`, then `bl 0x2c8`
+  (application/`__rt_entry`, not analyzed here).
+- **Scatter loader `FUN_00000148`** is the standard ARM `__scatterload`: it walks a
+  region-descriptor table at `0x5750`, each entry `(src, dst, size, handler)`,
+  dispatching via `bx r3` to the region handler. Three regions were recovered:
+
+  | src | dst | size | handler @ | kind |
+  |---|---|---|---|---|
+  | `0x60021000` | `0x18000000` | `0x1e354` | `0x1d8` | `__scatterload_copy` |
+  | `0x6003f354` | `0x1801e354` | `0x0b04` | `0x17c` | `__scatterload_decompress` |
+  | `0x6003f754` | `0x1801ee58` | `0x172e8` | `0x1f4` | `__scatterload_zeroinit` |
+
+  The three handlers at `0x17c`/`0x1d8`/`0x1f4` were confirmed by ephemeral
+  disassembly to be the standard block-copy, LZ77-style decompress, and zero-init
+  routines. The read-only project was discarded (no database change).
+- **Corroboration of the runtime base:** Candidate A copies its image from source
+  region `0x60021000` (external/XIP flash window) into RAM at `0x18000000`. This
+  independently confirms the `0x18000000` runtime base already used to rebase and
+  decode Candidate B's tables in logs 62–70.
+- **`FUN_00001216`** performs low-level clock/PLL and power setup against the
+  system-control block at `0x45000000`, then bounds-checks the main stack pointer
+  to `[0x18000000, DAT_000014a4]` and faults via `FUN_00000dbc(7)` if it is out of
+  range — a startup integrity guard, distinct from Candidate B image verification.
+
+Evidence: `logs/72-ghidra-candidate-a-loader-report.txt`,
+`logs/73-ghidra-candidate-a-scatter-handler-report.txt`, and
+`ghidra/scripts/FalchionCandidateALoaderReport.java`. Both runs used
+`-readOnly -noanalysis`; the source BIN and keyboard were untouched. The next
+offline target remains Candidate B's loader/verification path and the derivation
+of `0x1a76c116`.
+
+### SN_FWIN integrity record table and Candidate B checksum status (log 74)
+
+The `SN_FWIN` header at file `0x10000` (`SN_FWIN\0v1.0.00\0`) contains a table of
+four-word records, each `(flash_addr, length, crc32, ram_dest)`, starting at file
+`0x10024`:
+
+| record | flash_addr | length | crc32 | ram_dest |
+|---|---|---|---|---|
+| A | `0x60011000` | `0x000058ac` | `0x5e75c17a` | `0x18000000` |
+| B | `0x60021000` | `0x0001e754` | `0x1a76c116` | `0x18000000` |
+| — | `0x60021000` | `0x00000000` | `0x00000000` | `0x00000000` (terminator) |
+
+- **Record A reproduces exactly.** IEEE CRC-32 over the mapped file bytes
+  `0x11000..0x168ac` equals the stored `0x5e75c17a`. This locks both the
+  flash→file mapping (`file = flash − 0x60000000`) and the algorithm; the analysis
+  tool asserts it as a hard self-check.
+- **Both records target RAM `0x18000000`.** Combined with logs 72–73 (Candidate A
+  scatter-loads flash `0x60021000` into `0x18000000`), Candidate A is a
+  first-stage loader for Candidate B; the two records are the loader's own image
+  and the application image it pulls in, both destined for the same runtime base.
+- **Record B's length is the exact flash footprint of B.**
+  `0x1e754 = 0x1e354` (Candidate A's copy region) `+ 0x400` (the compressed source
+  of A's decompress region), i.e. file `0x21000..0x3f754`.
+- **Record B does not match any file-byte checksum.** Over that range the IEEE
+  CRC-32 is `0x60c95a7b`, not `0x1a76c116`. Ruled out offline: CRC-32 variants
+  (init/xorout/reflect/forward), CRC seeded with A's value, running CRC across
+  `A+B`, record-prefixed CRC, simple sum/xor/adler accumulators, the copy-region
+  length `0x1e354`, and full-file range sweeps (fixed-start-vary-end and
+  fixed-length-vary-start, step 4) — zero hits.
+- The bootloader slice contains the reflected CRC-32 constant `0xedb88320`
+  (`bootloader_primary.bin` offset `0xc78c`), consistent with the reflected IEEE
+  CRC-32 that reproduces A.
+
+Conclusion: the byte source verified for Candidate B is **not** the container's
+stored B region as-is. Because A verifies verbatim but B does not, the remaining
+possibilities are that B is checksummed over device-flash bytes that differ from
+the distribution container, or over a post-transform buffer produced during load.
+Distinguishing these requires reading the bootloader verify routine's data
+source; that is the identified next offline target. This does not change the
+safety conclusion — a modified B image still cannot be produced with a correct
+integrity field until its derivation is known.
+
+Evidence: `logs/74-candidate-integrity-crc-analysis.txt`,
+`tool/analyze_candidate_integrity.py`. Read-only; no device access.
 
 ### Documentation synchronization
 

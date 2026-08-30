@@ -1,0 +1,482 @@
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (535 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (995 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /app_candidate_a.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionCandidateALoaderReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionCandidateALoaderReport.java (HeadlessAnalyzer)  
+INFO  FalchionCandidateALoaderReport.java> PROGRAM app_candidate_a.bin (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> PURPOSE offline read-only Candidate A loader/scatter report (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> WORDS 0x000014e0..0x000014f4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e0 0x49054804 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e4 0x4b054a03 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e8 0x00004770 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014ec 0x00001217 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014f0 0x00000141 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014f4 0x18035140 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> WORDS 0x00005750..0x0000579c (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005750 0x60021000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005754 0x18000000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005758 0x0001e354 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000575c 0x000001d8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005760 0x6003f354 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005764 0x1801e354 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005768 0x00000b04 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000576c 0x0000017c (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005770 0x6003f754 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005774 0x1801ee58 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005778 0x000172e8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000577c 0x000001f4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005780 0x0000001c (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005784 0x00000043 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005788 0xfffffff8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000578c 0x0000000c (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005790 0x0000000e (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005794 0x0000000f (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00005798 0x0000002e (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000579c 0x00000110 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> WORDS 0x00000f70..0x00000fb0 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f70 0x73200000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f74 0x00005578 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f78 0x60000800 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f7c 0x60000b80 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f80 0x08001491 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f84 0x18026f7c (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f88 0x20000f00 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f8c 0x1801ea50 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f90 0x09a7ec80 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f94 0x0800603d (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f98 0x40022000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f9c 0x02625a00 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fa0 0x60021000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fa4 0x4002f000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fa8 0x5afa55aa (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fac 0x40009000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fb0 0x40008000 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x0140 target=00000140 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=000014bc type=COMPUTED_JUMP function=CandidateA_Reset_Handler@000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x0140 1 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x0148 target=00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=00000140 type=UNCONDITIONAL_CALL function=CandidateA_Reset_Handler@000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x0148 1 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x017c target=0000017c (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x017c 0 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x01d8 target=000001d8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=00000172 type=COMPUTED_JUMP function=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=000001e0 type=CONDITIONAL_JUMP function=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x01d8 2 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x01f4 target=000001f4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x01f4 0 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x0fa0 target=00000fa0 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=00000ed8 type=READ function=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x0fa0 1 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x1216 target=00001216 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=000014b8 type=COMPUTED_CALL function=CandidateA_Reset_Handler@000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x1216 1 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x14a8 target=000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x14a8 0 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCES address_0x5750 target=00005750 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   from=00000162 type=READ function=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> REFERENCE_COUNT address_0x5750 1 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> INSTRUCTIONS 0x00000140..0x00000210 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000140 bl 0x00000148 owner=CandidateA_Reset_Handler@000014a8 refs=[UNCONDITIONAL_CALL->00000148] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000144 bl 0x000002c8 owner=CandidateA_Reset_Handler@000014a8 refs=[UNCONDITIONAL_CALL->000002c8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000148 adr r0,[0x174] owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000014a ldm.w r0,{r10,r11} owner=FUN_00000148@00000148 refs=[READ->00000174,READ->00000178] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000014e add r10,r0 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000150 add r11,r0 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000152 sub.w r7,r10,#0x1 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000156 cmp r10,r11 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000158 bne 0x0000015e owner=FUN_00000148@00000148 refs=[CONDITIONAL_JUMP->0000015e] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000015a bl 0x000002c8 owner=FUN_00000148@00000148 refs=[UNCONDITIONAL_CALL->000002c8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000015e adr.w lr,0x157 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000162 ldm.w r10!,{r0,r1,r2,r3} owner=FUN_00000148@00000148 refs=[READ->00005750,READ->00005754,READ->00005758,READ->0000575c,READ->00005760,READ->00005764,READ->00005768,READ->0000576c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000166 tst r3,#0x1 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000016a it ne owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000016c sub.ne r3,r7,r3 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000016e orr r3,r3,#0x1 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000172 bx r3 owner=FUN_00000148@00000148 refs=[COMPUTED_JUMP->000001d8,COMPUTED_JUMP->00005576,COMPUTED_JUMP->000055d2] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001d8 subs r2,#0x10 owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001da itt cs owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001dc ldmia.cs r0!,{r3,r4,r5,r6} owner=FUN_00000148@00000148 refs=[READ->60021000,READ->60021004,READ->60021008,READ->6002100c,READ->60021010,READ->60021014,READ->60021018,READ->6002101c,DATA->60021020] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001de stmia.cs r1!,{r3,r4,r5,r6} owner=FUN_00000148@00000148 refs=[WRITE->18000000,WRITE->18000004,WRITE->18000008,WRITE->1800000c,WRITE->18000010,WRITE->18000014,WRITE->18000018,WRITE->1800001c,PARAM->18000020] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001e0 bhi 0x000001d8 owner=FUN_00000148@00000148 refs=[CONDITIONAL_JUMP->000001d8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001e2 lsls r2,r2,#0x1d owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001e4 itt cs owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001e6 ldmia.cs r0!,{r4,r5} owner=FUN_00000148@00000148 refs=[READ->60021020,READ->60021024] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001e8 stmia.cs r1!,{r4,r5} owner=FUN_00000148@00000148 refs=[WRITE->18000020,WRITE->18000024] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001ea itt mi owner=FUN_00000148@00000148 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001ec ldr.mi r4,[r0,#0x0] owner=FUN_00000148@00000148 refs=[READ->60021020] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001ee str.mi r4,[r1,#0x0] owner=FUN_00000148@00000148 refs=[WRITE->18000020,WRITE->18000028] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000001f0 bx lr owner=FUN_00000148@00000148 refs=[COMPUTED_JUMP->00000156] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000210 cmp r1,#0x6e owner=FUN_00000210@00000210 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> INSTRUCTIONS 0x00000e80..0x00001020 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e82 add.w r1,r1,#0x1000 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e86 str r1,[r0,#0x0] owner=FUN_00000e68@00000e68 refs=[WRITE->40022000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e88 b 0x00000ea4 owner=FUN_00000e68@00000e68 refs=[UNCONDITIONAL_JUMP->00000ea4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e8a movs r1,#0x1 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e8c ldr r3,[0x00000f90] owner=FUN_00000e68@00000e68 refs=[READ->00000f90] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e8e ldr r4,[0x00000f9c] owner=FUN_00000e68@00000e68 refs=[READ->00000f9c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e90 b 0x00000e94 owner=FUN_00000e68@00000e68 refs=[UNCONDITIONAL_JUMP->00000e94] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e92 adds r1,r1,#0x1 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e94 lsr.w r5,r3,r1 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e98 cmp r5,r4 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e9a bhi 0x00000e92 owner=FUN_00000e68@00000e68 refs=[CONDITIONAL_JUMP->00000e92] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e9c ldr r3,[r0,#0x0] owner=FUN_00000e68@00000e68 refs=[READ->40022000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000e9e bfi r3,r1,#0xc,#0x2 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ea2 str r3,[r0,#0x0] owner=FUN_00000e68@00000e68 refs=[WRITE->40022000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ea4 ldr r1,[r0,#0x0] owner=FUN_00000e68@00000e68 refs=[READ->40022000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ea6 orr r1,r1,#0x8000 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eaa str r1,[r0,#0x0] owner=FUN_00000e68@00000e68 refs=[WRITE->40022000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eac blx r2 owner=FUN_00000e68@00000e68 refs=[COMPUTED_CALL->0800603c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eae cbz r0,0x00000eb8 owner=FUN_00000e68@00000e68 refs=[CONDITIONAL_JUMP->00000eb8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eb0 mvn r1,#0xff000000 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eb4 cmp r0,r1 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eb6 bne 0x00000ec0 owner=FUN_00000e68@00000e68 refs=[CONDITIONAL_JUMP->00000ec0] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eb8 pop.w {r4,r5,r6,lr} owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ebc movs r0,#0x6 owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ebe b 0x00000dbc owner=FUN_00000e68@00000e68 refs=[UNCONDITIONAL_CALL->00000dbc] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ec0 pop {r4,r5,r6,pc} owner=FUN_00000e68@00000e68 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ec4 push {r4,lr} owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ec6 mov.w r0,#0x45000000 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eca ldr.w r1,[r0,#0x10c] owner=FUN_00000ec4@00000ec4 refs=[READ->4500010c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ece orr r1,r1,#0x800 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ed2 str.w r1,[r0,#0x10c] owner=FUN_00000ec4@00000ec4 refs=[WRITE->4500010c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ed6 ldr r1,[0x00000fa4] owner=FUN_00000ec4@00000ec4 refs=[READ->00000fa4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ed8 ldr r0,[0x00000fa0] owner=FUN_00000ec4@00000ec4 refs=[READ->00000fa0] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eda str r0,[r1,#0x4] owner=FUN_00000ec4@00000ec4 refs=[WRITE->4002f004,DATA->60021000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000edc str r0,[r1,#0x4] owner=FUN_00000ec4@00000ec4 refs=[WRITE->4002f004,DATA->60021000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ede movs r2,#0x3 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ee0 str r2,[r1,#0x0] owner=FUN_00000ec4@00000ec4 refs=[WRITE->4002f000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ee2 lsls r1,r0,#0x10 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ee4 ldr r0,[r0,#0x0] owner=FUN_00000ec4@00000ec4 refs=[READ->60021000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ee6 ldr r1,[r1,#0x0] owner=FUN_00000ec4@00000ec4 refs=[READ->10000000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ee8 cmp r1,r0 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eea beq 0x00000ef2 owner=FUN_00000ec4@00000ec4 refs=[CONDITIONAL_JUMP->00000ef2] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eec movs r0,#0x4 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000eee bl 0x00000dbc owner=FUN_00000ec4@00000ec4 refs=[UNCONDITIONAL_CALL->00000dbc] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ef2 movs r0,#0x0 owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ef4 pop {r4,pc} owner=FUN_00000ec4@00000ec4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ef6 mov.w r0,#0x45000000 owner=FUN_00000ef6@00000ef6 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000efa ldr r1,[r0,#0x20] owner=FUN_00000ef6@00000ef6 refs=[READ->45000020] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000efc orr r1,r1,#0x100 owner=FUN_00000ef6@00000ef6 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f00 str r1,[r0,#0x20] owner=FUN_00000ef6@00000ef6 refs=[WRITE->45000020] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f02 movs r0,#0x0 owner=FUN_00000ef6@00000ef6 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f04 b 0x00000b4c owner=FUN_00000ef6@00000ef6 refs=[UNCONDITIONAL_JUMP->00000b4c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f0a ldr r3,[0x00000f74] owner=FUN_00000f0a@00000f0a refs=[READ->00000f74] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f0c push {r4,lr} owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f0e movs r2,#0x0 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f10 movs r1,#0x30 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f12 subs r3,#0xb0 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f14 b 0x00000f34 owner=FUN_00000f0a@00000f0a refs=[UNCONDITIONAL_JUMP->00000f34] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f16 sxtb r0,r0 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f18 cmp r0,#0x0 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f1a blt 0x00000f26 owner=FUN_00000f0a@00000f0a refs=[CONDITIONAL_JUMP->00000f26] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f1c add.w r0,r0,#0xe000e000 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f20 strb.w r1,[r0,#0x400] owner=FUN_00000f0a@00000f0a refs=[WRITE->e000e406] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f24 b 0x00000f32 owner=FUN_00000f0a@00000f0a refs=[UNCONDITIONAL_JUMP->00000f32] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f26 and r0,r0,#0xf owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f2a add.w r0,r0,#0xe000e000 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f2e strb.w r1,[r0,#0xd14] owner=FUN_00000f0a@00000f0a refs=[WRITE->e000ed1a] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f32 adds r2,r2,#0x1 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f34 ldr.w r0,[r3,r2,lsl #0x2] owner=FUN_00000f0a@00000f0a refs=[READ->000054c8,READ->000054cc] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f38 adds r4,r0,#0x1 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f3a bne 0x00000f16 owner=FUN_00000f0a@00000f0a refs=[CONDITIONAL_JUMP->00000f16] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f3c movs r0,#0x0 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f3e msr primask,r0 owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f42 pop {r4,pc} owner=FUN_00000f0a@00000f0a (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f44 push {r4,lr} owner=FUN_00001216@00001216 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f46 bl 0x00000f0a owner=FUN_00001216@00001216 refs=[UNCONDITIONAL_CALL->00000f0a] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f4a mov.w r0,#0x45000000 owner=FUN_00001216@00001216 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f4e ldr r3,[0x00000fa8] owner=FUN_00001216@00001216 refs=[READ->00000fa8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f50 ldr r1,[0x00000fac] owner=FUN_00001216@00001216 refs=[READ->00000fac] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f52 ldr r2,[0x00000fb0] owner=FUN_00001216@00001216 refs=[READ->00000fb0] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f54 ldr r4,[r0,#0x0] owner=FUN_00001216@00001216 refs=[READ->45000000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f56 cbnz r4,0x00000f5c owner=FUN_00001216@00001216 refs=[CONDITIONAL_JUMP->00000f5c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f58 ldr r0,[r0,#0xc] owner=FUN_00001216@00001216 refs=[READ->4500000c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f5a cbz r0,0x00000f66 owner=FUN_00001216@00001216 refs=[CONDITIONAL_JUMP->00000f66] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f5c str r3,[r2,#0xc] owner=FUN_00001216@00001216 refs=[WRITE->4000800c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f5e ldr r0,[0x00000fb4] owner=FUN_00001216@00001216 refs=[READ->00000fb4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f60 str r0,[r2,#0x0] owner=FUN_00001216@00001216 refs=[WRITE->40008000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f62 str r0,[r1,#0x0] owner=FUN_00001216@00001216 refs=[WRITE->40009000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f64 pop {r4,pc} owner=FUN_00001216@00001216 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f66 str r3,[r1,#0xc] owner=FUN_00001216@00001216 refs=[WRITE->4000900c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000f68 b 0x00000f5e owner=FUN_00001216@00001216 refs=[UNCONDITIONAL_JUMP->00000f5e] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fb8 push {r4,lr} owner=FUN_00000fb8@00000fb8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fba mov r1,r0 owner=FUN_00000fb8@00000fb8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fbc movs r2,#0x34 owner=FUN_00000fb8@00000fb8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fbe ldr r0,[0x000012e0] owner=FUN_00000fb8@00000fb8 refs=[READ->000012e0] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fc0 bl 0x000026b4 owner=FUN_00000fb8@00000fb8 refs=[UNCONDITIONAL_CALL->000026b4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fc4 ldr r0,[0x000012e0] owner=FUN_00000fb8@00000fb8 refs=[READ->000012e0] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fc6 pop.w {r4,lr} owner=FUN_00000fb8@00000fb8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fca subs r0,#0x50 owner=FUN_00000fb8@00000fb8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fcc b 0x00000d76 owner=FUN_00000fb8@00000fb8 refs=[UNCONDITIONAL_JUMP->00000d76] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fce b 0x00000fce owner=none refs=[UNCONDITIONAL_JUMP->00000fce] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fd4 push {r4,r5,r6,lr} owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fd6 mov r5,r0 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fd8 ldr r0,[0x000012e4] owner=FUN_00000fd4@00000fd4 refs=[READ->000012e4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fda ldr r0,[r0,#0x0] owner=FUN_00000fd4@00000fd4 refs=[READ->e000ed28] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fdc ands r4,r0,#0xff owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fe0 beq 0x0000101c owner=FUN_00000fd4@00000fd4 refs=[CONDITIONAL_JUMP->0000101c] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fe2 lsls r0,r4,#0x18 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fe4 bpl 0x00000ff8 owner=FUN_00000fd4@00000fd4 refs=[CONDITIONAL_JUMP->00000ff8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fe6 adr r0,[0x12e8] owner=FUN_00000fd4@00000fd4 refs=[PARAM->000012e8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fe8 bl 0x00001560 owner=FUN_00000fd4@00000fd4 refs=[UNCONDITIONAL_CALL->00001560] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fec ldr r0,[0x000012e4] owner=FUN_00000fd4@00000fd4 refs=[READ->000012e4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000fee adds r0,#0xc owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ff0 ldr r1,[r0,#0x0] owner=FUN_00000fd4@00000fd4 refs=[READ->e000ed34] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ff2 adr r0,[0x1300] owner=FUN_00000fd4@00000fd4 refs=[PARAM->00001300] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ff4 bl 0x00001560 owner=FUN_00000fd4@00000fd4 refs=[UNCONDITIONAL_CALL->00001560] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ff8 lsls r0,r4,#0x1f owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ffa beq 0x00001000 owner=FUN_00000fd4@00000fd4 refs=[CONDITIONAL_JUMP->00001000] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ffc movs r0,#0x4 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00000ffe strb r0,[r5,#0x0] owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001000 lsls r0,r4,#0x1e owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001002 bpl 0x00001008 owner=FUN_00000fd4@00000fd4 refs=[CONDITIONAL_JUMP->00001008] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001004 movs r0,#0x3 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001006 strb r0,[r5,#0x0] owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001008 lsls r0,r4,#0x1c owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000100a bpl 0x00001010 owner=FUN_00000fd4@00000fd4 refs=[CONDITIONAL_JUMP->00001010] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000100c movs r0,#0x2 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000100e strb r0,[r5,#0x0] owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001010 lsls r0,r4,#0x1b owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001012 bpl 0x00001018 owner=FUN_00000fd4@00000fd4 refs=[CONDITIONAL_JUMP->00001018] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001014 movs r0,#0x1 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001016 strb r0,[r5,#0x0] owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001018 movs r0,#0x1 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000101a pop {r4,r5,r6,pc} owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000101c movs r0,#0x0 owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   0000101e pop {r4,r5,r6,pc} owner=FUN_00000fd4@00000fd4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   00001020 push {r4,r5,r6,lr} owner=FUN_00001020@00001020 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> INSTRUCTIONS 0x000014a8..0x000014f4 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014a8 movw r0,#0xed08 owner=CandidateA_Reset_Handler@000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014ac movt r0,#0xe000 owner=CandidateA_Reset_Handler@000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014b0 ldr r0,[r0,#0x0] owner=CandidateA_Reset_Handler@000014a8 refs=[READ->e000ed08] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014b2 ldr.w sp,[r0,#0x0] owner=CandidateA_Reset_Handler@000014a8 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014b6 ldr r0,[0x000014ec] owner=CandidateA_Reset_Handler@000014a8 refs=[READ->000014ec,PARAM->00001217] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014b8 blx r0 owner=CandidateA_Reset_Handler@000014a8 refs=[COMPUTED_CALL->00001216] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014ba ldr r0,[0x000014f0] owner=CandidateA_Reset_Handler@000014a8 refs=[READ->000014f0] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014bc bx r0 owner=CandidateA_Reset_Handler@000014a8 refs=[COMPUTED_JUMP->00000140] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014d2 b 0x000014d2 owner=none refs=[UNCONDITIONAL_JUMP->000014d2] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014d4 b 0x000014d4 owner=none refs=[UNCONDITIONAL_JUMP->000014d4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014d8 b 0x000014d8 owner=none refs=[UNCONDITIONAL_JUMP->000014d8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014de b 0x000014de owner=none refs=[UNCONDITIONAL_JUMP->000014de] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e0 ldr r0,[0x000014f4] owner=FUN_000014e0@000014e0 refs=[READ->000014f4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e2 ldr r1,[0x000014f8] owner=FUN_000014e0@000014e0 refs=[READ->000014f8] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e4 ldr r2,[0x000014f4] owner=FUN_000014e0@000014e0 refs=[READ->000014f4] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e6 ldr r3,[0x000014fc] owner=FUN_000014e0@000014e0 refs=[READ->000014fc] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   000014e8 bx lr owner=FUN_000014e0@000014e0 (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=00000140 function=CandidateA_Reset_Handler entry=000014a8 body=[[00000140, 00000147] [000014a8, 000014bd]] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> 
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void CandidateA_Reset_Handler(void)
+
+{
+  (*DAT_000014ec)();
+                    /* WARNING: Could not recover jumptable at 0x000014bc. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*DAT_000014f0)();
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=00000148 function=FUN_00000148 entry=00000148 body=[[00000148, 00000173] [000001d8, 000001f1]] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> 
+void FUN_00000148(void)
+
+{
+  int iVar1;
+  code *UNRECOVERED_JUMPTABLE;
+  int iVar2;
+  undefined4 *puVar3;
+  
+  iVar1 = DAT_00000174;
+  puVar3 = (undefined4 *)(DAT_00000174 + 0x174);
+  iVar2 = DAT_00000174 + 0x173;
+  if (puVar3 == (undefined4 *)(DAT_00000178 + 0x174)) {
+    FUN_000002c8();
+  }
+  UNRECOVERED_JUMPTABLE = *(code **)(iVar1 + 0x180);
+  if (((uint)UNRECOVERED_JUMPTABLE & 1) != 0) {
+    UNRECOVERED_JUMPTABLE = (code *)(iVar2 - (int)UNRECOVERED_JUMPTABLE);
+  }
+                    /* WARNING: Could not recover jumptable at 0x00000172. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*UNRECOVERED_JUMPTABLE)(*puVar3,*(undefined4 *)(iVar1 + 0x178),*(undefined4 *)(iVar1 + 0x17c));
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=0000017c function=none (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=000001d8 function=FUN_00000148 entry=00000148 body=[[00000148, 00000173] [000001d8, 000001f1]] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> 
+void FUN_00000148(void)
+
+{
+  int iVar1;
+  code *UNRECOVERED_JUMPTABLE;
+  int iVar2;
+  undefined4 *puVar3;
+  
+  iVar1 = DAT_00000174;
+  puVar3 = (undefined4 *)(DAT_00000174 + 0x174);
+  iVar2 = DAT_00000174 + 0x173;
+  if (puVar3 == (undefined4 *)(DAT_00000178 + 0x174)) {
+    FUN_000002c8();
+  }
+  UNRECOVERED_JUMPTABLE = *(code **)(iVar1 + 0x180);
+  if (((uint)UNRECOVERED_JUMPTABLE & 1) != 0) {
+    UNRECOVERED_JUMPTABLE = (code *)(iVar2 - (int)UNRECOVERED_JUMPTABLE);
+  }
+                    /* WARNING: Could not recover jumptable at 0x00000172. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*UNRECOVERED_JUMPTABLE)(*puVar3,*(undefined4 *)(iVar1 + 0x178),*(undefined4 *)(iVar1 + 0x17c));
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=000001f4 function=none (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=00000e80 function=FUN_00000e68 entry=00000e68 body=[[00000e68, 00000ec1]] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> 
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00000e68(void)
+
+{
+  code *pcVar1;
+  uint *puVar2;
+  int iVar3;
+  uint uVar4;
+  
+  puVar2 = DAT_00000f98;
+  pcVar1 = DAT_00000f94;
+  if ((_DAT_4500000c & 7) == 4) {
+    for (uVar4 = 1; DAT_00000f9c < DAT_00000f90 >> (uVar4 & 0xff); uVar4 = uVar4 + 1) {
+    }
+    *DAT_00000f98 = *DAT_00000f98 & 0xffffcfff | (uVar4 & 3) << 0xc;
+  }
+  else {
+    *DAT_00000f98 = (*DAT_00000f98 & 0xffffcfff) + 0x1000;
+  }
+  *puVar2 = *puVar2 | 0x8000;
+  iVar3 = (*pcVar1)();
+  if ((iVar3 != 0) && (iVar3 != 0xffffff)) {
+    return;
+  }
+  FUN_00000dbc(6);
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=00000fa0 function=none (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=00001216 function=FUN_00001216 entry=00001216 body=[[00000f44, 00000f69] [00001216, 00001279]] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> 
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00001216(void)
+
+{
+  undefined4 *puVar1;
+  undefined4 *puVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  
+  puVar2 = DAT_0000149c;
+  puVar1 = DAT_00001498;
+  if ((_DAT_45000000 == 0) && (_DAT_4500000c == 0)) {
+    DAT_00001498[3] = DAT_00001494;
+  }
+  else {
+    DAT_0000149c[3] = DAT_00001494;
+  }
+  uVar3 = DAT_000014a0;
+  *puVar2 = DAT_000014a0;
+  *puVar1 = uVar3;
+  uVar4 = getMainStackPointer();
+  if ((uVar4 < 0x18000000) || (uVar4 = getMainStackPointer(), DAT_000014a4 < uVar4)) {
+    FUN_00000dbc(7);
+  }
+  if ((_DAT_45000000 == 0) && (_DAT_4500000c == 0)) {
+    FUN_00000f0a();
+    puVar2 = DAT_00000fb0;
+    puVar1 = DAT_00000fac;
+    if ((_DAT_45000000 == 0) && (_DAT_4500000c == 0)) {
+      DAT_00000fac[3] = DAT_00000fa8;
+    }
+    else {
+      DAT_00000fb0[3] = DAT_00000fa8;
+    }
+    uVar3 = DAT_00000fb4;
+    *puVar2 = DAT_00000fb4;
+    *puVar1 = uVar3;
+    return;
+  }
+  FUN_00000d3e();
+  FUN_00000de8();
+  FUN_00000e68();
+  FUN_00000ec4();
+  FUN_00000ef6();
+  FUN_00000f0a();
+  return;
+}
+
+ (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> DECOMPILE requested=000014a8 function=CandidateA_Reset_Handler entry=000014a8 body=[[00000140, 00000147] [000014a8, 000014bd]] (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionCandidateALoaderReport.java> 
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void CandidateA_Reset_Handler(void)
+
+{
+  (*DAT_000014ec)();
+                    /* WARNING: Could not recover jumptable at 0x000014bc. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*DAT_000014f0)();
+  return;
+}
+
+ (GhidraScript)  
