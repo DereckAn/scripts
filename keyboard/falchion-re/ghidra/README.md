@@ -34,20 +34,24 @@ All source offsets refer to `dumps/vendor/M605_V01_00_58.bin`.
 |---|---:|---:|---|
 | `bootloader_primary.bin` | `0x01000-0x0ffff` | `0x00000000` | Primary bootloader code/data after its container page; vector at base, reset `0x000002f5` |
 | `app_candidate_a.bin` | `0x11000-0x168ab` | `0x00000000` | Small application image; vector at base, reset `0x000014a9`; USB/system coordination |
-| `app_candidate_b.bin` | `0x21000-0x3f753` | `0x00000000` (provisional) | Large executable payload containing keyboard behavior and USB identity; valid function at its start, but no vector or verified true entry |
+| `app_candidate_b.bin` | `0x21000-0x3f753` | `0x00000000` (historical provisional import) | Original analysis retained for comparison |
+| `app_candidate_b_18000000.bin` | `0x21000-0x3f753` | `0x18000000` | Byte-identical corrected mapping; keyboard behavior, configuration data, and USB identity |
 | `ram_image_18038000.bin` | `0x74000-0x7bfff` | `0x18038000` | Independently executable RAM image; vector at base, reset `0x180381c1` |
 
-The base of candidate B remains provisional. PC-relative Thumb code decodes
-correctly at base zero, but cross-region references must be examined before the
-program is treated as a standalone core image.
+Candidate B's runtime base is strongly supported as `0x18000000`. The firmware
+header records that address beside flash source `0x60021000` and length
+`0x1e754`; pointers such as `0x1801bff6` and `0x1801c810` then resolve to coherent
+tables inside the slice. The base-zero program is retained only to preserve the
+earlier analysis history. Candidate B still has no vector or verified true entry
+path; `CandidateB_Start_Function` is intentionally not named as an entry/reset.
 
 ## Evidence-supported Candidate B labels
 
-The local project currently includes these conservative user labels:
+The corrected-base program currently includes these conservative user labels:
 
-- `0x00000a70` — `VendorHID_SendResponse64`
-- `0x00001f6e` — `IsKeyUnsupportedForLayer`
-- `0x00001fbe` — `VendorHID_CommandDispatcher`
+- `0x18000a70` — `VendorHID_SendResponse64`
+- `0x18001f6e` — `IsKeyUnsupportedForLayer`
+- `0x18001fbe` — `VendorHID_CommandDispatcher`
 
 The report and label scripts under `ghidra/scripts/` are reproducible. Report
 scripts are intended for `-readOnly -noanalysis`; the label script changes only

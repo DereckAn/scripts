@@ -178,7 +178,8 @@ Digits confirmed on the target side (see below).
 
 ### Target index — runtime-table encoding partly resolved **[S][?]**
 
-Candidate B static analysis shows that bytes 4-5 form a 16-bit target. Values
+Candidate B static analysis at corrected runtime base `0x18000000` shows that
+bytes 4-5 form a 16-bit target. Values
 through `0x00bc` are passed through the same runtime translation table used for
 the source index (table base `0x1801bff6`). Special values `0x00ff`, `0x00c7`,
 `0x00c8`, and `0x00d3` take separate paths and are stored in an internal
@@ -239,9 +240,13 @@ strings `R_NSK_M` and `R_NSK_FnM`. Thus the static firmware structure supports
 the historical result: packet acceptance/echo and effective binding policy are
 separate decisions.
 
-The arrays begin at RAM `0x1801c810`. Their values are not yet available in the
-offline image, so the manual-derived list below has not been matched
-entry-for-entry to firmware data.
+The arrays begin at runtime `0x1801c810`, which maps to Candidate B offset
+`0x1c810` and full firmware offset `0x3d810`. Their values are now recovered.
+The 57-entry Fn list includes F1-F12, digits, `-`/`=`, arrows, navigation keys,
+Esc, Tab, modifiers, Q/W/E/R/T/Y/U/P, A/S/D/F/G/H, Caps Lock, and a
+vendor/custom `0xe8` entry. These categories closely match the manual-derived
+list below. Exact decoded values are reproducible with
+`../tool/analyze_candidate_b_tables.py` and preserved in log 61.
 
 ---
 

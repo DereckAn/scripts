@@ -56,3 +56,13 @@ b164abe807966bb153c4dd471c471ba28352ca0b4544e4262ed1c10891edddd7  logs/48-ghidra
 23b4ef0c63b4add419d2d0f88aef9149442d426876c3eba6b6832fc2471243df  logs/54-ghidra-protocol-labels.txt
 e2c116f82f1cc9b31d6622e165fb6fd66d164c675ae687d68770fc1e73bc8a7f  logs/55-offline-protocol-analysis-audit.txt
 c6dadba8e100d144d699767647c60b5c13b81ff8cda253dbcdc544eb7969c87e  logs/56-timeline-document-audit.txt
+185794fa6dbbcddbae78e2cd216e9c45fe319bed3990b635ed2a8fb194b9fd81  logs/57-ghidra-runtime-key-table-reference-scan.txt
+b08e41d9b95b6fbb48631b077abb6d1b98fca0faf22cef571587260b12ec204d  logs/58-ghidra-runtime-key-table-xrefs.txt
+b06a7d21876661f82971cc0e61c28f105d32413fd805dc259687f3a1f0d1e38a  logs/59-ghidra-startup-and-copy-report.txt
+2e62261a00ca1e0df453dd22164e96d96813883cfaf2dbb9f2b89e65788abc4a  logs/60-candidate-b-runtime-table-extraction.txt
+7ce4d8939ad6b5c0dfb4cc797567cac2ed3ccc1c4669917380515ffdbe267577  logs/61-candidate-b-table-analysis.txt
+b26b5e56d50b42a15ed77e86a950d97d9fcb2b8124e1665eb181f84167f7a0c9  logs/62-ghidra-candidate-b-runtime-base-import.txt
+87173a81ed83195f74142d0176c38deccc8dc40ab32c1a83011d6e06b74f91ec  logs/63-ghidra-candidate-b-runtime-base-validation.txt
+f35042da9e94c9417b64e0cc9202b2782a18007fee4335c8ad807f8da0f53fee  logs/64-ghidra-candidate-b-runtime-dispatcher-seed.txt
+3348f9146f016345af1ee983647a0e3e2c3316acf85a0fd29912d90ff0b00fa6  logs/65-ghidra-candidate-b-rebased-key-policy-report.txt
+99c816ba0b6bc3b42b0f33de984166af231639eb6fca6fc29e4902e0330469c1  logs/66-candidate-b-runtime-mapping-audit.txt

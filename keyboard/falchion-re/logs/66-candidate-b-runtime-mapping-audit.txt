@@ -1,0 +1,99 @@
+DATE
+2026-08-29T22:28:29-06:00
+
+ANALYZER_REPRODUCIBILITY
+log61_reproduced_byte_for_byte=true
+
+SOURCE_AND_DERIVED_HASHES
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+8fe68a13d7a0cd3bf8b4fd0dbe0575c0b7e67c1d4373e8d63970cf248684e668  ghidra/imports/app_candidate_b.bin
+8fe68a13d7a0cd3bf8b4fd0dbe0575c0b7e67c1d4373e8d63970cf248684e668  ghidra/imports/app_candidate_b_18000000.bin
+candidate_b_derived_copies_equal=true
+
+POLICY_COUNTS
+11:unsupported_lists=runtime=0x1801c810 candidate_offset=0x1c810 file_offset=0x3d810 base_count=6 fn_count=57
+84:BASE_UNSUPPORTED_POLICY
+93:FN_UNSUPPORTED_POLICY
+base_rows=6
+fn_rows=57
+
+CORRECTED_BASE_EVIDENCE
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:68:INFO  FalchionKeyRemapReport.java>   18002694  ldrb r3,[r2,r3]  owner=VendorHID_CommandDispatcher@18001fbe  refs=[DATA->1801bff6] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:70:INFO  FalchionKeyRemapReport.java>   1800269a  ldrb r2,[r2,r1]  owner=VendorHID_CommandDispatcher@18001fbe  refs=[DATA->1801bff6] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:102:INFO  FalchionKeyRemapReport.java>   180026f4  ldrb r2,[r1,r2]  owner=VendorHID_CommandDispatcher@18001fbe  refs=[DATA->1801c37c] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:171:INFO  FalchionKeyRemapReport.java>   180027ba  ldrb r0,[r6,r0]  owner=VendorHID_CommandDispatcher@18001fbe  refs=[DATA->1801bff6] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:175:INFO  FalchionKeyRemapReport.java>   180027c4  ldrb r0,[r6,r0]  owner=VendorHID_CommandDispatcher@18001fbe  refs=[DATA->1801bff6] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:187:INFO  FalchionKeyRemapReport.java> FUNCTION VendorHID_CommandDispatcher entry=18001fbe body=[[18001fbe, 18002075] [18002088, 1800211b] [1800217c, 180024ef] [180024f6, 18002593] [1800259a, 180025b7] [180025c4, 180029b1] [180029d8, 18002a51] [18002a54, 18002c23] [18002c2a, 18002e33] [18002e64, 1800329d] [18003310, 18003549] [1800354c, 1800370d] [18003768, 18003a8f] [18003a98, 18003adf] [18003ae6, 18003ba1] [18003c00, 18003c71] [18003c74, 18003cc9] [18003cd2, 18003df7] [18003dfe, 18004001] [18004078, 180040db]] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:261:INFO  FalchionKeyRemapReport.java> DECOMPILE function=VendorHID_CommandDispatcher entry=18001fbe (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:2570:INFO  FalchionReservedKeyGateReport.java>   18001f7a  ldr r1,[0x18002170] refs=[READ->18002170,PARAM->1801c810] (GhidraScript)  
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt:2575:INFO  FalchionReservedKeyGateReport.java>   18001f86  adds r1,#0x18 refs=[PARAM->1801c828] (GhidraScript)  
+logs/63-ghidra-candidate-b-runtime-base-validation.txt:146:INFO  FalchionProjectReport.java>   block=ram start=18000000 end=1801e753 size=0x1e754 (GhidraScript)  
+
+STALE_CLAIM_SCAN
+
+DOCUMENTED_MAPPING
+notes/protocol.md:181:Candidate B static analysis at corrected runtime base `0x18000000` shows that
+notes/protocol.md:244:`0x1c810` and full firmware offset `0x3d810`. Their values are now recovered.
+notes/protocol.md:245:The 57-entry Fn list includes F1-F12, digits, `-`/`=`, arrows, navigation keys,
+TIMELINE.md:375:actually offsets into the payload when loaded at `0x18000000`. The firmware
+TIMELINE.md:377:`0x1e754`. Subtracting `0x18000000` from the key-table pointers produced valid
+TIMELINE.md:382:- translation table: runtime `0x1801bff6`, full BIN `0x3cff6`;
+TIMELINE.md:383:- key-index map: runtime `0x1801c37c`, full BIN `0x3d37c`;
+TIMELINE.md:384:- unsupported lists: runtime `0x1801c810`, full BIN `0x3d810`.
+TIMELINE.md:391:`0x18000000`, leaving the historical base-zero import intact. Corrected-base
+FINDINGS.md:394:  runtime base `0x18000000`;
+FINDINGS.md:401:`0x18000000`). Candidate B begins with a valid Thumb function prologue, but no
+FINDINGS.md:413:Candidate B's runtime base is now strongly supported as `0x18000000`, resolving
+FINDINGS.md:415:firmware offset `0x10030` contains the sequence `0x18000000`, `0x60021000`,
+FINDINGS.md:417:`0x18000000` / `0x60021000` pair. More decisively, every runtime pointer used by
+FINDINGS.md:419:`0x18000000` is subtracted.
+FINDINGS.md:425:| `0x1801bff6` | `0x1bff6` | `0x3cff6` | 189-byte source/target translation table |
+FINDINGS.md:426:| `0x1801c37c` | `0x1c37c` | `0x3d37c` | per-layout/per-profile key-index map |
+FINDINGS.md:427:| `0x1801c810` | `0x1c810` | `0x3d810` | 6 base-policy words followed by 57 Fn/other-policy words |
+FINDINGS.md:437:The corrected-base Ghidra program has memory block `0x18000000-0x1801e753`.
+ghidra/README.md:38:| `app_candidate_b_18000000.bin` | `0x21000-0x3f753` | `0x18000000` | Byte-identical corrected mapping; keyboard behavior, configuration data, and USB identity |
+ghidra/README.md:41:Candidate B's runtime base is strongly supported as `0x18000000`. The firmware
+notes/findings.md:115:base selectors and a 57-entry list for Fn/other selectors. Configuration-load
+notes/findings.md:119:`0x18000000`, making the list at `0x1801c810` embedded slice offset `0x1c810`
+notes/findings.md:120:(full BIN `0x3d810`). All 63 entries are recovered; the 57-entry Fn list closely
+notes/findings.md:156:  runtime base is now strongly supported as `0x18000000`.
+
+GIT_DIFF_CHECK
+
+UNHASHED_TXT_LOGS_BEFORE_MANIFEST_UPDATE
+logs/57-ghidra-runtime-key-table-reference-scan.txt
+logs/58-ghidra-runtime-key-table-xrefs.txt
+logs/59-ghidra-startup-and-copy-report.txt
+logs/60-candidate-b-runtime-table-extraction.txt
+logs/61-candidate-b-table-analysis.txt
+logs/62-ghidra-candidate-b-runtime-base-import.txt
+logs/63-ghidra-candidate-b-runtime-base-validation.txt
+logs/64-ghidra-candidate-b-runtime-dispatcher-seed.txt
+logs/65-ghidra-candidate-b-rebased-key-policy-report.txt
+logs/66-candidate-b-runtime-mapping-audit.txt
+
+GIT_STATUS
+ M FINDINGS.md
+ M TIMELINE.md
+ M ghidra/README.md
+ M ghidra/scripts/FalchionApplyProtocolLabels.java
+ M ghidra/scripts/FalchionKeyRemapReport.java
+ M ghidra/scripts/FalchionProjectReport.java
+ M ghidra/scripts/FalchionRamTableReferences.java
+ M ghidra/scripts/FalchionReservedKeyGateReport.java
+ M ghidra/scripts/FalchionSeedEntries.java
+ M notes/findings.md
+ M notes/protocol.md
+?? ghidra/scripts/FalchionRuntimeTableXrefs.java
+?? ghidra/scripts/FalchionStartupAndCopyReport.java
+?? logs/57-ghidra-runtime-key-table-reference-scan.txt
+?? logs/58-ghidra-runtime-key-table-xrefs.txt
+?? logs/59-ghidra-startup-and-copy-report.txt
+?? logs/60-candidate-b-runtime-table-extraction.txt
+?? logs/61-candidate-b-table-analysis.txt
+?? logs/62-ghidra-candidate-b-runtime-base-import.txt
+?? logs/63-ghidra-candidate-b-runtime-base-validation.txt
+?? logs/64-ghidra-candidate-b-runtime-dispatcher-seed.txt
+?? logs/65-ghidra-candidate-b-rebased-key-policy-report.txt
+?? logs/66-candidate-b-runtime-mapping-audit.txt
+?? tool/analyze_candidate_b_tables.py

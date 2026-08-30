@@ -21,6 +21,9 @@ public class FalchionProjectReport extends GhidraScript {
         if (name.equals("app_candidate_b.bin")) {
             return 0x00000000L;
         }
+        if (name.equals("app_candidate_b_18000000.bin")) {
+            return 0x18000000L;
+        }
         if (name.equals("ram_image_18038000.bin")) {
             return 0x180381c0L;
         }

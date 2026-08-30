@@ -110,13 +110,15 @@ through `0xbc`, translates source and target through runtime tables, updates a
 per-key record, and builds an echoed 64-byte response. It does not consult the
 reserved-key list on this path.
 
-`IsKeyUnsupportedForLayer` at `0x1f6e` separately searches a 6-entry list for
+`IsKeyUnsupportedForLayer` at Candidate B offset `0x1f6e` (runtime
+`0x18001f6e`) separately searches a 6-entry list for
 base selectors and a 57-entry list for Fn/other selectors. Configuration-load
 code skips matching mappings and contains the diagnostic strings `R_NSK_M` and
 `R_NSK_FnM`. This statically explains how a command can be echoed but later have
-no effective Fn binding. The 63 entries reside at runtime RAM `0x1801c810`; their
-contents and initializer are not yet recovered from the package, so the exact
-locked-key membership remains unresolved.
+no effective Fn binding. Candidate B is now strongly mapped at runtime base
+`0x18000000`, making the list at `0x1801c810` embedded slice offset `0x1c810`
+(full BIN `0x3d810`). All 63 entries are recovered; the 57-entry Fn list closely
+matches the manual's locked function families.
 
 An echoed response is not proof that a change took effect. Target-key encoding is
 also unresolved: the same target byte reportedly produced inconsistent results in
@@ -150,9 +152,10 @@ and reset operations remain prohibited unless explicitly planned and approved.
 - What does U5 contain on this unit, and can it be read repeatedly without powering
   or driving the board incorrectly?
 - Does SNC73270 SWD permit read-only access, and which probe/software supports it?
-- What are Candidate B's true execution/load semantics and integrity calculation?
-- How are the reserved-key lists at runtime RAM `0x1801c810` initialized, and
-  what are their exact 63 entries?
+- What is Candidate B's true entry/call path and integrity calculation? Its
+  runtime base is now strongly supported as `0x18000000`.
+- What does every entry in the `0x1801c37c` layout/profile map mean, and how does
+  it complete the wire target-key encoding?
 - What is the target-key encoding for `51 21`?
 - Can the missing PCAP files be recovered from the Windows capture system and
   preserved with hashes?

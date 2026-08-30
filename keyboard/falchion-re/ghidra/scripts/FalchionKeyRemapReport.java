@@ -89,34 +89,42 @@ public class FalchionKeyRemapReport extends GhidraScript {
 
     @Override
     public void run() throws Exception {
-        if (!currentProgram.getName().equals("app_candidate_b.bin")) {
+        String programName = currentProgram.getName();
+        long base;
+        if (programName.equals("app_candidate_b.bin")) {
+            base = 0L;
+        }
+        else if (programName.equals("app_candidate_b_18000000.bin")) {
+            base = 0x18000000L;
+        }
+        else {
             println("This report is scoped to app_candidate_b.bin; current=" +
-                currentProgram.getName());
+                programName);
             return;
         }
 
-        println("PROGRAM " + currentProgram.getName());
+        println("PROGRAM " + programName + " base=" + toAddr(base));
         println("PURPOSE offline read-only report; no device access and no project mutation");
-        printInstructionRange(0x2662L, 0x27d5L);
+        printInstructionRange(base + 0x2662L, base + 0x27d5L);
         for (long address : new long[] {
             0x29b4L, 0x29b8L, 0x29bcL, 0x29c0L, 0x29c4L, 0x29c8L
         }) {
-            printLiteral(address);
+            printLiteral(base + address);
         }
 
         for (long address : new long[] {
             0x1fbeL, 0x2718L, 0x0a70L, 0x1bdbaL, 0x06daL
         }) {
-            printFunctionReferences(address);
+            printFunctionReferences(base + address);
         }
 
         DecompInterface decompiler = new DecompInterface();
         decompiler.openProgram(currentProgram);
         try {
-            decompile(0x2718L, decompiler);
-            decompile(0x0a70L, decompiler);
-            decompile(0x1bdbaL, decompiler);
-            decompile(0x06daL, decompiler);
+            decompile(base + 0x2718L, decompiler);
+            decompile(base + 0x0a70L, decompiler);
+            decompile(base + 0x1bdbaL, decompiler);
+            decompile(base + 0x06daL, decompiler);
         }
         finally {
             decompiler.dispose();

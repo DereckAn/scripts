@@ -12,15 +12,23 @@ import ghidra.program.model.symbol.Reference;
 public class FalchionReservedKeyGateReport extends GhidraScript {
     @Override
     public void run() throws Exception {
-        if (!currentProgram.getName().equals("app_candidate_b.bin")) {
+        String programName = currentProgram.getName();
+        long base;
+        if (programName.equals("app_candidate_b.bin")) {
+            base = 0L;
+        }
+        else if (programName.equals("app_candidate_b_18000000.bin")) {
+            base = 0x18000000L;
+        }
+        else {
             println("This report is scoped to app_candidate_b.bin; current=" +
-                currentProgram.getName());
+                programName);
             return;
         }
-        println("PROGRAM " + currentProgram.getName());
+        println("PROGRAM " + programName + " base=" + toAddr(base));
         println("PURPOSE offline read-only possible reserved-key gate report; no device access and no project mutation");
 
-        Address entry = toAddr(0x1f6eL);
+        Address entry = toAddr(base + 0x1f6eL);
         Function function = currentProgram.getFunctionManager().getFunctionAt(entry);
         println("FUNCTION " + function.getName() + " entry=" + function.getEntryPoint() +
             " body=" + function.getBody());

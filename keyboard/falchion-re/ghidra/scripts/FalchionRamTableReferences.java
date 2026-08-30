@@ -23,6 +23,7 @@ public class FalchionRamTableReferences extends GhidraScript {
     private static final Region[] REGIONS = {
         new Region("key_translation", 0x1801bff6L, 0x1801c0b2L),
         new Region("key_index_map", 0x1801c37cL, 0x1801c7afL),
+        new Region("unsupported_key_lists", 0x1801c810L, 0x1801c90bL),
         new Region("profile_state", 0x1801ee64L, 0x1801ee80L),
         new Region("dirty_flags", 0x1801e68dL, 0x1801e700L),
         new Region("key_records", 0x18021db4L, 0x18022ca3L),

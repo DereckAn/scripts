@@ -175,7 +175,7 @@ Remaining gaps are:
 - no verified firmware-readback command;
 - no test-pad/signal map or safe hardware readback wiring plan;
 - no tested probe/programmer or bootloader-independent recovery path;
-- unresolved Candidate B integrity and runtime/loading details.
+- unresolved Candidate B integrity and true entry/call path.
 
 ### Offline-analysis readiness at the 2026-08-29 notes audit (superseded)
 
@@ -389,15 +389,17 @@ Four derived slices of the preserved vendor image were imported as
 
 - primary bootloader at runtime base `0x00000000`;
 - application candidate A at `0x00000000`;
-- application candidate B at provisional base `0x00000000`;
+- application candidate B at the original provisional base `0x00000000`;
+- a byte-identical Candidate B comparison program mapped at its now-supported
+  runtime base `0x18000000`;
 - the RAM image at runtime base `0x18038000`.
 
 The preserved source BIN was not modified. Verified vector/entry labels were
 added only to the Ghidra database. Ghidra created the previously missing
-`CandidateA_Reset_Handler` at `0x14a8` and a provisional
-`CandidateB_Start_Function` at `0x0`. Candidate B begins with a valid Thumb
-function prologue, but no vector or call path yet proves it is the payload's true
-entry point. For the bootloader and RAM image, the exact reset addresses fall inside existing
+`CandidateA_Reset_Handler` at `0x14a8` and the evidence-bounded
+`CandidateB_Start_Function` at Candidate B offset `0x0` (runtime
+`0x18000000`). Candidate B begins with a valid Thumb function prologue, but no
+vector or call path yet proves it is the payload's true entry point. For the bootloader and RAM image, the exact reset addresses fall inside existing
 auto-created functions, so those functions were preserved and exact entry
 labels were added instead. Candidate B reanalysis emitted one isolated p-code
 decode warning at `0x24f2`, but analysis completed and saved successfully.
@@ -406,9 +408,45 @@ Evidence: `logs/38-ghidra-preinstall-check.txt` through
 `logs/45-ghidra-synchronized-project-report.txt`; workspace instructions:
 `ghidra/README.md`.
 
+### Candidate B runtime mapping and recovered tables
+
+Candidate B's runtime base is now strongly supported as `0x18000000`, resolving
+the earlier provisional base-zero interpretation. The `SN_FWIN` record at full
+firmware offset `0x10030` contains the sequence `0x18000000`, `0x60021000`,
+length `0x1e754`, and stored integrity value `0x1a76c116`, followed by another
+`0x18000000` / `0x60021000` pair. More decisively, every runtime pointer used by
+the key-policy code maps to coherent data inside the Candidate B slice when
+`0x18000000` is subtracted.
+
+Recovered mappings include:
+
+| Runtime address | Candidate B offset | Full BIN offset | Contents |
+|---:|---:|---:|---|
+| `0x1801bff6` | `0x1bff6` | `0x3cff6` | 189-byte source/target translation table |
+| `0x1801c37c` | `0x1c37c` | `0x3d37c` | per-layout/per-profile key-index map |
+| `0x1801c810` | `0x1c810` | `0x3d810` | 6 base-policy words followed by 57 Fn/other-policy words |
+
+The exact base-policy values are `e8, 53, 39, 47, e3, e2`. The exact Fn-policy
+list contains 57 standard HID or vendor usages. It includes the manual's locked
+function families: F1-F12; digits and `-`/`=`; all four arrows; Escape, Tab,
+Insert, Delete, Page Up, and Page Down; left/right Ctrl and Shift; left Alt/GUI
+and right Alt; Q/W/E/R/T/Y/U/P; A/S/D/F/G/H; Caps Lock; and vendor/custom
+`0xe8`. This is substantially stronger than the earlier inference from runtime
+pointers alone.
+
+The corrected-base Ghidra program has memory block `0x18000000-0x1801e753`.
+It resolves the dispatcher accesses directly to the embedded translation and
+index tables and the policy predicate directly to `0x1801c810` and
+`0x1801c828`. The original base-zero program is retained for audit/comparison.
+
+Evidence: `logs/57-ghidra-runtime-key-table-reference-scan.txt` through
+`logs/65-ghidra-candidate-b-rebased-key-policy-report.txt`. Reproducible decoder:
+`tool/analyze_candidate_b_tables.py`.
+
 ### Candidate B vendor-HID and key-policy analysis
 
-Offline Ghidra analysis identifies `0x00001fbe` as the high-confidence
+Offline Ghidra analysis identifies Candidate B offset `0x1fbe`, runtime
+`0x18001fbe`, as the high-confidence
 vendor-HID command dispatcher. It reads the 64-byte request buffer at
 `0x1802337c`, dispatches top-level opcode `0x50` to a branch containing
 subcommand `0x55`, and dispatches opcode `0x51` to the keyboard-configuration
@@ -431,7 +469,8 @@ source from `0x00` through `0xbc` reaches the same runtime-table translation.
 This agrees with the historical observation that a reserved remap could be
 echoed without becoming effective.
 
-Candidate B contains a separate predicate at `0x00001f6e`, now labeled
+Candidate B contains a separate predicate at offset `0x1f6e`, runtime
+`0x18001f6e`, now labeled
 `IsKeyUnsupportedForLayer`. It copies and searches one of two runtime lists: 6
 32-bit entries for layer selectors 0 or 2, and 57 entries for other selectors.
 The configuration-load state machine calls it with selector 0 for base mappings
@@ -440,13 +479,11 @@ the firmware uses diagnostic strings `R_NSK_M` or `R_NSK_FnM`. This is verified
 device-side reserved/unsupported-key policy logic and is the strongest current
 explanation for the historical "ACK but no effect" behavior.
 
-The 63 list entries begin at runtime RAM `0x1801c810`. Their contents are not
-present at that runtime address in the preserved package, and their initializer
-has not yet been resolved. Therefore the exact list cannot yet be equated
-entry-for-entry with the manual's reserved Fn combinations. Other key tables
-used by the handler also reside in runtime RAM, including the key translation
-table at `0x1801bff6`, key records at `0x18021db4`, and per-key index mapping at
-`0x1801c37c`.
+The 63 list entries at `0x1801c810` are embedded in Candidate B and have now been
+recovered. Their standard HID usages agree closely with the manual's reserved Fn
+combinations. The remaining `0xe8` value is vendor/custom. Other handler tables
+include the key translation table at `0x1801bff6`, key records at `0x18021db4`,
+and per-key index mapping at `0x1801c37c`.
 
 Evidence: `logs/47-ghidra-candidate-b-opcode-search.txt` through
 `logs/54-ghidra-protocol-labels.txt`. Reproducible reports and conservative label
@@ -497,10 +534,10 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
-7. **Resolve Candidate B runtime-data initialization offline:** trace how
-   `0x1801bff6` and the reserved-key lists at `0x1801c810` are populated. Recovering
-   those tables would make target encoding and the exact locked-key set
-   inspectable without replaying vendor commands.
+7. **Continue from the corrected Candidate B mapping:** decode the complete
+   `0x1801c37c` layout/profile map and relate every translation-table value to
+   wire source/target semantics. Keep Candidate B's true entry/call path and
+   integrity calculation separate—they remain unresolved.
 
 ## Evidence integrity
 

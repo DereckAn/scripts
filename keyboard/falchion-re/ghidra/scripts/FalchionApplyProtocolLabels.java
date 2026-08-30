@@ -29,15 +29,23 @@ public class FalchionApplyProtocolLabels extends GhidraScript {
 
     @Override
     public void run() throws Exception {
-        if (!currentProgram.getName().equals("app_candidate_b.bin")) {
+        String programName = currentProgram.getName();
+        long base;
+        if (programName.equals("app_candidate_b.bin")) {
+            base = 0L;
+        }
+        else if (programName.equals("app_candidate_b_18000000.bin")) {
+            base = 0x18000000L;
+        }
+        else {
             println("This script is scoped to app_candidate_b.bin; current=" +
-                currentProgram.getName());
+                programName);
             return;
         }
-        println("PROGRAM " + currentProgram.getName());
+        println("PROGRAM " + programName + " base=" + toAddr(base));
         println("SCOPE local Ghidra analysis database only; source BIN and device untouched");
-        label(0x1f6eL, "IsKeyUnsupportedForLayer");
-        label(0x1fbeL, "VendorHID_CommandDispatcher");
-        label(0x0a70L, "VendorHID_SendResponse64");
+        label(base + 0x1f6eL, "IsKeyUnsupportedForLayer");
+        label(base + 0x1fbeL, "VendorHID_CommandDispatcher");
+        label(base + 0x0a70L, "VendorHID_SendResponse64");
     }
 }
