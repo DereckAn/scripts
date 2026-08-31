@@ -774,6 +774,47 @@ the complete write protocol on paper; **it does not authorise sending any of
 these commands.** Erase/program remain destructive and must not be issued until a
 verified recovery backup exists (roadmap step 5).
 
+### Bootloader vendor-HID wire framing (READ path) — log 82
+
+Transport: vendor HID, **usage page `0xFF01`**, **64-byte reports, no report ID**
+(descriptor at bootloader `0xce5b`). The router `FUN_0000bd40` reads `report[0]`
+as a sub-command (top bit `0x80` = query/IN vs action/OUT; low 7 bits = code) and
+passes `report[1..63]` as the payload to the OUT parser `FUN_0000380c` or the IN
+responder `FUN_00003740`.
+
+OUT sub-commands (`report[0]`, top bit clear):
+
+| `report[0]` | payload | effect |
+|---|---|---|
+| `0x10` | `"ASUSHIDFWU"` | unlock (sets a flag; required only for erase/program) |
+| `0x20` | addr, 4 bytes little-endian | set target address |
+| `0x21` | length, u16 LE | set length |
+| `0x22` | `[count≤0x3c][off u16][data…]` | load program data into the buffer |
+| `0x1f` | `[opcode]` | execute: `0x01`=erase, `0x05`=read, `0x51`=program |
+| `0x11` | — | system reset (reboot) |
+
+IN/query sub-commands (`report[0]` with top bit set, answered by `FUN_00003740`):
+`0x8e` → whole-image CRC verify result (`0xfa` pass / `0xfe` fail); `0x8f` →
+status (busy/unlock flags + error byte); `0xaa` → the read-back data.
+
+**Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
+execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and
+`0 < length <= 0x30`; erase (`1`) and program (`0x51`) additionally require the
+`ASUSHIDFWU` unlock and the same address range. So USB READ covers only the
+application region `[0x10000, 0x7c000)`, in ≤`0x30`-byte chunks — not the
+bootloader region. (An earlier draft incorrectly stated the read handler had no
+address guard; the guard lives in the execute-trigger, not in `FUN_00003b64`.)
+
+Force-bootloader entry: the bootloader `FUN_00002a44` checks RAM `0x20000ffc`
+against magic `0x73207320`; if set, it stays in service mode and clears the flag.
+The application writes that magic (Candidate B literals at `0x18016464`/`0x18016468`
+and `0x1801835c`, near the `"boot"` string) and then triggers an AIRCR reset —
+this is the updater's "Jump to Bootloader". A separate app command `0xb0` +
+`"reset"` performs a plain reboot without the flag.
+
+This documents the exact read-only dump recipe on paper (`notes/step5-recovery-plan.md`,
+Approach A). **No report has been sent to the device.**
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
@@ -806,8 +847,9 @@ until a verified recovery path exists.
 5. **Recovery prerequisite — a verified backup of the installed 1.59 image**
    (plan written: `notes/step5-recovery-plan.md`). This is the first step that
    reads *from the device*, so it is not offline. Two approaches: (A) USB
-   read-back via the bootloader `0x05` READ command (no address guard; least
-   invasive), or (B) a hardware 3.3 V SPI read of the external flash U5 (gold
+   read-back via the bootloader READ command — application region `[0x10000,
+   0x7c000)` only, ≤`0x30` bytes/transfer, no unlock needed (least invasive), see
+   the wire framing below — or (B) a hardware 3.3 V SPI read of the external flash U5 (gold
    standard). Either way: ≥3 identical dumps, validate with
    `analyze_boot_structures.py` + `analyze_candidate_integrity.py`, store
    redundantly. No erase/program is ever issued during preservation, and nothing

@@ -590,6 +590,44 @@ hardware 3.3 V SPI read of external flash U5 — with the same acceptance criter
 `analyze_candidate_integrity.py`, redundant storage) and hard read-only rules.
 Nothing is to be flashed until this backup exists and verifies.
 
+## 2026-08-30 — USB wire framing decoded for the read-back path (offline)
+
+To make Approach A reviewable before any device contact, the exact vendor-HID
+wire framing was decoded read-only (log 82). Transport is usage page `0xFF01`,
+64-byte reports with no report ID; the router `FUN_0000bd40` treats `report[0]`
+as a sub-command (top bit = query vs action) and `report[1..]` as payload. OUT
+sub-commands: `0x10` unlock (`ASUSHIDFWU`), `0x20` set address (4 B LE), `0x21`
+set length (u16), `0x22` load data, `0x1f` execute (`0x01` erase / `0x05` read /
+`0x51` program), `0x11` reset. Queries `0x8e`/`0x8f`/`0xaa` return CRC result /
+status / read data.
+
+This corrected an earlier note: the READ path **is** address-guarded — the
+execute-trigger requires `0x10000 <= addr <= 0x7bfff` and length `<= 0x30`, so a
+USB read covers only the application region, not the bootloader (which is also
+unwritable, so it never needs restoring). Force-bootloader entry was confirmed:
+the bootloader `FUN_00002a44` checks RAM `0x20000ffc` against magic `0x73207320`,
+which the application writes (Candidate B, near the `"boot"` string) before an
+AIRCR reset — the updater's "Jump to Bootloader". `notes/step5-recovery-plan.md`
+Approach A now carries the exact read-only dump recipe. Still entirely offline;
+no report was sent to the device.
+
+## 2026-08-30 — Read-only backup tool built; host access confirmed
+
+Two preparatory items for step 5 were completed without sending anything to the
+device. (1) Host access was checked read-only: the keyboard is present as
+`0b05:1b7e` (application mode) and `/dev/hidraw1-4` are world read/write, so the
+device is reachable without elevated privilege; `hidapi`/`pyusb` are absent, so
+raw hidraw is used. (2) `tool/backup_firmware.py` was written — a strictly
+read-only backup tool whose only constructable reports are read/query/
+set-address/set-length; erase (`0x01`), program (`0x51`), unlock (`ASUSHIDFWU`),
+load-data (`0x22`), and reset (`0x11`) have no code path. Its default dry-run
+(log 83) validated all 46080 dump-plan reports against the guard and self-checked
+that forbidden reports raise; `--run` opens a device only when it is already in
+bootloader mode (`1b7f`) and refuses the application (`1b7e`) — verified by a
+run against the current app-mode device, which correctly refused and wrote
+nothing. The device remains in application mode; no firmware read has been
+performed and no report was sent.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
