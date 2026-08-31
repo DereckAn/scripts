@@ -557,6 +557,39 @@ dispatcher. Logs 79–80 and the two read-only Ghidra scripts capture the eviden
 `ghidra/README.md` was corrected. No device was touched. Remaining roadmap: the
 write/erase protocol (4) and a real recovery backup (5).
 
+## 2026-08-30 — Bootloader write protocol reversed, read-only (roadmap step 4)
+
+The PID-`1b7f` "Gaming Keyboard Bootloader2" write path was decompiled from
+`bootloader_primary.bin`. Its service loop `FUN_00003a7c` dispatches received
+OUT reports through `FUN_00002db8`, which switches on a command byte at report
+offset `0x34`: `0x01` erases (flash-controller command `0xa`), `0x05` reads, and
+`0x51` programs. Both erase and program require `0x10000 <= addr < 0x7c000`, so
+the primary bootloader region cannot be overwritten through these commands.
+Flash access is via a hardware flash/DMA controller (`FUN_00002f0c` descriptor,
+direction byte 0=write/1=read), not raw SPI opcodes. The host side matches the
+preserved updater strings in log 34 (`Jump to Bootloader`, `Start Erase...`,
+`Programming Success! (no check checksum)`, `Read checksum...`) over HID reports.
+
+There is no signature check in the path — consistent with the recomputable
+checksum integrity. Log 81 and `ghidra/scripts/FalchionBootloaderProtocol.java`
+capture the evidence. This documents the protocol on paper only; no erase,
+program, or jump command was sent, and none should be until a verified recovery
+backup exists (step 5). No device was touched.
+
+## 2026-08-30 — Step 5 recovery-backup plan written (no device interaction)
+
+The recovery prerequisite was written up as `notes/step5-recovery-plan.md`. It is
+a plan only; nothing was executed and the keyboard was not touched. Step 5 differs
+from steps 1–4 in that it is the first action that reads *from the device*: it
+produces a verified byte-exact backup of the *installed* v1.59 image, which the
+project does not currently have (the on-disk `M605_V01_00_58.bin` is the older
+v1.00.58 reference, not a readback of this unit). The plan documents two
+approaches — a USB read-back via the bootloader `0x05` READ command, or a
+hardware 3.3 V SPI read of external flash U5 — with the same acceptance criteria
+(≥3 identical dumps, validate with `analyze_boot_structures.py` and
+`analyze_candidate_integrity.py`, redundant storage) and hard read-only rules.
+Nothing is to be flashed until this backup exists and verifies.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -606,8 +639,9 @@ For clarity, this investigation has not:
 - sent vendor-HID configuration or firmware commands during preservation;
 - erased, programmed, reset, or detached any device;
 - proven that the official 1.00.58 image is a safe downgrade or recovery path;
-- reversed the bootloader write/erase/program protocol (Candidate B's integrity
-  fields and its true entry `0x1800023a` are now solved — logs 75–76, 79–80);
+- sent any erase, program, or jump-to-bootloader command, or flashed anything
+  (the write protocol is now understood on paper — logs 75–76, 79–81 — but no
+  command has been issued to the device);
 - built or flashed custom firmware.
 
 ## Recommended continuation

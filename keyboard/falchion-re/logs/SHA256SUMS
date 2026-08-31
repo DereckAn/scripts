@@ -80,3 +80,4 @@ dc8969c5b176ace39877ca243f04abc1ca9bfbc60cecbe24ced10db2c61e0851  logs/77-image-
 49567c60a73d561cb307d3138546a9c6f8d051e06893031e39074a238ea18de9  logs/78-boot-structures.txt
 2c6af3d5a70c3f61a3827bcd42529ffedcde5b20f586d2f6b79248629fb09fa7  logs/79-ghidra-candidate-a-handoff.txt
 c5a5a8d9744033c20aa3ba9ebde0b930d808bf2bbead684c72b8069261c771db  logs/80-ghidra-candidate-b-entry.txt
+324573c1af6bc6f0f830e463fa710a049c4451be2ff766e9dbea710998a9761a  logs/81-ghidra-bootloader-write-protocol.txt

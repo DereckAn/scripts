@@ -740,6 +740,40 @@ dispatcher are now known, so a change can be traced from the vendor-HID command
 down to the affected handler. This does not affect the integrity/boot-gate
 recompute — those remain as recovered above.
 
+### Bootloader write/erase/program protocol (log 81, cross-checked with log 34)
+
+The `1b7f` "Gaming Keyboard Bootloader2" service loop (`FUN_00003a7c`) polls two
+USB flags; the OUT-report path (`FUN_00002db8`) dispatches on a command byte at
+report offset `0x34`:
+
+| cmd byte | handler | operation |
+|---|---|---|
+| `0x01` | `FUN_00003ab8` → `FUN_00003ca8(0, addr, 1)` | **ERASE** (flash-controller erase command `0xa`) |
+| `0x05` | `FUN_00003b64` → `FUN_00003f08` | **READ** flash into the report buffer |
+| `0x51` | `FUN_00003afc` → `FUN_000040a4(0, addr, len, data, 1)` | **PROGRAM** flash (loops over the range) |
+
+- **Self-protection:** both the erase and program handlers require
+  `0xffff < addr < 0x7c000`. The primary bootloader region `[0x0, 0x10000)` is
+  therefore **not** erasable or programmable through these commands; the SN_FWIN
+  header, both candidates, and the backup container region are writable.
+- Flash access is via a hardware flash/DMA controller, not raw SPI opcodes:
+  erase writes a command code (`8`/`9`/`10` for different granularities) to the
+  controller; program/read use `FUN_00002f0c` with a descriptor (`+0x0c` address,
+  `+0x04` data pointer, direction byte `0`=write / `1`=read). Read reuses the
+  same engine as the CRC verifier (`FUN_000026d0`).
+- Host side (updater, log 34) matches exactly: `Jump to Bootloader` →
+  re-enumerate as `1b7f` → `Bootloader Version` → `Start Erase...` (per page) →
+  program (`Programming Success! (no check checksum)`) → `Read checksum...`. The
+  transport is HID reports (`REPORT_ID`/`USAGEPAGE`/`OutputReportByteLength`); the
+  updater CLI takes `PAGE_SIZE` and `APP_PKT_LEN`/`BOOT_PKT_LEN`.
+
+Notably the program path has a **"no check checksum"** mode, and there is no
+signature verification anywhere in this path — consistent with the integrity
+being a recomputable checksum rather than a cryptographic signature. This maps
+the complete write protocol on paper; **it does not authorise sending any of
+these commands.** Erase/program remain destructive and must not be issued until a
+verified recovery backup exists (roadmap step 5).
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
@@ -764,11 +798,20 @@ until a verified recovery path exists.
 3. **Find Candidate B's true runtime entry** — done (see "Candidate B runtime
    entry and full boot chain" above, logs 79–80). Entry is `0x1800023a`
    (application main), called by Candidate A's `FUN_000002c8` after scatter-load.
-4. **Reverse the bootloader write/erase/program protocol (read-only).** The PID
-   `1b7f` command set. This is the gate to any flashing and is the hardest part.
-5. **Recovery prerequisite (out of band).** A hardware readback of the *installed
-   1.59* image as a real backup before anything is flashed; the official 1.00.58
-   image is a different version and is not a verified recovery image.
+4. **Reverse the bootloader write/erase/program protocol** — done, read-only
+   (see "Bootloader write/erase/program protocol" above, log 81). Command bytes
+   `0x01` erase / `0x05` read / `0x51` program, guarded to `[0x10000, 0x7c000)`,
+   cross-checked against the updater strings. Documented on paper only; no
+   command has been or should be sent.
+5. **Recovery prerequisite — a verified backup of the installed 1.59 image**
+   (plan written: `notes/step5-recovery-plan.md`). This is the first step that
+   reads *from the device*, so it is not offline. Two approaches: (A) USB
+   read-back via the bootloader `0x05` READ command (no address guard; least
+   invasive), or (B) a hardware 3.3 V SPI read of the external flash U5 (gold
+   standard). Either way: ≥3 identical dumps, validate with
+   `analyze_boot_structures.py` + `analyze_candidate_integrity.py`, store
+   redundantly. No erase/program is ever issued during preservation, and nothing
+   is flashed until this backup exists and verifies.
 
 Steps 1–3 are pure static analysis. Do not attempt step 4 against the device or
 flash any image until step 5 exists.
