@@ -1,0 +1,40 @@
+PROGRAM build_modified_image
+PURPOSE offline image builder + round-trip integrity verifier
+PRESERVED /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+
+IDEMPOTENT recompute(preserved) == preserved : True
+
+PATCH file 0x3f66f: 0x52 -> 0x72 (inside Candidate B)
+
+NAIVE (no recompute):
+  PASS  record@0x10024(flash 0x60011000)
+  FAIL  record@0x10034(flash 0x60021000)
+  PASS  wordsum@0x0fffc
+  FAIL  wordsum@0x7bffc
+  PASS  primary SNC7320A magic
+  PASS  primary SN_BCFG magic
+  PASS  primary slot0 -> SN_FWIN
+  PASS  backup SNC7320A magic
+  PASS  backup SN_BCFG magic
+  PASS  backup slot0 -> SN_FWIN
+  PASS  SN_FWIN magic
+  PASS  SN_FWIN CRC-enable gate (+0x18) nonzero
+  PASS  entry initial-SP in valid RAM
+
+REBUILT (integrity recomputed):
+  PASS  record@0x10024(flash 0x60011000)
+  PASS  record@0x10034(flash 0x60021000)
+  PASS  wordsum@0x0fffc
+  PASS  wordsum@0x7bffc
+  PASS  primary SNC7320A magic
+  PASS  primary SN_BCFG magic
+  PASS  primary slot0 -> SN_FWIN
+  PASS  backup SNC7320A magic
+  PASS  backup SN_BCFG magic
+  PASS  backup slot0 -> SN_FWIN
+  PASS  SN_FWIN magic
+  PASS  SN_FWIN CRC-enable gate (+0x18) nonzero
+  PASS  entry initial-SP in valid RAM
+
+RESULT idempotent=True naive_passes=False rebuilt_passes=True
+CONCLUSION A patched image can be rebuilt offline to pass every integrity field the bootloader checks; a naive patch fails, proving the checks are live and the recompute is what makes it valid.

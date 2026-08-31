@@ -1,0 +1,33 @@
+PROGRAM analyze_boot_structures
+PURPOSE offline read-only boot-container structure decode
+
+BIN /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+BIN_SIZE 0x7c000
+
+CONTAINER primary @flash 0x60000000 (file 0x0)
+  wrapper magic=b'SNC7320A' bootloader_ptr=0x60001000 size=0x00010000
+  b'SN_BCFG\x00' @+0x200  boot_slots=[0x60010000, 0x00000000]
+CONTAINER backup @flash 0x60060000 (file 0x60000)
+  wrapper magic=b'SNC7320A' bootloader_ptr=0x60062000 size=0x00010000
+  b'SN_BCFG\x00' @+0x200  boot_slots=[0x60010000, 0x00000000]
+
+SN_FWIN @flash 0x60010000 (file 0x10000)
+  magic=b'SN_FWIN\x00' fmt=b'v1.0.00\x00'
+  entry_ptr(+0x10)=0x60011000 crc_gate(+0x18)=0x00000001 entry_initial_SP=0x18036140
+  record[0] @0x10024 addr=0x60011000 len=0x000058ac crc=0x5e75c17a dst=0x18000000
+  record[1] @0x10034 addr=0x60021000 len=0x0001e754 crc=0x1a76c116 dst=0x18000000
+  record[2] @0x10044 TERMINATOR
+
+BOOT_GATE invariants (must hold for a modified image to boot):
+  PASS  primary SNC7320A magic
+  PASS  primary SN_BCFG magic
+  PASS  primary slot0 -> SN_FWIN
+  PASS  backup SNC7320A magic
+  PASS  backup SN_BCFG magic
+  PASS  backup slot0 -> SN_FWIN
+  PASS  SN_FWIN magic
+  PASS  SN_FWIN CRC-enable gate (+0x18) nonzero
+  PASS  entry initial-SP in valid RAM
+
+RESULT boot_gate_ok=True
+CONCLUSION A modified image boots iff these container/header invariants hold AND the integrity fields verify. A Candidate-B data patch preserves every invariant here (magics, slot table, gate, and entry SP are untouched); only the recomputed CRC/word-sum fields change.

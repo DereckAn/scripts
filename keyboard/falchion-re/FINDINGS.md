@@ -309,19 +309,21 @@ handlers decode as valid Cortex-M3 Thumb-2 code.
 
 ### Integrity and authentication
 
-- Candidate payload A is described by flash address `0x60011000`, length
-  `0x58ac`, and stored value `0x5e75c17a`. Standard IEEE CRC-32 over the mapped
-  file bytes matches that value exactly.
-- Candidate payload B uses address `0x60021000`, length `0x1e754`, and stored
-  value `0x1a76c116`, but standard CRC-32 over that range is `0x60c95a7b`. The
-  record structure is now fully decoded (see "SN_FWIN integrity record table"
-  below, log 74) and B's value was ruled out against every tested CRC-32
-  variant, seed, accumulator, and file range. The byte source verified for B is
-  therefore not the container's stored B region as-is; the exact derivation
-  remains unresolved pending the bootloader verify routine.
-- Terminal values `0xfb665ae3` (present in both bootloader copies) and
-  `0x5d27c5a9` do not match the common CRC-32 variants over obvious enclosing
-  ranges tested.
+- **Both SN_FWIN per-record checksums are now fully reproduced offline** (logs
+  75/76). The bootloader routine `FUN_00005028` copies each region to RAM in
+  `0x10000`-byte chunks, takes an independent IEEE CRC-32 of each chunk, and
+  **sums the per-chunk CRC-32 results mod 2³²**. Candidate A (`0x60011000`,
+  `0x58ac`) fits one chunk, so its stored value `0x5e75c17a` is a plain CRC-32.
+  Candidate B (`0x60021000`, `0x1e754`) spans two chunks, so its stored value
+  `0x1a76c116` equals `CRC32(file 0x21000..0x31000) + CRC32(file 0x31000..0x3f754)`
+  `= 0x35530359 + 0xe523bdbd`. This is why plain CRC-32 over B's whole range
+  (`0x60c95a7b`) never matched.
+- **The terminal values are additive 32-bit word-sums**, not CRCs (bootloader
+  `FUN_000026d0`): the last word of a region equals the 32-bit sum of every
+  preceding word. `0xfb665ae3` is the sum over the bootloader region
+  `0x00000..0x10000` (and its duplicate at `0x61000`), and `0x5d27c5a9` is the
+  sum over the whole application region `0x10000..0x7c000`. Both reproduce
+  exactly.
 - The firmware/update path contains CRC/checksum language but no identified
   firmware signature-verification string, embedded public key, or crypto-library
   dependency. Certificate strings in the Windows executables are their own
@@ -544,8 +546,9 @@ script are under `ghidra/scripts/`. All work was offline; no USB command was sen
 
 Offline read-only disassembly and decompilation of `app_candidate_a.bin` recovered
 Candidate A's startup and image-copy path. This is the boot/loader baseline that
-precedes the still-unsolved Candidate B integrity path; it does **not** itself
-contain or compute Candidate B's integrity field `0x1a76c116`.
+precedes the Candidate B integrity check; it does **not** itself contain or
+compute Candidate B's integrity field `0x1a76c116` (that is done by the
+bootloader — now resolved below, logs 75–76).
 
 - **Reset handler** `CandidateA_Reset_Handler @ 0x14a8`: loads the stack pointer
   from the VTOR table (`0xe000ed08` → table[0] → `sp`), calls the C-runtime/clock
@@ -615,17 +618,160 @@ four-word records, each `(flash_addr, length, crc32, ram_dest)`, starting at fil
   (`bootloader_primary.bin` offset `0xc78c`), consistent with the reflected IEEE
   CRC-32 that reproduces A.
 
-Conclusion: the byte source verified for Candidate B is **not** the container's
-stored B region as-is. Because A verifies verbatim but B does not, the remaining
-possibilities are that B is checksummed over device-flash bytes that differ from
-the distribution container, or over a post-transform buffer produced during load.
-Distinguishing these requires reading the bootloader verify routine's data
-source; that is the identified next offline target. This does not change the
-safety conclusion — a modified B image still cannot be produced with a correct
-integrity field until its derivation is known.
+Log 74 established (before the verifier was read) that B's value is not a plain
+CRC-32 of the container's B bytes under any tested variant/seed/range. Reading
+the bootloader verify routine (below, logs 75/76) then resolved exactly why.
 
-Evidence: `logs/74-candidate-integrity-crc-analysis.txt`,
+Evidence: `logs/74-candidate-integrity-crc-analysis.txt`. Read-only; no device
+access.
+
+### Bootloader integrity/verify path recovered (logs 75–76)
+
+Read-only decompilation of `bootloader_primary.bin` recovered the whole boot
+verify chain. The boot orchestrator `FUN_00007ec8` selects a candidate via
+`FUN_00002af0 → FUN_00008000(0x60000000)`, then requires `FUN_000026d0(0x6c000)`
+to pass before jumping to the loaded image.
+
+- **`FUN_00008000`** scans the boot-priority pointer table at flash
+  `0x60000208`, checks each target's `SN_FWIN` magic, validates the entry
+  address (`FUN_00005240`), then verifies the records with `FUN_0000511c`
+  (strings `"[BLD] CRC Verify PASS!"`, `"[BLD] CRC mismatch at region %d"`,
+  `"On Flash: 0x%08X, Actually: 0x%x"`).
+- **`FUN_0000511c`** loops up to 8 region records (`+0x24` addr, `+0x28` len,
+  `+0x2c` stored checksum, `0x10`-byte stride), computes each region's checksum
+  with `FUN_00005028`, and compares it to the stored `+0x2c` word.
+- **`FUN_00005028(out, addr, len, 0x18000000, 0x10000)`** is the checksum:
+  it copies the region to RAM `0x18000000` in `0x10000`-byte chunks, runs the
+  hardware CRC-32 engine (`FUN_000028e8` mode 5, result read by `FUN_000028c4`)
+  over each chunk independently, and **accumulates the per-chunk CRC results by
+  32-bit addition**. One chunk ⇒ plain CRC-32 (Candidate A); two chunks ⇒ the
+  CRC sum (Candidate B). This exactly reproduces `0x5e75c17a` and `0x1a76c116`.
+- **`FUN_000026d0`** is a separate whole-region integrity pass: it reads the
+  region in `0x1000`-byte pages and 32-bit-sums every word, requiring the final
+  word to equal the running sum. This produces the terminal values `0xfb665ae3`
+  (bootloader) and `0x5d27c5a9` (application region).
+
+`tool/analyze_candidate_integrity.py` reproduces all four fields (A, B, and both
+word-sums) from the preserved BIN and asserts each against its stored value.
+
+Patchability consequence: the SN_FWIN integrity is a chunked-CRC **sum**, not a
+cryptographic signature, and the container-wide guard is an additive word-sum —
+both are recomputable offline. A modified Candidate B image can, in principle,
+be given a correct `+0x2c` record value (sum of its per-`0x10000`-chunk CRC-32s)
+and a corrected application word-sum. The safety conclusion is unchanged: this
+lowers the integrity barrier but flashing still depends on the unverified
+bootloader write protocol and recovery path, so no modified image should be
+flashed yet.
+
+Evidence: `logs/75-ghidra-bootloader-verify-report.txt` (read-only decompiles),
+`logs/76-candidate-integrity-resolved.txt`,
+`ghidra/scripts/FalchionBootloaderVerifyReport.java`,
 `tool/analyze_candidate_integrity.py`. Read-only; no device access.
+
+### Boot container structures and boot gate (logs 75, 78)
+
+The bootloader walks a layered container format before it CRC-verifies and jumps.
+Decoded offline and cross-checked against the decompiles in log 75:
+
+```
+SNC7320A wrapper  (primary @flash 0x60000000 / file 0x0;
+                   backup  @flash 0x60060000 / file 0x60000)
+  +0x10 bootloader_ptr (0x60001000 / 0x60062000)   +0x14 size 0x10000
+  +0x200 "SN_BCFG\0" boot-config
+    +0x208 boot-priority pointer table: slot0=0x60010000, slot1=0x00000000
+             -> SN_FWIN header @flash 0x60010000 (file 0x10000)
+                  +0x10 entry_ptr 0x60011000   +0x18 CRC-enable gate (=1)
+                  +0x24.. per-region records (A loader, B application)
+```
+
+Key facts:
+
+- **There is no populated second boot slot.** Slot 1 is `0`, and both the primary
+  and backup `SN_BCFG` point at the same `SN_FWIN` header. So "Candidate A/B" are
+  two *regions* of one firmware (loader + application), not two boot images. The
+  redundancy is a backup *container/bootloader* copy at `0x60060000`, which
+  re-references the same application header.
+- **`FUN_00008000`** selects a candidate by: reading each boot slot, checking
+  `SN_FWIN` magic, validating the entry image's initial SP (`FUN_00005240`),
+  then CRC-verifying the records (`FUN_0000511c`). It returns entry `0x60011000`.
+- **The `SN_FWIN +0x18` gate controls whether records are CRC-checked at all.**
+  It is `1` here, so the records are verified; a `0` there would bypass the CRC
+  loop entirely.
+- **`FUN_00005240`** dereferences the entry pointer and requires the image's
+  *initial stack pointer* (first word at `0x60011000`, here `0x18036140`) to lie
+  in valid RAM (`0x18000001..0x18040000` or `0x20000001..0x20001000`).
+- **Boot gate for a modified image:** the `SNC7320A`/`SN_BCFG`/`SN_FWIN` magics,
+  the slot-0 pointer, the `+0x18` gate, and the entry SP must all remain valid,
+  *in addition to* the recomputed integrity fields. A Candidate-B data patch
+  preserves every one of these (it touches none of them), so the round-trip
+  builder's rebuilt image passes both the integrity checks and the boot gate.
+
+`tool/analyze_boot_structures.py` decodes this and asserts the gate; the builder
+(`tool/build_modified_image.py`) now checks the same invariants on its output.
+
+### Candidate B runtime entry and full boot chain (logs 79–80)
+
+Candidate B has no vector table — RAM `0x18000000` (file `0x21000`) begins with a
+function prologue (`push`), not an initial-SP/reset pair. It is entered by a
+direct call from the loader, and that call was found:
+
+- Candidate A's post-scatter C-runtime `FUN_000002c8` (invoked from the reset
+  handler after `__scatterload`) calls the veneer `thunk_EXT_FUN_1800023a`, i.e.
+  **Candidate B's true runtime entry is `0x1800023a`**.
+- `CandidateB_Entry@0x1800023a` is the application `main`: it emits the literal
+  string **"welcome to main"**, initialises clocks/GPIO/USB, creates the RTOS
+  task **`INIT_TASK`** (entry `0x1800004d`, stack `0x100`, priority `0x14`),
+  starts the scheduler (`func_0x180136be`), and enters the idle loop. It reaches
+  the already-identified `VendorHID_CommandDispatcher@0x18001fbe`.
+
+The boot chain is therefore complete end to end:
+
+```
+ROM/first-stage
+  -> bootloader FUN_00007ec8: select + verify (chunked-CRC records + word-sum)
+     -> Candidate A reset 0x14a8 -> __scatterload copies B to RAM 0x18000000
+        -> FUN_000002c8 -> call B entry 0x1800023a (main)
+           -> RTOS INIT_TASK -> VendorHID dispatcher 0x18001fbe
+```
+
+Consequence for modification: a Candidate-B behaviour patch targets code at
+`0x18000000`-relative addresses (file `0x21000`-relative), and its entry/main and
+dispatcher are now known, so a change can be traced from the vendor-HID command
+down to the affected handler. This does not affect the integrity/boot-gate
+recompute — those remain as recovered above.
+
+### Firmware modification roadmap (offline-first)
+
+Now that both integrity mechanisms are recomputable, a modified image that passes
+the checks we have read can be built entirely offline. The following steps are
+ordered so that everything with device risk comes last, and nothing is flashed
+until a verified recovery path exists.
+
+1. **Offline image builder + round-trip verifier** (done, `tool/build_modified_image.py`,
+   log 77). Applies byte patches to a copy of the preserved BIN, recomputes the
+   SN_FWIN per-record CRC-sum (`record+0x8`) and the additive word-sum guards
+   (`0xfffc`, `0x7bffc`), and re-verifies the rebuilt image. Self-checked:
+   recompute of the unmodified image is idempotent (matches the vendor method
+   byte-for-byte), a naive one-byte patch fails, and the rebuilt image passes all
+   four fields. This proves the "base our own on this one" idea on the bench with
+   zero device risk. The preserved BIN is never modified.
+2. **Decode the remaining boot structures** — done (see "Boot container
+   structures and boot gate" above, log 78). The boot-priority table has one
+   populated slot (no A/B image scheme), the `+0x18` gate enables CRC checking,
+   `FUN_00005240` checks the entry SP, and the container magics/backup copy are
+   mapped. A Candidate-B data patch preserves all of these, so a CRC-valid
+   rebuilt image also satisfies the boot gate.
+3. **Find Candidate B's true runtime entry** — done (see "Candidate B runtime
+   entry and full boot chain" above, logs 79–80). Entry is `0x1800023a`
+   (application main), called by Candidate A's `FUN_000002c8` after scatter-load.
+4. **Reverse the bootloader write/erase/program protocol (read-only).** The PID
+   `1b7f` command set. This is the gate to any flashing and is the hardest part.
+5. **Recovery prerequisite (out of band).** A hardware readback of the *installed
+   1.59* image as a real backup before anything is flashed; the official 1.00.58
+   image is a different version and is not a verified recovery image.
+
+Steps 1–3 are pure static analysis. Do not attempt step 4 against the device or
+flash any image until step 5 exists.
 
 ### Documentation synchronization
 
@@ -672,11 +818,13 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
-7. **Continue offline with Candidate B's load/integrity path:** the KBID maps and
-   ordinary target translation are now decoded. The next high-value static
-   target is the code that loads/verifies Candidate B, which may identify the
-   true entry path and explain integrity value `0x1a76c116` without touching the
-   keyboard.
+7. **Candidate B integrity is now solved (logs 75–76); the true runtime entry
+   path remains open.** The SN_FWIN checksum is a sum of per-`0x10000`-chunk
+   IEEE CRC-32 and the container guard is an additive word-sum, both recomputable
+   offline. The remaining static target is Candidate B's true runtime
+   entry/dispatch after scatter-load (it still has no vector or proven reset
+   path), and — before any flashing — the bootloader's write/erase/program
+   protocol and recovery behavior.
 
 ## Evidence integrity
 
