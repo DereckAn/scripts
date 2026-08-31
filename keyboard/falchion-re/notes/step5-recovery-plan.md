@@ -58,11 +58,39 @@ unlock is needed for READ (only erase/program require the `ASUSHIDFWU` unlock):
    - `report[0]=0x20`, payload = addr as 4 bytes little-endian — set address.
    - `report[0]=0x21`, payload = length u16 LE (`<= 0x30`) — set length.
    - `report[0]=0x1f`, payload[0]=`0x05` — execute READ.
-   - `report[0]=0x8f` → read reply; require `resp[0]==0x0f` and `resp[2]==0`
-     (`state+0x35` error). Repeat while `resp[1] & 0x02` (`state+0x38` READ-busy,
-     log 81) is set, with a bounded attempt count.
    - `report[0]=0xaa` → read reply; require `resp[0]==0x2a`; the payload is
      `resp[1:1+length]` (byte 0 is the response code, not a report-ID prefix).
+     Call this the **sample**. It may be a half-written buffer; do not use it.
+   - `report[0]=0x8f` → read reply; require `resp[0]==0x0f` and `resp[2]==0`
+     (`state+0x35` error — reliable, it is written by the same interrupt-context
+     parser that consumed the EXEC). Abort if `resp[1] & 0x80` (unlocked) or
+     `resp[1] & 0x01` (erase/program in progress).
+   - Accept **only** when this status — the one *after* the sample, never before
+     it — reports `resp[1] & 0x02` clear *and* the sample differs from the value
+     the buffer is known to have held before this chunk's address was set. Then
+     send `0xaa` **again** and use that second reply: it, not the sample, is the
+     value proven complete. See the box below.
+   - Otherwise repeat. While the sample still equals the baseline, re-send the
+     `0x1f` (the parser drops it while a READ is pending); stop re-sending once
+     the sample differs, or the dispatch cadence can lock in step and starve the
+     busy-clear observation. Within a bounded attempt count. If the buffer never
+     changes, re-base through a chunk of already-proven, different content and
+     retry; abort rather than accept a payload whose freshness was never proven.
+
+   Order matters twice: length before address (so that from the set-address
+   report onward both fields hold this chunk's values), and data before status
+   (so the status qualifies the sample that preceded it).
+
+0. **Before the first chunk, bootstrap.** Send `report[0]=0x21` with the chunk
+   length, query `0x8f` (flags must be `0x00`), then query `0xaa`: it must return
+   `0x30` **zero** bytes. The bootloader's reset path walks a `Region$$Table` at
+   `0x0000cca0` whose third entry zero-initialises `0x18011168..0x1802b230` via
+   `__scatterload_zeroinit`, covering `state+0x34`, `state+0x36`, `state+0x38`
+   and `state+4` — so a freshly started bootloader has no pending operation and
+   an all-zero response buffer, which is the first baseline. If it is not all
+   zeros, something has already driven a READ in this session: power-cycle,
+   re-enter bootloader mode, and start again. Later passes must **carry** the
+   previous pass's proven final value instead of re-running this check.
 4. Assemble; repeat the whole dump **at least 3 times**; require identical raw
    bytes *and* identical SHA-256. Abort and write nothing on any timeout, short
    report, wrong response code, status error, or busy timeout.
@@ -71,14 +99,49 @@ unlock is needed for READ (only erase/program require the `ASUSHIDFWU` unlock):
    checksums, the application word-sum, and the container/entry constraints must
    all reproduce. Reject every pass and write nothing if any of that fails.
 
-> **Residual uncertainty — post-EXEC scheduling race.** The `0x1f` parser only
-> sets the pending byte `state+0x34`; the service loop is what sets the busy bit
-> and performs the READ. If the host's first `0x8f` lands before the service loop
-> runs, bit 1 reads clear, the poll exits immediately, and `0xaa` may return the
-> previous chunk's buffer. Status does not expose `state+0x34`, so the host
-> cannot tell "finished" from "not started". Step 5 above is the mitigation — it
-> catches the shifted and stale images this produces — but it is not a proof of
-> correctness, and no timing guarantee should be assumed.
+> **Post-EXEC scheduling race — resolved, and it is real (log 85).** The `0x1f`
+> parser only sets the pending byte `state+0x34` and the request flag at
+> `0x18010bd8`. The READ runs from `FUN_00002db8`, reached only through
+> `FUN_00003a7c`, whose loop body is gated on the *SysTick* flag at `0x18010bd4`
+> that only the handler at `0x000048d0` writes. So an accepted READ waits for the
+> next SysTick tick (a static reload of 161999 core clocks) while the READ itself
+> takes one 48-byte flash transfer. **Polling `state+0x38` bit 1 therefore cannot
+> sequence a READ**: the host reads "clear" for "not started yet", and `0xaa`
+> returns the previous chunk. `state+0x34` is exposed by no query, and exposing it
+> (by over-reading through `0xaa`, or by a locked `1f 01` probe) was examined and
+> rejected — see log 85 §5.
+>
+> Neither the tick period in wall-clock terms nor the duration of one flash
+> transfer is recoverable from the image, so **no claim is made about how often
+> the race is hit** — only that it is possible. An earlier draft of this plan said
+> it was "the default outcome"; that is withdrawn (log 86).
+>
+> **The rule in step 3 is what closes it, and log 85's first attempt at it was
+> wrong (log 86).** That attempt read the status *before* the data query, which
+> excludes nothing: `FUN_00003b64` does not mask interrupts, and a whole READ can
+> start and finish between two host reports with the fetch landing inside it, so
+> a half-old/half-new buffer could be accepted (reproduced as 24 new bytes
+> followed by 24 baseline bytes).
+>
+> The corrected rule is sound. Every write to `state+4` happens while bit 1 is
+> set, because `FUN_00003b64` is called strictly between the stores at
+> `0x00002e0a` and `0x00002e1e`; and it takes its address at dispatch time, so
+> from the set-address report onward every episode writes the requested content
+> while any earlier episode merely re-writes the previous chunk's content — the
+> baseline itself. A status with bit 1 clear therefore lies outside every transfer
+> interval, and if the sample before it differed from the baseline it must lie
+> *after* the first post-set-address episode. From that instant the buffer holds
+> the complete value, so the confirming `0xaa` is safe. No timing assumption.
+>
+> **Do not substitute a fixed delay.** The tick period in wall-clock terms is not
+> recoverable from the image: `FUN_00004910` selects the core clock at runtime.
+>
+> **Operational precondition that the protocol cannot enforce.** Nothing else may
+> send reports to the hidraw node during the dump. A foreign READ queued but not
+> yet dispatched is invisible — `state+0x34` is exposed by no query and `state+4`
+> still reads zero — and if it lands between the bootstrap fetch and the first
+> set-address it publishes an unrelated address's bytes. Step 0 catches a foreign
+> READ that has already *completed*; it cannot catch a pending one.
 5. Power-cycle to return to the application; confirm normal enumeration
    (VID:PID `0b05:1b7e`, v1.59).
 
@@ -159,7 +222,7 @@ Procedure (all read-only):
   read/write, so no elevated privilege is needed. `hidapi`/`pyusb` are not
   installed; the tool uses raw hidraw instead.
 - **Read-only tool: rebuilt and tested offline** — `tool/backup_firmware.py`
-  (logs 83, 84). Its default dry-run validates all 46080 dump-plan reports
+  (logs 83, 84, 85, 86). Its default dry-run validates all 46080 dump-plan reports
   against the guard, and the guard rejected every erase/program/unlock/reset form
   in the self-check. Device selection requires exactly one `1b7f` node whose
   report descriptor declares usage page `0xFF01`, 64-byte IN and OUT, and no
@@ -168,12 +231,15 @@ Procedure (all read-only):
   behind `--force-unreviewed`. The CLI refusal path was exercised without that
   acknowledgement and returned before device selection; the live path has never
   been entered. The
-  READ-busy bit is identified statically (log 81 `FUN_00002db8` holds
-  `state+0x38` bit 1 across the synchronous READ; log 82 returns that byte as
-  status `resp[1]`), but three things are unresolved: the post-EXEC scheduling
-  race above, the Linux hidraw write report-number prefix and read framing for
-  this device (assumed rather than observed), and the total absence of any
-  hardware validation.
+  post-EXEC scheduling race is resolved as *proven possible* (log 85), and the
+  tool implements the corrected sample-then-status handshake (log 86) instead of
+  a busy poll. Three things are still unresolved: the Linux hidraw write
+  report-number prefix and read framing for this device (assumed rather than
+  observed), the total absence of any hardware validation, and the sole-host
+  operational precondition above. The handshake also aborts, rather than guess,
+  if a chunk's content matches the proven baseline and no anchor chunk of
+  different proven content is available to re-base through — including the case
+  of an all-zero first chunk, since the bootstrap baseline is all zeros.
 - **Every completed dump is self-validated in memory before it is written**, and
   the output is published with an exclusive temp file plus `os.link`, so an
   existing backup is never overwritten and no partial file is left behind.

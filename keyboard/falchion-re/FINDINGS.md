@@ -839,28 +839,126 @@ which is a protocol field, not a hidraw report-ID prefix.
 `0x05` the dispatcher sets `state+0x38` bit 1 (`(+0x38 & 0xfd) + 2`), calls the
 synchronous READ `FUN_00003b64`, then clears bit 1 (`+0x38 & 0xfd`) and clears
 the pending byte `+0x34`. Erase (`0x01`) and program (`0x51`) use bit 0 the same
-way. Since `0x8f` returns `state+0x38` as `resp[1]`, **polling `resp[1]` bit 1
-is the READ-in-progress test**; `state+0x34` is the pending-command byte. Bit 7
-of `resp[1]` is the unlock flag.
+way. `state+0x34` is the pending-command byte, cleared **after** the busy bit, so
+`+0x34 == 0` is the strictly stronger completion signal. Bit 7 of `resp[1]` is
+the unlock flag, bit 0 erase/program-busy.
 
-**Residual uncertainty — post-EXEC scheduling race (unresolved).** The `0x1f`
-OUT parser only records the pending command in `state+0x34`; it is the service
-loop (`FUN_00003a7c` → `FUN_00002db8`) that later sets bit 1 and performs the
-READ. Nothing recovered so far establishes that the service loop has run by the
-time the host's first `0x8f` arrives. In that window bit 1 reads **clear**, so a
-host poll would exit immediately and the following `0xaa` could return the
-*previous* chunk's buffer contents. Because the status report exposes
-`state+0x38` and `state+0x35` but **not** `state+0x34`, a host cannot distinguish
-"READ complete" from "READ not yet started". No timing guarantee should be
-assumed, and none is claimed here.
+### Bootloader READ scheduling — log 85 (race resolved)
 
-`tool/backup_firmware.py` mitigates rather than solves this: after all passes
-agree it re-parses the assembled image in memory (`validate_dump()`) and refuses
-to write unless the SN_FWIN record checksums, the application word-sum, and the
-container/entry constraints all reproduce. That rejects the shifted and stale
-images this race would produce, but a race that happened to yield a
-self-consistent image would not be detected. Resolving it properly needs either
-a decompile of the service-loop scheduling or live observation — neither exists.
+**RAM layout, resolved by literal-pool value rather than by offset.** Three
+distinct objects, cross-checked three ways (log 85 §1):
+
+| base | contents |
+|---|---|
+| `T = 0x18011a8c` | `T+0` u32 target address (OUT `0x20`); `T+4..T+0x1003` the `0x1000`-byte PROGRAM source buffer (OUT `0x22`) |
+| `S = 0x18012a8c` (`== T + 0x1000`) | `S+4..S+0x33` the **`0x30`-byte READ response buffer**; `S+0x34` pending; `S+0x35` error; `S+0x36` u16 length; `S+0x38` flags; `S+0x39` host scratch (written by OUT `0x7f`, read by nothing) |
+| `W = 0x18010bd4` | `W+0` SysTick tick flag; `W+4` flash-operation request flag |
+
+This explains the `0x30` READ cap: `S+4 + 0x30 == S+0x34`, so the cap is the
+buffer size, not an arbitrary limit. It also shows the host has **no** write path
+into the response buffer — OUT `0x22`'s last reachable byte is `T+0x1003 == S+3`.
+
+**The post-EXEC scheduling race is PROVEN POSSIBLE.** Three instruction-level
+facts chain:
+
+1. the `0x1f` parser sets `S+0x34` and `W+4` (`str r0,[r1,#0x4]` at `0x0000397e`)
+   and **never** `W+0`; it performs no flash access;
+2. `FUN_00002db8` — the only code that sets the busy bit or performs the READ —
+   is reachable only from `FUN_00003a7c`, whose loop body is guarded by `W+0`
+   (`b 0x00003aa8` at `0x00003a7e` jumps straight to the `W+0` test, so a set
+   `W+4` alone does nothing);
+3. `W+0` is written **only** by the SysTick handler at `0x000048d0`
+   (`movs r0,#1; ldr r1,[0x000048d8]; str r0,[r1,#0x0]; bx lr`), confirmed by an
+   exhaustive scan of every image word equal to `0x18010bd4`.
+
+So an accepted EXEC waits for the next SysTick tick before the READ starts.
+`SYST_RVR` is the static constant `0x278d0 - 1 = 161999`, i.e. 162000 core
+clocks; the wall time is *not* statically determined, because `FUN_00004910`
+selects the core clock at runtime. The duration of one 48-byte flash transfer is
+not recovered either. **No claim is made about how often the race is hit** — only
+that it is possible. What does follow, and needs no timing at all, is structural:
+a clear `state+0x38` bit 1 is also exactly what "not started yet" looks like, so
+**polling bit 1 cannot sequence a READ**. Answering `0x8f` never advances the
+service loop (`FUN_00003740` touches neither `W` nor `S+0x34`), so the following
+`0xaa` can return the previous chunk's buffer.
+
+> **Superseded by log 86.** An earlier version of this section said the race "is
+> the default outcome", that the busy window is "orders of magnitude" shorter
+> than a host round trip and lasts "microseconds", and that every chunk after the
+> first "would have" been stale. All of those are withdrawn: log 85 itself
+> records that neither the tick period in wall-clock terms nor the flash-transfer
+> duration is statically determined. The defensible result is "proven possible".
+
+**No observable completion marker exists.** Log 85 §5 searched for and ruled out
+a generation counter, address echo, completion byte, and sequence number; `S+0x34`
+is exposed by no query. Over-reading `S+0x34` through `0xaa` was examined and
+**rejected**: it needs a set-length above `0x30` while a READ may still be
+pending, and every such value either misaligns the flash engine (`FUN_00002f0c`
+rejects a length with `& 3`, while `FUN_00003f08` ignores that return and spins)
+or corrupts `S+0x36` into the responder's unclamped `memcpy` length. A locked
+`1f 01`/`1f 51` probe *would* work — with bit 7 clear those handlers write
+exactly `S+0x35 = 2` and reach no flash code (`0x000038f0`/`0x0000398e`) — but it
+is not adopted, because it would require the backup tool to be able to construct
+an execute-ERASE report.
+
+### What closes it — corrected handshake, log 86
+
+An earlier attempt at this (log 85 §6) was **unsound**, and log 86 records the
+counterexample. It read the status *before* the data query and accepted any
+sample differing from the baseline. But `FUN_00003b64` does **not** mask
+interrupts (unlike `FUN_00003ab8`/`FUN_00003afc`, which bracket themselves with
+`cpsid`/`cpsie`), so the `0xaa` responder can run while `S+4` is only partly
+written — and a status taken *before* the sample does not exclude that, because a
+whole READ can start and finish between two host reports with the fetch landing
+inside it. The reviewer reproduced it: 24 new bytes followed by 24 baseline bytes,
+accepted.
+
+**Two pieces close it properly.**
+
+*Bootstrap (new static evidence, log 86 §2).* The reset path
+`0x000002f4` → `__scatterload` `0x00000148` → `__rt_entry` `0x000002d4` walks an
+ARM `Region$$Table` at `0x0000cca0..0x0000ccd0`. Its third entry
+(`dst=0x18011168 len=0x1a0c8 fn=0x000001fc`, whose handler begins
+`movs r3,#0; movs r4,#0; movs r5,#0; movs r6,#0; … stm r1!,{r3-r6}` —
+`__scatterload_zeroinit`) covers `T`, `S`, `S+0x34`, `S+0x36`, `S+0x38` and
+`S+4`. So a freshly started bootloader has **no pending operation** and an
+**all-zero response buffer**: the first baseline is *known*, not guessed. The
+tool now refuses to start unless `S+4` reads `0x30` zero bytes.
+
+*The rule (log 86 §3).* Per chunk: `0x21` length, `0x20` address, one `0x1f/0x05`;
+then repeat `0xaa` (sample) **then** `0x8f` (status), and accept only when that
+*following* status reports bit 1 clear and the sample differs from the baseline —
+returning a **second** `0xaa`, not the sample. The proof: every write to `S+4`
+happens while bit 1 is set (`FUN_00003b64` is called strictly between the stores
+at `0x00002e0a` and `0x00002e1e`); `FUN_00003b64` takes its address at dispatch
+time, so from the set-address report onward every episode writes `content(A)`,
+while any earlier episode re-writes the previous chunk's content, which is the
+baseline itself. A status with bit 1 clear therefore lies outside every transfer
+interval; if the preceding sample differed from the baseline it cannot lie before
+the first post-set-address episode, so it lies after it, and `S+4` holds the
+complete `content(A)` from then on. No timing assumption, no unexposed state.
+
+Re-arming the `0x1f` (needed because the parser drops an EXEC while `S+0x34` is
+non-zero) stops once a sample differs from the baseline — otherwise it can lock
+in step with the dispatch cadence and starve the busy-clear observation. That was
+a liveness bug only; it produced refusals, never wrong acceptances.
+
+Also verified and used: the status **error** byte *is* trustworthy for the EXEC's
+own verdict, because it is written by the same interrupt-context parser that
+consumed the EXEC report.
+
+**Residual, not closed.** A foreign READ queued by another process but not yet
+dispatched is invisible — `S+0x34` is exposed by no query and `S+4` still reads
+zero. If it lands between this tool's bootstrap fetch and its first set-address,
+it publishes an unrelated address's bytes. That is closed only by an operational
+precondition the protocol cannot enforce: **nothing else may talk to the hidraw
+node during the dump**. The handshake is also undecidable when a chunk's content
+equals the previously proven buffer; it re-bases through an anchor of proven,
+different content and aborts if none exists yet.
+
+Still unresolved and unchanged: the hidraw transfer convention is assumed, no
+live validation has been performed, and no installed-firmware backup exists, so
+`--run` stays gated behind `--force-unreviewed` and live use is unauthorised.
 
 **Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
 execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and

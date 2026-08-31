@@ -675,7 +675,8 @@ open and write errors are reported without tracebacks, and a failing
 
 `--run` remains gated behind `--force-unreviewed`: the scheduling race, the
 assumed hidraw transfer convention, and the absence of any hardware validation
-are all unresolved.
+are all unresolved. *(The scheduling race was resolved afterwards — see
+"Bootloader READ scheduling resolved" below.)*
 
 **Analyzers and builder.** Both analyzers now take an explicit `argv`, support a
 full image at base 0 and the app-only dump at base `0x10000`, and state which
@@ -701,6 +702,159 @@ top-level selected-entry comparison are recorded as unresolved.
 device. Logs 77 and 83 keep their raw text; their conclusions are marked
 superseded in `logs/COMMANDS.md`.
 
+## Bootloader READ scheduling resolved (log 85)
+
+The last open question in the read-back protocol is closed: **the post-EXEC
+scheduling race is real — proven possible.** Everything below is
+instruction-level from the preserved bootloader image; no device was touched.
+*(This section originally also claimed the race was "the default outcome" and
+described the busy window in microseconds. Both were withdrawn in log 86; see
+"Correction: the first fix was wrong too" below.)*
+
+First, the RAM layout was resolved by literal-pool *value* rather than by offset,
+which turned three loosely-described "state bytes" into three concrete objects:
+the flash-transaction block at `0x18011a8c`, the protocol state block at
+`0x18012a8c` (exactly `0x1000` above it), and the service-loop flag pair at
+`0x18010bd4`. That immediately explained two things the earlier logs had only
+described: the `0x30` READ length cap is the response buffer's size
+(`state+4 + 0x30 == state+0x34`, so a longer READ would overwrite the pending
+byte), and the host has no write path into the response buffer at all.
+
+Then the scheduling. The `0x1f` EXEC parser runs in USB-interrupt context and
+does two things: it sets the pending byte `state+0x34` and it sets the
+flash-operation request flag at `0x18010bd8`. It never touches the *other* flag
+at `0x18010bd4`. But `FUN_00003a7c` — the whole of `main()`'s loop — tests that
+other flag as its loop condition, before executing any of its body, and the only
+code in the image that writes it is the four-instruction SysTick handler at
+`0x000048d0`. So an accepted READ does not start when the EXEC is parsed; it
+starts on the next SysTick tick. `SYST_RVR` is a static `161999`, i.e. 162000
+core clocks, while the READ itself is one 48-byte flash transfer. Neither the tick period in wall-clock terms nor the
+duration of one flash transfer is recoverable from this image, so no claim is
+made about how often the race is hit — only that it is possible.
+
+The consequence is that **polling `state+0x38` bit 1 cannot sequence a READ.**
+The host reads "clear" and takes it to mean "finished" when it actually means
+"not started". This was exactly what `tool/backup_firmware.py` did. The earlier
+characterisation — "unresolved, mitigated by end-of-dump validation" — was too
+generous: the busy poll cannot sequence a READ under *any* timing, so the tool
+was wrong, not merely unproven. How often it would have returned stale bytes is
+not determined, and log 86 withdraws the claim that it always would have.
+
+A search for an observable completion marker came back negative: no generation
+counter, no address echo, no completion byte, no sequence number, and
+`state+0x34` is exposed by no query. Two ways to expose it were examined and
+rejected. Over-reading `state+0x34` through `0xaa` requires raising the length
+above `0x30` while a READ may still be pending; every such value either
+misaligns the flash engine (which the transfer engine rejects while the caller
+spins on it anyway) or corrupts the length field into the responder's unclamped
+`memcpy` size. A locked `1f 01`/`1f 51` probe genuinely would work — with the
+unlock bit clear those handlers write exactly one byte and reach no flash code —
+but adopting it would mean the backup tool could construct an execute-ERASE
+report, and that is the one property the tool exists to guarantee.
+
+What does close it needs no new opcode and no timing assumption. The response
+buffer is written only by the READ handler, which takes its address from the
+shared struct *at dispatch time*. So once the host has set an address and not
+changed it, every subsequent write to that buffer is the content of that address.
+Observe the buffer *before* setting the address to get a baseline; any later
+value that differs from the baseline is provably the requested content. The one
+gap — content that happens to equal the baseline, common in padding runs — is
+closed by re-basing through an anchor chunk of already-proven, different content,
+and the tool aborts rather than accept unproven bytes if no anchor exists yet.
+
+`tool/backup_firmware.py` was changed accordingly: `wait_read_done()` is gone,
+replaced by `check_status()` / `fetch()` / `read_fresh()` and a re-basing
+`read_chunk()`. The status **error** byte is still trusted, and now for a stated
+reason: it is written by the same interrupt-context parser that consumed the EXEC
+report. The busy bit keeps one legitimate use — the READ handler does not mask
+interrupts, unlike erase and program, so the responder can observe a half-written
+buffer, and the handshake skips the fetch while bit 1 is set. The tool also now
+refuses to continue against a bootloader that reports itself unlocked or
+mid-erase. The mocked test suite grew from 85 to 95 tests; `FakeBootloader` was
+rewritten to model the real scheduling — a persistent buffer, EXEC dropped while
+pending, and a tick that fires after a configurable number of query
+opportunities — so the stale-buffer failure is now reproducible in the tests
+rather than assumed away.
+
+What remains unresolved is unchanged and still gates `--run`: the Linux hidraw
+report-number and framing conventions are assumed rather than observed, no live
+validation of any kind has been performed, and no installed-firmware backup
+exists. Nothing here says the protocol works on hardware; it says the host-side
+logic is no longer known to be wrong.
+
+## Correction: the first fix was wrong too (log 86)
+
+An independent review took the log-85 handshake apart, and it was right to. The
+replacement was unsound for a reason log 85 had itself written down two
+paragraphs earlier and then failed to apply: `FUN_00003b64` does not mask
+interrupts, so the `0xaa` responder can run while the response buffer is only
+half written. The handshake read the status *before* the data query — which
+excludes nothing, because a whole READ can start and finish between two host
+reports with the fetch landing inside it. The reviewer reproduced it in memory:
+the implementation accepted 24 new bytes followed by 24 baseline bytes and called
+them a chunk. The test suite could not have caught it, because the fake device
+replaced its buffer atomically and its "busy" knob only toggled a status flag
+without being connected to any incremental write. A model that cannot express the
+failure cannot test for it.
+
+The fix is an ordering one, and it is small: sample first, *then* read the status,
+and if that status says not-busy and the sample differs from the baseline, return
+a **second** fetch rather than the sample. The proof is short enough to state
+here. Every write to the buffer happens while bit 1 is set, because
+`FUN_00003b64` is called strictly between the stores at `0x00002e0a` and
+`0x00002e1e`. The read handler takes its address at dispatch time, so from the
+set-address report onward every episode writes the requested content, while any
+episode that dispatched earlier merely re-writes the previous chunk's content —
+which is the baseline itself, so it changes nothing. A status with bit 1 clear
+therefore lies outside every transfer interval. If the sample that preceded it
+differed from the baseline, that status cannot lie before the first
+post-set-address episode; so it lies after it, and the buffer holds the complete
+value from that instant on. The next fetch is safe. No timing assumption enters
+anywhere.
+
+The bootstrap needed separate evidence, and it turned out to exist. The reset
+vector does not go straight to `__rt_entry`: it goes through `__scatterload` at
+`0x00000148`, which walks a `Region$$Table` at `0x0000cca0`. The third of its
+three entries zero-initialises `0x18011168..0x1802b230` with
+`__scatterload_zeroinit`, and that range covers the pending byte, the length, the
+flags and the response buffer. So a freshly started bootloader has no pending
+operation and an all-zero buffer — the first baseline is *known*, not observed
+and hoped about. The tool now refuses to start unless the buffer reads as those
+48 zero bytes, which is a real check: it fails exactly when a READ has already
+run in this bootloader session and the first baseline could not be trusted.
+
+One residual is genuinely not closable from the host side, and it is now written
+down rather than glossed. A foreign READ queued by another process but not yet
+dispatched is invisible — the pending byte is exposed by no query and the buffer
+still reads zero. If it lands between this tool's bootstrap fetch and its first
+set-address report, it publishes an unrelated address's bytes and the handshake
+accepts them, because from the outside that is indistinguishable from our own
+read completing. The only thing that closes it is an operational precondition the
+protocol cannot enforce: nothing else may talk to the node during the dump. There
+is a test that asserts the hole rather than hiding it, so anyone who later
+believes they have fixed it will hear about it.
+
+Log 85's timing language went too far and has been withdrawn: "the default
+outcome", "orders of magnitude", "microseconds", "almost always". Log 85 itself
+records that the core clock is selected at runtime and that the flash-transfer
+duration is unrecovered, so none of those followed from anything. The defensible
+result is "proven possible", and — usefully — nothing in the corrected design
+depends on the timing either way. Log 85 is preserved unedited; log 86 supersedes
+the specific claims.
+
+Re-arming the execute report also changed, for liveness rather than soundness. It
+can lock in step with the dispatch cadence, starting a new transfer at every
+sample so that the status never catches a quiet moment; it now stops as soon as a
+sample differs from the baseline, at which point an episode is already under way
+and no further execute is needed. The old behaviour produced refusals, never
+wrong acceptances.
+
+The mocked suite went from 95 to 108 tests. `FakeBootloader` now writes the
+buffer incrementally, holds bit 1 for exactly the transfer, lets the main loop
+run between any two reports rather than only around queries, starts from a
+zero-initialised buffer, and can be given a foreign pending operation. `--run`
+remains gated behind `--force-unreviewed`, which was not used.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -723,6 +877,11 @@ The investigation deliberately records mistakes and superseded interpretations:
 | "Erase/program/unlock are unconstructable" | Narrowed to "the guard rejected every write/unlock/reset form in the self-check" (log 84) |
 | Boot-gate framing implying sufficiency | Reframed as necessary-but-incomplete; `FUN_000029d4` and the top-level selected-entry comparison are unresolved (log 84) |
 | Busy poll treated as proof of READ completion | Narrowed: bit 1 clear means "not currently reading". The post-EXEC scheduling race is unresolved and documented; end-of-dump self-validation is a mitigation, not a fix (log 84) |
+| Busy poll used to sequence a READ at all | Wrong, not merely unproven: log 85 proves dispatch is SysTick-gated, so bit 1 reads clear for "not started yet" and the poll exits immediately. Replaced by a buffer-change handshake; the race is now resolved as PROVEN POSSIBLE (log 85) |
+| Log 85's replacement handshake | Also wrong: it read the status *before* the data query, which does not exclude a READ that starts and finishes between two reports, so it could accept a half-old/half-new buffer (24 new + 24 baseline bytes, reproduced). Corrected to sample-then-status-then-confirming-fetch, with an interleaving proof (log 86) |
+| Log 85's timing language | "the default outcome", "orders of magnitude", "microseconds", "almost always" withdrawn: the core clock is selected at runtime and the flash-transfer duration is unrecovered, so no rate follows. The result is "proven possible" (log 86) |
+| `FakeBootloader` replaced the response buffer atomically | The model could not express a partially written buffer, so no test could catch the defect above. Rewritten with incremental transfers and a foreign-pending injector (log 86) |
+| "Polling `resp[1]` bit 1 is the READ-in-progress test" | Narrowed: it is a *mid-transfer* test only, useful for avoiding a half-written buffer. It is not a completion test (log 85) |
 
 ## Files and review order
 
@@ -759,7 +918,8 @@ For clarity, this investigation has not:
 - sent any erase, program, or jump-to-bootloader command, or flashed anything
   (the write protocol is statically recovered — logs 75–76, 79–81 — but no
   command has been issued to the device);
-- run `tool/backup_firmware.py --run`, in any mode, at any time;
+- run `tool/backup_firmware.py --run`, in any mode, at any time (the flag-gated
+  CLI refusal has been exercised, which returns before device selection);
 - opened, read, or written `/dev/hidraw*`;
 - validated any part of the recovered protocol against hardware;
 - built or flashed custom firmware.

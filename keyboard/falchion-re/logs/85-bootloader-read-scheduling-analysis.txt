@@ -1,0 +1,2435 @@
+PROGRAM bootloader-read-scheduling-analysis
+DATE 2026-08-31
+PURPOSE Resolve the post-EXEC scheduling race in the PID-1b7f bootloader READ
+        protocol. Offline static analysis of the preserved firmware only.
+SCOPE   ghidra/project/falchion-hfx :: bootloader_primary.bin
+        (source dumps/vendor/M605_V01_00_58.bin range 0x01000-0x0ffff, base 0)
+
+=== DEVICE ACCESS: NONE ===
+No /dev/hidraw* node was opened, read, or written. No USB device, sysfs USB node,
+or HID/USB report was touched. No reset, driver detach, bootloader entry, erase,
+program, unlock, firmware update, or permission change occurred.
+backup_firmware.py was run only in its default dry-run mode, which opens nothing.
+Every Ghidra invocation used -readOnly -noanalysis against the existing project.
+The preserved raw logs 00-83 were not modified.
+
+=== COMMANDS ===
+Environment for every Ghidra run (per ghidra/README.md, so the user's GUI
+preferences are untouched):
+
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
+  XDG_CONFIG_HOME=/tmp/falchion-ghidra-config \
+  XDG_CACHE_HOME=/tmp/falchion-ghidra-cache \
+  XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+  ghidra-analyzeHeadless ghidra/project falchion-hfx \
+    -process bootloader_primary.bin -readOnly -noanalysis \
+    -scriptPath ghidra/scripts -postScript <SCRIPT>
+
+  <SCRIPT> in order:
+    FalchionBootloaderReadScheduling.java   (new) sections 1,2,3,4,5
+    FalchionBootloaderReadContext.java      (new) sections A,B,C
+    FalchionBootloaderTickProof.java        (new) sections D,E,F,G,H,I
+    FalchionBootloaderIrqContext.java       (new) sections J,K,L
+    FalchionBootloaderCallbackSlot.java     (new) sections M,N,O
+  plus one throwaway script (not committed) for the clock-source decompile.
+
+Verification commands (all offline, see RESULTS):
+  /usr/bin/python3 -m py_compile tool/*.py
+  /usr/bin/python3 -m unittest discover -s tool -t tool -p 'test_*.py'
+  /usr/bin/python3 tool/backup_firmware.py                     # dry-run
+  /usr/bin/python3 tool/backup_firmware.py --run /tmp/must-not-exist.bin
+  git diff --check
+
+=== 1. MEMORY LAYOUT: RESOLVED, NOT ASSUMED (section 1) ===
+The literal-pool words behind every DAT_ symbol in the READ path resolve to
+exactly three RAM objects. Previous logs described the state bytes only by
+offset; the absolute addresses are now known and internally consistent.
+
+  T = 0x18011a8c   flash-transaction block
+      T+0x0000              u32   target address        (set by OUT 0x20)
+      T+0x0004 .. +0x1003   0x1000 bytes  PROGRAM source buffer (OUT 0x22)
+
+  S = 0x18012a8c   protocol state block   (== T + 0x1000, exactly)
+      S+0x0004 .. +0x0033   0x30 bytes  READ RESPONSE BUFFER
+      S+0x0034              u8    pending/command byte
+      S+0x0035              u8    error byte
+      S+0x0036              u16   length
+      S+0x0038              u8    status flags (b0 erase/program busy,
+                                                b1 READ busy, b7 unlocked)
+      S+0x0039              u8    host scratch (OUT 0x7f; read by nothing)
+
+  W = 0x18010bd4   service-loop request flags
+      W+0x0000              u32   SysTick tick flag
+      W+0x0004              u32   flash-operation request flag
+
+  Pointer values (section 1):
+    DAT_00002e60 = DAT_00003808 = DAT_00003a68 = DAT_00003b94 = 0x18012a8c  (S)
+    DAT_00003a74 = DAT_00003af8 = DAT_00003b60 = 0x18011a8c                (T)
+    DAT_00003a78 = DAT_00003ab4 = 0x18010bd4                               (W)
+    DAT_000048d8 = 0x18010bd4                                              (W)
+    DAT_00003d1c = DAT_00003fbc = DAT_00004158 = 0x40022000  (flash controller)
+    DAT_00002a60 = 0x20000ffc, DAT_00002a64 = 0x73207320    (force-boot flag)
+
+Consistency cross-checks that confirm the layout rather than assume it:
+  * FUN_00003afc (PROGRAM) reads its length at (int)T + 0x1036, which is
+    S+0x36 -- only true if S == T + 0x1000.
+  * FUN_00003b64 (READ) reads its address at *(u32 *)(S - 0x1000), which is T+0.
+  * FUN_00003b64's destination is S+4; FUN_00003740 sub-command 0x2a copies from
+    S+4 for S+0x36 bytes. The READ destination and the 0xaa source are the same
+    address. This is why the READ length cap is 0x30: S+4 + 0x30 == S+0x34, so a
+    longer READ would overwrite the pending byte. The cap is the buffer size.
+  * OUT 0x22 writes T+4+off for <=0x3c bytes with off clamped to 0x1000-count,
+    so its last reachable byte is T+0x1003 == S+3. The host therefore has NO
+    write path into the READ response buffer at S+4.
+
+=== 2. EVERY REFERENCE TO THE STATE BYTES (sections 2, G, H, I) ===
+The literal scan is exhaustive: every 4-byte-aligned word in the image equal to
+S, T or W was located and its LDR references resolved. There are no other
+loaders, so the reader/writer sets below are complete for this image.
+
+  S (0x18012a8c) loaded by exactly four functions:
+    FUN_00002db8  service dispatcher   -- reads +0x34; RMW +0x38; writes +0x34
+    FUN_00003740  IN responder         -- reads +0x38, +0x35, +0x36, +4
+    FUN_0000380c  OUT parser           -- reads/writes +0x34,+0x35,+0x36,+0x38,+0x39
+    FUN_00003b64  READ handler         -- reads +0x36, writes S+4 (via -0x1000 addr)
+
+  T (0x18011a8c) loaded by: FUN_0000380c, FUN_00003ab8, FUN_00003afc
+  W (0x18010bd4) loaded by: FUN_0000380c (writes W+4 only),
+                            FUN_00003a7c (reads and clears W+0 and W+4),
+                            0x000048d2  (SysTick handler, writes W+0 only)
+
+command/pending byte S+0x34 -- complete reference list
+  READ  0x000038d8  FUN_0000380c  ldrb r0,[r0,#0x34] ; the 0x1f EXEC gate
+  READ  0x00002dbc  FUN_00002db8  ldrb.w r0,[r0,#0x34] ; dispatcher switch
+  WRITE 0x0000391c  FUN_0000380c  strb.w r1,[r0,#0x34] ; accept sub-op 0x01
+  WRITE 0x00003972  FUN_0000380c  strb.w r1,[r0,#0x34] ; accept sub-op 0x05
+  WRITE 0x000039ce  FUN_0000380c  strb.w r1,[r0,#0x34] ; accept sub-op 0x51
+  WRITE 0x000038ac  FUN_0000380c  (OUT 0x10 unlock) *(S+0x34) = 0
+  WRITE 0x00002df6  FUN_00002db8  strb.w r1,[r0,#0x34] ; 0 after ERASE
+  WRITE 0x00002e24  FUN_00002db8  strb.w r1,[r0,#0x34] ; 0 after READ
+  WRITE 0x00002e52  FUN_00002db8  strb.w r1,[r0,#0x34] ; 0 after PROGRAM
+  NOT EXPOSED BY ANY QUERY. FUN_00003740 returns +0x38 and +0x35 only.
+
+error byte S+0x35 -- complete reference list
+  READ  0x000037c4  FUN_00003740  ldrb.w r0,[r0,#0x35] -> status resp[2]
+  WRITE 0x00003922 / 0x00003978 / 0x000039d4  = 0 on accept (sub-ops 1/5/0x51)
+  WRITE 0x00003932 / 0x00003968 / 0x000039e4  = 1 address out of range
+  WRITE 0x0000393c / 0x000039ee              = 2 not unlocked
+  WRITE 0x00003968 / 0x000039c0              = 3 bad length
+  (0x00003964 movs r1,#3 feeds the sub-op 0x05 bad-length store at 0x00003968;
+   0x00003984 movs r1,#1 feeds the sub-op 0x05 range store at 0x00003988.)
+
+status flags S+0x38 -- complete reference list
+  READ  0x000037ba  FUN_00003740  ldrb.w r0,[r0,#0x38] -> status resp[1]
+  READ  0x000038f2  FUN_0000380c  lsrs r0,r0,#0x7  ; sub-op 0x01 lock gate
+  READ  0x00003990  FUN_0000380c  lsrs r0,r0,#0x7  ; sub-op 0x51 lock gate
+  RMW   0x000038a2..0x000038ac    OUT 0x10 sets bit 7 (unlock)
+  RMW   0x0000387c                OUT 0x11 clears bit 7 before the reset
+  RMW   0x00002dd0..0x00002df0    bit 0 set/cleared around ERASE
+  RMW   0x00002dfe..0x00002e1e    bit 1 set/cleared around READ
+  RMW   0x00002e2c..0x00002e4c    bit 0 set/cleared around PROGRAM
+
+READ-busy bit 0x02 -- set and cleared in exactly one place, FUN_00002db8:
+  00002dfc  ldr   r0,[0x00002e60]      ; S
+  00002dfe  ldrb  r0,[r0,#0x38]
+  00002e02  bic   r0,r0,#0x2
+  00002e06  adds  r0,r0,#0x2           ; S+0x38 |= 0x02
+  00002e08  ldr   r1,[0x00002e60]
+  00002e0a  strb  r0,[r1,#0x38]
+  00002e0e  bl    0x00003b64           ; the flash READ, synchronous
+  00002e12  ldr   r0,[0x00002e60]
+  00002e14  ldrb  r0,[r0,#0x38]
+  00002e18  bic   r1,r0,#0x2           ; S+0x38 &= ~0x02
+  00002e1c  ldr   r0,[0x00002e60]
+  00002e1e  strb  r1,[r0,#0x38]
+  00002e22  movs  r1,#0x0
+  00002e24  strb  r1,[r0,#0x34]        ; pending cleared LAST
+Confirms two things: bit 1 is specific to READ (ERASE/PROGRAM use bit 0), and
+S+0x34 == 0 is a strictly stronger completion signal than bit 1 == 0, because
+the pending byte is cleared after both the transfer and the busy clear.
+
+response/data buffer for 0xaa -- complete reference list
+  WRITE FUN_00003b64 -> FUN_00003f08(2, *T | 0x60000000, *(u16*)(S+0x36), S+4, 1)
+  READ  0x000037e8  FUN_00003740:
+          ldr  r0,[0x00003808]   ; S
+          ldrh r2,[r0,#0x36]     ; length
+          adds r1,r0,#0x4        ; S+4  <-- the same buffer
+          add.w r0,sp,#0x1       ; resp[1]
+          bl   0x00000512        ; memcpy
+  There is no generation counter, address echo, completion byte, or sequence
+  number anywhere near this buffer, and no host write path into it.
+
+=== 3. CONTROL FLOW, END TO END (sections 3, B, G, H, J, K, N, O, P) ===
+EXEC report 0x1f/0x05 -> data query 0xaa, reconstructed:
+
+  [USB interrupt context]
+  NVIC vector[22] (IRQ 6) = 0x00004b9d
+    -> endpoint-completion handler table at 0x00006bf8..0x00006c10
+       { 0x00007605, 0x00007659, 0x000073f9, 0x00007501, 0x000076ad,
+         0x0000744d, 0x00007555 }
+    -> FUN_000076ac / FUN_0000744c / FUN_00007554 clear the endpoint status bits
+       at ep+0x18, set the transfer-done flag, then call the registered callback:
+         if (*DAT_00007758 != 0) (*(code *)*DAT_00007758)(0);
+       DAT_00007758 -> 0x1801062c, the slot written by FUN_0000b0d0, which
+       FUN_00007db4 (called once from main) loads with the word at 0x00007e10
+       = 0x0000bd41. That is FUN_0000bd40, the vendor-HID report router.
+    -> FUN_0000bd40 pulls the 64-byte report with FUN_0000aff0 and splits on
+       report[0] bit 7:  clear -> FUN_0000380c (OUT parser)
+                         set   -> FUN_00003740 (IN responder)
+
+  OUT 0x1f, FUN_0000380c @0x000038d6:
+    000038d6  ldr   r0,[0x00003a68]        ; S
+    000038d8  ldrb  r0,[r0,#0x34]          ; pending
+    000038dc  cmp   r0,#0x0
+    000038de  bne   0x000039c6             ; <-- BUSY: return, NOTHING stored
+    000038e0  ldrb  r0,[r4,#0x0]           ; sub-op
+    000038e2  cmp   r0,#0x1  -> 0x000038f0 (ERASE)
+    000038e6  cmp   r0,#0x5  -> 0x00003942 (READ)
+    000038ea  cmp   r0,#0x51 -> 0x0000398e (PROGRAM)
+              (any other sub-op: no effect at all)
+    sub-op 0x05 accept path @0x0000396e:
+    0000396e  ldrb  r1,[r4,#0x0]
+    00003970  ldr   r0,[0x00003a68]
+    00003972  strb  r1,[r0,#0x34]          ; pending = 5
+    00003976  movs  r1,#0x0
+    00003978  strb  r1,[r0,#0x35]          ; error = 0
+    0000397c  movs  r0,#0x1
+    0000397e  ldr   r1,[0x00003a78]        ; W
+    00003980  str   r0,[r1,#0x4]           ; W+4 = 1  (request flag)
+    -- and that is all it does. No flash access, and NOTHING sets W+0.
+
+  [thread/main context]
+  Reset vector[1] = 0x000002f5 -> FUN_000002d4 -> FUN_00007ec8 (main):
+    ... init ...  FUN_00007db4();          ; registers the router (above)
+    if (DAT_00007f9c - 1U < 0x1000000) {
+      _DAT_e000e014 = DAT_00007f9c + -1;   ; SYST_RVR = 161999
+      *(u8 *)(DAT_00007fa4 + 0xb) = 0xe0;  ; SHPR3 -> SysTick priority
+      _DAT_e000e018 = 0;                   ; SYST_CVR = 0
+      _DAT_e000e010 = 7;                   ; SYST_CSR = ENABLE|TICKINT|CLKSOURCE
+    }
+    do { FUN_00003a7c(); } while( true );  ; the ENTIRE main loop
+
+  FUN_00003a7c, the service loop, at instruction level:
+    00003a7c  push  {r4,lr}
+    00003a7e  b     0x00003aa8          ; test BEFORE any body execution
+    00003a80  ldr   r0,[0x00003ab4]     ; W
+    00003a82  ldr   r0,[r0,#0x4]        ; W+4  flash-operation request
+    00003a84  cbz   r0,0x00003a94
+    00003a86  cpsid i
+    00003a88  movs  r0,#0x0
+    00003a8a  ldr   r1,[0x00003ab4]
+    00003a8c  str   r0,[r1,#0x4]        ; consume W+4
+    00003a8e  cpsie i
+    00003a90  bl    0x00002db8          ; <-- the flash operation runs HERE
+    00003a94  ldr   r0,[0x00003ab4]
+    00003a96  ldr   r0,[r0,#0x0]        ; W+0  SysTick tick
+    00003a98  cbz   r0,0x00003aa8
+    00003a9a  cpsid i
+    00003a9c  movs  r0,#0x0
+    00003a9e  ldr   r1,[0x00003ab4]
+    00003aa0  str   r0,[r1,#0x0]        ; consume W+0
+    00003aa2  cpsie i
+    00003aa4  bl    0x00002e90          ; the 1-tick job
+    00003aa8  ldr   r0,[0x00003ab4]
+    00003aaa  ldr   r0,[r0,#0x0]        ; loop condition reads W+0, NOT W+4
+    00003aac  cmp   r0,#0x0
+    00003aae  bne   0x00003a80
+    00003ab0  pop   {r4,pc}             ; returns immediately when W+0 == 0
+
+  SysTick handler, NVIC vector[15] = 0x000048d1, in full:
+    000048d0  movs  r0,#0x1
+    000048d2  ldr   r1,[0x000048d8]     ; 0x18010bd4 == W
+    000048d4  str   r0,[r1,#0x0]        ; W+0 = 1
+    000048d6  bx    lr
+    000048d8  .word 0x18010bd4
+  It is the ONLY writer of W+0 in the image (exhaustive literal scan, section 2).
+
+  IN 0x8f, FUN_00003740 @0x000037b8:
+    000037b8  ldr   r0,[0x00003808] ; S
+    000037ba  ldrb  r0,[r0,#0x38]
+    000037be  strb  r0,[sp,#0x1]    ; resp[1] = flags
+    000037c2  ldr   r0,[0x00003808]
+    000037c4  ldrb  r0,[r0,#0x35]
+    000037c8  strb  r0,[sp,#0x2]    ; resp[2] = error
+    ... 000037fc movs r1,#0x40 ; mov r0,sp ; bl 0x00004f7c  (send 64 bytes)
+  It touches neither W nor S+0x34, and never calls FUN_00003a7c. Answering a
+  status query cannot cause the pending READ to run.
+
+=== 4. THE ANSWER: THE RACE IS PROVEN POSSIBLE, AND IS THE DEFAULT ===
+Chaining the three verified facts:
+
+  (a) the 0x1f parser sets S+0x34 and W+4, and never W+0        (0x0000397e)
+  (b) FUN_00002db8 -- the only code that sets busy and performs the READ -- is
+      reachable only from FUN_00003a7c, whose loop body is guarded by W+0
+      (`b 0x00003aa8` at 0x00003a7e, then `ldr r0,[r0,#0x0]; cmp; bne`)
+  (c) W+0 is written only by the SysTick handler at 0x000048d0
+
+therefore an accepted EXEC does not start the READ; it waits for the next
+SysTick interrupt. The READ then takes the duration of one flash transfer.
+
+  Answer to "can status 0x8f be serviced after EXEC is accepted but before busy
+  is set?"  YES, provably: the two are in different execution contexts, and
+  nothing in the 0x8f path advances the service loop.
+
+  Answer to "can data 0xaa return a previous chunk during that interval?"
+  YES, provably: 0xaa copies S+4 unconditionally (0x000037e8), and S+4 is
+  written only by FUN_00003b64, which has not run.
+
+  Answer to "is the flash read synchronous or asynchronous?"  Synchronous with
+  respect to the service loop and asynchronous with respect to the host. Inside
+  FUN_00002db8 the call to FUN_00003b64 -> FUN_00003f08 submits a descriptor and
+  then spins (`for (; param_5 != 0; param_5 = param_5 & 1) param_5 =
+  FUN_00004fac(iVar1,0xffffffff);`) before busy is cleared and S+0x34 is zeroed.
+  So S+0x34 == 0 implies the data is fully published. But the host cannot see
+  S+0x34, and the whole sequence is deferred to a tick.
+
+Magnitude. SYST_RVR is the static constant DAT_00007f9c - 1 = 0x000278d0 - 1 =
+161999, so the tick period is exactly 162000 core clocks. The wall-clock value
+is NOT statically determined: FUN_00004910 selects the core clock from
+_DAT_4500000c & 7 at runtime -- 12000000 (DAT_00004998), 0x7fff, or a computed
+PLL value -- so the period is a runtime property, in the low milliseconds. Two
+independent hints point at 1 ms (the tick job FUN_00002e90 wraps its counter at
+1000, a 1 s wrap; and 162000 clocks is 1 ms at 162 MHz), but that is an
+inference, not a recovered constant.
+
+Either way the ordering is decisive: the dispatch latency is one tick
+(milliseconds) while the busy window is one 48-byte flash transfer
+(microseconds). So:
+
+  * "wait to observe busy set, then clear" is NOT a usable strategy. The host
+    cannot sample often enough to land inside the busy window; it will read
+    "clear" for "not started yet" and proceed. This is exactly what
+    tool/backup_firmware.py did before this change, so every chunk after the
+    first would have returned the previous chunk's 48 bytes.
+  * A fixed delay is not recommended and is not used: the tick period is not a
+    static constant in this image.
+
+=== 5. SEARCH FOR AN OBSERVABLE COMPLETION MARKER: NEGATIVE, WITH ONE EXCEPTION
+Searched for a generation counter, address echo, completion byte, sequence
+number, or exposed pending flag:
+
+  * generation counter / sequence number: absent. Nothing in the READ path
+    increments anything. The only counter in the image near this code is
+    FUN_00002e90's 0..999 tick counter at 0x18010e8c, which no query returns.
+  * address echo: absent. T+0 is write-only from the host's point of view; no
+    responder sub-command returns it. FUN_00003740 handles 0x02, 0x09/0x0a,
+    0x0e, 0x0f, 0x2a and a default of "code then zeros" -- none echoes T+0.
+  * completion byte: absent. S+0x39 is host-writable via OUT 0x7f and is read
+    by nothing (no `#0x39` load exists against S).
+  * pending flag: present in RAM at S+0x34 but exposed by no query.
+  * over-reading S+0x34 through 0xaa: technically reachable, and REJECTED.
+    The 0x2a responder copies S+0x36 bytes and does not clamp, so setting the
+    length to 0x31 would place S+0x34 at resp[0x31]. But the length must be
+    raised above 0x30 while a READ may still be pending, and FUN_00003b64 reads
+    the length at dispatch time:
+      - 0x31 is not 4-byte aligned, and FUN_00002f0c rejects a misaligned length
+        ((param_2[0xc] & 3) != 0 -> return 4) while FUN_00003f08 ignores that
+        return and still spins in FUN_00004fac -- a plausible main-loop hang.
+      - the next aligned value, 0x34, would let the READ write flash bytes over
+        S+0x35/0x36/0x37, and an arbitrary S+0x36 then becomes the responder's
+        unclamped memcpy length -> stack overflow in FUN_00003740.
+    Both are worse than the race. Not used.
+  * a locked ERASE/PROGRAM as a pending probe: sound but not adopted. At
+    0x000038f0 (sub-op 0x01) and 0x0000398e (sub-op 0x51) the lock bit is tested
+    first, and with S+0x38 bit 7 clear the whole handler is
+      0000393a  ldr  r0,[0x00003a68] ; 0000393c strb r1,[r0,#0x35]   (r1 = 2)
+    i.e. exactly one byte written and no flash code reached -- so `1f 01` while
+    locked would convert the invisible S+0x34 into a visible S+0x35 (2 if the
+    probe was parsed, i.e. pending == 0; unchanged 0 if it was dropped). It is
+    NOT adopted, because it requires backup_firmware.py to be able to construct
+    an execute-ERASE report, and the tool's central safety property is that no
+    such report has a construction path. Recorded here as recovered evidence.
+
+=== 6. THE SYNCHRONISATION STRATEGY THAT IS BOTH SOUND AND READ-ONLY ===
+Adopted: a buffer-change handshake, using only reports already on the tool's
+read-only allowlist (0x20, 0x21, 0x1f/0x05, 0x8f, 0xaa).
+
+Soundness argument, resting only on facts verified above:
+  1. S+4 is written by FUN_00003b64 and by nothing else (section 2), and the
+     host has no write path into it (section 1).
+  2. FUN_00003b64 takes its address from T+0 at dispatch time, not at EXEC time
+     (`*(u32 *)(S - 0x1000)` inside FUN_00003b64, executed from FUN_00002db8).
+  3. Therefore, once the host has written address A to T+0 via OUT 0x20 and has
+     not changed it again, every subsequent write to S+4 is content(A).
+  4. So if the host observes S+4 via 0xaa *before* setting A, obtaining a
+     baseline B, and later observes a value V != B, then S+4 was written after
+     A was set, hence V == content(A).
+
+That inference uses no timing assumption and no unexposed state. Its one gap is
+V == B, i.e. content(A) happens to equal the last observed buffer -- common in
+padding runs. The tool resolves that by re-basing: drive S+4 to an anchor chunk
+whose content is already proven and differs from B, then repeat. One usable
+anchor is sufficient, because content(A) cannot equal two different values. If
+no anchor is available yet the dump aborts rather than accept unproven bytes.
+
+Also verified and used:
+  * the status error byte IS trustworthy for the EXEC's own verdict, because it
+    is written by the same interrupt-context parser that consumed the EXEC
+    report, before any later report can be processed (0x00003984 range,
+    0x00003964 length, 0x00003938/0x000039ea lock).
+  * the READ-busy bit retains one legitimate use: FUN_00003b64 does NOT mask
+    interrupts (unlike FUN_00003ab8 and FUN_00003afc, which both bracket
+    themselves with cpsid/cpsie), so the USB responder can observe a
+    half-written S+4. The handshake skips the 0xaa fetch while bit 1 is set.
+  * the flash engine requires 4-byte alignment of address, destination, and
+    length (FUN_00002f0c: `(*param_2 & 3)`, `(param_2[4] & 3)`,
+    `(param_2[0xc] & 3)`). Chunk addresses are multiples of 0x30 and the length
+    is 0x30, so both are aligned; the destination S+4 = 0x18012a90 is aligned.
+  * the status flags byte exposes bit 7 (unlocked) and bit 0 (erase/program in
+    progress); the tool now aborts on either, since a read-only dump has no
+    business proceeding against an unlocked or mid-write bootloader.
+
+=== 7. FACT CLASSIFICATION ===
+VERIFIED (instruction-level, this image)
+  * S/T/W absolute addresses and the field layout, cross-checked three ways.
+  * The complete reader/writer set for S+0x34, S+0x35, S+0x36, S+0x38, S+0x39,
+    the busy bit, and the S+4 response buffer.
+  * The 0x1f parser's pending gate at 0x000038de, and that a dropped EXEC
+    writes nothing.
+  * The 0x1f parser sets S+0x34 and W+4 and never W+0.
+  * FUN_00002db8 is reachable only from FUN_00003a7c; its body order is
+    busy-set, transfer, busy-clear, pending-clear.
+  * FUN_00003a7c's loop body is gated on W+0, tested before any body execution.
+  * The SysTick handler at 0x000048d0 is the only writer of W+0.
+  * main() is FUN_00007ec8 and its whole loop is `do { FUN_00003a7c(); } while(1)`.
+  * SysTick is enabled with a static reload of 161999.
+  * 0x8f returns S+0x38 and S+0x35; 0xaa returns S+4 for S+0x36 bytes; neither
+    exposes S+0x34 and neither advances the service loop.
+  * No generation counter, address echo, completion byte, or sequence number
+    exists in the READ path.
+  * FUN_00003b64 does not mask interrupts; FUN_00003ab8/FUN_00003afc do.
+  * The flash engine's 4-byte alignment requirements.
+  * With S+0x38 bit 7 clear, sub-ops 0x01 and 0x51 write only S+0x35 = 2.
+
+STRONG INFERENCE
+  * The vendor-HID router runs in USB-interrupt context. The evidence: it is
+    registered once from main into 0x1801062c and invoked only from
+    FUN_0000744c/FUN_00007554/FUN_000076ac (exhaustive literal scan of that
+    slot); those three clear endpoint interrupt-status bits at ep+0x18; they sit
+    in the handler table at 0x00006bf8 alongside NVIC vector[22] = 0x00004b9d,
+    which is a hardware USB ISR; and main() has no path to any of them. The one
+    unclosed link is the indirect dispatch inside the un-decompiled ISR body at
+    0x00004b9c..0x00004d3c. NOTE: the race conclusion does not depend on this --
+    it depends only on W+0 gating and on the 0x8f path not advancing the loop.
+  * The SysTick period is 1 ms (162000 clocks at 162 MHz), from the 0..999 tick
+    counter in FUN_00002e90. The core clock is runtime-selected, so this is not
+    a recovered constant.
+
+UNRESOLVED ASSUMPTIONS (unchanged by this analysis)
+  * The Linux hidraw write() report-number prefix and read() framing for this
+    device are assumed, never observed.
+  * No live validation of any kind has been performed, and no installed-firmware
+    backup exists.
+  * The duration of one 48-byte flash READ transfer is not quantified; FUN_00004fac
+    spins on controller status bits whose timing is not recoverable statically.
+  * Whether a chunk can be proven when the region begins with two or more
+    identical 48-byte chunks: the handshake has no anchor there and aborts.
+  * The bootloader region [0x0, 0x10000) remains unreadable over USB; nothing
+    here changes that.
+
+=== 8. CODE AND DOCUMENTATION CHANGES ===
+tool/backup_firmware.py
+  * removed wait_read_done(): polling state+0x38 bit 1 is proven not to sequence
+    a READ, and BUSY_ATTEMPTS with it.
+  * added check_status(): validates the status reply, aborts on a non-zero error
+    byte, on bit 7 (unlocked), and on bit 0 (erase/program in progress).
+  * added fetch(): one 0xaa exchange, documented as returning the buffer, not
+    "the data for the last address".
+  * added exec_read(), read_fresh() (the handshake), and reworked read_chunk()
+    to re-base through an anchor when the handshake is inconclusive.
+  * dump_once() now bootstraps a baseline before the first address is set,
+    refuses a mixed-length plan, and maintains the anchor set.
+  * docstring, dry-run summary and LIVE_REFUSAL rewritten around the resolved
+    race. --run remains gated behind --force-unreviewed.
+tool/test_backup_firmware.py
+  * FakeBootloader rewritten to model the real scheduling: a persistent response
+    buffer, EXEC dropped while pending, and a _tick() that dispatches after a
+    configurable number of query opportunities (dispatch_delay=None never runs).
+  * new regression tests for the exact state transition and stale-buffer cases.
+ghidra/scripts/
+  * five new read-only report scripts (listed under COMMANDS).
+FINDINGS.md, TIMELINE.md, notes/step5-recovery-plan.md, logs/COMMANDS.md,
+logs/SHA256SUMS updated.
+
+=== VERIFICATION: PY_COMPILE ===
+$ /usr/bin/python3 -m py_compile tool/analyze_boot_structures.py tool/analyze_candidate_b_tables.py tool/analyze_candidate_integrity.py tool/analyze_sonix_firmware.py tool/backup_firmware.py tool/build_modified_image.py tool/test_backup_firmware.py tool/test_build_modified_image.py
+[exit 0]
+
+=== VERIFICATION: UNIT TESTS (mocked; no device) ===
+$ /usr/bin/python3 -m unittest discover -s $PWD/tool -t $PWD/tool -p 'test_*.py'
+  (log 84 recorded 'discover -s tool -t tool'; python 3.14's loader rejects
+   that relative form, so the absolute form is used and recorded here.)
+[exit 0]
+----------------------------------------------------------------------
+Ran 95 tests in 0.644s
+
+OK
+
+=== VERIFICATION: BACKUP TOOL DRY-RUN (no device opened) ===
+$ /usr/bin/python3 tool/backup_firmware.py
+PROGRAM backup_firmware  (DRY-RUN — no device opened)
+REGION app-only base=0x10000 size=0x6c000 range 0x10000..0x7c000
+chunks=9216 chunk_max=0x30 bytes=0x6c000
+validated 46080 reports; all pass the read-only guard
+sample chunk @0x10000 len 0x30:
+  set_addr     20 00 00 01 00 00 00 00 ...
+  set_len      21 30 00 00 00 00 00 00 ...
+  exec_read    1f 05 00 00 00 00 00 00 ...
+  query_status 8f 00 00 00 00 00 00 00 ...
+  query_data   aa 00 00 00 00 00 00 00 ...
+expected replies: status resp[0]=0x0f (resp[1]=state+0x38 flags, resp[2]=state+0x35 error), data resp[0]=0x2a
+per-chunk freshness handshake: up to 64 status+data rounds, accepting only a buffer that changed away from the observed baseline; re-bases through up to 2 anchor chunks
+state+0x38 bit 0x02 (READ busy) is used only to skip sampling a mid-transfer buffer, never as a completion signal (log 85)
+safety self-check: PASS (guard rejected every write/unlock/reset form; read reports built)
+RESULT dry_run_ok=True guard_rejected_forbidden=True
+LIMITATION No device was opened. The post-EXEC scheduling race is now resolved (log 85: proven possible, SysTick-gated) and handled by the buffer-change handshake, but the hidraw transfer convention and the absence of any live validation remain unresolved, so --run stays gated behind --force-unreviewed.
+[exit 0]
+
+=== VERIFICATION: --run IS REFUSED WITHOUT ACKNOWLEDGEMENT (no device opened) ===
+$ /usr/bin/python3 tool/backup_firmware.py --run /tmp/must-not-exist.bin
+REFUSING to run live.
+
+The read-back protocol is recovered from static analysis only and has never been
+exercised against hardware.
+
+The post-EXEC scheduling race is no longer an open question: log 85 proves it is
+real and is the *default* outcome for back-to-back reports. The 0x1f parser only
+sets the pending byte state+0x34 and the request flag at 0x18010bd8; the READ
+runs from FUN_00002db8, reached only through FUN_00003a7c, whose loop body is
+gated on the SysTick flag at 0x18010bd4 that only the SysTick handler at
+0x000048d0 writes. Polling state+0x38 bit 1 therefore cannot sequence a READ.
+This tool no longer tries to: read_fresh() accepts a chunk only when the
+response buffer is observed to change away from a baseline observed before the
+address was set, which is sound without any timing assumption.
+
+Two things still remain unvalidated:
+
+  1. The Linux hidraw write() report-number prefix and read() framing for this
+     device are assumed, not observed.
+  2. No live validation of any kind has been performed and no installed-firmware
+     backup exists, so there is nothing to restore from if a read path misbehaves.
+
+And one residual limit of the handshake itself: when a chunk's content equals the
+previously observed buffer it re-bases through an anchor chunk of proven,
+different content, and aborts the dump if no such anchor exists yet rather than
+accept unproven bytes.
+
+Live use is unauthorised pending independent review. If that review has happened
+and you accept the risk, re-run with --force-unreviewed.
+[exit 2]
+
+/tmp/must-not-exist.bin created: False
+
+=== VERIFICATION: git diff --check ===
+$ git diff --check
+[exit 0] (no output = no whitespace errors)
+
+=== RESULT ===
+race_resolved=True  verdict=PROVEN_POSSIBLE (and the default outcome)
+device_accessed=False
+tests_passed=95
+live_use_authorised=False (unresolved: assumed hidraw transfer convention,
+  no hardware validation, no installed backup)
+
+
+############################################################################
+# APPENDIX: raw output of the five read-only Ghidra report scripts.
+# Reproduce with the COMMANDS above. Ghidra startup boilerplate removed;
+# script output otherwise verbatim.
+############################################################################
+
+--------------------------- APPENDIX s1 ---------------------------
+=== SECTION 1: literal-pool pointer values ===
+PTR DAT_00002a60 = 0x20000ffc
+PTR DAT_00002a64 = 0x73207320
+PTR DAT_00002e60 = 0x18012a8c
+PTR DAT_00003808 = 0x18012a8c
+PTR DAT_00003a68 = 0x18012a8c
+PTR DAT_00003a6c = 0xe000ed0c
+PTR DAT_00003a70 = 0x05fa0000
+PTR DAT_00003a74 = 0x18011a8c
+PTR DAT_00003a78 = 0x18010bd4
+PTR DAT_00003ab4 = 0x18010bd4
+PTR DAT_00003af8 = 0x18011a8c
+PTR DAT_00003b60 = 0x18011a8c
+PTR DAT_00003b94 = 0x18012a8c
+PTR DAT_00003d1c = 0x40022000
+PTR DAT_00003fbc = 0x40022000
+PTR DAT_00004158 = 0x40022000
+=== SECTION 2: literal-pool occurrences of each base and their loaders ===
+LITERAL 0x00002a60 = 0x20000ffc refs= 00002a44<-FUN_00002a44@00002a44 00002a50<-FUN_00002a44@00002a44
+LITERAL 0x00002a64 = 0x73207320 refs= 00002a48<-FUN_00002a44@00002a44
+LITERAL 0x00002e60 = 0x18012a8c refs= 00002dba<-FUN_00002db8@00002db8 00002dce<-FUN_00002db8@00002db8 00002dda<-FUN_00002db8@00002db8 00002de4<-FUN_00002db8@00002db8 00002dee<-FUN_00002db8@00002db8 00002dfc<-FUN_00002db8@00002db8 00002e08<-FUN_00002db8@00002db8 00002e12<-FUN_00002db8@00002db8 00002e1c<-FUN_00002db8@00002db8 00002e2a<-FUN_00002db8@00002db8 00002e36<-FUN_00002db8@00002db8 00002e40<-FUN_00002db8@00002db8 00002e4a<-FUN_00002db8@00002db8
+LITERAL 0x00002e88 = 0xe000ed0c refs= 00002e6a<-none 00002e78<-none
+LITERAL 0x00002e8c = 0x05fa0000 refs= 00002e72<-none
+LITERAL 0x000036f8 = 0x40022000 refs= 000036b6<-FUN_000036b4@000036b4 000036be<-FUN_000036b4@000036b4 000036e4<-FUN_000036b4@000036b4 000036ec<-FUN_000036b4@000036b4
+LITERAL 0x00003808 = 0x18012a8c refs= 000037b8<-FUN_00003740@00003740 000037c2<-FUN_00003740@00003740 000037e8<-FUN_00003740@00003740
+LITERAL 0x00003a68 = 0x18012a8c refs= 00003872<-FUN_0000380c@0000380c 0000387c<-FUN_0000380c@0000380c 00003888<-FUN_0000380c@0000380c 00003890<-FUN_0000380c@0000380c 00003898<-FUN_0000380c@0000380c 000038a2<-FUN_0000380c@0000380c 000038ac<-FUN_0000380c@0000380c 000038d6<-FUN_0000380c@0000380c 000038f0<-FUN_0000380c@0000380c 00003910<-FUN_0000380c@0000380c 00003930<-FUN_0000380c@0000380c 0000393a<-FUN_0000380c@0000380c 00003956<-FUN_0000380c@0000380c 0000395c<-FUN_0000380c@0000380c 00003966<-FUN_0000380c@0000380c 00003970<-FUN_0000380c@0000380c 00003986<-FUN_0000380c@0000380c 0000398e<-FUN_0000380c@0000380c 000039ac<-FUN_0000380c@0000380c 000039b2<-FUN_0000380c@0000380c 000039be<-FUN_0000380c@0000380c 000039cc<-FUN_0000380c@0000380c 000039e2<-FUN_0000380c@0000380c 000039ec<-FUN_0000380c@0000380c 00003a1c<-FUN_0000380c@0000380c 00003a58<-FUN_0000380c@0000380c
+LITERAL 0x00003a6c = 0xe000ed0c refs= 000038b8<-FUN_0000380c@0000380c 000038c6<-FUN_0000380c@0000380c
+LITERAL 0x00003a70 = 0x05fa0000 refs= 000038c0<-FUN_0000380c@0000380c
+LITERAL 0x00003a74 = 0x18011a8c refs= 000038fa<-FUN_0000380c@0000380c 00003904<-FUN_0000380c@0000380c 00003942<-FUN_0000380c@0000380c 0000394c<-FUN_0000380c@0000380c 00003998<-FUN_0000380c@0000380c 000039a2<-FUN_0000380c@0000380c 00003a0e<-FUN_0000380c@0000380c 00003a46<-FUN_0000380c@0000380c
+LITERAL 0x00003a78 = 0x18010bd4 refs= 00003928<-FUN_0000380c@0000380c 0000397e<-FUN_0000380c@0000380c 000039da<-FUN_0000380c@0000380c
+LITERAL 0x00003ab4 = 0x18010bd4 refs= 00003aa8<-FUN_00003a7c@00003a7c 00003a80<-FUN_00003a7c@00003a7c 00003a8a<-FUN_00003a7c@00003a7c 00003a94<-FUN_00003a7c@00003a7c 00003a9e<-FUN_00003a7c@00003a7c
+LITERAL 0x00003af8 = 0x18011a8c refs= 00003abc<-FUN_00003ab8@00003ab8 00003ac6<-FUN_00003ab8@00003ab8 00003ade<-FUN_00003ab8@00003ab8
+LITERAL 0x00003b60 = 0x18011a8c refs= 00003b00<-FUN_00003afc@00003afc 00003b0a<-FUN_00003afc@00003afc 00003b14<-FUN_00003afc@00003afc
+LITERAL 0x00003b94 = 0x18012a8c refs= 00003b78<-FUN_00003b64@00003b64 00003b86<-FUN_00003b64@00003b64
+LITERAL 0x00003d1c = 0x40022000 refs= 00003cb6<-FUN_00003ca8@00003ca8
+LITERAL 0x00003d70 = 0x40022000 refs= 00003d24<-FUN_00003d20@00003d20
+LITERAL 0x00003e08 = 0x40022000 refs= 00003d7a<-FUN_00003d74@00003d74
+LITERAL 0x00003e28 = 0x40022000 refs= 00003e16<-FUN_00003e0c@00003e0c
+LITERAL 0x00003f04 = 0x40022000 refs=
+LITERAL 0x00003fbc = 0x40022000 refs= 00003f1e<-FUN_00003f08@00003f08
+LITERAL 0x000040a0 = 0x40022000 refs=
+LITERAL 0x00004158 = 0x40022000 refs= 000040ba<-FUN_000040a4@000040a4
+LITERAL 0x000048d8 = 0x18010bd4 refs= 000048d2<-none
+LITERAL 0x00005114 = 0xe000ed0c refs= 000050f8<-FUN_000050f4@000050f4 00005106<-FUN_000050f4@000050f4
+LITERAL 0x00005118 = 0x05fa0000 refs= 00005100<-FUN_000050f4@000050f4
+LITERAL 0x000056d4 = 0x40022000 refs= 000056a0<-FUN_00005648@00005648 000056b6<-FUN_00005648@00005648
+LITERAL 0x0000ce44 = 0xe000ed0c refs=
+LITERAL 0x0000ce48 = 0x05fa0000 refs=
+BASE 0x05fa0000 loaders= FUN_0000380c@0000380c FUN_000050f4@000050f4
+BASE 0x18010bd4 loaders= FUN_0000380c@0000380c FUN_00003a7c@00003a7c
+BASE 0x18011a8c loaders= FUN_0000380c@0000380c FUN_00003ab8@00003ab8 FUN_00003afc@00003afc
+BASE 0x18012a8c loaders= FUN_00002db8@00002db8 FUN_00003740@00003740 FUN_0000380c@0000380c FUN_00003b64@00003b64
+BASE 0x20000ffc loaders= FUN_00002a44@00002a44
+BASE 0x40022000 loaders= FUN_000036b4@000036b4 FUN_00003ca8@00003ca8 FUN_00003d20@00003d20 FUN_00003d74@00003d74 FUN_00003e0c@00003e0c FUN_00003f08@00003f08 FUN_000040a4@000040a4 FUN_00005648@00005648
+BASE 0x73207320 loaders= FUN_00002a44@00002a44
+BASE 0xe000ed0c loaders= FUN_0000380c@0000380c FUN_000050f4@000050f4
+=== SECTION 3: transitive callers (call graph upward) ===
+ROOT FUN_0000bd40@0000bd40
+  FUN_0000bd40@0000bd40 <- (no callers: root/vector/indirect)
+ROOT FUN_0000380c@0000380c
+  FUN_0000380c@0000380c <- FUN_0000bd40@0000bd40 
+  FUN_0000bd40@0000bd40 <- (no callers: root/vector/indirect)
+ROOT FUN_00003740@00003740
+  FUN_00003740@00003740 <- FUN_0000bd40@0000bd40 
+  FUN_0000bd40@0000bd40 <- (no callers: root/vector/indirect)
+ROOT FUN_00003a7c@00003a7c
+  FUN_00003a7c@00003a7c <- FUN_00007ec8@00007ec8 
+  FUN_00007ec8@00007ec8 <- FUN_000002d4@000002d4 
+  FUN_000002d4@000002d4 <- FUN_00000148@00000148 
+  FUN_00000148@00000148 <- FUN_000002d4@000002d4 
+ROOT FUN_00002db8@00002db8
+  FUN_00002db8@00002db8 <- FUN_00003a7c@00003a7c 
+  FUN_00003a7c@00003a7c <- FUN_00007ec8@00007ec8 
+  FUN_00007ec8@00007ec8 <- FUN_000002d4@000002d4 
+  FUN_000002d4@000002d4 <- FUN_00000148@00000148 
+  FUN_00000148@00000148 <- FUN_000002d4@000002d4 
+ROOT FUN_00003b64@00003b64
+  FUN_00003b64@00003b64 <- FUN_00002db8@00002db8 
+  FUN_00002db8@00002db8 <- FUN_00003a7c@00003a7c 
+  FUN_00003a7c@00003a7c <- FUN_00007ec8@00007ec8 
+  FUN_00007ec8@00007ec8 <- FUN_000002d4@000002d4 
+  FUN_000002d4@000002d4 <- FUN_00000148@00000148 
+  FUN_00000148@00000148 <- FUN_000002d4@000002d4 
+ROOT FUN_0000aff0@0000aff0
+  FUN_0000aff0@0000aff0 <- FUN_0000bd40@0000bd40 
+  FUN_0000bd40@0000bd40 <- (no callers: root/vector/indirect)
+ROOT FUN_00004f7c@00004f7c
+  FUN_00004f7c@00004f7c <- FUN_00003740@00003740 
+  FUN_00003740@00003740 <- FUN_0000bd40@0000bd40 
+  FUN_0000bd40@0000bd40 <- (no callers: root/vector/indirect)
+ROOT FUN_00007da8@00007da8
+  FUN_00007da8@00007da8 <- FUN_00003740@00003740 
+  FUN_00003740@00003740 <- FUN_0000bd40@0000bd40 
+  FUN_0000bd40@0000bd40 <- (no callers: root/vector/indirect)
+ROOT FUN_00007ec8@00007ec8
+  FUN_00007ec8@00007ec8 <- FUN_000002d4@000002d4 
+  FUN_000002d4@000002d4 <- FUN_00000148@00000148 
+  FUN_00000148@00000148 <- FUN_000002d4@000002d4 
+=== SECTION 4: vector table 0x00000000..0x000000ff ===
+VECTOR[ 0] @0x00000000 = 0x1802b230 none
+VECTOR[ 1] @0x00000004 = 0x000002f5 FUN_000002d4@000002d4
+VECTOR[ 2] @0x00000008 = 0x0000031d none
+VECTOR[ 3] @0x0000000c = 0x00002e65 none
+VECTOR[ 4] @0x00000010 = 0x00000321 none
+VECTOR[ 5] @0x00000014 = 0x00000323 none
+VECTOR[ 6] @0x00000018 = 0x00000325 none
+VECTOR[11] @0x0000002c = 0x00000327 none
+VECTOR[12] @0x00000030 = 0x00000329 none
+VECTOR[14] @0x00000038 = 0x0000032b none
+VECTOR[15] @0x0000003c = 0x000048d1 none
+VECTOR[16] @0x00000040 = 0x0000032f none
+VECTOR[17] @0x00000044 = 0x0000032f none
+VECTOR[18] @0x00000048 = 0x0000032f none
+VECTOR[19] @0x0000004c = 0x0000030b none
+VECTOR[20] @0x00000050 = 0x0000032f none
+VECTOR[21] @0x00000054 = 0x0000032f none
+VECTOR[22] @0x00000058 = 0x00004b9d none
+VECTOR[23] @0x0000005c = 0x0000032f none
+VECTOR[24] @0x00000060 = 0x0000032f none
+VECTOR[25] @0x00000064 = 0x0000032f none
+VECTOR[26] @0x00000068 = 0x0000032f none
+VECTOR[27] @0x0000006c = 0x0000032f none
+VECTOR[28] @0x00000070 = 0x0000032f none
+VECTOR[29] @0x00000074 = 0x0000032f none
+VECTOR[30] @0x00000078 = 0x0000032f none
+VECTOR[31] @0x0000007c = 0x0000032f none
+VECTOR[32] @0x00000080 = 0x0000032f none
+VECTOR[33] @0x00000084 = 0x0000032f none
+VECTOR[34] @0x00000088 = 0x0000032f none
+VECTOR[35] @0x0000008c = 0x0000032f none
+VECTOR[36] @0x00000090 = 0x0000032f none
+VECTOR[37] @0x00000094 = 0x0000032f none
+VECTOR[38] @0x00000098 = 0x0000032f none
+VECTOR[39] @0x0000009c = 0x0000032f none
+VECTOR[40] @0x000000a0 = 0x0000032f none
+VECTOR[41] @0x000000a4 = 0x0000032f none
+VECTOR[42] @0x000000a8 = 0x0000032f none
+VECTOR[43] @0x000000ac = 0x0000032f none
+VECTOR[44] @0x000000b0 = 0x0000032f none
+VECTOR[45] @0x000000b4 = 0x0000032f none
+VECTOR[46] @0x000000b8 = 0x0000032f none
+VECTOR[47] @0x000000bc = 0x0000032f none
+VECTOR[48] @0x000000c0 = 0x0000032f none
+VECTOR[49] @0x000000c4 = 0x0000032f none
+VECTOR[50] @0x000000c8 = 0x0000032f none
+VECTOR[51] @0x000000cc = 0x0000032f none
+VECTOR[52] @0x000000d0 = 0x00004b0d none
+VECTOR[53] @0x000000d4 = 0x00004b1d none
+VECTOR[54] @0x000000d8 = 0x0000032f none
+VECTOR[55] @0x000000dc = 0x0000032f none
+VECTOR[56] @0x000000e0 = 0x0000032f none
+VECTOR[57] @0x000000e4 = 0x0000032f none
+VECTOR[58] @0x000000e8 = 0x0000032f none
+VECTOR[59] @0x000000ec = 0x0000032f none
+VECTOR[60] @0x000000f0 = 0x0000032f none
+VECTOR[61] @0x000000f4 = 0x0000032f none
+VECTOR[62] @0x000000f8 = 0x0000032f none
+VECTOR[63] @0x000000fc = 0x0000032f none
+=== SECTION 5: disassembly of state-byte accesses ===
+--- range 0x02db8..0x02e60 ---
+00002db8  push {r4,lr}                 push
+00002dba  ldr r0,[0x00002e60]          ldr
+00002dbc  ldrb.w r0,[r0,#0x34]         ldrb.w
+00002dc0  cmp r0,#0x1                  cmp
+00002dc2  beq 0x00002dce               beq
+00002dc4  cmp r0,#0x5                  cmp
+00002dc6  beq 0x00002dfc               beq
+00002dc8  cmp r0,#0x51                 cmp
+00002dca  bne 0x00002e58               bne
+00002dcc  b 0x00002e2a                 b
+00002dce  ldr r0,[0x00002e60]          ldr
+00002dd0  ldrb.w r0,[r0,#0x38]         ldrb.w
+00002dd4  bic r0,r0,#0x1               bic
+00002dd8  adds r0,r0,#0x1              adds
+00002dda  ldr r1,[0x00002e60]          ldr
+00002ddc  strb.w r0,[r1,#0x38]         strb.w
+00002de0  bl 0x00003ab8                bl
+00002de4  ldr r0,[0x00002e60]          ldr
+00002de6  ldrb.w r0,[r0,#0x38]         ldrb.w
+00002dea  bic r1,r0,#0x1               bic
+00002dee  ldr r0,[0x00002e60]          ldr
+00002df0  strb.w r1,[r0,#0x38]         strb.w
+00002df4  movs r1,#0x0                 movs
+00002df6  strb.w r1,[r0,#0x34]         strb.w
+00002dfa  b 0x00002e5a                 b
+00002dfc  ldr r0,[0x00002e60]          ldr
+00002dfe  ldrb.w r0,[r0,#0x38]         ldrb.w
+00002e02  bic r0,r0,#0x2               bic
+00002e06  adds r0,r0,#0x2              adds
+00002e08  ldr r1,[0x00002e60]          ldr
+00002e0a  strb.w r0,[r1,#0x38]         strb.w
+00002e0e  bl 0x00003b64                bl
+00002e12  ldr r0,[0x00002e60]          ldr
+00002e14  ldrb.w r0,[r0,#0x38]         ldrb.w
+00002e18  bic r1,r0,#0x2               bic
+00002e1c  ldr r0,[0x00002e60]          ldr
+00002e1e  strb.w r1,[r0,#0x38]         strb.w
+00002e22  movs r1,#0x0                 movs
+00002e24  strb.w r1,[r0,#0x34]         strb.w
+00002e28  b 0x00002e5a                 b
+00002e2a  ldr r0,[0x00002e60]          ldr
+00002e2c  ldrb.w r0,[r0,#0x38]         ldrb.w
+00002e30  bic r0,r0,#0x1               bic
+00002e34  adds r0,r0,#0x1              adds
+00002e36  ldr r1,[0x00002e60]          ldr
+00002e38  strb.w r0,[r1,#0x38]         strb.w
+00002e3c  bl 0x00003afc                bl
+00002e40  ldr r0,[0x00002e60]          ldr
+00002e42  ldrb.w r0,[r0,#0x38]         ldrb.w
+00002e46  bic r1,r0,#0x1               bic
+00002e4a  ldr r0,[0x00002e60]          ldr
+00002e4c  strb.w r1,[r0,#0x38]         strb.w
+00002e50  movs r1,#0x0                 movs
+00002e52  strb.w r1,[r0,#0x34]         strb.w
+00002e56  b 0x00002e5a                 b
+00002e58  nop                          nop
+00002e5a  nop                          nop
+00002e5c  pop {r4,pc}                  pop
+--- range 0x03740..0x03808 ---
+00003740  push {r4,lr}                 push
+00003742  sub sp,#0x40                 sub
+00003744  mov r4,r0                    mov
+00003746  bl 0x00007da8                bl
+0000374a  cmp r0,#0x0                  cmp
+0000374c  beq 0x00003804               beq
+0000374e  movs r1,#0x40                movs
+00003750  mov r0,sp                    mov
+00003752  bl 0x00000644                bl
+00003756  strb.w r4,[sp,#0x0]          strb.w
+0000375a  cmp r4,#0xe                  cmp
+0000375c  beq 0x000037ce               beq
+0000375e  bgt 0x0000376e               bgt
+00003760  cmp r4,#0x2                  cmp
+00003762  beq 0x00003778               beq
+00003764  cmp r4,#0x9                  cmp
+00003766  beq 0x00003792               beq
+00003768  cmp r4,#0xa                  cmp
+0000376a  bne 0x000037f8               bne
+0000376c  b 0x00003794                 b
+0000376e  cmp r4,#0xf                  cmp
+00003770  beq 0x000037b8               beq
+00003772  cmp r4,#0x2a                 cmp
+00003774  bne 0x000037f8               bne
+00003776  b 0x000037e8                 b
+00003778  movs r0,#0x8                 movs
+0000377a  strb.w r0,[sp,#0x1]          strb.w
+0000377e  movs r0,#0x0                 movs
+00003780  strb.w r0,[sp,#0x2]          strb.w
+00003784  movs r0,#0x1                 movs
+00003786  strb.w r0,[sp,#0x3]          strb.w
+0000378a  movs r0,#0x0                 movs
+0000378c  strb.w r0,[sp,#0x4]          strb.w
+00003790  b 0x000037fa                 b
+00003792  b 0x000037fa                 b
+00003794  movs r0,#0xb0                movs
+00003796  strb.w r0,[sp,#0x1]          strb.w
+0000379a  movs r0,#0x1                 movs
+0000379c  strb.w r0,[sp,#0x2]          strb.w
+000037a0  movs r0,#0x0                 movs
+000037a2  strb.w r0,[sp,#0x3]          strb.w
+000037a6  strb.w r0,[sp,#0x4]          strb.w
+000037aa  movs r0,#0x1                 movs
+000037ac  strb.w r0,[sp,#0x5]          strb.w
+000037b0  movs r0,#0x0                 movs
+000037b2  strb.w r0,[sp,#0x6]          strb.w
+000037b6  b 0x000037fa                 b
+000037b8  ldr r0,[0x00003808]          ldr
+000037ba  ldrb.w r0,[r0,#0x38]         ldrb.w
+000037be  strb.w r0,[sp,#0x1]          strb.w
+000037c2  ldr r0,[0x00003808]          ldr
+000037c4  ldrb.w r0,[r0,#0x35]         ldrb.w
+000037c8  strb.w r0,[sp,#0x2]          strb.w
+000037cc  b 0x000037fa                 b
+000037ce  mov.w r0,#0x6c000            mov.w
+000037d2  bl 0x000026d0                bl
+000037d6  cbnz r0,0x000037e0           cbnz
+000037d8  movs r0,#0xfa                movs
+000037da  strb.w r0,[sp,#0x1]          strb.w
+000037de  b 0x000037e6                 b
+000037e0  movs r0,#0xfe                movs
+000037e2  strb.w r0,[sp,#0x1]          strb.w
+000037e6  b 0x000037fa                 b
+000037e8  ldr r0,[0x00003808]          ldr
+000037ea  ldrh r2,[r0,#0x36]           ldrh
+000037ec  adds r1,r0,#0x4              adds
+000037ee  add.w r0,sp,#0x1             add.w
+000037f2  bl 0x00000512                bl
+000037f6  b 0x000037fa                 b
+000037f8  nop                          nop
+000037fa  nop                          nop
+000037fc  movs r1,#0x40                movs
+000037fe  mov r0,sp                    mov
+00003800  bl 0x00004f7c                bl
+00003804  add sp,#0x40                 add
+00003806  pop {r4,pc}                  pop
+--- range 0x0380c..0x03a68 ---
+0000380c  push {r4,r5,r6,r7,r8,lr}     push
+00003810  mov r7,r0                    mov
+00003812  mov r4,r1                    mov
+00003814  cmp r7,#0x20                 cmp
+00003816  beq 0x00003914               beq
+00003818  bgt 0x00003828               bgt
+0000381a  cmp r7,#0x10                 cmp
+0000381c  beq 0x00003836               beq
+0000381e  cmp r7,#0x11                 cmp
+00003820  beq 0x00003898               beq
+00003822  cmp r7,#0x1f                 cmp
+00003824  bne 0x00003916               bne
+00003826  b 0x000038d6                 b
+00003828  cmp r7,#0x21                 cmp
+0000382a  beq 0x00003918               beq
+0000382c  cmp r7,#0x22                 cmp
+0000382e  beq 0x0000391a               beq
+00003830  cmp r7,#0x7f                 cmp
+00003832  bne 0x00003824               bne
+00003834  b 0x00003a56                 b
+00003836  ldrb r0,[r4,#0x0]            ldrb
+00003838  cmp r0,#0x41                 cmp
+0000383a  bne 0x00003896               bne
+0000383c  ldrb r0,[r4,#0x1]            ldrb
+0000383e  cmp r0,#0x53                 cmp
+00003840  bne 0x00003896               bne
+00003842  ldrb r0,[r4,#0x2]            ldrb
+00003844  cmp r0,#0x55                 cmp
+00003846  bne 0x00003896               bne
+00003848  ldrb r0,[r4,#0x3]            ldrb
+0000384a  cmp r0,#0x53                 cmp
+0000384c  bne 0x00003896               bne
+0000384e  ldrb r0,[r4,#0x4]            ldrb
+00003850  cmp r0,#0x48                 cmp
+00003852  bne 0x00003896               bne
+00003854  ldrb r0,[r4,#0x5]            ldrb
+00003856  cmp r0,#0x49                 cmp
+00003858  bne 0x00003896               bne
+0000385a  ldrb r0,[r4,#0x6]            ldrb
+0000385c  cmp r0,#0x44                 cmp
+0000385e  bne 0x00003896               bne
+00003860  ldrb r0,[r4,#0x7]            ldrb
+00003862  cmp r0,#0x46                 cmp
+00003864  bne 0x00003896               bne
+00003866  ldrb r0,[r4,#0x8]            ldrb
+00003868  cmp r0,#0x57                 cmp
+0000386a  bne 0x00003896               bne
+0000386c  ldrb r0,[r4,#0x9]            ldrb
+0000386e  cmp r0,#0x55                 cmp
+00003870  bne 0x00003896               bne
+00003872  ldr r0,[0x00003a68]          ldr
+00003874  ldrb.w r0,[r0,#0x38]         ldrb.w
+00003878  lsrs r0,r0,#0x7              lsrs
+0000387a  cbnz r0,0x0000388e           cbnz
+0000387c  ldr r0,[0x00003a68]          ldr
+0000387e  ldrb.w r0,[r0,#0x38]         ldrb.w
+00003882  bic r0,r0,#0x80              bic
+00003886  adds r0,#0x80                adds
+00003888  ldr r1,[0x00003a68]          ldr
+0000388a  strb.w r0,[r1,#0x38]         strb.w
+0000388e  movs r1,#0x0                 movs
+00003890  ldr r0,[0x00003a68]          ldr
+00003892  strb.w r1,[r0,#0x34]         strb.w
+00003896  b 0x00003a62                 b
+00003898  ldr r0,[0x00003a68]          ldr
+0000389a  ldrb.w r0,[r0,#0x38]         ldrb.w
+0000389e  lsrs r0,r0,#0x7              lsrs
+000038a0  cbz r0,0x000038b2            cbz
+000038a2  ldr r0,[0x00003a68]          ldr
+000038a4  ldrb.w r0,[r0,#0x38]         ldrb.w
+000038a8  bic r1,r0,#0x80              bic
+000038ac  ldr r0,[0x00003a68]          ldr
+000038ae  strb.w r1,[r0,#0x38]         strb.w
+000038b2  nop                          nop
+000038b4  dsb #0xf                     dsb
+000038b8  ldr r0,[0x00003a6c]          ldr
+000038ba  ldr r0,[r0,#0x0]             ldr
+000038bc  and r0,r0,#0x700             and
+000038c0  ldr r1,[0x00003a70]          ldr
+000038c2  orrs r0,r1                   orrs
+000038c4  adds r0,r0,#0x4              adds
+000038c6  ldr r1,[0x00003a6c]          ldr
+000038c8  str r0,[r1,#0x0]             str
+000038ca  dsb #0xf                     dsb
+000038ce  nop                          nop
+000038d0  nop                          nop
+000038d2  nop                          nop
+000038d4  b 0x000038d2                 b
+000038d6  ldr r0,[0x00003a68]          ldr
+000038d8  ldrb.w r0,[r0,#0x34]         ldrb.w
+000038dc  cmp r0,#0x0                  cmp
+000038de  bne 0x000039c6               bne
+000038e0  ldrb r0,[r4,#0x0]            ldrb
+000038e2  cmp r0,#0x1                  cmp
+000038e4  beq 0x000038f0               beq
+000038e6  cmp r0,#0x5                  cmp
+000038e8  beq 0x00003942               beq
+000038ea  cmp r0,#0x51                 cmp
+000038ec  bne 0x000039c8               bne
+000038ee  b 0x0000398e                 b
+000038f0  ldr r0,[0x00003a68]          ldr
+000038f2  ldrb.w r0,[r0,#0x38]         ldrb.w
+000038f6  lsrs r0,r0,#0x7              lsrs
+000038f8  cbz r0,0x00003938            cbz
+000038fa  ldr r0,[0x00003a74]          ldr
+000038fc  ldr r0,[r0,#0x0]             ldr
+000038fe  cmp.w r0,#0x10000            cmp.w
+00003902  bcc 0x0000392e               bcc
+00003904  ldr r0,[0x00003a74]          ldr
+00003906  ldr r0,[r0,#0x0]             ldr
+00003908  cmp.w r0,#0x7c000            cmp.w
+0000390c  bcs 0x0000392e               bcs
+0000390e  ldrb r1,[r4,#0x0]            ldrb
+00003910  ldr r0,[0x00003a68]          ldr
+00003912  b 0x0000391c                 b
+00003914  b 0x000039fa                 b
+00003916  b 0x00003a60                 b
+00003918  b 0x00003a14                 b
+0000391a  b 0x00003a22                 b
+0000391c  strb.w r1,[r0,#0x34]         strb.w
+00003920  movs r1,#0x0                 movs
+00003922  strb.w r1,[r0,#0x35]         strb.w
+00003926  movs r0,#0x1                 movs
+00003928  ldr r1,[0x00003a78]          ldr
+0000392a  str r0,[r1,#0x4]             str
+0000392c  b 0x00003940                 b
+0000392e  movs r1,#0x1                 movs
+00003930  ldr r0,[0x00003a68]          ldr
+00003932  strb.w r1,[r0,#0x35]         strb.w
+00003936  b 0x00003940                 b
+00003938  movs r1,#0x2                 movs
+0000393a  ldr r0,[0x00003a68]          ldr
+0000393c  strb.w r1,[r0,#0x35]         strb.w
+00003940  b 0x000039f6                 b
+00003942  ldr r0,[0x00003a74]          ldr
+00003944  ldr r0,[r0,#0x0]             ldr
+00003946  cmp.w r0,#0x10000            cmp.w
+0000394a  bcc 0x00003984               bcc
+0000394c  ldr r0,[0x00003a74]          ldr
+0000394e  ldr r0,[r0,#0x0]             ldr
+00003950  cmp.w r0,#0x7c000            cmp.w
+00003954  bcs 0x00003984               bcs
+00003956  ldr r0,[0x00003a68]          ldr
+00003958  ldrh r0,[r0,#0x36]           ldrh
+0000395a  cbz r0,0x00003964            cbz
+0000395c  ldr r0,[0x00003a68]          ldr
+0000395e  ldrh r0,[r0,#0x36]           ldrh
+00003960  cmp r0,#0x30                 cmp
+00003962  ble 0x0000396e               ble
+00003964  movs r1,#0x3                 movs
+00003966  ldr r0,[0x00003a68]          ldr
+00003968  strb.w r1,[r0,#0x35]         strb.w
+0000396c  b 0x0000398c                 b
+0000396e  ldrb r1,[r4,#0x0]            ldrb
+00003970  ldr r0,[0x00003a68]          ldr
+00003972  strb.w r1,[r0,#0x34]         strb.w
+00003976  movs r1,#0x0                 movs
+00003978  strb.w r1,[r0,#0x35]         strb.w
+0000397c  movs r0,#0x1                 movs
+0000397e  ldr r1,[0x00003a78]          ldr
+00003980  str r0,[r1,#0x4]             str
+00003982  b 0x0000398c                 b
+00003984  movs r1,#0x1                 movs
+00003986  ldr r0,[0x00003a68]          ldr
+00003988  strb.w r1,[r0,#0x35]         strb.w
+0000398c  b 0x000039f6                 b
+0000398e  ldr r0,[0x00003a68]          ldr
+00003990  ldrb.w r0,[r0,#0x38]         ldrb.w
+00003994  lsrs r0,r0,#0x7              lsrs
+00003996  cbz r0,0x000039ea            cbz
+00003998  ldr r0,[0x00003a74]          ldr
+0000399a  ldr r0,[r0,#0x0]             ldr
+0000399c  cmp.w r0,#0x10000            cmp.w
+000039a0  bcc 0x000039e0               bcc
+000039a2  ldr r0,[0x00003a74]          ldr
+000039a4  ldr r0,[r0,#0x0]             ldr
+000039a6  cmp.w r0,#0x7c000            cmp.w
+000039aa  bcs 0x000039e0               bcs
+000039ac  ldr r0,[0x00003a68]          ldr
+000039ae  ldrh r0,[r0,#0x36]           ldrh
+000039b0  cbz r0,0x000039bc            cbz
+000039b2  ldr r0,[0x00003a68]          ldr
+000039b4  ldrh r0,[r0,#0x36]           ldrh
+000039b6  cmp.w r0,#0x1000             cmp.w
+000039ba  ble 0x000039ca               ble
+000039bc  movs r1,#0x3                 movs
+000039be  ldr r0,[0x00003a68]          ldr
+000039c0  strb.w r1,[r0,#0x35]         strb.w
+000039c4  b 0x000039f2                 b
+000039c6  b 0x000039f8                 b
+000039c8  b 0x000039f4                 b
+000039ca  ldrb r1,[r4,#0x0]            ldrb
+000039cc  ldr r0,[0x00003a68]          ldr
+000039ce  strb.w r1,[r0,#0x34]         strb.w
+000039d2  movs r1,#0x0                 movs
+000039d4  strb.w r1,[r0,#0x35]         strb.w
+000039d8  movs r0,#0x1                 movs
+000039da  ldr r1,[0x00003a78]          ldr
+000039dc  str r0,[r1,#0x4]             str
+000039de  b 0x000039f2                 b
+000039e0  movs r1,#0x1                 movs
+000039e2  ldr r0,[0x00003a68]          ldr
+000039e4  strb.w r1,[r0,#0x35]         strb.w
+000039e8  b 0x000039f2                 b
+000039ea  movs r1,#0x2                 movs
+000039ec  ldr r0,[0x00003a68]          ldr
+000039ee  strb.w r1,[r0,#0x35]         strb.w
+000039f2  b 0x000039f6                 b
+000039f4  nop                          nop
+000039f6  nop                          nop
+000039f8  b 0x00003a62                 b
+000039fa  ldrb r0,[r4,#0x3]            ldrb
+000039fc  lsls r0,r0,#0x18             lsls
+000039fe  ldrb r1,[r4,#0x2]            ldrb
+00003a00  orr.w r0,r0,r1, lsl #0x10    orr.w
+00003a04  ldrb r1,[r4,#0x1]            ldrb
+00003a06  orr.w r0,r0,r1, lsl #0x8     orr.w
+00003a0a  ldrb r1,[r4,#0x0]            ldrb
+00003a0c  orrs r0,r1                   orrs
+00003a0e  ldr r1,[0x00003a74]          ldr
+00003a10  str r0,[r1,#0x0]             str
+00003a12  b 0x00003a62                 b
+00003a14  ldrb r0,[r4,#0x0]            ldrb
+00003a16  ldrb r1,[r4,#0x1]            ldrb
+00003a18  orr.w r1,r0,r1, lsl #0x8     orr.w
+00003a1c  ldr r0,[0x00003a68]          ldr
+00003a1e  strh r1,[r0,#0x36]           strh
+00003a20  b 0x00003a62                 b
+00003a22  ldrb r5,[r4,#0x0]            ldrb
+00003a24  cmp r5,#0x3c                 cmp
+00003a26  ble 0x00003a2c               ble
+00003a28  movs r0,#0x3c                movs
+00003a2a  b 0x00003a2e                 b
+00003a2c  mov r0,r5                    mov
+00003a2e  mov r5,r0                    mov
+00003a30  ldrb r0,[r4,#0x1]            ldrb
+00003a32  ldrb r1,[r4,#0x2]            ldrb
+00003a34  orr.w r6,r0,r1, lsl #0x8     orr.w
+00003a38  rsb.w r0,r5,#0x1000          rsb.w
+00003a3c  cmp r0,r6                    cmp
+00003a3e  bge 0x00003a46               bge
+00003a40  rsb.w r0,r5,#0x1000          rsb.w
+00003a44  uxth r6,r0                   uxth
+00003a46  ldr r1,[0x00003a74]          ldr
+00003a48  adds r1,r1,#0x4              adds
+00003a4a  adds r0,r1,r6                adds
+00003a4c  mov r2,r5                    mov
+00003a4e  adds r1,r4,#0x3              adds
+00003a50  bl 0x00000512                bl
+00003a54  b 0x00003a62                 b
+00003a56  ldrb r1,[r4,#0x0]            ldrb
+00003a58  ldr r0,[0x00003a68]          ldr
+00003a5a  strb.w r1,[r0,#0x39]         strb.w
+00003a5e  b 0x00003a62                 b
+00003a60  nop                          nop
+00003a62  nop                          nop
+00003a64  pop.w {r4,r5,r6,r7,r8,pc}    pop.w
+--- range 0x03a7c..0x03ab8 ---
+00003a7c  push {r4,lr}                 push
+00003a7e  b 0x00003aa8                 b
+00003a80  ldr r0,[0x00003ab4]          ldr
+00003a82  ldr r0,[r0,#0x4]             ldr
+00003a84  cbz r0,0x00003a94            cbz
+00003a86  cpsid i                      cpsid
+00003a88  movs r0,#0x0                 movs
+00003a8a  ldr r1,[0x00003ab4]          ldr
+00003a8c  str r0,[r1,#0x4]             str
+00003a8e  cpsie i                      cpsie
+00003a90  bl 0x00002db8                bl
+00003a94  ldr r0,[0x00003ab4]          ldr
+00003a96  ldr r0,[r0,#0x0]             ldr
+00003a98  cbz r0,0x00003aa8            cbz
+00003a9a  cpsid i                      cpsid
+00003a9c  movs r0,#0x0                 movs
+00003a9e  ldr r1,[0x00003ab4]          ldr
+00003aa0  str r0,[r1,#0x0]             str
+00003aa2  cpsie i                      cpsie
+00003aa4  bl 0x00002e90                bl
+00003aa8  ldr r0,[0x00003ab4]          ldr
+00003aaa  ldr r0,[r0,#0x0]             ldr
+00003aac  cmp r0,#0x0                  cmp
+00003aae  bne 0x00003a80               bne
+00003ab0  pop {r4,pc}                  pop
+--- range 0x0bd40..0x0bd80 ---
+0000bd40  push {r4,lr}                 push
+0000bd42  sub sp,#0x48                 sub
+0000bd44  mov r4,r0                    mov
+0000bd46  movs r0,#0x0                 movs
+0000bd48  str r0,[sp,#0x4]             str
+0000bd4a  movs r3,#0x0                 movs
+0000bd4c  mov r2,r4                    mov
+0000bd4e  add r1,sp,#0x4               add
+0000bd50  add r0,sp,#0x8               add
+0000bd52  bl 0x0000aff0                bl
+0000bd56  ldrb.w r0,[sp,#0x8]          ldrb.w
+0000bd5a  and r0,r0,#0x80              and
+0000bd5e  cbz r0,0x0000bd6e            cbz
+0000bd60  ldrb.w r1,[sp,#0x8]          ldrb.w
+0000bd64  bic r0,r1,#0x80              bic
+0000bd68  bl 0x00003740                bl
+0000bd6c  b 0x0000bd7e                 b
+0000bd6e  ldrb.w r1,[sp,#0x8]          ldrb.w
+0000bd72  bic r0,r1,#0x80              bic
+0000bd76  add.w r1,sp,#0x9             add.w
+0000bd7a  bl 0x0000380c                bl
+0000bd7e  add sp,#0x48                 add
+DONE
+
+--------------------------- APPENDIX s2 ---------------------------
+=== A: image words equal to a router/handler code pointer ===
+WORD 0x0000000c = 0x00002e65 refs= Entry Point<-none
+WORD 0x0000003c = 0x000048d1 refs= Entry Point<-none
+WORD 0x00000058 = 0x00004b9d refs=
+WORD 0x000000d0 = 0x00004b0d refs=
+WORD 0x000000d4 = 0x00004b1d refs=
+WORD 0x00007e10 = 0x0000bd41 refs= 00007dec<-FUN_00007db4@00007db4
+=== B: decompilation ===
+DECOMPILE FUN_000002d4@000002d4 callers=[FUN_00000148@00000148]
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_000002d4(void)
+
+{
+  undefined4 uVar1;
+  undefined4 extraout_r2;
+  undefined8 uVar2;
+  
+  uVar1 = FUN_00000f54();
+  FUN_000002a8(uVar1,extraout_r2);
+  FUN_00007ec8();
+  uVar2 = FUN_00000fb8();
+  FUN_000002d0();
+  FUN_00000fd4((int)uVar2,(int)((ulonglong)uVar2 >> 0x20));
+  (*DAT_0000033c)();
+                    /* WARNING: Could not recover jumptable at 0x00000308. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*DAT_00000340)();
+  return;
+}
+
+
+DECOMPILE FUN_00000148@00000148 callers=[FUN_000002d4@000002d4]
+
+void FUN_00000148(void)
+
+{
+  int iVar1;
+  code *UNRECOVERED_JUMPTABLE;
+  int iVar2;
+  undefined4 *puVar3;
+  
+  iVar1 = DAT_00000174;
+  puVar3 = (undefined4 *)(DAT_00000174 + 0x174);
+  iVar2 = DAT_00000174 + 0x173;
+  if (puVar3 == (undefined4 *)(DAT_00000178 + 0x174)) {
+    FUN_000002d4();
+  }
+  UNRECOVERED_JUMPTABLE = *(code **)(iVar1 + 0x180);
+  if (((uint)UNRECOVERED_JUMPTABLE & 1) != 0) {
+    UNRECOVERED_JUMPTABLE = (code *)(iVar2 - (int)UNRECOVERED_JUMPTABLE);
+  }
+                    /* WARNING: Could not recover jumptable at 0x00000172. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*UNRECOVERED_JUMPTABLE)(*puVar3,*(undefined4 *)(iVar1 + 0x178),*(undefined4 *)(iVar1 + 0x17c));
+  return;
+}
+
+
+DECOMPILE FUN_00007ec8@00007ec8 callers=[FUN_000002d4@000002d4]
+
+/* WARNING: Removing unreachable block (ram,0x00007f5e) */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00007ec8(void)
+
+{
+  undefined1 uVar1;
+  int iVar2;
+  int iVar3;
+  
+  FUN_00002d60();
+  uVar1 = FUN_000030b0();
+  *DAT_00007f90 = uVar1;
+  iVar2 = FUN_00002af0();
+  FUN_00002b10();
+  FUN_0000a330();
+  FUN_00006638();
+  FUN_00002a68();
+  FUN_00005874();
+  FUN_00008938(*DAT_00007f94);
+  FUN_000036b4();
+  iVar3 = FUN_000029d4();
+  if ((((iVar3 == 0) && (iVar2 == DAT_00007f98)) && (iVar3 = FUN_00002a44(), iVar3 == 0)) &&
+     (iVar3 = FUN_000026d0(0x6c000), iVar3 == 0)) {
+    FUN_00000ffc(0);
+    FUN_00007fa8(iVar2);
+    thunk_EXT_FUN_18010000(0,iVar2,0x10000);
+  }
+  FUN_00004b70(3);
+  FUN_00006728(0);
+  FUN_00007db4();
+  if (DAT_00007f9c - 1U < 0x1000000) {
+    _DAT_e000e014 = DAT_00007f9c + -1;
+    *(undefined1 *)(DAT_00007fa4 + 0xb) = 0xe0;
+    _DAT_e000e018 = 0;
+    _DAT_e000e010 = 7;
+  }
+  do {
+    FUN_00003a7c();
+  } while( true );
+}
+
+
+DECOMPILE FUN_00002e90@00002e90 callers=[FUN_00003a7c@00003a7c]
+
+void FUN_00002e90(void)
+
+{
+  int *piVar1;
+  int iVar2;
+  
+  FUN_000036fc();
+  piVar1 = DAT_00002eac;
+  iVar2 = *DAT_00002eac;
+  *DAT_00002eac = iVar2 + 1;
+  if (999 < iVar2 + 1) {
+    *piVar1 = 0;
+  }
+  return;
+}
+
+
+NOFUNC 0x048d0
+NOFUNC 0x04b9c
+NOFUNC 0x04b0c
+NOFUNC 0x04b1c
+DECOMPILE FUN_00007da8@00007da8 callers=[FUN_00003740@00003740]
+
+undefined1 FUN_00007da8(void)
+
+{
+  return *DAT_00007db0;
+}
+
+
+DECOMPILE FUN_00004f7c@00004f7c callers=[FUN_00003740@00003740]
+
+int FUN_00004f7c(undefined4 param_1,undefined4 param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = -5;
+  if ((*DAT_00004fa8 != '\0') && (iVar1 = FUN_0000aea0(0), iVar1 == 0)) {
+    iVar1 = FUN_0000aec8(param_1,param_2,1,0);
+  }
+  return iVar1;
+}
+
+
+DECOMPILE FUN_00004fac@00004fac callers=[FUN_00003e0c@00003e0c, FUN_00003f08@00003f08, FUN_00003ca8@00003ca8, FUN_000040a4@000040a4, FUN_00003d20@00003d20]
+
+undefined1 FUN_00004fac(int param_1,uint param_2)
+
+{
+  undefined1 uVar1;
+  int iVar2;
+  
+  if (param_2 != 0xffffffff) {
+    FUN_000089a8(param_1 + 0x10,param_2 & 0xff);
+    FUN_00008998(param_1 + 4,0xb);
+    do {
+      iVar2 = FUN_0000897e(param_1 + 4,0x800);
+    } while (iVar2 != 0);
+  }
+  FUN_00008998(param_1 + 4,0xe);
+  do {
+    iVar2 = FUN_0000897e(param_1 + 4,0x4000);
+  } while (iVar2 != 0);
+  uVar1 = FUN_00008968(param_1 + 0x14);
+  return uVar1;
+}
+
+
+DECOMPILE FUN_0000aff0@0000aff0 callers=[FUN_0000bd40@0000bd40]
+
+undefined4 FUN_0000aff0(int param_1,uint *param_2,int param_3,int param_4)
+
+{
+  undefined4 uVar1;
+  
+  if ((((param_1 == 0) || (param_2 == (uint *)0x0)) || (4 < param_3)) ||
+     (*(int *)(*DAT_0000b0cc + 0xe0 + param_3 * 4) == 0)) {
+    uVar1 = 0xffffffea;
+  }
+  else if (*DAT_0000b0cc == 0) {
+    uVar1 = 0xfffffffb;
+  }
+  else if (*(char *)(*DAT_0000b0cc + 0x7c + param_3) == '\x01') {
+    *(undefined1 *)(*DAT_0000b0cc + 0x7c + param_3) = 3;
+    if (param_4 == 0) {
+      if (*(int *)(*DAT_0000b0cc + 0x110 + param_3 * 4) != 1) {
+        FUN_0000a5b0();
+      }
+    }
+    else {
+      do {
+      } while (*(int *)(*DAT_0000b0cc + 0x110 + param_3 * 4) != 1);
+    }
+    *param_2 = (uint)*(ushort *)(*DAT_0000b0cc + 0xa0 + param_3 * 2);
+    if (*param_2 != 0) {
+      FUN_00000512(param_1,*(undefined4 *)(*DAT_0000b0cc + 0xa8 + param_3 * 4),*param_2);
+    }
+    uVar1 = 0;
+    *(undefined1 *)(*DAT_0000b0cc + 0x7c + param_3) = 1;
+  }
+  else if (*(char *)(*DAT_0000b0cc + 0x7c + param_3) == '\x03') {
+    uVar1 = 0xfffffff0;
+  }
+  else {
+    uVar1 = 0xfffffff5;
+  }
+  return uVar1;
+}
+
+
+DECOMPILE FUN_00002f0c@00002f0c callers=[FUN_00003f08@00003f08, FUN_000046ec@000046ec, FUN_000045b4@000045b4, FUN_000040a4@000040a4]
+
+int FUN_00002f0c(int param_1,byte *param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  
+  iVar3 = 0;
+  iVar1 = FUN_00005470(param_1);
+  if (iVar1 == 0) {
+    iVar3 = 2;
+  }
+  else {
+    do {
+      iVar2 = FUN_00008974(iVar1 + 8,1);
+    } while (iVar2 != 0);
+    if (param_2 != (byte *)0x0) {
+      if (((*param_2 & 3) == 0) && ((param_2[4] & 3) == 0)) {
+        if ((param_2[0xc] & 3) == 0) {
+          iVar3 = FUN_0000539c(param_1,param_2);
+          if (iVar3 == 9) {
+            iVar3 = FUN_000054f8(param_1,param_2);
+          }
+          else if (iVar3 == 0) {
+            FUN_000089a4(iVar1 + 0xc,*(undefined4 *)param_2);
+            FUN_000089a4(iVar1 + 4,*(undefined4 *)(param_2 + 0xc));
+            if (*(int *)(param_2 + 4) == -0x33333334) {
+              FUN_000089a4(iVar1,0);
+            }
+            else {
+              FUN_000089a4(iVar1,*(undefined4 *)(param_2 + 4));
+            }
+            uVar4 = 1;
+            if (((param_2[8] == 1) || (param_1 == 0)) || (param_1 == 1)) {
+              uVar4 = 3;
+            }
+            FUN_000089b0(iVar1 + 8,uVar4,3);
+          }
+        }
+        else {
+          iVar3 = 4;
+        }
+      }
+      else {
+        iVar3 = 6;
+      }
+    }
+  }
+  return iVar3;
+}
+
+
+DECOMPILE FUN_00005470@00005470 callers=[FUN_00002f0c@00002f0c, FUN_000054f8@000054f8, FUN_00002edc@00002edc, FUN_00002eb0@00002eb0]
+
+int FUN_00005470(undefined4 param_1)
+
+{
+  int iVar1;
+  
+  iVar1 = 0;
+  switch(param_1) {
+  case 0:
+    iVar1 = DAT_000054d0;
+    break;
+  case 1:
+    iVar1 = DAT_000054d0 + 0x10;
+    break;
+  case 2:
+    iVar1 = DAT_000054d4;
+    break;
+  case 3:
+    iVar1 = DAT_000054d8;
+    break;
+  case 4:
+    iVar1 = DAT_000054dc;
+    break;
+  case 5:
+    iVar1 = DAT_000054e0;
+    break;
+  case 6:
+    iVar1 = DAT_000054e4;
+    break;
+  case 7:
+    iVar1 = DAT_000054e4 + 0x10;
+    break;
+  case 8:
+    iVar1 = DAT_000054e8;
+    break;
+  case 9:
+    iVar1 = DAT_000054e8 + 0x10;
+    break;
+  case 10:
+    iVar1 = DAT_000054ec;
+    break;
+  case 0xb:
+    iVar1 = DAT_000054ec + 0x10;
+    break;
+  case 0xc:
+    iVar1 = DAT_000054f0;
+    break;
+  case 0xd:
+    iVar1 = DAT_000054f4;
+  }
+  return iVar1;
+}
+
+
+=== C: disassembly of vector targets lacking functions ===
+--- 0x048d0..0x04900 ---
+000048d0  movs r0,#0x1
+000048d2  ldr r1,[0x000048d8]
+000048d4  str r0,[r1,#0x0]
+000048d6  bx lr
+000048d8  (no instruction)
+000048da  (no instruction)
+000048dc  push {r4,r5,r6,r7,r8,lr}
+000048e0  mov r5,r0
+000048e2  mov.w r8,#0x2e
+000048e6  bl 0x00004910
+000048ea  ldr r1,[0x0000490c]
+000048ec  udiv r7,r0,r1
+000048f0  mul r4,r7,r5
+000048f4  cmp r4,#0x2e
+000048f6  bcs 0x000048fc
+000048f8  pop.w {r4,r5,r6,r7,r8,pc}
+000048fc  subs r4,#0x2e
+000048fe  lsrs r6,r4,#0x2
+--- 0x04b0c..0x04b40 ---
+00004b0c  (no instruction)
+00004b0e  (no instruction)
+00004b10  (no instruction)
+00004b12  (no instruction)
+00004b14  (no instruction)
+00004b16  (no instruction)
+00004b18  (no instruction)
+00004b1a  (no instruction)
+00004b1c  (no instruction)
+00004b1e  (no instruction)
+00004b20  (no instruction)
+00004b22  (no instruction)
+00004b24  (no instruction)
+00004b26  (no instruction)
+00004b28  (no instruction)
+00004b2a  (no instruction)
+00004b2c  push {r4,r5,r6,r7,r8,lr}
+00004b30  mov r6,r0
+00004b32  mov r5,r1
+00004b34  mov.w r7,#0xffffffff
+00004b38  movs r4,#0x0
+00004b3a  nop
+00004b3c  mov r0,r6
+00004b3e  bl 0x0000570c
+--- 0x04b9c..0x04bd0 ---
+00004b9c  (no instruction)
+00004b9e  (no instruction)
+00004ba0  (no instruction)
+00004ba2  (no instruction)
+00004ba4  (no instruction)
+00004ba6  (no instruction)
+00004ba8  (no instruction)
+00004baa  (no instruction)
+00004bac  (no instruction)
+00004bae  (no instruction)
+00004bb0  (no instruction)
+00004bb2  (no instruction)
+00004bb4  (no instruction)
+00004bb6  (no instruction)
+00004bb8  (no instruction)
+00004bba  (no instruction)
+00004bbc  (no instruction)
+00004bbe  (no instruction)
+00004bc0  (no instruction)
+00004bc2  (no instruction)
+00004bc4  (no instruction)
+00004bc6  (no instruction)
+00004bc8  (no instruction)
+00004bca  (no instruction)
+00004bcc  (no instruction)
+00004bce  (no instruction)
+--- 0x02e64..0x02e90 ---
+00002e64  nop
+00002e66  dsb #0xf
+00002e6a  ldr r0,[0x00002e88]
+00002e6c  ldr r0,[r0,#0x0]
+00002e6e  and r0,r0,#0x700
+00002e72  ldr r1,[0x00002e8c]
+00002e74  orrs r0,r1
+00002e76  adds r0,r0,#0x4
+00002e78  ldr r1,[0x00002e88]
+00002e7a  str r0,[r1,#0x0]
+00002e7c  dsb #0xf
+00002e80  nop
+00002e82  nop
+00002e84  nop
+00002e86  b 0x00002e84
+00002e88  (no instruction)
+00002e8a  (no instruction)
+00002e8c  (no instruction)
+00002e8e  (no instruction)
+--- 0x0030a..0x00340 ---
+0000030a  (no instruction)
+0000030c  (no instruction)
+0000030e  (no instruction)
+00000310  (no instruction)
+00000312  (no instruction)
+00000314  (no instruction)
+00000316  (no instruction)
+00000318  (no instruction)
+0000031a  (no instruction)
+0000031c  b 0x0000031c
+0000031e  (no instruction)
+00000320  b 0x00000320
+00000322  b 0x00000322
+00000324  b 0x00000324
+00000326  b 0x00000326
+00000328  b 0x00000328
+0000032a  b 0x0000032a
+0000032c  (no instruction)
+0000032e  b 0x0000032e
+00000330  ldr r0,[0x00000344]
+00000332  ldr r1,[0x00000348]
+00000334  ldr r2,[0x0000034c]
+00000336  ldr r3,[0x00000350]
+00000338  bx lr
+0000033a  (no instruction)
+0000033c  (no instruction)
+0000033e  (no instruction)
+DONE decompiled=10
+
+--------------------------- APPENDIX s3 ---------------------------
+=== D: constants ===
+WORD DAT_00007f90 = 0x18010b51
+WORD DAT_00007f94 = 0x18010bdc
+WORD DAT_00007f98 = 0x60011000
+WORD DAT_00007f9c = 0x000278d0
+WORD DAT_00007fa0 = 0xe000e400
+WORD DAT_00007fa4 = 0xe000ed18
+WORD DAT_00002eac = 0x18010e8c
+WORD DAT_00007db0 = 0x180108a9
+WORD DAT_00004fa8 = 0x180108a9
+WORD DAT_000048d8 = 0x18010bd4
+WORD DAT_0000490c = 0x000f4240
+WORD DAT_0000b0cc = 0x18010620
+=== E: callback table around 0x7e00 ===
+0x00007de0 = 0xf0034809
+0x00007de4 = 0x4809f99f
+0x00007de8 = 0xf98cf003
+0x00007dec = 0xf0034808
+0x00007df0 = 0x2000f96f
+0x00007df4 = 0xf972f003
+0x00007df8 = 0x46082102
+0x00007dfc = 0xffc8f003
+0x00007e00 = 0x0000bd10
+0x00007e04 = 0xe000e180  ref<-00007dc4 FUN_00007db4@00007db4
+0x00007e08 = 0x0000bfc9  ref<-00007de0 FUN_00007db4@00007db4
+0x00007e0c = 0x0000bf15  ref<-00007de6 FUN_00007db4@00007db4
+0x00007e10 = 0x0000bd41  ref<-00007dec FUN_00007db4@00007db4
+0x00007e14 = 0x4818b510  ref<-00002d50 FUN_00002d4a@00002d4a
+0x00007e18 = 0xb1e87800
+0x00007e1c = 0x4917207c
+0x00007e20 = 0x200a6008
+0x00007e24 = 0xfd5af7fc
+0x00007e28 = 0x49142000
+0x00007e2c = 0x20076008
+0x00007e30 = 0xfd54f7fc
+0x00007e34 = 0xfcb6f7fe
+0x00007e38 = 0x4910207c
+0x00007e3c = 0x20106008
+=== F: decompile registration + response senders ===
+DECOMPILE FUN_00007db4@00007db4 callers=[FUN_00007ec8@00007ec8]
+
+void FUN_00007db4(void)
+
+{
+  *DAT_00007e04 = 0x40;
+  DataSynchronizationBarrier(0xf);
+  InstructionSynchronizationBarrier(0xf);
+  FUN_00007d7c();
+  FUN_00003d74(2);
+  FUN_0000b124(DAT_00007e08);
+  FUN_0000b104(DAT_00007e0c);
+  FUN_0000b0d0(DAT_00007e10);
+  FUN_0000b0dc(0);
+  FUN_0000bd90(2);
+  return;
+}
+
+
+DECOMPILE FUN_0000aec8@0000aec8 callers=[FUN_00004f7c@00004f7c, FUN_00004f24@00004f24]
+
+undefined4 FUN_0000aec8(int param_1,uint param_2,int param_3,int param_4)
+
+{
+  undefined2 uVar1;
+  undefined4 uVar2;
+  int iVar3;
+  
+  if ((((param_1 == 0) || (param_2 == 0)) || (4 < param_3)) ||
+     (*(int *)(*DAT_0000afe8 + 0xd0 + param_3 * 4) == 0)) {
+    uVar2 = 0xffffffea;
+  }
+  else if (*DAT_0000afe8 == 0) {
+    uVar2 = 0xfffffffb;
+  }
+  else if (*(char *)(*DAT_0000afe8 + 0x78 + param_3) == '\x01') {
+    *(undefined1 *)(*DAT_0000afe8 + 0x78 + param_3) = 2;
+    *(undefined4 *)(*DAT_0000afe8 + 0x100 + param_3 * 4) = 0;
+    if (param_2 < *(ushort *)(param_3 * 9 + DAT_0000afec + 4)) {
+      uVar1 = (undefined2)param_2;
+    }
+    else {
+      uVar1 = *(undefined2 *)(param_3 * 9 + DAT_0000afec + 4);
+    }
+    *(undefined2 *)(*DAT_0000afe8 + 0x98 + param_3 * 2) = uVar1;
+    FUN_00000512(**(undefined4 **)(*DAT_0000afe8 + 0xd0 + param_3 * 4),param_1,
+                 *(undefined2 *)(*DAT_0000afe8 + 0x98 + param_3 * 2));
+    *(uint *)(*(int *)(*DAT_0000afe8 + 0xd0 + param_3 * 4) + 0xc) =
+         (uint)*(ushort *)(*DAT_0000afe8 + 0x98 + param_3 * 2);
+    FUN_0000ace8(*(undefined4 *)(*DAT_0000afe8 + 0xc0 + param_3 * 4),
+                 *(undefined4 *)(*DAT_0000afe8 + 0xd0 + param_3 * 4));
+    if (param_4 == 0) {
+LAB_0000afc2:
+      uVar2 = 0;
+    }
+    else {
+      do {
+        if (*(int *)(*DAT_0000afe8 + 0x100 + param_3 * 4) != 0) goto LAB_0000afc2;
+        iVar3 = FUN_0000a5b0();
+      } while (iVar3 == 0);
+      uVar2 = 0xfffffffb;
+    }
+  }
+  else if (*(char *)(*DAT_0000afe8 + 0x78 + param_3) == '\x02') {
+    uVar2 = 0xfffffff0;
+  }
+  else {
+    uVar2 = 0xfffffff5;
+  }
+  return uVar2;
+}
+
+
+DECOMPILE FUN_0000aea0@0000aea0 callers=[FUN_00004f7c@00004f7c]
+
+undefined4 FUN_0000aea0(int param_1)
+
+{
+  undefined4 uVar1;
+  
+  if (*DAT_0000aec4 == 0) {
+    uVar1 = 0xfffffffb;
+  }
+  else if (*(char *)(*DAT_0000aec4 + 0x78 + param_1) == '\x01') {
+    uVar1 = 0;
+  }
+  else {
+    uVar1 = 0xfffffff5;
+  }
+  return uVar1;
+}
+
+
+DECOMPILE FUN_0000a5b0@0000a5b0 callers=[FUN_0000aec8@0000aec8, FUN_0000aff0@0000aff0]
+
+byte FUN_0000a5b0(void)
+
+{
+  return *(byte *)(DAT_0000a5bc + 0xc) & 1;
+}
+
+
+DECOMPILE FUN_000026d0@000026d0 callers=[FUN_00003740@00003740, FUN_00007ec8@00007ec8]
+
+undefined4 FUN_000026d0(int param_1)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int local_1018 [1024];
+  
+  iVar4 = DAT_0000277c;
+  iVar5 = 0;
+  uVar1 = FUN_00003e0c(0xffffffff);
+  if ((uVar1 & 1) == 0) {
+    FUN_00003f08(2,iVar4,0x1000,local_1018,1);
+  }
+  if ((((local_1018[0] == 0xff) && (local_1018[1] == 0xff)) && (local_1018[2] == 0xff)) &&
+     (local_1018[3] == 0xff)) {
+    uVar2 = 1;
+  }
+  else {
+    while (iVar4 + 0x1000U < (uint)(param_1 + DAT_0000277c)) {
+      for (iVar3 = 0; iVar3 < 0x400; iVar3 = iVar3 + 1) {
+        iVar5 = iVar5 + local_1018[iVar3];
+      }
+      iVar4 = iVar4 + 0x1000;
+      FUN_00003f08(2,iVar4,0x1000,local_1018,1);
+    }
+    for (iVar4 = 0; iVar4 < 0x3ff; iVar4 = iVar4 + 1) {
+      iVar5 = iVar5 + local_1018[iVar4];
+    }
+    if (local_1018[0x3ff] == iVar5) {
+      uVar2 = 0;
+    }
+    else {
+      uVar2 = 1;
+    }
+  }
+  return uVar2;
+}
+
+
+DECOMPILE FUN_000036fc@000036fc callers=[FUN_00002e90@00002e90]
+
+void FUN_000036fc(void)
+
+{
+  FUN_0000526c(1);
+  FUN_00002d4a();
+  FUN_0000526c(0);
+  FUN_000030f0();
+  FUN_00003214();
+  FUN_0000347c();
+  FUN_00004f24();
+  return;
+}
+
+
+DECOMPILE FUN_000030b0@000030b0 callers=[FUN_00007ec8@00007ec8]
+
+undefined4 FUN_000030b0(void)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00007cd4();
+  if (iVar1 == 0) {
+    FUN_00004b7e(0);
+  }
+  else {
+    FUN_00004b7e(1);
+    if (iVar1 == DAT_000030e8) {
+      FUN_00006728(1);
+    }
+    else if (iVar1 == DAT_000030ec) {
+      FUN_00006728(6);
+    }
+  }
+  return 0;
+}
+
+
+=== G: SysTick handler / service loop / dispatcher disassembly ===
+--- 0x048d0..0x048dc ---
+000048d0  movs r0,#0x1
+000048d2  ldr r1,[0x000048d8]
+000048d4  str r0,[r1,#0x0]
+000048d6  bx lr
+000048d8  .word 0x18010bd4
+--- 0x03a7c..0x03ab8 ---
+00003a7c  push {r4,lr}
+00003a7e  b 0x00003aa8
+00003a80  ldr r0,[0x00003ab4]
+00003a82  ldr r0,[r0,#0x4]
+00003a84  cbz r0,0x00003a94
+00003a86  cpsid i
+00003a88  movs r0,#0x0
+00003a8a  ldr r1,[0x00003ab4]
+00003a8c  str r0,[r1,#0x4]
+00003a8e  cpsie i
+00003a90  bl 0x00002db8
+00003a94  ldr r0,[0x00003ab4]
+00003a96  ldr r0,[r0,#0x0]
+00003a98  cbz r0,0x00003aa8
+00003a9a  cpsid i
+00003a9c  movs r0,#0x0
+00003a9e  ldr r1,[0x00003ab4]
+00003aa0  str r0,[r1,#0x0]
+00003aa2  cpsie i
+00003aa4  bl 0x00002e90
+00003aa8  ldr r0,[0x00003ab4]
+00003aaa  ldr r0,[r0,#0x0]
+00003aac  cmp r0,#0x0
+00003aae  bne 0x00003a80
+00003ab0  pop {r4,pc}
+00003ab2  .word 0x0bd40000
+00003ab6  .word 0xb5101801
+--- 0x02db8..0x02e64 ---
+00002db8  push {r4,lr}
+00002dba  ldr r0,[0x00002e60]
+00002dbc  ldrb.w r0,[r0,#0x34]
+00002dc0  cmp r0,#0x1
+00002dc2  beq 0x00002dce
+00002dc4  cmp r0,#0x5
+00002dc6  beq 0x00002dfc
+00002dc8  cmp r0,#0x51
+00002dca  bne 0x00002e58
+00002dcc  b 0x00002e2a
+00002dce  ldr r0,[0x00002e60]
+00002dd0  ldrb.w r0,[r0,#0x38]
+00002dd4  bic r0,r0,#0x1
+00002dd8  adds r0,r0,#0x1
+00002dda  ldr r1,[0x00002e60]
+00002ddc  strb.w r0,[r1,#0x38]
+00002de0  bl 0x00003ab8
+00002de4  ldr r0,[0x00002e60]
+00002de6  ldrb.w r0,[r0,#0x38]
+00002dea  bic r1,r0,#0x1
+00002dee  ldr r0,[0x00002e60]
+00002df0  strb.w r1,[r0,#0x38]
+00002df4  movs r1,#0x0
+00002df6  strb.w r1,[r0,#0x34]
+00002dfa  b 0x00002e5a
+00002dfc  ldr r0,[0x00002e60]
+00002dfe  ldrb.w r0,[r0,#0x38]
+00002e02  bic r0,r0,#0x2
+00002e06  adds r0,r0,#0x2
+00002e08  ldr r1,[0x00002e60]
+00002e0a  strb.w r0,[r1,#0x38]
+00002e0e  bl 0x00003b64
+00002e12  ldr r0,[0x00002e60]
+00002e14  ldrb.w r0,[r0,#0x38]
+00002e18  bic r1,r0,#0x2
+00002e1c  ldr r0,[0x00002e60]
+00002e1e  strb.w r1,[r0,#0x38]
+00002e22  movs r1,#0x0
+00002e24  strb.w r1,[r0,#0x34]
+00002e28  b 0x00002e5a
+00002e2a  ldr r0,[0x00002e60]
+00002e2c  ldrb.w r0,[r0,#0x38]
+00002e30  bic r0,r0,#0x1
+00002e34  adds r0,r0,#0x1
+00002e36  ldr r1,[0x00002e60]
+00002e38  strb.w r0,[r1,#0x38]
+00002e3c  bl 0x00003afc
+00002e40  ldr r0,[0x00002e60]
+00002e42  ldrb.w r0,[r0,#0x38]
+00002e46  bic r1,r0,#0x1
+00002e4a  ldr r0,[0x00002e60]
+00002e4c  strb.w r1,[r0,#0x38]
+00002e50  movs r1,#0x0
+00002e52  strb.w r1,[r0,#0x34]
+00002e56  b 0x00002e5a
+00002e58  nop
+00002e5a  nop
+00002e5c  pop {r4,pc}
+00002e5e  .word 0x2a8c0000
+00002e62  .word 0xbf001801
+=== H: 0x1f EXEC parser gates (pending byte / lock bit) ===
+--- 0x03950..0x03a08 ---
+00003950  cmp.w r0,#0x7c000
+00003954  bcs 0x00003984
+00003956  ldr r0,[0x00003a68]
+00003958  ldrh r0,[r0,#0x36]
+0000395a  cbz r0,0x00003964
+0000395c  ldr r0,[0x00003a68]
+0000395e  ldrh r0,[r0,#0x36]
+00003960  cmp r0,#0x30
+00003962  ble 0x0000396e
+00003964  movs r1,#0x3
+00003966  ldr r0,[0x00003a68]
+00003968  strb.w r1,[r0,#0x35]
+0000396c  b 0x0000398c
+0000396e  ldrb r1,[r4,#0x0]
+00003970  ldr r0,[0x00003a68]
+00003972  strb.w r1,[r0,#0x34]
+00003976  movs r1,#0x0
+00003978  strb.w r1,[r0,#0x35]
+0000397c  movs r0,#0x1
+0000397e  ldr r1,[0x00003a78]
+00003980  str r0,[r1,#0x4]
+00003982  b 0x0000398c
+00003984  movs r1,#0x1
+00003986  ldr r0,[0x00003a68]
+00003988  strb.w r1,[r0,#0x35]
+0000398c  b 0x000039f6
+0000398e  ldr r0,[0x00003a68]
+00003990  ldrb.w r0,[r0,#0x38]
+00003994  lsrs r0,r0,#0x7
+00003996  cbz r0,0x000039ea
+00003998  ldr r0,[0x00003a74]
+0000399a  ldr r0,[r0,#0x0]
+0000399c  cmp.w r0,#0x10000
+000039a0  bcc 0x000039e0
+000039a2  ldr r0,[0x00003a74]
+000039a4  ldr r0,[r0,#0x0]
+000039a6  cmp.w r0,#0x7c000
+000039aa  bcs 0x000039e0
+000039ac  ldr r0,[0x00003a68]
+000039ae  ldrh r0,[r0,#0x36]
+000039b0  cbz r0,0x000039bc
+000039b2  ldr r0,[0x00003a68]
+000039b4  ldrh r0,[r0,#0x36]
+000039b6  cmp.w r0,#0x1000
+000039ba  ble 0x000039ca
+000039bc  movs r1,#0x3
+000039be  ldr r0,[0x00003a68]
+000039c0  strb.w r1,[r0,#0x35]
+000039c4  b 0x000039f2
+000039c6  b 0x000039f8
+000039c8  b 0x000039f4
+000039ca  ldrb r1,[r4,#0x0]
+000039cc  ldr r0,[0x00003a68]
+000039ce  strb.w r1,[r0,#0x34]
+000039d2  movs r1,#0x0
+000039d4  strb.w r1,[r0,#0x35]
+000039d8  movs r0,#0x1
+000039da  ldr r1,[0x00003a78]
+000039dc  str r0,[r1,#0x4]
+000039de  b 0x000039f2
+000039e0  movs r1,#0x1
+000039e2  ldr r0,[0x00003a68]
+000039e4  strb.w r1,[r0,#0x35]
+000039e8  b 0x000039f2
+000039ea  movs r1,#0x2
+000039ec  ldr r0,[0x00003a68]
+000039ee  strb.w r1,[r0,#0x35]
+000039f2  b 0x000039f6
+000039f4  nop
+000039f6  nop
+000039f8  b 0x00003a62
+000039fa  ldrb r0,[r4,#0x3]
+000039fc  lsls r0,r0,#0x18
+000039fe  ldrb r1,[r4,#0x2]
+00003a00  orr.w r0,r0,r1, lsl #0x10
+00003a04  ldrb r1,[r4,#0x1]
+00003a06  orr.w r0,r0,r1, lsl #0x8
+=== I: 0x0f + 0x2a responders ===
+--- 0x037a8..0x03808 ---
+000037a8  .word 0x20010004
+000037ac  strb.w r0,[sp,#0x5]
+000037b0  movs r0,#0x0
+000037b2  strb.w r0,[sp,#0x6]
+000037b6  b 0x000037fa
+000037b8  ldr r0,[0x00003808]
+000037ba  ldrb.w r0,[r0,#0x38]
+000037be  strb.w r0,[sp,#0x1]
+000037c2  ldr r0,[0x00003808]
+000037c4  ldrb.w r0,[r0,#0x35]
+000037c8  strb.w r0,[sp,#0x2]
+000037cc  b 0x000037fa
+000037ce  mov.w r0,#0x6c000
+000037d2  bl 0x000026d0
+000037d6  cbnz r0,0x000037e0
+000037d8  movs r0,#0xfa
+000037da  strb.w r0,[sp,#0x1]
+000037de  b 0x000037e6
+000037e0  movs r0,#0xfe
+000037e2  strb.w r0,[sp,#0x1]
+000037e6  b 0x000037fa
+000037e8  ldr r0,[0x00003808]
+000037ea  ldrh r2,[r0,#0x36]
+000037ec  adds r1,r0,#0x4
+000037ee  add.w r0,sp,#0x1
+000037f2  bl 0x00000512
+000037f6  b 0x000037fa
+000037f8  nop
+000037fa  nop
+000037fc  movs r1,#0x40
+000037fe  mov r0,sp
+00003800  bl 0x00004f7c
+00003804  add sp,#0x40
+00003806  pop {r4,pc}
+DONE
+
+--------------------------- APPENDIX s4 ---------------------------
+=== J: NVIC vector handlers left undefined by analysis ===
+--- SysTick vector[15] handler 0x048d0 ---
+000048d0  movs r0,#0x1
+000048d2  ldr r1,[0x000048d8]
+000048d4  str r0,[r1,#0x0]
+000048d6  bx lr
+000048d8  lsrs r4,r2,#0xf
+000048da  adds r1,r0,r0
+--- IRQ6 vector[22] handler 0x04b9c ---
+00004b9c  push {r4,lr}
+00004b9e  sub sp,#0x20
+00004ba0  movs r0,#0x0
+00004ba2  str r0,[sp,#0x10]
+00004ba4  str r0,[sp,#0xc]
+00004ba6  str r0,[sp,#0x4]
+00004ba8  ldr r4,[0x00004d34]
+00004baa  ldr r0,[0x00004d38]
+00004bac  bl 0x0000aa2c
+00004bb0  str r0,[sp,#0x1c]
+00004bb2  ldr r0,[sp,#0x1c]
+00004bb4  cbz r0,0x00004bfc
+00004bb6  ldrb r0,[r4,#0xc]
+00004bb8  and r0,r0,#0x1
+00004bbc  cbz r0,0x00004be8
+00004bbe  ldr r0,[sp,#0x1c]
+00004bc0  and r0,r0,#0x200000
+00004bc4  cbz r0,0x00004be8
+00004bc6  nop
+00004bc8  ldr r0,[0x00004d38]
+00004bca  adds r0,#0x58
+00004bcc  bl 0x0000aa2c
+00004bd0  str r0,[sp,#0x0]
+00004bd2  ldr r0,[sp,#0x0]
+--- IRQ36 vector[52] handler 0x04b0c ---
+00004b0c  push {r4,lr}
+00004b0e  movs r1,#0x0
+00004b10  ldr r0,[0x00004b18]
+00004b12  bl 0x00005728
+00004b16  pop {r4,pc}
+00004b18  adr r0,[0x4b1c]
+00004b1a  ands r0,r0
+00004b1c  push {r4,lr}
+00004b1e  movs r1,#0x1
+00004b20  ldr r0,[0x00004b28]
+--- IRQ37 vector[53] handler 0x04b1c ---
+00004b1c  push {r4,lr}
+00004b1e  movs r1,#0x1
+00004b20  ldr r0,[0x00004b28]
+00004b22  bl 0x00005728
+00004b26  pop {r4,pc}
+00004b28  add sp,#0x0
+00004b2a  ands r0,r0
+00004b2c  push {r4,r5,r6,r7,r8,lr}
+00004b30  mov r6,r0
+00004b32  mov r5,r1
+=== K: USB callback registration (FUN_0000b0d0 family) ===
+DECOMPILE FUN_0000b0d0@0000b0d0 callers=[FUN_00007db4@00007db4]
+
+void FUN_0000b0d0(undefined4 param_1)
+
+{
+  *DAT_0000b0d8 = param_1;
+  return;
+}
+
+
+DECOMPILE FUN_0000b104@0000b104 callers=[FUN_00007db4@00007db4]
+
+void FUN_0000b104(undefined4 param_1)
+
+{
+  *DAT_0000b10c = param_1;
+  return;
+}
+
+
+DECOMPILE FUN_0000b124@0000b124 callers=[FUN_00007db4@00007db4]
+
+void FUN_0000b124(undefined4 param_1)
+
+{
+  *DAT_0000b12c = param_1;
+  return;
+}
+
+
+DECOMPILE FUN_0000b0dc@0000b0dc callers=[FUN_00007db4@00007db4]
+
+void FUN_0000b0dc(int param_1)
+
+{
+  if (param_1 == 0) {
+    *DAT_0000b0f8 = *DAT_0000b0f8;
+    *DAT_0000b0fc = *DAT_0000b0fc;
+    *DAT_0000b100 = *DAT_0000b100;
+  }
+  return;
+}
+
+
+DECOMPILE FUN_0000bd90@0000bd90 callers=[FUN_00007db4@00007db4]
+
+void FUN_0000bd90(int param_1,undefined4 param_2)
+
+{
+  if (*DAT_0000bdcc == '\0') {
+    if (param_1 == 2) {
+      FUN_0000b110(2,param_2);
+      FUN_0000b130();
+      *DAT_0000bdcc = '\x01';
+    }
+    else {
+      FUN_00008648(s_class_not_support__d__0000bdf4,param_1);
+    }
+  }
+  else {
+    FUN_00008648(s_can_t_initialize_usbd_repeatedly_0000bdd0);
+  }
+  return;
+}
+
+
+NOFUNC 0x0bd10
+NOFUNC 0x0bfc8
+NOFUNC 0x0bf14
+DECOMPILE FUN_00007d7c@00007d7c callers=[FUN_00007db4@00007db4]
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00007d7c(void)
+
+{
+  FUN_00004d40();
+  _DAT_45000100 = *DAT_00007da4 | 0x100;
+  _DAT_45000110 = _DAT_45000110 | 1;
+  return;
+}
+
+
+=== L: 0x1f EXEC erase-gate (sub-op 0x01) disassembly ===
+000038ce  nop
+000038d0  nop
+000038d2  nop
+000038d4  b 0x000038d2
+000038d6  ldr r0,[0x00003a68]
+000038d8  ldrb.w r0,[r0,#0x34]
+000038dc  cmp r0,#0x0
+000038de  bne 0x000039c6
+000038e0  ldrb r0,[r4,#0x0]
+000038e2  cmp r0,#0x1
+000038e4  beq 0x000038f0
+000038e6  cmp r0,#0x5
+000038e8  beq 0x00003942
+000038ea  cmp r0,#0x51
+000038ec  bne 0x000039c8
+000038ee  b 0x0000398e
+000038f0  ldr r0,[0x00003a68]
+000038f2  ldrb.w r0,[r0,#0x38]
+000038f6  lsrs r0,r0,#0x7
+000038f8  cbz r0,0x00003938
+000038fa  ldr r0,[0x00003a74]
+000038fc  ldr r0,[r0,#0x0]
+000038fe  cmp.w r0,#0x10000
+00003902  bcc 0x0000392e
+00003904  ldr r0,[0x00003a74]
+00003906  ldr r0,[r0,#0x0]
+00003908  cmp.w r0,#0x7c000
+0000390c  bcs 0x0000392e
+0000390e  ldrb r1,[r4,#0x0]
+00003910  ldr r0,[0x00003a68]
+00003912  b 0x0000391c
+00003914  b 0x000039fa
+00003916  b 0x00003a60
+00003918  b 0x00003a14
+0000391a  b 0x00003a22
+0000391c  strb.w r1,[r0,#0x34]
+00003920  movs r1,#0x0
+00003922  strb.w r1,[r0,#0x35]
+00003926  movs r0,#0x1
+00003928  ldr r1,[0x00003a78]
+0000392a  str r0,[r1,#0x4]
+0000392c  b 0x00003940
+0000392e  movs r1,#0x1
+00003930  ldr r0,[0x00003a68]
+00003932  strb.w r1,[r0,#0x35]
+00003936  b 0x00003940
+00003938  movs r1,#0x2
+0000393a  ldr r0,[0x00003a68]
+0000393c  strb.w r1,[r0,#0x35]
+00003940  b 0x000039f6
+00003942  ldr r0,[0x00003a74]
+00003944  ldr r0,[r0,#0x0]
+00003946  cmp.w r0,#0x10000
+0000394a  bcc 0x00003984
+0000394c  ldr r0,[0x00003a74]
+0000394e  ldr r0,[r0,#0x0]
+DONE
+
+--------------------------- APPENDIX s5 ---------------------------
+=== M: slot pointer values ===
+PTR DAT_0000b0d8 = 0x1801062c
+PTR DAT_0000b10c = 0x18010350
+PTR DAT_0000b12c = 0x1801034c
+PTR DAT_0000b0cc = 0x18010620
+PTR DAT_0000afe8 = 0x18010620
+PTR DAT_0000a5bc = 0x18011358
+=== N: literal-pool references to those slots ===
+LITERAL 0x00004d34 = 0x18011358 refs=
+LITERAL 0x00005984 = 0x18011358 refs=
+LITERAL 0x00006bc8 = 0x18010620 refs=
+LITERAL 0x00006cc8 = 0x18010620 refs=
+LITERAL 0x000071a8 = 0x18010620 refs= 0000703c<-none 00007054<-none 0000707e<-none 000070a6<-none 000070b8<-none 000070c4<-none 000070e8<-none 000070f6<-none 00007116<-none
+LITERAL 0x000073dc = 0x18010620 refs= 0000721e<-none 00007246<-none 00007258<-none 00007264<-none 00007286<-none 00007294<-none 000072b4<-none 000072d0<-none 000072dc<-none
+LITERAL 0x00007448 = 0x18010620 refs= 00007432<-FUN_000073f8@000073f8 0000743a<-FUN_000073f8@000073f8
+LITERAL 0x000074f8 = 0x18010620 refs= 00007472<-FUN_0000744c@0000744c 0000747e<-FUN_0000744c@0000744c 00007498<-FUN_0000744c@0000744c 000074a4<-FUN_0000744c@0000744c 000074ae<-FUN_0000744c@0000744c 000074b8<-FUN_0000744c@0000744c 000074c4<-FUN_0000744c@0000744c 000074d0<-FUN_0000744c@0000744c 000074da<-FUN_0000744c@0000744c
+LITERAL 0x000074fc = 0x1801062c refs= 000074e2<-FUN_0000744c@0000744c 000074ea<-FUN_0000744c@0000744c
+LITERAL 0x00007550 = 0x18010620 refs= 0000753a<-FUN_00007500@00007500 00007542<-FUN_00007500@00007500
+LITERAL 0x000075fc = 0x18010620 refs= 00007578<-FUN_00007554@00007554 00007584<-FUN_00007554@00007554 0000759e<-FUN_00007554@00007554 000075aa<-FUN_00007554@00007554 000075b4<-FUN_00007554@00007554 000075be<-FUN_00007554@00007554 000075ca<-FUN_00007554@00007554 000075d6<-FUN_00007554@00007554 000075e0<-FUN_00007554@00007554
+LITERAL 0x00007600 = 0x1801062c refs= 000075e8<-FUN_00007554@00007554 000075f0<-FUN_00007554@00007554
+LITERAL 0x00007654 = 0x18010620 refs= 0000763e<-FUN_00007604@00007604 00007646<-FUN_00007604@00007604
+LITERAL 0x000076a8 = 0x18010620 refs= 00007692<-FUN_00007658@00007658 0000769a<-FUN_00007658@00007658
+LITERAL 0x00007754 = 0x18010620 refs= 000076d0<-FUN_000076ac@000076ac 000076dc<-FUN_000076ac@000076ac 000076f6<-FUN_000076ac@000076ac 00007702<-FUN_000076ac@000076ac 0000770c<-FUN_000076ac@000076ac 00007716<-FUN_000076ac@000076ac 00007722<-FUN_000076ac@000076ac 0000772c<-FUN_000076ac@000076ac 00007736<-FUN_000076ac@000076ac
+LITERAL 0x00007758 = 0x1801062c refs= 0000773e<-FUN_000076ac@000076ac 00007746<-FUN_000076ac@000076ac
+LITERAL 0x000077d8 = 0x18010620 refs= 00007776<-FUN_00007764@00007764 00007786<-FUN_00007764@00007764 00007796<-FUN_00007764@00007764 000077a6<-FUN_00007764@00007764 000077b6<-FUN_00007764@00007764
+LITERAL 0x00007b1c = 0x18010620 refs= 000077ea<-FUN_000077e4@000077e4 000077f8<-FUN_000077e4@000077e4 0000786c<-FUN_000077e4@000077e4 00007880<-FUN_000077e4@000077e4 000078f4<-FUN_000077e4@000077e4 000079ae<-FUN_000077e4@000077e4 000079bc<-FUN_000077e4@000077e4 000079d0<-FUN_000077e4@000077e4 000079ec<-FUN_000077e4@000077e4 000079fa<-FUN_000077e4@000077e4 00007a10<-FUN_000077e4@000077e4 00007a24<-FUN_000077e4@000077e4 00007a3e<-FUN_000077e4@000077e4 00007a52<-FUN_000077e4@000077e4 00007a60<-FUN_000077e4@000077e4 00007abc<-FUN_000077e4@000077e4 00007ad6<-FUN_000077e4@000077e4
+LITERAL 0x00007cc0 = 0x18010620 refs= 00007ba4<-FUN_00007b98@00007b98 00007bb0<-FUN_00007b98@00007b98 00007bbe<-FUN_00007b98@00007b98 00007bce<-FUN_00007b98@00007b98 00007be2<-FUN_00007b98@00007b98 00007bf0<-FUN_00007b98@00007b98 00007bfc<-FUN_00007b98@00007b98 00007c0e<-FUN_00007b98@00007b98 00007c1a<-FUN_00007b98@00007b98 00007c28<-FUN_00007b98@00007b98 00007c38<-FUN_00007b98@00007b98 00007c4c<-FUN_00007b98@00007b98 00007c5a<-FUN_00007b98@00007b98 00007c66<-FUN_00007b98@00007b98 00007c78<-FUN_00007b98@00007b98 00007c84<-FUN_00007b98@00007b98 00007c92<-FUN_00007b98@00007b98 00007ca4<-FUN_00007b98@00007b98
+LITERAL 0x0000851c = 0x18011358 refs= 0000813c<-FUN_00008130@00008130 00008188<-FUN_00008130@00008130 0000820e<-FUN_00008130@00008130 0000823a<-FUN_00008130@00008130 00008244<-FUN_00008130@00008130 0000824a<-FUN_00008130@00008130 00008252<-FUN_00008130@00008130 000082a6<-FUN_00008130@00008130 000082ae<-FUN_00008130@00008130 000082b4<-FUN_00008130@00008130 000082bc<-FUN_00008130@00008130 0000843e<-FUN_00008130@00008130
+LITERAL 0x00008578 = 0x18011358 refs= 0000853a<-FUN_00008130@00008130
+LITERAL 0x00008b3c = 0x18011358 refs= 00008b0a<-FUN_00008af4@00008af4
+LITERAL 0x00008d74 = 0x18011358 refs= 00008b62<-FUN_00008b44@00008b44 00008c38<-FUN_00008b44@00008b44
+LITERAL 0x00009188 = 0x18011358 refs= 00008ed2<-FUN_00008eb8@00008eb8 00009014<-FUN_00008eb8@00008eb8 0000904e<-FUN_00008eb8@00008eb8 00009144<-FUN_00008eb8@00008eb8
+LITERAL 0x0000931c = 0x18011358 refs= 0000922c<-FUN_00009200@00009200 000092ea<-FUN_00009200@00009200
+LITERAL 0x000094bc = 0x18011358 refs= 00009352<-FUN_00009328@00009328 0000948a<-FUN_00009328@00009328
+LITERAL 0x0000989c = 0x18011358 refs= 000094ee<-FUN_000094c8@000094c8 00009608<-FUN_000094c8@000094c8 00009646<-FUN_000094c8@000094c8 0000965e<-FUN_000094c8@000094c8 00009686<-FUN_000094c8@000094c8 000096c0<-FUN_000094c8@000094c8 000096dc<-FUN_000094c8@000094c8 000096f4<-FUN_000094c8@000094c8 0000971e<-FUN_000094c8@000094c8 00009758<-FUN_000094c8@000094c8 0000978e<-FUN_000094c8@000094c8 000097b8<-FUN_000094c8@000094c8 0000986c<-FUN_000094c8@000094c8
+LITERAL 0x00009b40 = 0x18011358 refs= 000098dc<-FUN_000098a8@000098a8 00009920<-FUN_000098a8@000098a8 00009942<-FUN_000098a8@000098a8 00009958<-FUN_000098a8@000098a8 0000997e<-FUN_000098a8@000098a8 00009b0e<-FUN_000098a8@000098a8
+LITERAL 0x00009da4 = 0x18011358 refs= 00009b62<-FUN_00009b4c@00009b4c 00009d72<-FUN_00009b4c@00009b4c
+LITERAL 0x0000a180 = 0x18011358 refs= 00009e3c<-FUN_00009df8@00009df8 00009f14<-FUN_00009df8@00009df8 00009f4a<-FUN_00009df8@00009df8
+LITERAL 0x0000a254 = 0x18011358 refs= 0000a1d0<-none
+LITERAL 0x0000a28c = 0x18011358 refs= 0000a264<-FUN_0000a260@0000a260
+LITERAL 0x0000a324 = 0x18011358 refs= 0000a29a<-FUN_0000a294@0000a294
+LITERAL 0x0000a5a0 = 0x18011358 refs= 0000a3ca<-FUN_0000a364@0000a364 0000a3e2<-FUN_0000a364@0000a364 0000a402<-FUN_0000a364@0000a364 0000a422<-FUN_0000a364@0000a364 0000a442<-FUN_0000a364@0000a364 0000a464<-FUN_0000a364@0000a364 0000a486<-FUN_0000a364@0000a364 0000a4a8<-FUN_0000a364@0000a364 0000a4ca<-FUN_0000a364@0000a364 0000a4ec<-FUN_0000a364@0000a364 0000a50e<-FUN_0000a364@0000a364
+LITERAL 0x0000a5bc = 0x18011358 refs= 0000a5b0<-FUN_0000a5b0@0000a5b0
+LITERAL 0x0000a920 = 0x18011358 refs= 0000a5c8<-FUN_0000a5c0@0000a5c0 0000a772<-FUN_0000a5c0@0000a5c0 0000a788<-FUN_0000a5c0@0000a5c0 0000a78e<-FUN_0000a5c0@0000a5c0 0000a6fa<-FUN_0000a5c0@0000a5c0 0000a704<-FUN_0000a5c0@0000a5c0 0000a726<-FUN_0000a5c0@0000a5c0 0000a736<-FUN_0000a5c0@0000a5c0 0000a748<-FUN_0000a5c0@0000a5c0 0000a758<-FUN_0000a5c0@0000a5c0 0000a79c<-FUN_0000a5c0@0000a5c0 0000a7b4<-FUN_0000a5c0@0000a5c0 0000a7ba<-FUN_0000a5c0@0000a5c0 0000a7c8<-FUN_0000a5c0@0000a5c0 0000a7e6<-FUN_0000a5c0@0000a5c0 0000a7ee<-FUN_0000a5c0@0000a5c0 0000a7fe<-FUN_0000a5c0@0000a5c0 0000a81a<-FUN_0000a5c0@0000a5c0 0000a822<-FUN_0000a5c0@0000a5c0 0000a832<-FUN_0000a5c0@0000a5c0 0000a84e<-FUN_0000a5c0@0000a5c0 0000a856<-FUN_0000a5c0@0000a5c0 0000a866<-FUN_0000a5c0@0000a5c0 0000a884<-FUN_0000a5c0@0000a5c0 0000a88c<-FUN_0000a5c0@0000a5c0 0000a89c<-FUN_0000a5c0@0000a5c0 0000a8ba<-FUN_0000a5c0@0000a5c0 0000a8c2<-FUN_0000a5c0@0000a5c0 0000a8d2<-FUN_0000a5c0@0000a5c0 0000a8f0<-FUN_0000a5c0@0000a5c0 0000a8f8<-FUN_0000a5c0@0000a5c0 0000a906<-FUN_0000a5c0@0000a5c0 0000a90a<-FUN_0000a5c0@0000a5c0
+LITERAL 0x0000ae4c = 0x18011358 refs= 0000adc6<-FUN_0000adc0@0000adc0
+LITERAL 0x0000aec4 = 0x18010620 refs= 0000aea2<-FUN_0000aea0@0000aea0 0000aea8<-FUN_0000aea0@0000aea0
+LITERAL 0x0000afe8 = 0x18010620 refs= 0000aedc<-FUN_0000aec8@0000aec8 0000aef2<-FUN_0000aec8@0000aec8 0000aefa<-FUN_0000aec8@0000aec8 0000af08<-FUN_0000aec8@0000aec8 0000af12<-FUN_0000aec8@0000aec8 0000af3e<-FUN_0000aec8@0000aec8 0000af4a<-FUN_0000aec8@0000aec8 0000af56<-FUN_0000aec8@0000aec8 0000af6a<-FUN_0000aec8@0000aec8 0000af76<-FUN_0000aec8@0000aec8 0000af84<-FUN_0000aec8@0000aec8 0000af90<-FUN_0000aec8@0000aec8 0000afb0<-FUN_0000aec8@0000aec8 0000afc6<-FUN_0000aec8@0000aec8
+LITERAL 0x0000b0cc = 0x18010620 refs= 0000b004<-FUN_0000aff0@0000aff0 0000b01a<-FUN_0000aff0@0000aff0 0000b022<-FUN_0000aff0@0000aff0 0000b030<-FUN_0000aff0@0000aff0 0000b040<-FUN_0000aff0@0000aff0 0000b054<-FUN_0000aff0@0000aff0 0000b076<-FUN_0000aff0@0000aff0 0000b088<-FUN_0000aff0@0000aff0 0000b0a0<-FUN_0000aff0@0000aff0 0000b0aa<-FUN_0000aff0@0000aff0
+LITERAL 0x0000b0d8 = 0x1801062c refs= 0000b0d0<-FUN_0000b0d0@0000b0d0
+LITERAL 0x0000b10c = 0x18010350 refs= 0000b104<-FUN_0000b104@0000b104
+LITERAL 0x0000b12c = 0x1801034c refs= 0000b124<-FUN_0000b124@0000b124
+LITERAL 0x0000b26c = 0x18011358 refs= 0000b142<-FUN_0000b138@0000b138 0000b14c<-FUN_0000b138@0000b138 0000b1e4<-FUN_0000b138@0000b138
+LITERAL 0x0000b35c = 0x18011358 refs= 0000b2b8<-FUN_0000b2ac@0000b2ac
+LITERAL 0x0000b448 = 0x18011358 refs= 0000b36c<-FUN_0000b360@0000b360
+LITERAL 0x0000b500 = 0x18011358 refs= 0000b45c<-FUN_0000b450@0000b450
+LITERAL 0x0000b5ec = 0x18011358 refs= 0000b510<-FUN_0000b504@0000b504
+LITERAL 0x0000b6a4 = 0x18011358 refs= 0000b600<-FUN_0000b5f4@0000b5f4
+LITERAL 0x0000b764 = 0x18011358 refs= 0000b6c0<-FUN_0000b6b4@0000b6b4
+LITERAL 0x0000b954 = 0x18011358 refs= 0000b77c<-FUN_0000b768@0000b768
+LITERAL 0x0000ba20 = 0x18011358 refs= 0000b97c<-FUN_0000b970@0000b970
+LITERAL 0x0000bb0c = 0x18011358 refs= 0000ba30<-FUN_0000ba24@0000ba24
+LITERAL 0x0000bbc4 = 0x18011358 refs= 0000bb20<-FUN_0000bb14@0000bb14
+LITERAL 0x0000bc10 = 0x18011358 refs=
+LITERAL 0x0000bf04 = 0x18011358 refs=
+LITERAL 0x0000bfb8 = 0x18011358 refs=
+LITERAL 0x0000bfc4 = 0x18010350 refs=
+LITERAL 0x0000c130 = 0x18011358 refs=
+LITERAL 0x0000c13c = 0x1801034c refs= 0000c120<-none 0000c126<-none
+=== O: decompilation of every function using the router slot ===
+DECOMPILE FUN_0000744c@0000744c callers=[]
+
+void FUN_0000744c(undefined4 param_1,int param_2)
+
+{
+  if ((*(byte *)(param_2 + 0x18) & 4) == 4) {
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) & 0xfffffffb;
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) | 0x20;
+    *(uint *)(*(int *)(*DAT_000074f8 + 0xf4) + 0xc) = (uint)*(ushort *)(DAT_000074f4 + 0xd);
+    *(undefined4 *)(*DAT_000074f8 + 0x114) = 0;
+  }
+  else if ((*(byte *)(param_2 + 0x18) & 1) != 0) {
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) & 0xffffffde;
+    if (*(int *)(*(int *)(*DAT_000074f8 + 0xf4) + 0xc) != 0) {
+      FUN_00000512(*(undefined4 *)(*DAT_000074f8 + 0xac),**(undefined4 **)(*DAT_000074f8 + 0xf4),
+                   *(undefined4 *)(*(int *)(*DAT_000074f8 + 0xf4) + 0xc));
+    }
+    *(undefined2 *)(*DAT_000074f8 + 0xa2) = *(undefined2 *)(*(int *)(*DAT_000074f8 + 0xf4) + 0xc);
+    *(undefined4 *)(*DAT_000074f8 + 0x114) = 1;
+    if (*DAT_000074fc != 0) {
+      (*(code *)*DAT_000074fc)(1);
+    }
+  }
+  return;
+}
+
+
+DECOMPILE FUN_00007554@00007554 callers=[]
+
+void FUN_00007554(undefined4 param_1,int param_2)
+
+{
+  if ((*(byte *)(param_2 + 0x18) & 4) == 4) {
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) & 0xfffffffb;
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) | 0x20;
+    *(uint *)(*(int *)(*DAT_000075fc + 0xf8) + 0xc) = (uint)*(ushort *)(DAT_000075f8 + 0x16);
+    *(undefined4 *)(*DAT_000075fc + 0x118) = 0;
+  }
+  else if ((*(byte *)(param_2 + 0x18) & 1) != 0) {
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) & 0xffffffde;
+    if (*(int *)(*(int *)(*DAT_000075fc + 0xf8) + 0xc) != 0) {
+      FUN_00000512(*(undefined4 *)(*DAT_000075fc + 0xb0),**(undefined4 **)(*DAT_000075fc + 0xf8),
+                   *(undefined4 *)(*(int *)(*DAT_000075fc + 0xf8) + 0xc));
+    }
+    *(undefined2 *)(*DAT_000075fc + 0xa4) = *(undefined2 *)(*(int *)(*DAT_000075fc + 0xf8) + 0xc);
+    *(undefined4 *)(*DAT_000075fc + 0x118) = 1;
+    if (*DAT_00007600 != 0) {
+      (*(code *)*DAT_00007600)(2);
+    }
+  }
+  return;
+}
+
+
+DECOMPILE FUN_000076ac@000076ac callers=[]
+
+void FUN_000076ac(undefined4 param_1,int param_2)
+
+{
+  if ((*(byte *)(param_2 + 0x18) & 4) == 4) {
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) & 0xfffffffb;
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) | 0x20;
+    *(uint *)(*(int *)(*DAT_00007754 + 0xf0) + 0xc) = (uint)*(ushort *)(DAT_00007750 + 4);
+    *(undefined4 *)(*DAT_00007754 + 0x110) = 0;
+  }
+  else if ((*(byte *)(param_2 + 0x18) & 1) != 0) {
+    *(uint *)(param_2 + 0x18) = *(uint *)(param_2 + 0x18) & 0xffffffde;
+    if (*(int *)(*(int *)(*DAT_00007754 + 0xf0) + 0xc) != 0) {
+      FUN_00000512(*(undefined4 *)(*DAT_00007754 + 0xa8),**(undefined4 **)(*DAT_00007754 + 0xf0),
+                   *(undefined4 *)(*(int *)(*DAT_00007754 + 0xf0) + 0xc));
+    }
+    *(undefined2 *)(*DAT_00007754 + 0xa0) = *(undefined2 *)(*(int *)(*DAT_00007754 + 0xf0) + 0xc);
+    *(undefined4 *)(*DAT_00007754 + 0x110) = 1;
+    if (*DAT_00007758 != 0) {
+      (*(code *)*DAT_00007758)(0);
+    }
+  }
+  return;
+}
+
+
+DECOMPILE FUN_0000b0d0@0000b0d0 callers=[FUN_00007db4@00007db4]
+
+void FUN_0000b0d0(undefined4 param_1)
+
+{
+  *DAT_0000b0d8 = param_1;
+  return;
+}
+
+
+DONE
+
+--------------------------- APPENDIX s6 ---------------------------
+=== P: image words equal to an endpoint-handler pointer ===
+WORD 0x00000058 = 0x00004b9d refs=
+WORD 0x00006bf8 = 0x00007605 refs=
+WORD 0x00006bfc = 0x00007659 refs=
+WORD 0x00006c00 = 0x000073f9 refs=
+WORD 0x00006c04 = 0x00007501 refs=
+WORD 0x00006c08 = 0x000076ad refs=
+WORD 0x00006c0c = 0x0000744d refs=
+WORD 0x00006c10 = 0x00007555 refs=
+=== Q: bytes 0x4b9c..0x4d34 (USB IRQ handler body) as raw words ===
+0x00004b9c  b088b510 90042000 90019003 48634c62
+0x00004bac  ff3ef005 98079007 7b20b310 0001f000
+0x00004bbc  9807b1a0 1000f400 bf00b180 3058485b
+0x00004bcc  ff2ef005 98009000 7080f400 7f80f5b0
+0x00004bdc  7b20d1f4 0001f020 bf007320 30684853
+0x00004bec  f0059907 9807ff20 f810f007 bd10b008
+0x00004bfc  3028484e ff14f005 484c9006 f0051d00
+0x00004c0c  9002ff0f 28009806 2000d07e e0809001
+0x00004c1c  0c009806 20019004 40889901 99039003
+0x00004c2c  40089806 d0492800 1d004840 f0059901
+0x00004c3c  483efefa f0053014 9005fef3 f0009805
+0x00004c4c  b1100080 f7ff2001 4838fe43 9905306c
+0x00004c5c  fee9f005 bb609801 f0009805 f1b04000
+0x00004c6c  d1024f00 49322001 98056008 0008f000
+0x00004c7c  d10e2808 6800482e d1052801 f8842000
+0x00004c8c  492b0198 e0046008 f0209805 90050008
+0x00004c9c  9805e03c 0004f000 d1042804 f0209805
+0x00004cac  90050004 9901e032 9905b2c8 ff92f006
+0x00004cbc  9901e004 9905b2c8 ff8cf006 1003e9dd
+0x00004ccc  b3004008 f0409801 48180180 f0051d00
+0x00004cdc  4816feaa f0053014 9005fea3 f0009805
+0x00004cec  b1100080 f7ff2001 4810fdf3 9905306c
+0x00004cfc  fe99f005 b1309805 b2c99901 0080f041
+0x00004d0c  f0069905 e000ff67 bf00e007 1c409801
+0x00004d1c  98019001 f4ff2810 4804af7b 99021d00
+0x00004d2c  fe81f005 e761bf00 18011358 40100018
+DONE

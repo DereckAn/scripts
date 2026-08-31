@@ -31,25 +31,53 @@ PROTOCOL EVIDENCE (all static; nothing here has been exercised on hardware)
     resp[1] for the previously set length, so response[1:1+length] skips the
     0x2a response code. This is a protocol field, not a hidraw report-ID prefix.
 
+  * log 85 `FUN_00003a7c` / `FUN_00002db8` / SysTick handler 0x000048d0: the
+    post-EXEC scheduling race is **proven possible**. The 0x1f parser (USB
+    interrupt) only sets the pending byte state+0x34 and the request flag at
+    0x18010bd8. The READ itself runs from FUN_00002db8, reached only through
+    FUN_00003a7c, whose loop body is gated on the *SysTick* flag at 0x18010bd4
+    (`b 0x00003aa8` at 0x00003a7e jumps straight to `ldr r0,[r0,#0x0]; cmp
+    r0,#0x0; bne`). The only writer of that word is the SysTick handler at
+    0x000048d0. So an accepted EXEC waits for the next SysTick tick before the
+    READ starts. Neither the tick period nor the flash-transfer duration is
+    recoverable statically (FUN_00004910 selects the core clock at runtime), so
+    no claim is made about how often the race is hit -- only that it is possible.
+    Consequences:
+      - polling state+0x38 bit 1 cannot sequence a READ: bit 1 clear is also what
+        "not started yet" looks like, so the poll can exit immediately;
+      - state+0x34 is not exposed by any query, and reading it via a 0xaa
+        over-read needs a set-length above 0x30, which either misaligns the flash
+        engine or corrupts state+0x36 into the responder's unclamped memcpy
+        length -- both rejected (log 85 section 5).
+  * log 86: FUN_00003b64 does **not** mask interrupts, so the 0xaa responder can
+    observe state+4 while the flash transfer is only partly done. A status query
+    taken *before* the fetch does not exclude that: an entire READ can start and
+    finish between two status queries with the fetch landing inside it. The fix
+    is an ordering one -- fetch, THEN status, then one confirming fetch. See
+    read_fresh() for the interleaving proof.
+  * log 86: the bootloader's ARM Region$$Table entry at 0x0000ccc0 zero-initialises
+    0x18011168..0x1802b230 with __scatterload_zeroinit (fn 0x000001fc, reached from
+    the reset vector via __scatterload at 0x00000148). That range covers the whole
+    state block, so immediately after startup state+0x34 == 0 (no pending
+    operation), state+4 == 48 zero bytes (a *known* baseline), state+0x36 == 0 and
+    state+0x38 == 0 (locked, not busy). This is what makes the first baseline
+    trustworthy instead of merely observed.
+
 UNRESOLVED (why --run stays gated)
-  * **Post-EXEC scheduling race.** The OUT parser only records the pending
-    command in state+0x34; the service loop (`FUN_00003a7c` -> `FUN_00002db8`)
-    is what later sets state+0x38 bit 1 and performs the READ. Nothing recovered
-    so far proves the service loop has run by the time the host's first 0x8f
-    arrives. If the host queries status in that window, bit 1 reads clear, the
-    poll exits immediately, and the subsequent 0xaa can return the *previous*
-    chunk's buffer. Status does not expose state+0x34, so this tool cannot
-    distinguish "READ finished" from "READ not started yet". No timing guarantee
-    is claimed or assumed here.
-    Mitigation, not a fix: every completed dump is re-parsed in memory by
-    `validate_dump()` before anything is written, which rejects the shifted or
-    stale images this race would produce. A race that happened to yield a
-    self-consistent image would not be caught.
-  * Linux hidraw write() takes a leading report-number byte (0 for unnumbered
-    reports); read() returns report data with no such prefix. Both conventions
-    are applied here but have never been exercised against this device.
+  * The Linux hidraw write() report-number prefix and read() framing for this
+    device are assumed, not observed.
   * No live validation of any kind has been performed and no installed-firmware
     backup exists.
+  * OPERATIONAL PRECONDITION, not provable from the protocol: no other process
+    may send reports to the same hidraw node during the dump. A foreign pending
+    READ is invisible (state+0x34 is not exposed), and one that completes between
+    this tool's bootstrap fetch and its first set-address would publish an
+    unrelated address's bytes. The bootstrap refuses unless state+4 reads as the
+    48 zero bytes the startup left, which catches a foreign READ that has already
+    *completed*, but not one still pending.
+  * The freshness handshake is inconclusive when a chunk's content equals the
+    previously proven buffer; it then re-bases through an anchor chunk of proven,
+    different content, and aborts if no such anchor exists yet.
 
 Usage:
     python3 tool/backup_firmware.py                    # dry-run, no device
@@ -90,8 +118,9 @@ UNLOCK_BIT = 0x80
 STATUS_ERRORS = {1: "address out of range", 2: "not unlocked", 3: "bad length"}
 
 RESP_TIMEOUT = 2.0         # seconds to wait for one response report
-BUSY_ATTEMPTS = 64         # bounded status polls per chunk
+FRESH_ATTEMPTS = 64        # bounded buffer-change polls per read
 POLL_INTERVAL = 0.002
+ANCHOR_KEEP = 2            # distinct proven chunks kept for re-basing
 
 ALLOWED_OUT = {SET_ADDR, SET_LEN, EXEC}
 ALLOWED_QUERY = {Q_STATUS, Q_READDATA}
@@ -162,12 +191,15 @@ def chunk_exchange(addr, length):
         raise UnsafeReport(f"address 0x{addr:x}+0x{length:x} outside readable region")
     if not (0 < length <= CHUNK_MAX):
         raise UnsafeReport(f"length 0x{length:x} out of range")
+    # Length before address: after the set-address report, both fields hold the
+    # values this chunk intends, so every later dispatch reads exactly (addr,
+    # length). Data query before status query: see read_fresh().
     return [
-        ("set_addr", SET_ADDR, struct.pack("<I", addr)),
         ("set_len", SET_LEN, struct.pack("<H", length)),
+        ("set_addr", SET_ADDR, struct.pack("<I", addr)),
         ("exec_read", EXEC, bytes([OP_READ])),
-        ("query_status", Q_STATUS, b""),
         ("query_data", Q_READDATA, b""),
+        ("query_status", Q_STATUS, b""),
     ]
 
 
@@ -375,48 +407,251 @@ def query(transport, sub, expect_code, timeout=RESP_TIMEOUT):
     return read_response(transport, expect_code, timeout)
 
 
-def wait_read_done(transport, attempts=BUSY_ATTEMPTS):
-    """Poll 0x8f until the READ-busy bit clears, within bounded attempts.
+def check_status(transport):
+    """One 0x8f exchange, validated. Returns resp[1] = state+0x38.
 
-    Validates resp[0] == 0x0f and resp[2] (state+0x35 error) == 0 on every poll.
+    Verified use (log 85 section H): resp[2] = state+0x35 is written by the same
+    OUT parser, in the same interrupt, that consumed the EXEC report -- at
+    0x00003984 (address out of range) and 0x00003964 (bad length) for a READ, and
+    0x00003938/0x000039ea (not unlocked) for erase/program. A rejected EXEC is
+    therefore reported reliably here.
 
-    Caveat: a clear bit 1 means "not currently reading", which is not the same as
-    "the READ we just requested has finished". See the post-EXEC scheduling race
-    in the module docstring — this loop cannot close that window, and the
-    end-of-dump `validate_dump()` is what guards against its consequences.
+    Verified NON-use: resp[1] bit 1 is *not* a completion signal. The READ runs
+    on a SysTick tick, so a clear bit 1 is also exactly what "not started yet"
+    looks like -- no timing claim is needed or made. Its only role is to place a
+    sample outside the interval in which FUN_00003b64 can be writing, and it does
+    that only when read AFTER the sample; see read_fresh().
     """
-    for _ in range(attempts):
-        resp = query(transport, Q_STATUS, R_STATUS)
-        error = resp[STATUS_ERROR]
-        if error:
-            raise ProtocolError(f"bootloader status error 0x{error:02x} "
-                                f"({STATUS_ERRORS.get(error, 'unknown')})")
-        if not resp[STATUS_FLAGS] & BUSY_READ:
-            return resp
-        time.sleep(POLL_INTERVAL)
-    raise ProtocolError(
-        f"READ stayed busy (state+0x38 bit 1) after {attempts} status polls")
+    resp = query(transport, Q_STATUS, R_STATUS)
+    error = resp[STATUS_ERROR]
+    if error:
+        raise ProtocolError(f"bootloader status error 0x{error:02x} "
+                            f"({STATUS_ERRORS.get(error, 'unknown')})")
+    flags = resp[STATUS_FLAGS]
+    if flags & UNLOCK_BIT:
+        raise ProtocolError(
+            "state+0x38 bit 7 is set: erase/program is unlocked on this device. "
+            "Refusing to continue a read-only dump against an unlocked bootloader")
+    if flags & BUSY_WRITE:
+        raise ProtocolError("state+0x38 bit 0 is set: an erase or program is in "
+                            "progress. Refusing to continue")
+    return flags
 
 
-def read_chunk(transport, addr, length):
-    """set-address -> set-length -> execute READ -> status poll -> data."""
-    send(transport, SET_ADDR, struct.pack("<I", addr))
-    send(transport, SET_LEN, struct.pack("<H", length))
-    send(transport, EXEC, bytes([OP_READ]))
-    wait_read_done(transport)
+def fetch(transport, length):
+    """One 0xaa exchange. Returns the responder's `length` payload bytes.
+
+    The bytes are the current contents of the response buffer at state+4
+    (log 85: FUN_00003740 sub-command 0x2a copies state+4 for state+0x36 bytes,
+    and FUN_00003b64 writes its READ result to that same address). They are NOT
+    known to belong to the last address requested; `read_fresh()` is what
+    establishes that.
+    """
     resp = query(transport, Q_READDATA, R_READDATA)
-    payload = resp[1:1 + length]            # skip the 0x2a response code
+    payload = resp[1:1 + length]              # skip the 0x2a response code
     if len(payload) != length:
         raise ProtocolError(f"data response carried {len(payload)} of {length} bytes")
     return payload
 
 
-def dump_once(transport, plan=None):
-    """One full pass. Any failure raises; a partial dump is never returned."""
-    image = bytearray()
-    for addr, length in (dump_plan() if plan is None else plan):
-        image += read_chunk(transport, addr, length)
-    return bytes(image)
+def exec_read(transport, addr, length):
+    """Queue one READ. Says nothing about the buffer (log 85).
+
+    Length first, then address: after the set-address report both fields hold
+    this chunk's values, so every dispatch from that point on reads exactly
+    (addr, length). FUN_00003b64 samples both at dispatch time, not at EXEC time.
+    """
+    send(transport, SET_LEN, struct.pack("<H", length))
+    send(transport, SET_ADDR, struct.pack("<I", addr))
+    send(transport, EXEC, bytes([OP_READ]))
+
+
+def read_fresh(transport, addr, length, baseline, attempts=FRESH_ATTEMPTS):
+    """Return content(addr), proven complete and fresh, or None if undecidable.
+
+    `baseline` is the value state+4 is *known* to hold before this call: the 48
+    zero bytes the startup zero-init left (log 86) for the first chunk, and the
+    previous chunk's proven bytes afterwards.
+
+    THE RULE: fetch, then status, then -- only if the status says not-busy and
+    the fetched sample differs from the baseline -- one more fetch, and return
+    that second fetch. The order matters and the earlier implementation had it
+    backwards; see the counterexample in log 86.
+
+    INTERLEAVING PROOF.
+      Facts (log 85 sections 2-3, log 86):
+        F1 state+4 is written only by FUN_00003b64; the host has no write path
+           into it (OUT 0x22's last reachable byte is state+3).
+        F2 FUN_00003b64 is called only from FUN_00002db8, strictly between the
+           store that sets state+0x38 bit 1 (0x00002e0a) and the store that
+           clears it (0x00002e1e). So every write to state+4 happens at a time
+           when bit 1 reads set.
+        F3 FUN_00003b64 takes its address from *(u32 *)(state-0x1000) and its
+           length from *(u16 *)(state+0x36) when it runs, not when the EXEC was
+           parsed.
+        F4 FUN_00002db8 runs only from the single-threaded main loop
+           FUN_00003a7c, so READ episodes are serialised and non-overlapping.
+        F5 FUN_00003740, which answers 0x8f and 0xaa, writes neither state+4,
+           state+0x34, nor the service-loop flags.
+      Call an *episode* one execution of FUN_00003b64 from the cmd-5 branch, and
+      let E_i = [s_i, e_i] be the interval over which it holds bit 1 set. By F4
+      the E_i are disjoint and ordered; by F1/F2 state+4 is constant outside
+      their union.
+      Let t2 be the time of this call's set-address report. Every episode that
+      dispatches at or after t2 writes content(addr) (F3, and the host changes
+      neither field again until the next chunk's set-address). Every episode that
+      dispatches before t2 writes the *previous* chunk's address, whose content
+      is exactly `baseline` -- writing bytes that are already there cannot change
+      the value. So, with E* the first episode dispatching at or after t2:
+          state+4 == baseline            for t < s*
+          state+4 == content(addr)       for t > e*
+          state+4 == content(addr)       throughout every later episode, because
+                                         they store the same bytes again.
+      Now suppose the host samples X at t_f and then reads a status with bit 1
+      clear at t_s > t_f. Bit 1 clear means t_s lies in no E_i (F2).
+        - If t_s < s*, then t_f < s* too, so X == baseline.
+        - Otherwise t_s > e*, so state+4 == content(addr) at t_s and at every
+          later instant.
+      Therefore X != baseline forces t_s > e*, and any fetch issued after t_s
+      returns the complete content(addr). That is the second fetch. No timing
+      assumption and no unexposed state is used. QED
+      Corollary: if content(addr) == baseline then every state during E* equals
+      baseline, so X == baseline; hence X != baseline also implies the confirmed
+      value differs from the baseline. The check below is therefore a free
+      consistency test on the whole model, and firing it means the model is wrong.
+
+    Returns None if the sample never differs within `attempts`: either the READ
+    has not dispatched, or content(addr) == baseline. The caller re-bases and
+    retries rather than guess.
+
+    Re-arming: the EXEC is re-sent while the sample still equals the baseline,
+    because the 0x1f parser drops an EXEC while state+0x34 is non-zero (`bne` at
+    0x000038de before any store), so the first one may have been swallowed by an
+    older pending operation. A re-arm that is accepted only re-reads the same
+    address with the same length, so by the argument above it cannot change
+    state+4's value, and a re-arm still pending when this returns is covered by
+    the next chunk's E* definition.
+
+    Re-arming STOPS as soon as a sample differs from the baseline. At that point
+    an episode with this address has provably already begun writing, so no
+    further EXEC is needed for progress; continuing to re-arm would keep starting
+    fresh episodes and could starve the busy-clear observation the rule needs
+    (a lock-step between the host's round and the dispatch cadence). Stopping
+    bounds the number of episodes, so bit 1 is eventually clear for good.
+    """
+    if len(baseline) != length:
+        raise ProtocolError(f"baseline is {len(baseline)} bytes, need {length}; "
+                            "the freshness handshake needs a same-length baseline")
+    exec_read(transport, addr, length)
+    for _ in range(attempts):
+        sample = fetch(transport, length)          # X -- may be a partial buffer
+        flags = check_status(transport)            # t_s -- strictly after X
+        moved = sample != baseline
+        if moved and not flags & BUSY_READ:
+            confirmed = fetch(transport, length)   # provably complete
+            if confirmed == baseline:
+                raise ProtocolError(
+                    f"chunk 0x{addr:x}: the confirming fetch returned the baseline "
+                    "after a differing sample. The recovered model of the response "
+                    "buffer is wrong; refusing to guess")
+            return confirmed
+        time.sleep(POLL_INTERVAL)
+        if not moved:
+            send(transport, EXEC, bytes([OP_READ]))  # re-arm, same addr and length
+    return None
+
+
+def read_chunk(transport, addr, length, baseline, anchors=()):
+    """Return bytes proven to be the flash contents at `addr`.
+
+    On an undecidable handshake the buffer is driven to an anchor chunk of
+    already-proven, different content, and the target is retried. One usable
+    anchor is enough: content(addr) cannot equal both the baseline and the
+    anchor, because those two differ.
+    """
+    current = baseline                        # what state+4 is known to hold
+    value = read_fresh(transport, addr, length, current)
+    if value is not None:
+        return value
+    for anchor_addr, anchor_data in anchors:
+        if anchor_data == current or len(anchor_data) != length:
+            continue                          # cannot re-base onto the baseline
+        moved = read_fresh(transport, anchor_addr, length, current)
+        if moved != anchor_data:
+            raise ProtocolError(
+                f"re-base read of 0x{anchor_addr:x} returned "
+                f"{'nothing new' if moved is None else 'different bytes'} than "
+                "the value already proven for that address")
+        current = anchor_data
+        value = read_fresh(transport, addr, length, current)
+        if value is not None:
+            return value
+    raise ProtocolError(
+        f"chunk 0x{addr:x}: the response buffer never changed, so a fresh read "
+        "cannot be told apart from a stale one, and no anchor chunk of different "
+        "proven content was available to re-base through (log 85 post-EXEC "
+        "scheduling race)")
+
+
+def bootstrap_baseline(transport, length):
+    """Establish the first known value of state+4, or refuse.
+
+    log 86: the reset path's Region$$Table entry at 0x0000ccc0 zero-initialises
+    0x18011168..0x1802b230 through __scatterload_zeroinit, and that range covers
+    state+4, state+0x34, state+0x36 and state+0x38. So a bootloader that has just
+    started, and to which nothing has yet been said, has an all-zero response
+    buffer and no pending operation.
+
+    Requiring the all-zero read is therefore a real check, not a formality: it
+    fails if a READ has already completed in this bootloader session, which is
+    exactly the situation in which the first baseline could not be trusted. It
+    does NOT detect a foreign READ that is queued but has not dispatched --
+    state+0x34 is exposed by no query. That residue is covered only by the
+    operational precondition in the module docstring.
+    """
+    send(transport, SET_LEN, struct.pack("<H", length))
+    check_status(transport)
+    residue = fetch(transport, length)
+    if residue != bytes(length):
+        raise ProtocolError(
+            f"bootstrap: state+4 read {residue.hex()} but a freshly started "
+            f"bootloader must read {length} zero bytes (log 86 Region$$Table "
+            "zero-init). Something has already driven a READ in this bootloader "
+            "session, so the first baseline cannot be trusted. Power-cycle the "
+            "keyboard, re-enter bootloader mode, and make sure nothing else is "
+            "talking to this hidraw node")
+    return residue
+
+
+def dump_once(transport, plan=None, baseline=None):
+    """One full pass. Returns (image, final_baseline).
+
+    `baseline` is the value state+4 is known to hold on entry. Pass None for the
+    first pass on a freshly started bootloader; pass the previous pass's returned
+    baseline for later passes, because the bootstrap's all-zero check can only be
+    true before any READ has run.
+    """
+    plan = list(dump_plan() if plan is None else plan)
+    if not plan:
+        raise ProtocolError("empty dump plan")
+    lengths = {length for _addr, length in plan}
+    if len(lengths) != 1:
+        raise ProtocolError(f"plan has mixed chunk lengths {sorted(lengths)}; the "
+                            "freshness handshake compares same-length buffers")
+    length = lengths.pop()
+    if baseline is None:
+        baseline = bootstrap_baseline(transport, length)
+    elif len(baseline) != length:
+        raise ProtocolError(f"carried baseline is {len(baseline)} bytes, need {length}")
+
+    image, anchors = bytearray(), []
+    for addr, chunk_len in plan:
+        data = read_chunk(transport, addr, chunk_len, baseline, anchors)
+        image += data
+        baseline = data
+        if len(anchors) < ANCHOR_KEEP and all(d != data for _a, d in anchors):
+            anchors.append((addr, data))
+    return bytes(image), baseline
 
 
 def _close_quietly(transport):
@@ -514,26 +749,31 @@ def run_backup(out_path, passes=3, open_transport=HidrawTransport,
     print(f"REGION app-only base=0x{REGION_LO:x} size=0x{REGION_SIZE:x} "
           f"(bootloader [0x0,0x{REGION_LO:x}) is not readable and is not included)")
 
-    images, digests = [], []
-    for index in range(passes):
-        try:
-            transport = open_transport(node)
-        except OSError as exc:
-            print(f"REFUSING: cannot open {node}: {exc}")
-            print("Nothing was written.")
-            return 2
-        try:
-            image = dump_once(transport, plan)
-        except (ProtocolError, UnsafeReport, OSError) as exc:
-            print(f"ABORT on pass {index + 1}/{passes}: {exc}")
-            print("No dump was accepted and nothing was written.")
-            return 1
-        finally:
-            _close_quietly(transport)
-        digest = hashlib.sha256(image).hexdigest()
-        images.append(image)
-        digests.append(digest)
-        print(f"pass {index + 1}/{passes}: 0x{len(image):x} bytes sha256={digest}")
+    # All passes share one handle. The freshness proof is stateful: the bootstrap
+    # all-zero check is only true before any READ has run in this bootloader
+    # session, so later passes must carry the previous pass's proven baseline
+    # rather than re-bootstrap.
+    try:
+        transport = open_transport(node)
+    except OSError as exc:
+        print(f"REFUSING: cannot open {node}: {exc}")
+        print("Nothing was written.")
+        return 2
+    images, digests, baseline = [], [], None
+    try:
+        for index in range(passes):
+            try:
+                image, baseline = dump_once(transport, plan, baseline)
+            except (ProtocolError, UnsafeReport, OSError) as exc:
+                print(f"ABORT on pass {index + 1}/{passes}: {exc}")
+                print("No dump was accepted and nothing was written.")
+                return 1
+            digest = hashlib.sha256(image).hexdigest()
+            images.append(image)
+            digests.append(digest)
+            print(f"pass {index + 1}/{passes}: 0x{len(image):x} bytes sha256={digest}")
+    finally:
+        _close_quietly(transport)
 
     if any(img != images[0] for img in images[1:]) or len(set(digests)) != 1:
         print("MISMATCH between passes (bytes and/or SHA-256) — do NOT trust this dump.")
@@ -617,33 +857,63 @@ def dry_run():
     for label, report in read_chunk_reports(REGION_LO, CHUNK_MAX):
         print(f"  {label:12s} {report[:8].hex(' ')} ...")
     print(f"expected replies: status resp[0]=0x{R_STATUS:02x} "
-          f"(resp[1]=state+0x38 flags, READ-busy bit 0x{BUSY_READ:02x}; "
-          f"resp[2]=state+0x35 error), data resp[0]=0x{R_READDATA:02x}")
+          f"(resp[1]=state+0x38 flags, resp[2]=state+0x35 error), "
+          f"data resp[0]=0x{R_READDATA:02x}")
+    print(f"per-chunk freshness handshake: up to {FRESH_ATTEMPTS} rounds of "
+          f"data-then-status; a round is accepted only when the status that "
+          f"FOLLOWS the sample reports bit 0x{BUSY_READ:02x} clear and the sample "
+          f"differs from the known baseline, and the value returned is then a "
+          f"second, confirming data query; re-bases through up to {ANCHOR_KEEP} "
+          "anchor chunks (proof in read_fresh, log 86)")
+    print(f"state+0x38 bit 0x{BUSY_READ:02x} (READ busy) is never a completion "
+          "signal; it is only read AFTER a sample, to place that sample outside "
+          "the interval in which FUN_00003b64 can be writing (log 86)")
+    print("bootstrap: state+4 must read 0x30 zero bytes before the first EXEC "
+          "(log 86 Region$$Table zero-init at 0x0000ccc0); otherwise refuse")
     _safety_selfcheck()
     print("RESULT dry_run_ok=True guard_rejected_forbidden=True")
-    print("LIMITATION No device was opened. A post-EXEC scheduling race, the "
-          "hidraw transfer convention, and the absence of any live validation "
-          "all remain unresolved, so --run stays gated behind --force-unreviewed.")
+    print("LIMITATION No device was opened. The post-EXEC scheduling race is "
+          "proven possible (log 85) and the corrected handshake (log 86) is "
+          "proven to return only complete buffers, but the hidraw transfer "
+          "convention, the absence of any live validation, and the sole-host "
+          "operational precondition all remain unresolved, so --run stays gated "
+          "behind --force-unreviewed. Live use is still unauthorised.")
     return 0
 
 
 LIVE_REFUSAL = """REFUSING to run live.
 
 The read-back protocol is recovered from static analysis only and has never been
-exercised against hardware. The READ-busy bit is identified (log 81 FUN_00002db8
-holds state+0x38 bit 1 across the synchronous READ; log 82 returns that byte as
-status resp[1]), but three things remain unvalidated:
+exercised against hardware.
 
-  1. A post-EXEC scheduling race: nothing proves the service loop has set bit 1
-     before the host's first status query, so an early poll could exit at once
-     and return a stale buffer. Status does not expose the pending byte
-     state+0x34, so the race cannot be closed from the host side. The end-of-dump
-     self-validation rejects the shifted/stale images this would produce, but it
-     is a mitigation, not a proof of correctness.
-  2. The Linux hidraw write() report-number prefix and read() framing for this
+Two protocol questions are now settled. The post-EXEC scheduling race is real
+(log 85): the 0x1f parser only sets the pending byte state+0x34 and the request
+flag at 0x18010bd8, while the READ runs from FUN_00002db8, reached only through
+FUN_00003a7c, whose loop body is gated on the SysTick flag that only the handler
+at 0x000048d0 writes. And the first version of the fix was wrong (log 86): it
+read status *before* the data query, which does not exclude a READ that starts
+and finishes between two status queries with the fetch landing inside it, so it
+could accept a half-old/half-new buffer. The handshake now fetches, then reads
+status, then re-fetches, which is proven to return only complete buffers; and the
+first baseline is the all-zero state+4 the Region$$Table zero-init leaves, not a
+guess.
+
+What is still unresolved:
+
+  1. The Linux hidraw write() report-number prefix and read() framing for this
      device are assumed, not observed.
-  3. No live validation of any kind has been performed and no installed-firmware
+  2. No live validation of any kind has been performed and no installed-firmware
      backup exists, so there is nothing to restore from if a read path misbehaves.
+  3. An operational precondition that the protocol cannot enforce: no other
+     process may send reports to this hidraw node during the dump. A foreign READ
+     that is queued but has not dispatched is invisible -- state+0x34 is exposed
+     by no query -- and if it completes between the bootstrap fetch and the first
+     set-address it would publish an unrelated address's bytes. The bootstrap
+     catches a foreign READ that has already completed; it cannot catch a pending
+     one.
+  4. The handshake is undecidable when a chunk's content equals the previously
+     proven buffer; it re-bases through an anchor chunk of proven, different
+     content and aborts if none is available yet.
 
 Live use is unauthorised pending independent review. If that review has happened
 and you accept the risk, re-run with --force-unreviewed."""
