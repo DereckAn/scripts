@@ -33,8 +33,9 @@ are retained as historical evidence and were not repeated during preservation.
 - Normal USB identity: ASUS `0b05:1b7e`, device release `1.59`.
 - Five normal-mode HID interfaces; no DFU-class interface.
 - Both physical keyboard connectors expose the same normal-mode USB layout.
-- Standard USB firmware backup is not exposed. Proprietary or bootloader-mode
-  readback remains unresolved.
+- Standard USB firmware backup is not exposed. A proprietary bootloader-mode
+  READ path is supported by static analysis (logs 81-82) but has never been
+  exercised; no live validation of any command has been performed.
 - Official ASUS firmware 1.00.58 is preserved and hashed, but it is not a dump
   of the installed 1.59 firmware.
 - The vendor updater is a proprietary HID erase/program tool using normal PID
@@ -622,11 +623,83 @@ read-only backup tool whose only constructable reports are read/query/
 set-address/set-length; erase (`0x01`), program (`0x51`), unlock (`ASUSHIDFWU`),
 load-data (`0x22`), and reset (`0x11`) have no code path. Its default dry-run
 (log 83) validated all 46080 dump-plan reports against the guard and self-checked
-that forbidden reports raise; `--run` opens a device only when it is already in
-bootloader mode (`1b7f`) and refuses the application (`1b7e`) — verified by a
-run against the current app-mode device, which correctly refused and wrote
-nothing. The device remains in application mode; no firmware read has been
-performed and no report was sent.
+that forbidden reports raise. The device remains in application mode; no firmware
+read has been performed and no report was sent.
+
+> **Correction (2026-08-31, log 84).** This entry originally claimed the `--run`
+> refusal was "verified by a run against the current app-mode device, which
+> correctly refused and wrote nothing." That is unsupported: log 83 contains
+> dry-run output only and does not support that claim. During the later
+> correction audit, log 84 exercised only the new flag-gated refusal path; it
+> returned before device selection. The live path was never entered. The old
+> claim has been removed above; the raw log is unchanged.
+
+## 2026-08-31 — Correction pass over the backup tool and documentation (log 84)
+
+A review of the previous four commits found overstated conclusions and one
+functional defect. Nothing in this pass touched the device.
+
+**Backup tool.** `tool/backup_firmware.py` had a fatal sequencing bug: it sent
+all five reports of a chunk and then performed a single `read()`, so the `0x8f`
+status reply was consumed as if it were the `0xaa` read data, and every chunk was
+silently wrong. It also validated no response at all. It now performs immediate
+request-response exchanges — send `0x8f`, read its reply, validate
+`resp[0] == 0x0f` and that `resp[2]` (`state+0x35` error) is zero, poll
+`resp[1]` bit 1 (`state+0x38`, the proven READ-busy bit, log 81 `FUN_00002db8`)
+within bounded attempts, then send `0xaa`, read its reply, require
+`resp[0] == 0x2a`, and only then take `resp[1:1+length]`. Any timeout, short
+report, wrong code, status error, or busy-timeout aborts the dump, and no image
+is written after a failure.
+
+Device selection no longer takes the first PID-matching node: it requires
+exactly one `1b7f` hidraw whose report descriptor declares usage page `0xFF01`,
+64-byte IN and OUT reports, and no report ID, and refuses on zero, several, or a
+descriptor mismatch. Output is labelled as the app region (base `0x10000`, size
+`0x6c000`) and requires three passes agreeing on both raw bytes and SHA-256.
+
+A second review pass added three more corrections. **A post-EXEC scheduling race
+was identified and documented rather than papered over:** the `0x1f` parser only
+sets the pending byte `state+0x34`, and the service loop is what sets busy bit 1
+and performs the READ, so a status query that arrives before the service loop
+runs would see bit 1 clear and could return the previous chunk's buffer. Status
+does not expose `state+0x34`, so the host cannot close this window. No timing
+guarantee is claimed. **As a mitigation, every completed dump is now re-parsed in
+memory before anything is written** — exact size `0x6c000`, SN_FWIN record
+checksums, application word-sum, and container/entry constraints must all
+reproduce at base `0x10000`, with the primary-bootloader checks reported as
+explicitly skipped. Any failure rejects all passes. Finally, the output is
+published through an exclusive temp file, `fsync`, and `os.link`, so an existing
+backup is never overwritten and a failed write leaves no partial file; transport
+open and write errors are reported without tracebacks, and a failing
+`transport.close()` can no longer mask the protocol error that preceded it.
+
+`--run` remains gated behind `--force-unreviewed`: the scheduling race, the
+assumed hidraw transfer convention, and the absence of any hardware validation
+are all unresolved.
+
+**Analyzers and builder.** Both analyzers now take an explicit `argv`, support a
+full image at base 0 and the app-only dump at base `0x10000`, and state which
+checks were skipped rather than silently dropping them. The builder is
+version-locked to the preserved 1.00.58 SHA-256
+(`6d410ee0…e19f1d`), restricts patches to non-empty non-overlapping ranges inside
+Candidate B, refuses to overwrite an output, and re-validates the scatter stream
+after patching. The scatter emulator for `0x3f354..0x3f754` now asserts its
+observed shape (output `0xb04`, consumed `0x3fe`, two zero padding bytes) and
+maps literals to runtime addresses; the demo offset `0x3f66f` resolves to
+decompressed index `0x882`, runtime `0x1801ebd6`.
+
+**Claims withdrawn.** "Boots if and only if", "will boot", "complete
+authentication", "no signature anywhere", "sufficient recovery", and
+"unconstructable" were removed or narrowed to what the evidence supports. The
+duplicate bootloader checksum offset was corrected to `0x0fffc` and `0x70ffc`
+(`0x61000` is the start of the duplicated region, not a checksum offset). The
+unsupported claim of a live `--run` refusal was withdrawn. `FUN_000029d4` and the
+top-level selected-entry comparison are recorded as unresolved.
+
+85 offline tests were added (`tool/test_backup_firmware.py` 51,
+`tool/test_build_modified_image.py` 34), all mocked or file-based; none touches a
+device. Logs 77 and 83 keep their raw text; their conclusions are marked
+superseded in `logs/COMMANDS.md`.
 
 ## Corrections retained for auditability
 
@@ -644,6 +717,12 @@ The investigation deliberately records mistakes and superseded interpretations:
 | First binary-pointer search | Shell escaping was malformed; log 50 was regenerated byte-safely |
 | Generic STM32 recipes | Removed; not valid evidence for SNC73270 |
 | Eight `0x86` rows at `0x1801c37c` | Corrected to three overlapping 189-byte logical wire windows plus a separate three-row `0x100` scan map |
+| Duplicate bootloader checksum "at `0x61000`" | `0x61000` is the start of the duplicated region; the stored word-sums are at `0x0fffc` and `0x70ffc` (log 84) |
+| Claimed live `--run` refusal against the app-mode device | Unsupported; log 83 is dry-run only. Log 84 later exercised only the new flag-gated CLI refusal, which returned before device selection; the live path was never entered |
+| Backup tool batched its queries | Fatal: the `0x8f` status reply was consumed as read data. Fixed to immediate request-response exchanges (log 84) |
+| "Erase/program/unlock are unconstructable" | Narrowed to "the guard rejected every write/unlock/reset form in the self-check" (log 84) |
+| Boot-gate framing implying sufficiency | Reframed as necessary-but-incomplete; `FUN_000029d4` and the top-level selected-entry comparison are unresolved (log 84) |
+| Busy poll treated as proof of READ completion | Narrowed: bit 1 clear means "not currently reading". The post-EXEC scheduling race is unresolved and documented; end-of-dump self-validation is a mitigation, not a fix (log 84) |
 
 ## Files and review order
 
@@ -678,8 +757,11 @@ For clarity, this investigation has not:
 - erased, programmed, reset, or detached any device;
 - proven that the official 1.00.58 image is a safe downgrade or recovery path;
 - sent any erase, program, or jump-to-bootloader command, or flashed anything
-  (the write protocol is now understood on paper — logs 75–76, 79–81 — but no
+  (the write protocol is statically recovered — logs 75–76, 79–81 — but no
   command has been issued to the device);
+- run `tool/backup_firmware.py --run`, in any mode, at any time;
+- opened, read, or written `/dev/hidraw*`;
+- validated any part of the recovered protocol against hardware;
 - built or flashed custom firmware.
 
 ## Recommended continuation

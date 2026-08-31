@@ -1,129 +1,144 @@
 #!/usr/bin/env python3
-"""Offline, read-only decode of the Falchion boot container structures.
+"""Decode known Falchion boot structures without claiming boot sufficiency.
 
-Decodes the layered boot format the bootloader walks before it CRC-verifies and
-jumps (recovered from bootloader_primary.bin, logs 75/78):
+Supports a full vendor image (base 0) and the application-only region produced
+by the USB backup tool (base 0x10000). Passing these checks means that the known
+container constraints are internally consistent; it does not prove an edited
+image will execute correctly or that every ROM/bootloader condition is known.
 
-  SNC7320A wrapper  (primary @flash 0x60000000, backup @0x60060000)
-    -> SN_BCFG boot-config (@wrapper+0x200)
-       -> 2-slot boot-priority pointer table (@wrapper+0x208)
-          -> SN_FWIN firmware-info header (@0x60010000)
-             -> per-region records (loader A + application B)
-
-`boot_gate(img)` returns the invariants a modified image must preserve to boot,
-independent of the CRC/word-sum integrity fields:
-  * SNC7320A / SN_BCFG / SN_FWIN magics intact
-  * boot-priority slot 0 points at the SN_FWIN header
-  * SN_FWIN CRC-enable gate (+0x18) is nonzero (else records are NOT verified)
-  * the entry region's initial SP is a valid RAM address (bootloader FUN_00005240)
-
-No device access. Usage:
-    python3 tool/analyze_boot_structures.py [path-to-bin]
+No device access. Examples:
+    python3 tool/analyze_boot_structures.py
+    python3 tool/analyze_boot_structures.py installed-app.bin --base 0x10000
 """
-import os
+import argparse
+from pathlib import Path
 import struct
-import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-BIN = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    ROOT, "dumps/vendor/M605_V01_00_58.bin")
+from analyze_candidate_integrity import (
+    DEFAULT_BIN, FLASH_BASE, FWIN_OFF, image_index, parse_records,
+)
 
-FLASH_BASE = 0x60000000
 SNC_MAGIC = b"SNC7320A"
 BCFG_MAGIC = b"SN_BCFG\x00"
 FWIN_MAGIC = b"SN_FWIN\x00"
-BCFG_OFF = 0x200          # SN_BCFG within a container wrapper
-SLOTS_OFF = 0x208         # boot-priority pointer table within a container
-FWIN_ADDR = 0x60010000    # firmware-info header (both slots point here)
-GATE_OFF = 0x18           # SN_FWIN CRC-enable gate
-ENTRY_PTR_OFF = 0x10      # SN_FWIN entry pointer (candidate A base)
-CONTAINERS = {"primary": 0x60000000, "backup": 0x60060000}
-# Valid initial-SP ranges enforced by FUN_00005240 (exclusive/inclusive per code).
+BCFG_OFF = 0x200
+SLOTS_OFF = 0x208
+GATE_OFF = 0x18
+ENTRY_PTR_OFF = 0x10
+CONTAINERS = {
+    "primary": (0x00000, 0x60001000),
+    "backup": (0x60000, 0x60062000),
+}
+EXPECTED_CONTAINER_SIZE = 0x10000
 SP_RANGES = ((0x18000000, 0x18040000), (0x20000000, 0x20001000))
 
+# Recorded so a passing run is never read as "this image boots".
+UNRESOLVED = (
+    "FUN_000029d4 is not decompiled; its role in the boot path is unknown.",
+    "The top-level comparison applied to the selected entry value before the "
+    "jump is not recovered, so the caller's accept/reject rule is unknown.",
+    "Any ROM/first-stage conditions ahead of the bootloader are unexamined.",
+)
 
-def f(addr):
-    """flash address -> file offset."""
-    return addr - FLASH_BASE
+
+def available(data, image_base, flash_off, size):
+    index = flash_off - image_base
+    return 0 <= index and index + size <= len(data)
 
 
-def boot_gate(img):
-    """Return {check_name: bool} for the boot-decision invariants."""
+def read_u32(data, image_base, flash_off):
+    pos = image_index(flash_off, image_base, 4, len(data))
+    return struct.unpack_from("<I", data, pos)[0]
+
+
+def known_boot_checks(data, image_base=0):
+    """Return (present, skipped, records, checks) for the static constraints
+    that are observable in this image.
+
+    Containers absent from a partial image are reported as skipped rather than
+    silently dropped, so a passing app-only run is never mistaken for a full one.
+    """
     checks = {}
-    for name, base in CONTAINERS.items():
-        b = f(base)
-        checks[f"{name} SNC7320A magic"] = img[b:b + 8] == SNC_MAGIC
+    present_containers, skipped_containers = [], []
+    for name, (off, expected_ptr) in CONTAINERS.items():
+        if not available(data, image_base, off, SLOTS_OFF + 8):
+            skipped_containers.append(name)
+            continue
+        present_containers.append(name)
+        pos = image_index(off, image_base, SLOTS_OFF + 8, len(data))
+        boot_ptr, size = struct.unpack_from("<2I", data, pos + 0x10)
+        slot0, slot1 = struct.unpack_from("<2I", data, pos + SLOTS_OFF)
+        checks[f"{name} SNC7320A magic"] = data[pos:pos + 8] == SNC_MAGIC
         checks[f"{name} SN_BCFG magic"] = (
-            img[b + BCFG_OFF:b + BCFG_OFF + 8] == BCFG_MAGIC)
-        slot0 = struct.unpack_from("<I", img, b + SLOTS_OFF)[0]
-        checks[f"{name} slot0 -> SN_FWIN"] = slot0 == FWIN_ADDR
+            data[pos + BCFG_OFF:pos + BCFG_OFF + 8] == BCFG_MAGIC)
+        checks[f"{name} bootloader pointer"] = boot_ptr == expected_ptr
+        checks[f"{name} declared size"] = size == EXPECTED_CONTAINER_SIZE
+        checks[f"{name} slot0 -> SN_FWIN"] = slot0 == FLASH_BASE + FWIN_OFF
+        checks[f"{name} slot1 empty"] = slot1 == 0
 
-    h = f(FWIN_ADDR)
-    checks["SN_FWIN magic"] = img[h:h + 8] == FWIN_MAGIC
-    checks["SN_FWIN CRC-enable gate (+0x18) nonzero"] = (
-        struct.unpack_from("<I", img, h + GATE_OFF)[0] != 0)
+    header = image_index(FWIN_OFF, image_base, 0x34, len(data))
+    checks["SN_FWIN magic"] = data[header:header + 8] == FWIN_MAGIC
+    checks["SN_FWIN CRC-enable gate nonzero"] = (
+        struct.unpack_from("<I", data, header + GATE_OFF)[0] != 0)
 
-    entry = struct.unpack_from("<I", img, h + ENTRY_PTR_OFF)[0]
-    sp = struct.unpack_from("<I", img, f(entry))[0]   # first word = initial SP
-    checks["entry initial-SP in valid RAM"] = any(
-        lo < sp < hi or sp == hi for (lo, hi) in SP_RANGES) and any(
-        lo < sp <= hi for (lo, hi) in SP_RANGES)
-    return checks
+    records = parse_records(data, image_base)
+    entry = struct.unpack_from("<I", data, header + ENTRY_PTR_OFF)[0]
+    checks["entry equals record[0] address"] = entry == records[0][1]
+    checks["record ranges inside application region"] = all(
+        0x60010000 <= addr and length > 0 and addr + length <= 0x6007C000
+        for _idx, addr, length, _checksum, _dst in records)
 
-
-def decode(img):
-    print(f"BIN {BIN}\nBIN_SIZE 0x{len(img):x}\n")
-    for name, base in CONTAINERS.items():
-        b = f(base)
-        magic = bytes(img[b:b + 8])
-        boot_ptr, size = struct.unpack_from("<2I", img, b + 0x10)
-        bcfg = bytes(img[b + BCFG_OFF:b + BCFG_OFF + 8])
-        s0, s1 = struct.unpack_from("<2I", img, b + SLOTS_OFF)
-        print(f"CONTAINER {name} @flash 0x{base:08x} (file 0x{b:x})")
-        print(f"  wrapper magic={magic!r} bootloader_ptr=0x{boot_ptr:08x} "
-              f"size=0x{size:08x}")
-        print(f"  {bcfg!r} @+0x200  boot_slots=[0x{s0:08x}, 0x{s1:08x}]")
-
-    h = f(FWIN_ADDR)
-    entry = struct.unpack_from("<I", img, h + ENTRY_PTR_OFF)[0]
-    gate = struct.unpack_from("<I", img, h + GATE_OFF)[0]
-    sp = struct.unpack_from("<I", img, f(entry))[0]
-    print(f"\nSN_FWIN @flash 0x{FWIN_ADDR:08x} (file 0x{h:x})")
-    print(f"  magic={bytes(img[h:h+8])!r} fmt={bytes(img[h+8:h+0x10])!r}")
-    print(f"  entry_ptr(+0x10)=0x{entry:08x} crc_gate(+0x18)=0x{gate:08x} "
-          f"entry_initial_SP=0x{sp:08x}")
-    off = h + 0x24
-    idx = 0
-    while off + 0x10 <= len(img):
-        addr, length, crc, dst = struct.unpack_from("<4I", img, off)
-        if length == 0 or addr == 0:
-            print(f"  record[{idx}] @0x{off:05x} TERMINATOR")
-            break
-        print(f"  record[{idx}] @0x{off:05x} addr=0x{addr:08x} len=0x{length:08x} "
-              f"crc=0x{crc:08x} dst=0x{dst:08x}")
-        off += 0x10
-        idx += 1
+    entry_off = entry - FLASH_BASE
+    entry_pos = image_index(entry_off, image_base, 8, len(data))
+    sp, reset = struct.unpack_from("<2I", data, entry_pos)
+    checks["entry initial-SP in observed RAM ranges"] = any(
+        lo < sp <= hi for lo, hi in SP_RANGES)
+    checks["entry reset vector is Thumb and within record[0] length"] = (
+        bool(reset & 1) and (reset & ~1) < records[0][2])
+    return present_containers, skipped_containers, records, checks
 
 
-def main():
-    with open(BIN, "rb") as fh:
-        img = bytearray(fh.read())
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("image", nargs="?", type=Path, default=DEFAULT_BIN)
+    parser.add_argument(
+        "--base", type=lambda value: int(value, 0), default=0,
+        help="flash offset represented by image byte zero (USB app dump: 0x10000)")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    data = args.image.read_bytes()
     print("PROGRAM analyze_boot_structures")
-    print("PURPOSE offline read-only boot-container structure decode\n")
-    decode(img)
-    gate = boot_gate(img)
-    print("\nBOOT_GATE invariants (must hold for a modified image to boot):")
-    for name, ok in gate.items():
-        print(f"  {'PASS' if ok else 'FAIL'}  {name}")
-    print(f"\nRESULT boot_gate_ok={all(gate.values())}")
-    print("CONCLUSION A modified image boots iff these container/header "
-          "invariants hold AND the integrity fields verify. A Candidate-B data "
-          "patch preserves every invariant here (magics, slot table, gate, and "
-          "entry SP are untouched); only the recomputed CRC/word-sum fields "
-          "change.")
-    assert all(gate.values()), "boot-gate invariant failed on preserved BIN"
+    print("PURPOSE offline known boot-container checks")
+    print(f"IMAGE {args.image}")
+    print(f"IMAGE_BASE 0x{args.base:x}")
+    print(f"IMAGE_SIZE 0x{len(data):x}")
+    try:
+        containers, skipped, records, checks = known_boot_checks(data, args.base)
+    except (ValueError, struct.error) as exc:
+        print(f"RESULT known_checks_ok=False error={exc}")
+        return 1
+
+    print(f"PRESENT_CONTAINERS {','.join(containers) if containers else 'none'}")
+    for name in skipped:
+        print(f"  SKIP {name} container: absent from this image "
+              f"(base 0x{args.base:x}, size 0x{len(data):x})")
+    for index, addr, length, checksum, dst in records:
+        print(f"RECORD {index} addr=0x{addr:08x} len=0x{length:x} "
+              f"checksum=0x{checksum:08x} dst=0x{dst:08x}")
+    for name, ok in checks.items():
+        print(f"  {'PASS' if ok else 'FAIL'} {name}")
+    ok = all(checks.values())
+    print(f"RESULT known_checks_ok={ok} checks_run={len(checks)} "
+          f"containers_skipped={len(skipped)}")
+    for line in UNRESOLVED:
+        print(f"UNRESOLVED {line}")
+    print("LIMITATION Passing means the known container constraints are "
+          "internally consistent. It does not prove an edited image boots.")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

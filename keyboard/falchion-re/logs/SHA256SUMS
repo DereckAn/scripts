@@ -83,3 +83,4 @@ c5a5a8d9744033c20aa3ba9ebde0b930d808bf2bbead684c72b8069261c771db  logs/80-ghidra
 324573c1af6bc6f0f830e463fa710a049c4451be2ff766e9dbea710998a9761a  logs/81-ghidra-bootloader-write-protocol.txt
 9e9007f5d798a31fc0c716300a65f1e1403c1e167c50cbeba19d8a7891a49f78  logs/82-ghidra-bootloader-framing.txt
 aebec83a17bde6690b4b33d54e80db20f61c0b4d70fc4f31a559df85530b5636  logs/83-backup-tool-dryrun.txt
+8ccb543d677a7978c1692dd36a057fd1178b31f24e8403099f4797e8ec061e61  logs/84-correction-audit.txt

@@ -22,7 +22,24 @@ the preservation-safe procedure.
 
 **No standard USB firmware-readback path is exposed in the keyboard's current operating mode.** The device exposes five HID interfaces and no DFU-class interface. A direct, read-only `dfu-util -l` enumeration completed successfully but listed no DFU targets.
 
-This does **not** prove that USB backup is impossible. The keyboard could have a separate bootloader mode or a proprietary vendor-HID readback command. Neither was tested because entering another mode may reset/re-enumerate the device, and undocumented vendor commands could change configuration or firmware. The current evidence therefore supports: **standard USB backup unavailable; proprietary/bootloader USB backup unresolved**.
+This does **not** prove that USB backup is impossible. Later static analysis
+(logs 81-82) **supports the existence of a proprietary bootloader READ path**:
+the PID-`1b7f` bootloader implements a vendor-HID READ (execute opcode `0x05`)
+over the application region `[0x10000, 0x7c000)` in ≤`0x30`-byte chunks.
+
+Status as of the 2026-08-31 correction pass:
+
+- **Statically recovered:** the bootloader READ path, the full write/erase/
+  program protocol, the 64-byte vendor-HID wire framing, Candidate B's runtime
+  entry, and both integrity mechanisms. All of this comes from decompiling
+  preserved artifacts.
+- **Not established:** none of it has been exercised. There has been **no live
+  validation of any command**, no bootloader-mode entry, and **no installed-
+  firmware backup exists**. `dumps/vendor/M605_V01_00_58.bin` is a vendor
+  reference image (v1.00.58), not a readback of this unit (v1.59).
+
+So: **standard USB backup unavailable; a proprietary bootloader READ path is
+supported by static analysis but unvalidated in practice.**
 
 No firmware backup was created during this session.
 
@@ -321,9 +338,12 @@ handlers decode as valid Cortex-M3 Thumb-2 code.
 - **The terminal values are additive 32-bit word-sums**, not CRCs (bootloader
   `FUN_000026d0`): the last word of a region equals the 32-bit sum of every
   preceding word. `0xfb665ae3` is the sum over the bootloader region
-  `0x00000..0x10000` (and its duplicate at `0x61000`), and `0x5d27c5a9` is the
-  sum over the whole application region `0x10000..0x7c000`. Both reproduce
-  exactly.
+  `0x00000..0x10000`, stored in that region's final word at offset **`0x0fffc`**;
+  the duplicate bootloader copy at `0x61000..0x71000` stores the same value in
+  its own final word at **`0x70ffc`**. (`0x61000` is the start of the duplicated
+  region, not a checksum offset — an earlier draft cited it as one.)
+  `0x5d27c5a9` is the sum over the whole application region `0x10000..0x7c000`,
+  stored at `0x7bffc`. All reproduce exactly.
 - The firmware/update path contains CRC/checksum language but no identified
   firmware signature-verification string, embedded public key, or crypto-library
   dependency. Certificate strings in the Windows executables are their own
@@ -700,14 +720,22 @@ Key facts:
 - **`FUN_00005240`** dereferences the entry pointer and requires the image's
   *initial stack pointer* (first word at `0x60011000`, here `0x18036140`) to lie
   in valid RAM (`0x18000001..0x18040000` or `0x20000001..0x20001000`).
-- **Boot gate for a modified image:** the `SNC7320A`/`SN_BCFG`/`SN_FWIN` magics,
-  the slot-0 pointer, the `+0x18` gate, and the entry SP must all remain valid,
-  *in addition to* the recomputed integrity fields. A Candidate-B data patch
-  preserves every one of these (it touches none of them), so the round-trip
-  builder's rebuilt image passes both the integrity checks and the boot gate.
+- **Known constraints for a modified image:** the `SNC7320A`/`SN_BCFG`/`SN_FWIN`
+  magics, the slot-0 pointer, the `+0x18` gate, and the entry SP must all remain
+  valid, *in addition to* the recomputed integrity fields. A Candidate-B data
+  patch touches none of them, so the builder's rebuilt image satisfies every
+  constraint we have actually read.
 
-`tool/analyze_boot_structures.py` decodes this and asserts the gate; the builder
-(`tool/build_modified_image.py`) now checks the same invariants on its output.
+These are **necessary conditions we have observed, not a sufficient set.** Two
+things in this path are unresolved: `FUN_000029d4` is not decompiled, and the
+top-level comparison applied to the selected entry value before the jump has not
+been recovered, so the caller's accept/reject rule is unknown. Any ROM or
+first-stage condition ahead of the bootloader is also unexamined. Passing these
+checks therefore does not establish that an edited image boots.
+
+`tool/analyze_boot_structures.py` decodes this and reports the checks together
+with the unresolved points; the builder (`tool/build_modified_image.py`) checks
+the same constraints on its output.
 
 ### Candidate B runtime entry and full boot chain (logs 79–80)
 
@@ -767,12 +795,14 @@ report offset `0x34`:
   transport is HID reports (`REPORT_ID`/`USAGEPAGE`/`OutputReportByteLength`); the
   updater CLI takes `PAGE_SIZE` and `APP_PKT_LEN`/`BOOT_PKT_LEN`.
 
-Notably the program path has a **"no check checksum"** mode, and there is no
-signature verification anywhere in this path — consistent with the integrity
-being a recomputable checksum rather than a cryptographic signature. This maps
-the complete write protocol on paper; **it does not authorise sending any of
-these commands.** Erase/program remain destructive and must not be issued until a
-verified recovery backup exists (roadmap step 5).
+Notably the program path has a **"no check checksum"** mode, and **no signature
+verification was found in the code paths that were decompiled** — consistent
+with the integrity being a recomputable checksum rather than a cryptographic
+signature. This is an absence of evidence in the paths examined, not proof that
+no signature check exists anywhere in the device. This maps the write protocol
+**as statically recovered**; **it does not authorise sending any of these
+commands**, and none has been sent. Erase/program remain destructive and must not
+be issued until a verified recovery backup exists (roadmap step 5).
 
 ### Bootloader vendor-HID wire framing (READ path) — log 82
 
@@ -795,7 +825,42 @@ OUT sub-commands (`report[0]`, top bit clear):
 
 IN/query sub-commands (`report[0]` with top bit set, answered by `FUN_00003740`):
 `0x8e` → whole-image CRC verify result (`0xfa` pass / `0xfe` fail); `0x8f` →
-status (busy/unlock flags + error byte); `0xaa` → the read-back data.
+status; `0xaa` → the read-back data.
+
+**Response framing (log 82 `FUN_00003740`).** The responder writes
+`resp[0] = query & 0x7f`, so `0x8f` is answered by `0x0f` and `0xaa` by `0x2a`.
+For the `0x0f` status it returns `resp[1] = state+0x38` (flags) and
+`resp[2] = state+0x35` (error: `1` address out of range, `2` not unlocked,
+`3` bad length). For `0x2a` it memcpy's the data starting at `resp[1]` for the
+previously set length — so `response[1:1+length]` skips the **response code**,
+which is a protocol field, not a hidraw report-ID prefix.
+
+**READ-busy is statically exposed (log 81 `FUN_00002db8`).** On command byte
+`0x05` the dispatcher sets `state+0x38` bit 1 (`(+0x38 & 0xfd) + 2`), calls the
+synchronous READ `FUN_00003b64`, then clears bit 1 (`+0x38 & 0xfd`) and clears
+the pending byte `+0x34`. Erase (`0x01`) and program (`0x51`) use bit 0 the same
+way. Since `0x8f` returns `state+0x38` as `resp[1]`, **polling `resp[1]` bit 1
+is the READ-in-progress test**; `state+0x34` is the pending-command byte. Bit 7
+of `resp[1]` is the unlock flag.
+
+**Residual uncertainty — post-EXEC scheduling race (unresolved).** The `0x1f`
+OUT parser only records the pending command in `state+0x34`; it is the service
+loop (`FUN_00003a7c` → `FUN_00002db8`) that later sets bit 1 and performs the
+READ. Nothing recovered so far establishes that the service loop has run by the
+time the host's first `0x8f` arrives. In that window bit 1 reads **clear**, so a
+host poll would exit immediately and the following `0xaa` could return the
+*previous* chunk's buffer contents. Because the status report exposes
+`state+0x38` and `state+0x35` but **not** `state+0x34`, a host cannot distinguish
+"READ complete" from "READ not yet started". No timing guarantee should be
+assumed, and none is claimed here.
+
+`tool/backup_firmware.py` mitigates rather than solves this: after all passes
+agree it re-parses the assembled image in memory (`validate_dump()`) and refuses
+to write unless the SN_FWIN record checksums, the application word-sum, and the
+container/entry constraints all reproduce. That rejects the shifted and stale
+images this race would produce, but a race that happened to yield a
+self-consistent image would not be detected. Resolving it properly needs either
+a decompile of the service-loop scheduling or live observation — neither exists.
 
 **Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
 execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and
@@ -823,19 +888,26 @@ ordered so that everything with device risk comes last, and nothing is flashed
 until a verified recovery path exists.
 
 1. **Offline image builder + round-trip verifier** (done, `tool/build_modified_image.py`,
-   log 77). Applies byte patches to a copy of the preserved BIN, recomputes the
-   SN_FWIN per-record CRC-sum (`record+0x8`) and the additive word-sum guards
-   (`0xfffc`, `0x7bffc`), and re-verifies the rebuilt image. Self-checked:
-   recompute of the unmodified image is idempotent (matches the vendor method
-   byte-for-byte), a naive one-byte patch fails, and the rebuilt image passes all
-   four fields. This proves the "base our own on this one" idea on the bench with
-   zero device risk. The preserved BIN is never modified.
+   log 77, **conclusion superseded by log 84**). Applies byte patches to a copy of
+   the preserved BIN, recomputes the SN_FWIN per-record CRC-sum (`record+0x8`) and
+   the additive word-sum guards (`0x0fffc`, `0x7bffc`), and re-verifies the
+   rebuilt image. Self-checked: recompute of the unmodified image is idempotent
+   (matches the vendor method byte-for-byte), a naive one-byte patch fails, and
+   the rebuilt image reproduces all four fields. The builder is now version-locked
+   to the preserved 1.00.58 SHA-256, restricts patches to non-empty
+   non-overlapping ranges inside Candidate B, refuses to overwrite an existing
+   output, and re-validates the scatter-compressed stream after patching. Log 77's
+   wording ("passes every integrity field the bootloader checks... proving the
+   checks are live") overstated the result: it shows the fields are *reproducible
+   offline*, not that a rebuilt image boots. The preserved BIN is never modified.
 2. **Decode the remaining boot structures** — done (see "Boot container
    structures and boot gate" above, log 78). The boot-priority table has one
    populated slot (no A/B image scheme), the `+0x18` gate enables CRC checking,
    `FUN_00005240` checks the entry SP, and the container magics/backup copy are
    mapped. A Candidate-B data patch preserves all of these, so a CRC-valid
-   rebuilt image also satisfies the boot gate.
+   rebuilt image also satisfies **the constraints we have read** — which are
+   necessary but not known to be sufficient (`FUN_000029d4` and the top-level
+   selected-entry comparison remain unresolved).
 3. **Find Candidate B's true runtime entry** — done (see "Candidate B runtime
    entry and full boot chain" above, logs 79–80). Entry is `0x1800023a`
    (application main), called by Candidate A's `FUN_000002c8` after scatter-load.
@@ -845,18 +917,26 @@ until a verified recovery path exists.
    cross-checked against the updater strings. Documented on paper only; no
    command has been or should be sent.
 5. **Recovery prerequisite — a verified backup of the installed 1.59 image**
-   (plan written: `notes/step5-recovery-plan.md`). This is the first step that
-   reads *from the device*, so it is not offline. Two approaches: (A) USB
-   read-back via the bootloader READ command — application region `[0x10000,
-   0x7c000)` only, ≤`0x30` bytes/transfer, no unlock needed (least invasive), see
-   the wire framing below — or (B) a hardware 3.3 V SPI read of the external flash U5 (gold
-   standard). Either way: ≥3 identical dumps, validate with
-   `analyze_boot_structures.py` + `analyze_candidate_integrity.py`, store
-   redundantly. No erase/program is ever issued during preservation, and nothing
-   is flashed until this backup exists and verifies.
+   (plan written: `notes/step5-recovery-plan.md`; **not done**). This is the
+   first step that reads *from the device*, so it is not offline. Two approaches:
+   (A) USB read-back via the bootloader READ command — application region
+   `[0x10000, 0x7c000)` only, base `0x10000` size `0x6c000`, ≤`0x30`
+   bytes/transfer, no unlock needed (least invasive), see the wire framing above
+   — or (B) a hardware 3.3 V SPI read of the external flash U5 (gold standard).
+   Either way: ≥3 identical dumps, validate with
+   `analyze_candidate_integrity.py --base 0x10000` and
+   `analyze_boot_structures.py --base 0x10000`, store redundantly. No
+   erase/program is ever issued during preservation, and nothing is flashed until
+   this backup exists and verifies.
 
-Steps 1–3 are pure static analysis. Do not attempt step 4 against the device or
-flash any image until step 5 exists.
+   Approach A covers only the application region, so it is **not** a complete
+   device image; the bootloader region `[0x0, 0x10000)` is unreadable over USB.
+   It is adequate for recovering app-region modifications only because that same
+   range is the only range erase/program can reach. Only Approach B captures the
+   bootloader.
+
+Steps 1–4 are pure static analysis and are complete on paper only. Do not send
+any step-4 command to the device or flash any image until step 5 exists.
 
 ### Documentation synchronization
 
@@ -872,7 +952,7 @@ Evidence: `logs/46-documentation-synchronization-audit.txt`.
 
 ## Uncertain or superseded assumptions
 
-- **USB backup via proprietary HID:** unresolved. Interface 1 can transport 64-byte vendor reports, but no safe claim about flash-read commands can be made from descriptors alone.
+- **USB backup via proprietary HID:** static bootloader analysis supports a proprietary HID READ operation over the 64-byte vendor interface for the application region `0x10000..0x7bfff`. The live transport and behavior on this physical keyboard remain unvalidated, and no backup has been obtained.
 - **Separate USB bootloader mode:** unresolved. No key combination or detach command was attempted.
 - **Older `0xFF32` report descriptor:** `keyboard/falchion-re/notes/report-desc-0.txt` contains a 63-byte input/output report on vendor page `0xFF32`, but its provenance is not recorded strongly enough to associate it with the currently enumerated interface 4. Current direct enumeration identifies interface 4 as page `0x59` with a different 327-byte descriptor. Treat the older mapping as historical/unverified, not a current fact.
 - **Firmware version:** `bcdDevice 1.59` is verified; equating it with the version of every code image or external-flash region is an assumption.
@@ -903,13 +983,17 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
-7. **Candidate B integrity is now solved (logs 75–76); the true runtime entry
-   path remains open.** The SN_FWIN checksum is a sum of per-`0x10000`-chunk
+7. **Candidate B integrity is solved (logs 75–76) and the runtime entry is
+   recovered (logs 79–80).** The SN_FWIN checksum is a sum of per-`0x10000`-chunk
    IEEE CRC-32 and the container guard is an additive word-sum, both recomputable
-   offline. The remaining static target is Candidate B's true runtime
-   entry/dispatch after scatter-load (it still has no vector or proven reset
-   path), and — before any flashing — the bootloader's write/erase/program
-   protocol and recovery behavior.
+   offline. The remaining static targets are `FUN_000029d4` and the top-level
+   comparison applied to the selected entry value before the jump; until those
+   are resolved, the set of conditions a modified image must satisfy is known to
+   be incomplete.
+8. **Do not treat any of the recovered protocol as validated.** Logs 81–83 are
+   static analysis and a dry run. No command has been sent, no bootloader mode
+   entered, and no installed-firmware backup exists. Live use of
+   `tool/backup_firmware.py` remains unauthorised pending independent review.
 
 ## Evidence integrity
 
