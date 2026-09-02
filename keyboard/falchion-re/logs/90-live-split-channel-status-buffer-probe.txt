@@ -1,0 +1,52 @@
+ASUS ROG Falchion Ace HFX — live split-channel status/buffer probe
+Date: 2026-09-02 America/Mexico_City
+
+AUTHORIZATION
+The owner explicitly answered "yes" after being shown the exact four reports:
+  1. 0x8f status query
+  2. 0x21 0x30 0x00 set RAM-only response length to 48
+  3. 0xaa query reset-initialized response buffer
+  4. 0x8f final status query
+
+The authorization explicitly excluded address, execute-READ, unlock, erase,
+program, reset, and SPI commands.
+
+PRECONDITIONS VERIFIED IMMEDIATELY BEFORE AUTHORIZATION
+  command selector: /dev/hidraw6, usage page FF01
+  response selector: /dev/hidraw7, usage page FF00
+  /dev/hidraw6 ACL: user:dereck:rw-
+  /dev/hidraw7 ACL: user:dereck:r--
+  fuser: no holder reported for either node
+
+COMMAND
+  python3 tool/probe_bootloader.py --run --acknowledge-volatile-length
+
+RAW OUTPUT
+validated_command_node=/dev/hidraw6 usage_page=0xff01
+validated_response_node=/dev/hidraw7 usage_page=0xff00
+command_selector_rejections=3
+response_selector_rejections=3
+application_nodes=[]
+routing=write FF01/EP6; read FF00/EP5
+action=4 exact reports; 3 queries + volatile set-length; no flash access
+status_before=0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+buffer_reply=2a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+status_after=0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+RESULT=PASS locked=true idle=true error=0 zero_buffer_48=true
+FLASH_ACCESS=none
+
+INTERPRETATION
+  - Linux unnumbered-hidraw write framing works for bootloader reports.
+  - Commands are accepted on FF01/EP6 and replies are received on FF00/EP5.
+  - Response codes match static analysis: 0x8f -> 0x0f and 0xaa -> 0x2a.
+  - state+0x38 flags and state+0x35 error were both zero before and after.
+  - The reset-initialized response buffer contained exactly 48 zero bytes,
+    matching the Region$$Table zero-init proof.
+  - The volatile length change worked and did not unlock or start flash work.
+
+BOUNDARY
+No address was set. No execute opcode was sent. No flash READ, unlock, erase,
+program, reset, firmware update, driver detach, permission change by the
+assistant, or SPI command occurred. This validates the minimal transport and
+query framing only. It does not validate execute-READ, the freshness handshake,
+the full backup tool, or the installed firmware contents.

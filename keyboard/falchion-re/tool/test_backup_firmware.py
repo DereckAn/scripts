@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -597,6 +598,22 @@ class TestRunBackup(unittest.TestCase):
         self.assertTrue(all(d.closed for d in made))
         self.assertGreaterEqual(made[0].dispatches, 3 * len(SHORT_PLAN))
 
+    def test_production_defaults_open_distinct_command_and_response_nodes(self):
+        opened = []
+
+        def factory(command_node, response_node):
+            opened.append((command_node, response_node))
+            return FakeBootloader(self.flash)
+
+        selected = ("/dev/ff01", "/dev/ff00", [], [], [])
+        with mock.patch.object(bf, "select_bootloader_channels",
+                               return_value=selected):
+            rc = bf.run_backup(self.out, open_transport=factory,
+                               plan=SHORT_PLAN,
+                               validate=self._skip_validation)
+        self.assertEqual(rc, 0)
+        self.assertEqual(opened, [("/dev/ff01", "/dev/ff00")])
+
     def test_mismatched_passes_refuse_to_write(self):
         """The flash changes under the tool between passes 2 and 3."""
         flipped = bytes([self.flash[0] ^ 0xFF]) + self.flash[1:]
@@ -752,6 +769,11 @@ class TestDescriptor(unittest.TestCase):
         reasons = bf.descriptor_reasons(descriptor(page=0xFF00))
         self.assertTrue(any("usage page 0xff01 absent" in r for r in reasons))
 
+    def test_ff00_response_descriptor_accepted_when_explicit(self):
+        self.assertEqual(
+            bf.descriptor_reasons(descriptor(page=0xFF00),
+                                  usage_page=bf.RESPONSE_USAGE_PAGE), [])
+
     def test_wrong_report_size_rejected(self):
         reasons = bf.descriptor_reasons(descriptor(count=32))
         self.assertTrue(any("64-byte IN" in r for r in reasons))
@@ -790,6 +812,14 @@ class TestSelection(unittest.TestCase):
         self.assertEqual(node, "/dev/hidraw1")
         self.assertEqual(rejected, [])
         self.assertEqual(app_nodes, ["hidraw0"])
+
+    def test_explicit_ff00_response_node_selected(self):
+        self.add("hidraw1", bf.PID_BOOT, descriptor(page=0xFF01))
+        self.add("hidraw2", bf.PID_BOOT, descriptor(page=0xFF00))
+        node, rejected, _app_nodes = bf.select_bootloader_node(
+            sysfs_root=self.root, dev_root="/dev", usage_page=bf.RESPONSE_USAGE_PAGE)
+        self.assertEqual(node, "/dev/hidraw2")
+        self.assertEqual(len(rejected), 1)
 
     def test_zero_candidates_refused(self):
         self.add("hidraw0", bf.PID_APP, descriptor())

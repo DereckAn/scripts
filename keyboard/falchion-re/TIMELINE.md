@@ -1,6 +1,6 @@
 # ASUS ROG Falchion Ace HFX reverse-engineering timeline
 
-Last updated: 2026-08-29 (America/Mexico_City)
+Last updated: 2026-09-02 (America/Mexico_City)
 
 This document is the chronological record of the investigation. It explains
 what was done, why it was done, what changed, and where the supporting evidence
@@ -19,11 +19,13 @@ command-to-log index.
   directly.
 - **Unresolved** means the available evidence does not support a safe answer.
 
-The preservation boundary for the current work was strict: no firmware update,
-vendor-HID write, feature-value request, DFU upload/download/detach, USB reset,
-driver detach, permission change, bootloader transition, erase, program, or SPI
-transaction was performed. No SPI Write Enable (`0x06`) was sent. Offline
-analysis scripts never communicated with the keyboard.
+The initial preservation boundary was strict: no device write or state change.
+It was crossed only twice with explicit owner approval: one exact reset-only
+report entered the bootloader (log 88), then one `0x8f` bootloader status request
+was sent during the minimal probe (log 89). No firmware update, DFU operation,
+driver detach, erase, program, unlock, execute-READ, or SPI transaction was
+performed. No SPI Write Enable (`0x06`) was sent. Offline analysis scripts never
+communicated with the keyboard.
 
 Earlier protocol experiments did send configuration-changing HID reports. They
 are retained as historical evidence and were not repeated during preservation.
@@ -34,8 +36,9 @@ are retained as historical evidence and were not repeated during preservation.
 - Five normal-mode HID interfaces; no DFU-class interface.
 - Both physical keyboard connectors expose the same normal-mode USB layout.
 - Standard USB firmware backup is not exposed. A proprietary bootloader-mode
-  READ path is supported by static analysis (logs 81-82) but has never been
-  exercised; no live validation of any command has been performed.
+  READ path is supported by static analysis. Bootloader entry and split-channel
+  status/zero-buffer framing are live-validated (log 90). No flash READ has been
+  executed.
 - Official ASUS firmware 1.00.58 is preserved and hashed, but it is not a dump
   of the installed 1.59 firmware.
 - The vendor updater is a proprietary HID erase/program tool using normal PID
@@ -907,6 +910,48 @@ reported holder. No permission was changed. No bootloader report—including a
 status query or READ—was sent, and no flash operation occurred. The next phase
 requires separate approval for privileged, read/query-only access.
 
+## 2026-09-02 — First status probe exposes split HID routing (log 89)
+
+After the owner granted user `dereck` read/write access to FF01
+`/dev/hidraw6`, the separately authorized minimal probe selected that interface
+and wrote exactly its first allowlisted report: `0x8f` status. It then timed out
+waiting for a reply on the same node. Its exact-sequence guard stopped the run,
+so it sent no `0x21` set-length, no `0xaa` buffer query, no address, no
+execute-READ, and no flash operation.
+
+Read-only Ghidra analysis resolved the timeout. `FUN_000076ac` passes physical
+OUT channel 0 (EP6, FF01 interface 0) to router `FUN_0000bd40`. Response sender
+`FUN_00004f7c` transmits on physical IN channel 1 (EP5, FF00 interface 1).
+Therefore commands must be written to FF01 while replies must be read from the
+distinct FF00 node. Log 82 had inferred a single FF01 transport from descriptor
+presence; that conclusion is superseded.
+
+`tool/probe_bootloader.py` and `tool/backup_firmware.py` now share a split
+transport that opens FF00 read-only first and FF01 write-only second. The full
+offline suite passes 130 tests, including distinct-file-descriptor framing and
+selection. The corrected live probe has not run. A sandboxed `ls` initially
+reported the paths absent; direct passive enumeration then proved the keyboard
+remained at `0b05:1b7f` and the selectors still resolved `/dev/hidraw6` and
+`/dev/hidraw7`. That absence was a sandbox artifact, not re-enumeration. FF01
+retained the owner's ACL; FF00 remained root-only, and neither had a reported
+holder.
+
+## 2026-09-02 — Corrected split-channel probe passes (log 90)
+
+The owner granted `dereck` read-only access to FF00 `/dev/hidraw7` and explicitly
+authorized the exact four-report retry. The tool revalidated both descriptors,
+opened FF00 read-only before FF01 write-only, and completed its byte-for-byte
+allowlisted sequence. The initial and final `0x8f` queries returned 64-byte
+`0x0f` replies with flags 0 and error 0. After the RAM-only length setter,
+`0xaa` returned `0x2a` plus exactly 48 zero bytes, matching the bootloader's
+statically proven reset initialization.
+
+This validates Linux bootloader report framing, FF01/EP6 command routing,
+FF00/EP5 response routing, response codes, and the zero-buffer bootstrap. It did
+not set an address or send execute-READ, so it does not validate flash readback,
+the freshness handshake, the full backup tool, or any installed-firmware byte.
+No unlock, erase, program, reset, update, or SPI command occurred.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -934,6 +979,7 @@ The investigation deliberately records mistakes and superseded interpretations:
 | Log 85's timing language | "the default outcome", "orders of magnitude", "microseconds", "almost always" withdrawn: the core clock is selected at runtime and the flash-transfer duration is unrecovered, so no rate follows. The result is "proven possible" (log 86) |
 | `FakeBootloader` replaced the response buffer atomically | The model could not express a partially written buffer, so no test could catch the defect above. Rewritten with incremental transfers and a foreign-pending injector (log 86) |
 | "Polling `resp[1]` bit 1 is the READ-in-progress test" | Narrowed: it is a *mid-transfer* test only, useful for avoiding a half-written buffer. It is not a completion test (log 85) |
+| Log 82 treated FF01 as a bidirectional protocol node | Descriptor presence did not prove response routing. Instruction-level endpoint tables show commands on FF01/EP6 and replies on FF00/EP5; the first live status probe timed out because it listened on FF01 (log 89) |
 
 ## Files and review order
 
@@ -961,19 +1007,15 @@ For clarity, this investigation has not:
 - backed up the installed 1.59 firmware;
 - read U5 or verified its JEDEC ID electrically;
 - connected SWD, SPI, Bus Pirate, or another hardware probe;
-- entered PID `1b7f` bootloader mode;
 - executed the ASUS updater;
 - used `fwupd` to update or modify the keyboard;
-- sent vendor-HID configuration or firmware commands during preservation;
-- erased, programmed, reset, or detached any device;
+- sent any persistent configuration command;
+- erased, programmed, unlocked, detached a driver, or executed a flash READ;
 - proven that the official 1.00.58 image is a safe downgrade or recovery path;
-- sent any erase, program, or jump-to-bootloader command, or flashed anything
-  (the write protocol is statically recovered — logs 75–76, 79–81 — but no
-  command has been issued to the device);
+- sent any erase, program, or flash-unlock command, or flashed anything;
 - run `tool/backup_firmware.py --run`, in any mode, at any time (the flag-gated
   CLI refusal has been exercised, which returns before device selection);
-- opened, read, or written `/dev/hidraw*`;
-- validated any part of the recovered protocol against hardware;
+- executed a bootloader flash READ or obtained any installed-firmware byte;
 - built or flashed custom firmware.
 
 ## Recommended continuation
@@ -982,11 +1024,13 @@ The integrity calculation is now solved (logs 75–76): SN_FWIN per-record value
 are a sum of per-`0x10000`-chunk IEEE CRC-32, and the container guard is an
 additive word-sum, both recomputable offline. Candidate B's runtime entry, the
 bootloader protocol and the exact reset-only entry report are also recovered.
-The next controlled phase, after explicit approval, is to enter PID `1b7f`,
-passively validate its descriptor/framing, and only then decide separately
-whether to authorize the read-only application-region backup. Controlled
-firmware modification remains blocked until a trustworthy installed-device
-backup and recovery path exist.
+The next controlled phase is to passively rediscover the current bootloader HID
+nodes, grant only write access to FF01 and read access to FF00, verify no other
+process holds either, and request fresh approval for the exact four-report
+status/zero-buffer probe. Only a successful reply capture should lead to a
+separate decision about authorizing application-region READ. Controlled firmware
+modification remains blocked until a trustworthy installed-device backup and
+recovery path exist.
 
 Before any hardware modification, prepare a separate reviewed preservation
 plan for U5 and MCU readback: correct voltage, board-power isolation, bus

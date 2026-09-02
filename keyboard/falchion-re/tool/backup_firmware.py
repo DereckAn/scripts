@@ -3,7 +3,7 @@
 
 Reads the *application* flash region only: base 0x10000, size 0x6c000
 (0x10000..0x7c000), while the device is in bootloader mode (PID 1b7f), over the
-vendor-HID framing recovered statically in logs 81-82. The bootloader region
+vendor-HID framing recovered statically in logs 81-82 and 89. The bootloader region
 [0x0, 0x10000) is not readable over USB and is not part of the output.
 
 SAFETY
@@ -16,7 +16,7 @@ SAFETY
   * --run additionally requires --force-unreviewed. Live use is unauthorised
     pending independent review; see UNRESOLVED below.
 
-PROTOCOL EVIDENCE (all static; nothing here has been exercised on hardware)
+PROTOCOL EVIDENCE (the READ behavior below is static; no READ has run on hardware)
   * log 81 `FUN_00002db8`: on command byte 0x05 it sets state+0x38 bit 1
     (`(+0x38 & 0xfd) + 2`), calls the synchronous READ `FUN_00003b64`, then
     clears bit 1 (`+0x38 & 0xfd`) and clears the pending byte +0x34. Erase (0x01)
@@ -30,6 +30,9 @@ PROTOCOL EVIDENCE (all static; nothing here has been exercised on hardware)
   * log 82 `FUN_00003740` param 0x2a: the payload is memcpy'd starting at
     resp[1] for the previously set length, so response[1:1+length] skips the
     0x2a response code. This is a protocol field, not a hidraw report-ID prefix.
+  * log 89: commands are written on FF01/OUT channel 0/EP6 while responses are
+    read on the distinct FF00/IN channel 1/EP5. The first live 0x8f query timed
+    out because the earlier probe incorrectly waited for its reply on FF01.
 
   * log 85 `FUN_00003a7c` / `FUN_00002db8` / SysTick handler 0x000048d0: the
     post-EXEC scheduling race is **proven possible**. The 0x1f parser (USB
@@ -64,12 +67,12 @@ PROTOCOL EVIDENCE (all static; nothing here has been exercised on hardware)
     trustworthy instead of merely observed.
 
 UNRESOLVED (why --run stays gated)
-  * The Linux hidraw write() report-number prefix and read() framing for this
-    device are assumed, not observed.
-  * No live validation of any kind has been performed and no installed-firmware
-    backup exists.
+  * Log 90 validates Linux report framing, FF01 command routing, FF00 response
+    routing, status, volatile length, and the zero-buffer bootstrap. It did not
+    set an address or execute a flash READ.
+  * No execute-READ has been sent and no installed-firmware backup exists.
   * OPERATIONAL PRECONDITION, not provable from the protocol: no other process
-    may send reports to the same hidraw node during the dump. A foreign pending
+    may send reports to either hidraw node during the dump. A foreign pending
     READ is invisible (state+0x34 is not exposed), and one that completes between
     this tool's bootstrap fetch and its first set-address would publish an
     unrelated address's bytes. The bootstrap refuses unless state+4 reads as the
@@ -96,7 +99,11 @@ VID = 0x0B05
 PID_BOOT = 0x1B7F          # bootloader mode
 PID_APP = 0x1B7E           # application mode (never addressed by this tool)
 REPORT_LEN = 64
-USAGE_PAGE = 0xFF01
+COMMAND_USAGE_PAGE = 0xFF01
+RESPONSE_USAGE_PAGE = 0xFF00
+# Compatibility/default: callers selecting the command/OUT channel continue to
+# get FF01 unless they explicitly request the response/IN channel.
+USAGE_PAGE = COMMAND_USAGE_PAGE
 
 REGION_LO = 0x10000                       # app region base
 REGION_SIZE = 0x6C000                     # app region size
@@ -139,7 +146,7 @@ class ProtocolError(Exception):
 
 
 class SelectionError(Exception):
-    """Could not identify exactly one validated bootloader hidraw node."""
+    """Could not identify the required validated bootloader hidraw node(s)."""
 
 
 class ValidationError(Exception):
@@ -258,18 +265,18 @@ def descriptor_facts(desc):
     return pages, ins, outs, has_report_id
 
 
-def descriptor_reasons(desc):
-    """Return [] if this is the expected FF01 64-byte unnumbered vendor
+def descriptor_reasons(desc, usage_page=USAGE_PAGE):
+    """Return [] if this is the requested 64-byte unnumbered vendor
     collection, else the list of mismatch reasons."""
     pages, ins, outs, has_report_id = descriptor_facts(desc)
     reasons = []
-    if USAGE_PAGE not in pages:
+    if usage_page not in pages:
         found = ", ".join(f"0x{p:04x}" for p in sorted(pages)) or "none"
-        reasons.append(f"usage page 0x{USAGE_PAGE:04x} absent (found {found})")
-    if not any(p == USAGE_PAGE and n == REPORT_LEN for p, n in ins):
-        reasons.append(f"no {REPORT_LEN}-byte IN report on page 0x{USAGE_PAGE:04x}")
-    if not any(p == USAGE_PAGE and n == REPORT_LEN for p, n in outs):
-        reasons.append(f"no {REPORT_LEN}-byte OUT report on page 0x{USAGE_PAGE:04x}")
+        reasons.append(f"usage page 0x{usage_page:04x} absent (found {found})")
+    if not any(p == usage_page and n == REPORT_LEN for p, n in ins):
+        reasons.append(f"no {REPORT_LEN}-byte IN report on page 0x{usage_page:04x}")
+    if not any(p == usage_page and n == REPORT_LEN for p, n in outs):
+        reasons.append(f"no {REPORT_LEN}-byte OUT report on page 0x{usage_page:04x}")
     if has_report_id:
         reasons.append("descriptor declares a report ID (expected unnumbered reports)")
     return reasons
@@ -289,13 +296,15 @@ def _hid_id(uevent):
     return None
 
 
-def select_bootloader_node(sysfs_root=SYSFS_HIDRAW, dev_root="/dev"):
+def select_bootloader_node(sysfs_root=SYSFS_HIDRAW, dev_root="/dev",
+                           usage_page=USAGE_PAGE):
     """Return (node, rejected, app_nodes) for the single hidraw whose PID is
     1b7f AND whose report descriptor matches. Raises SelectionError on none,
     several, or descriptor mismatch.
 
     A PID match alone is never sufficient: the device exposes several HID
-    interfaces and only the FF01 64-byte unnumbered one speaks this protocol.
+    interfaces. The protocol command and response paths use distinct pages, so
+    callers must explicitly select the page required for their direction.
     """
     matched, rejected, app_nodes = [], [], []
     try:
@@ -323,7 +332,7 @@ def select_bootloader_node(sysfs_root=SYSFS_HIDRAW, dev_root="/dev"):
             rejected.append(f"{name}: report descriptor unreadable ({exc})")
             continue
         try:
-            reasons = descriptor_reasons(desc)
+            reasons = descriptor_reasons(desc, usage_page=usage_page)
         except ValueError as exc:
             rejected.append(f"{name}: malformed report descriptor ({exc})")
             continue
@@ -341,10 +350,24 @@ def select_bootloader_node(sysfs_root=SYSFS_HIDRAW, dev_root="/dev"):
     if not matched:
         raise SelectionError("\n".join(
             [f"no validated PID-{PID_BOOT:04x} vendor node (usage page "
-             f"0x{USAGE_PAGE:04x}, {REPORT_LEN}-byte IN+OUT, no report ID)"] + detail))
+             f"0x{usage_page:04x}, {REPORT_LEN}-byte IN+OUT, no report ID)"] + detail))
     raise SelectionError("\n".join(
         [f"{len(matched)} validated PID-{PID_BOOT:04x} nodes ({', '.join(matched)}); "
          "refusing to guess which one to read"] + detail))
+
+
+def select_bootloader_channels():
+    """Select the distinct FF01 command and FF00 response hidraw nodes."""
+    command_node, command_rejected, command_apps = select_bootloader_node(
+        usage_page=COMMAND_USAGE_PAGE)
+    response_node, response_rejected, response_apps = select_bootloader_node(
+        usage_page=RESPONSE_USAGE_PAGE)
+    if command_node == response_node:
+        raise SelectionError(
+            "FF01 command and FF00 response selectors returned one node")
+    app_nodes = sorted(set(command_apps + response_apps))
+    return (command_node, response_node, command_rejected,
+            response_rejected, app_nodes)
 
 
 # ---------------------------------------------------------------------------
@@ -377,6 +400,52 @@ class HidrawTransport:
 
     def close(self):
         os.close(self.fd)
+
+
+class SplitHidrawTransport:
+    """Write only to FF01 and read only from FF00.
+
+    Open the response side first so its input queue exists before a command can
+    be sent. The access modes prevent writes to FF00 and reads from FF01.
+    """
+
+    def __init__(self, command_path, response_path):
+        if command_path == response_path:
+            raise SelectionError("command and response hidraw nodes must differ")
+        self.command_path = command_path
+        self.response_path = response_path
+        self.read_fd = os.open(response_path, os.O_RDONLY)
+        try:
+            self.write_fd = os.open(command_path, os.O_WRONLY)
+        except BaseException:
+            os.close(self.read_fd)
+            raise
+
+    def write(self, report):
+        written = os.write(self.write_fd, b"\x00" + report)
+        if written != len(report) + 1:
+            raise ProtocolError(
+                f"short write: {written} of {len(report) + 1} bytes")
+
+    def read(self, timeout):
+        ready, _, _ = select.select([self.read_fd], [], [], timeout)
+        if not ready:
+            raise ProtocolError(f"no response report within {timeout:g}s")
+        return os.read(self.read_fd, REPORT_LEN)
+
+    def close(self):
+        errors = []
+        for name in ("write_fd", "read_fd"):
+            fd = getattr(self, name, None)
+            if fd is None:
+                continue
+            try:
+                os.close(fd)
+            except OSError as exc:
+                errors.append(exc)
+            setattr(self, name, None)
+        if errors:
+            raise errors[0]
 
 
 def send(transport, sub, payload=b""):
@@ -619,7 +688,7 @@ def bootstrap_baseline(transport, length):
             "zero-init). Something has already driven a READ in this bootloader "
             "session, so the first baseline cannot be trusted. Power-cycle the "
             "keyboard, re-enter bootloader mode, and make sure nothing else is "
-            "talking to this hidraw node")
+            "talking to either bootloader hidraw node")
     return residue
 
 
@@ -725,8 +794,8 @@ def _publish(image, out_path):
             pass
 
 
-def run_backup(out_path, passes=3, open_transport=HidrawTransport,
-               select_node=select_bootloader_node, plan=None,
+def run_backup(out_path, passes=3, open_transport=None,
+               select_node=None, plan=None,
                validate=validate_dump):
     """Dump `passes` times, require byte- and SHA-256-identical results, re-parse
     the result, and publish only if every stage succeeded."""
@@ -736,14 +805,36 @@ def run_backup(out_path, passes=3, open_transport=HidrawTransport,
     if os.path.exists(out_path):
         print(f"REFUSING: {out_path} already exists; refusing to overwrite a backup.")
         return 2
+    # Production always selects and opens distinct command/response nodes.
+    # The three-item form remains only as a dependency-injection seam for the
+    # offline fake-device tests; it cannot be reached from the CLI defaults.
+    injected_single_node = select_node is not None
+    selector = select_node if injected_single_node else select_bootloader_channels
+    transport_factory = open_transport
+    if transport_factory is None:
+        transport_factory = SplitHidrawTransport
     try:
-        node, rejected, app_nodes = select_node()
+        selected = tuple(selector())
     except SelectionError as exc:
         print(f"REFUSING: {exc}")
         return 2
-    print(f"Bootloader HID device: {node}")
-    for note in rejected:
-        print(f"  note: skipped {note}")
+    if len(selected) == 5:
+        command_node, response_node, command_rejected, response_rejected, app_nodes = selected
+        print(f"Bootloader command HID device (FF01): {command_node}")
+        print(f"Bootloader response HID device (FF00): {response_node}")
+        for note in command_rejected:
+            print(f"  note: command selector skipped {note}")
+        for note in response_rejected:
+            print(f"  note: response selector skipped {note}")
+    elif len(selected) == 3 and injected_single_node:
+        # Offline tests use an in-memory full-duplex transport with no hidraw.
+        command_node, rejected, app_nodes = selected
+        response_node = None
+        for note in rejected:
+            print(f"  note: skipped {note}")
+    else:
+        print("REFUSING: selector returned an unsupported channel layout")
+        return 2
     for name in app_nodes:
         print(f"  note: application-mode node {name} ignored")
     print(f"REGION app-only base=0x{REGION_LO:x} size=0x{REGION_SIZE:x} "
@@ -754,9 +845,14 @@ def run_backup(out_path, passes=3, open_transport=HidrawTransport,
     # session, so later passes must carry the previous pass's proven baseline
     # rather than re-bootstrap.
     try:
-        transport = open_transport(node)
+        if response_node is None:
+            transport = transport_factory(command_node)
+        else:
+            transport = transport_factory(command_node, response_node)
     except OSError as exc:
-        print(f"REFUSING: cannot open {node}: {exc}")
+        target = (command_node if response_node is None else
+                  f"{command_node} and {response_node}")
+        print(f"REFUSING: cannot open {target}: {exc}")
         print("Nothing was written.")
         return 2
     images, digests, baseline = [], [], None
@@ -874,8 +970,8 @@ def dry_run():
     print("RESULT dry_run_ok=True guard_rejected_forbidden=True")
     print("LIMITATION No device was opened. The post-EXEC scheduling race is "
           "proven possible (log 85) and the corrected handshake (log 86) is "
-          "proven to return only complete buffers, but the hidraw transfer "
-          "convention, the absence of any live validation, and the sole-host "
+          "proven to return only complete buffers. Log 90 live-validates the "
+          "non-flash framing/bootstrap, but execute-READ and the sole-host "
           "operational precondition all remain unresolved, so --run stays gated "
           "behind --force-unreviewed. Live use is still unauthorised.")
     return 0
@@ -883,8 +979,8 @@ def dry_run():
 
 LIVE_REFUSAL = """REFUSING to run live.
 
-The read-back protocol is recovered from static analysis only and has never been
-exercised against hardware.
+Bootloader entry and the exact split-channel status/zero-buffer probe are
+live-validated (log 90). No address or execute-READ has been sent.
 
 Two protocol questions are now settled. The post-EXEC scheduling race is real
 (log 85): the 0x1f parser only sets the pending byte state+0x34 and the request
@@ -900,12 +996,13 @@ guess.
 
 What is still unresolved:
 
-  1. The Linux hidraw write() report-number prefix and read() framing for this
-     device are assumed, not observed.
-  2. No live validation of any kind has been performed and no installed-firmware
-     backup exists, so there is nothing to restore from if a read path misbehaves.
+  1. Linux report framing, FF01 command routing, FF00 response routing, status,
+     volatile length, and the zero-buffer bootstrap are validated. Flash READ
+     behavior and the freshness handshake have not been exercised on hardware.
+  2. No execute-READ has been sent and no installed-firmware backup exists, so
+     there is nothing to restore from if a read path misbehaves.
   3. An operational precondition that the protocol cannot enforce: no other
-     process may send reports to this hidraw node during the dump. A foreign READ
+     process may send reports to either hidraw node during the dump. A foreign READ
      that is queued but has not dispatched is invisible -- state+0x34 is exposed
      by no query -- and if it completes between the bootstrap fetch and the first
      set-address it would publish an unrelated address's bytes. The bootstrap

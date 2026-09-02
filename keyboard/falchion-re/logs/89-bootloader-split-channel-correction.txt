@@ -1,0 +1,147 @@
+ASUS ROG Falchion Ace HFX — bootloader split-channel correction
+Date: 2026-09-02 America/Mexico_City
+
+PURPOSE
+Resolve the timeout from the separately authorized minimal bootloader
+status/zero-buffer probe, correct the host tools, and record the exact live
+boundary. This log does not authorize or perform another live probe.
+
+LIVE EVENT BEFORE THE CORRECTION
+The owner changed the FF01 node ACL manually and explicitly authorized the
+minimal four-report probe. The then-current tool selected /dev/hidraw6 and
+opened that single FF01 node for both writes and reads.
+
+Command:
+  python3 tool/probe_bootloader.py --run --acknowledge-volatile-length
+
+Material captured output:
+  validated_node=/dev/hidraw6
+  action=4 exact reports; 3 queries + volatile set-length; no flash access
+  ABORT: no response report within 2s
+
+The equality guard advances only after a successful transport.write(). The
+timeout therefore proves the tool wrote exactly report 1 and stopped:
+  8f 00 00 ... 00   (64-byte status query payload)
+Linux hidraw prepended the unnumbered-report placeholder 00, for 65 bytes total.
+
+It did NOT send report 2 (0x21 set volatile length), report 3 (0xaa buffer
+query), report 4 (second 0x8f), an address, execute-READ, unlock, erase,
+program, reset, or any SPI operation. No flash access occurred.
+
+WHY THE RESPONSE TIMED OUT
+Log 82 found the FF01 descriptor but treated descriptor presence as proof that
+one FF01 hidraw node carried both directions. That inference was insufficient.
+Read-only bootloader instruction analysis establishes distinct controller
+channels:
+
+  - FUN_0000bd40 is the vendor-HID router. Its receive call is
+    FUN_0000aff0(..., channel=callback_arg).
+  - FUN_000076ac is the physical OUT callback and invokes the registered router
+    on OUT channel 0.
+  - FUN_00004f7c sends responder output through FUN_0000aec8(..., channel=1, 0).
+  - FUN_0000a5c0 initializes IN channels in order EP1, EP5, EPC, EPE and OUT
+    channels in order EP6, EPD, EPF.
+  - The handler table at 0x00006bf8 contains four IN handlers followed by three
+    OUT handlers, matching those channel indices.
+
+Therefore:
+  command write: OUT channel 0 -> EP6 -> interface 0 -> usage page FF01
+  response read: IN channel 1  -> EP5 -> interface 1 -> usage page FF00
+
+The first status reply was expected on FF00. Because the tool had not opened
+that hidraw input queue, it could not capture the reply. The timeout is evidence
+against single-node routing, not evidence that the bootloader ignored 0x8f.
+
+INITIALIZED-RAM/DESCRIPTOR CROSS-CHECK
+Command (offline only):
+  ghidra-analyzeHeadless ghidra/project falchion-hfx \
+    -process bootloader_primary.bin -readOnly -noanalysis \
+    -scriptPath ghidra/scripts \
+    -postScript FalchionBootloaderInterfaceMap.java \
+    dumps/vendor/M605_V01_00_58.bin
+
+Key final output:
+  DECOMPRESSED source=0x0000ce4c consumed=0x2ed output=0x11168 candidate_dictionary=0x10000
+  FOUND FF01 report at RAM 0x18010068
+  FOUND FF00 report at RAM 0x180101a8
+  WORD 0x00006bf8 = 0x00007605
+  DONE
+
+The corrected scatter decoder consumes exactly 0x2ed compressed bytes and
+reaches exactly RAM 0x18011168. Reconstructed descriptor copies match the live
+FF01 and FF00 report descriptors. The conclusion does not depend on proximity
+between a descriptor and protocol code; the endpoint/channel instructions above
+are decisive.
+
+HOST-TOOL CORRECTION
+  - backup_firmware.py now selects both usage pages and refuses if they resolve
+    to one node.
+  - SplitHidrawTransport opens FF00 O_RDONLY first, then FF01 O_WRONLY.
+  - All command reports go only to FF01; all response reads come only from FF00.
+  - probe_bootloader.py reuses that shared selector and transport.
+  - The exact four-report allowlist is unchanged.
+  - backup_firmware.py production defaults now use split transport; the old
+    single-node injection exists only for in-memory fake-device tests.
+
+OFFLINE VERIFICATION
+Commands:
+  python3 -m py_compile tool/backup_firmware.py tool/probe_bootloader.py \
+    tool/test_backup_firmware.py tool/test_probe_bootloader.py
+  python3 -m unittest discover -s tool -p 'test_*.py'
+
+Final result after adding the production-default regression test:
+  Ran 130 tests in 1.229s
+  OK
+
+The suite includes pipe-backed tests proving writes and reads use distinct file
+descriptors, FF01/FF00 descriptor selection, same-node refusal, the exact
+four-report allowlist, a fake live factory receiving both paths, and production
+backup defaults opening distinct command/response nodes.
+
+PASSIVE LIVE REVALIDATION AFTER CORRECTION
+Commands (read-only; no hidraw protocol node opened):
+  lsusb -d 0b05:1b7e -d 0b05:1b7f
+  python3 -c 'import sys; sys.path.insert(0,"tool"); import backup_firmware as b; print(b.select_bootloader_channels())'
+  ls -l /dev/hidraw6 /dev/hidraw7
+  getfacl -p /dev/hidraw6 /dev/hidraw7
+  fuser /dev/hidraw6 /dev/hidraw7
+
+Output:
+  Bus 006 Device 008: ID 0b05:1b7f ASUSTek Computer, Inc. Gaming Keyboard Bootloader
+  selected command=/dev/hidraw6 FF01
+  selected response=/dev/hidraw7 FF00
+  /dev/hidraw6 crw-rw----+ root root; ACL user:dereck:rw-
+  /dev/hidraw7 crw-------  root root; no user:dereck ACL
+  fuser: no holders reported for either node
+
+A sandboxed `ls` had reported both nodes absent. Direct enumeration disproved
+that result; it was sandbox visibility, not device re-enumeration.
+
+CURRENT STOP CONDITION
+The response node is not readable by user dereck. No corrected live probe was
+attempted. Before a retry, the owner must explicitly approve or manually apply
+only this narrow temporary ACL:
+  sudo setfacl -m u:dereck:r /dev/hidraw7
+
+After that, the exact four-report retry still requires fresh explicit approval.
+The full firmware backup remains separately gated and unauthorized.
+
+FAILED/REJECTED INVESTIGATIONS RETAINED FOR AUDITABILITY
+  - The first custom decoder read an extended match count after literals; the
+    ARM instructions read both extended counts before copying literals. The bad
+    decoder was rejected.
+  - A generic third-party scatterloader count interpretation did not reproduce
+    the firmware and was rejected; the final decoder follows the actual ARM.
+  - A sandboxed Ghidra run could not create/read its normal user configuration
+    directory and exited before analysis. The direct rerun succeeded with
+    -readOnly -noanalysis.
+  - One quoted-search command accidentally allowed shell backtick substitution
+    and tried to run a harmless nonexistent command named 0xFF01. It changed no
+    file or device.
+
+SAFETY RESULT
+During the correction work, no /dev/hidraw node was opened for protocol I/O and
+no HID/USB report was transmitted. There was no reset, driver detach, permission
+change by the assistant, unlock, set-address, execute-READ, erase, program,
+update, or SPI command. The only bootloader protocol report sent in this phase
+remains the single previously authorized 0x8f status query described above.

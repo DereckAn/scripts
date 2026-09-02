@@ -88,3 +88,5 @@ aebec83a17bde6690b4b33d54e80db20f61c0b4d70fc4f31a559df85530b5636  logs/83-backup
 fbc170b25348bf97553976d46d86c5997cd66b64722a1edf3de5b07135791496  logs/86-bootloader-read-handshake-correction.txt
 d7cb7e7f3903f7aad060a2675527646784c3ab1edb80163e1ce14bd7931c1e12  logs/87-bootloader-entry-recovery-and-preflight.txt
 c845ceb25b6f58b3dca6f1edf3f13b4b5fb2f6d01b7128840a964a0c2bec2d2d  logs/88-live-bootloader-entry-and-passive-validation.txt
+879abc04b5e296534b92340090179f1a4d06f6a4bc2459ba84d362766dc34287  logs/89-bootloader-split-channel-correction.txt
+423de7fee48e795e00cd676ac4bbb1424f9cc26913f4117f59d152dfcef29a53  logs/90-live-split-channel-status-buffer-probe.txt

@@ -26,9 +26,11 @@ decision to cross that line, and only after the safety rules below are in place.
 
 ### Approach A — USB read-back via the bootloader (least invasive; recommended first)
 
-The bootloader exposes a **READ** command over 64-byte vendor-HID reports (usage
-page `0xFF01`, no report ID). The exact wire framing is decoded in FINDINGS
-"Bootloader vendor-HID wire framing (READ path)" (log 82).
+The bootloader exposes a **READ** command over two unnumbered 64-byte vendor-HID
+interfaces. Write commands on usage page `0xFF01`, interface 0 / EP6; read
+replies on usage page `0xFF00`, interface 1 / EP5. The exact wire framing is
+decoded in FINDINGS "Bootloader vendor-HID wire framing (READ path)" (logs 82
+and 89).
 
 **Important scope limit (corrected):** the READ execute-trigger enforces
 `0x10000 <= addr <= 0x7bfff` and `length <= 0x30` per transfer. So the USB read
@@ -45,7 +47,8 @@ recovery guarantee — it does not cover bootloader corruption from any other
 cause, and it has never been produced or tested. Only a hardware read
 (Approach B) captures the bootloader.
 
-Sequence (each item is a device interaction — do not run until authorised). No
+Sequence (each item is a device interaction — do not run until authorised).
+Every report below is written to FF01 and every response is read from FF00. No
 unlock is needed for READ (only erase/program require the `ASUSHIDFWU` unlock):
 1. Enter bootloader mode (jump-to-bootloader, see the app path below) so the
    device re-enumerates as PID `1b7f` ("Gaming Keyboard Bootloader2"). Reversible:
@@ -137,7 +140,7 @@ unlock is needed for READ (only erase/program require the `ASUSHIDFWU` unlock):
 > recoverable from the image: `FUN_00004910` selects the core clock at runtime.
 >
 > **Operational precondition that the protocol cannot enforce.** Nothing else may
-> send reports to the hidraw node during the dump. A foreign READ queued but not
+> send reports to either hidraw node during the dump. A foreign READ queued but not
 > yet dispatched is invisible — `state+0x34` is exposed by no query and `state+4`
 > still reads zero — and if it lands between the bootstrap fetch and the first
 > set-address it publishes an unrelated address's bytes. Step 0 catches a foreign
@@ -169,11 +172,17 @@ approval on 2026-09-02 and successfully produced PID `0b05:1b7f` (log 88). An
 app command `0xb0` + payload `"reset"` is different: it performs a plain reboot
 without setting the boot flag.
 
-Live enumeration selected interface 0 / `/dev/hidraw6`: usage page `0xFF01`,
-64-byte IN and OUT, no Report ID. The re-created bootloader nodes are root-only
-(`0600`), so the next read-only probe needs separately approved privileged
-execution or a separately approved permission change. No bootloader report has
-yet been sent.
+Live enumeration selected interface 0 `/dev/hidraw6` (FF01/EP6 commands) and
+interface 1 `/dev/hidraw7` (FF00/EP5 responses), both 64-byte with no Report ID.
+The owner later granted FF01 access and the first probe wrote exactly one `0x8f`
+status request, then timed out because that version incorrectly waited on FF01.
+No set-length, buffer query, address, execute-READ, or flash operation followed.
+Static analysis then proved the split routing and the tools were corrected
+(log 89). After the owner granted FF00 read-only access and separately approved
+the exact retry, the four-report probe passed (log 90): both `0x0f` status
+responses were locked/idle/error-free and `0xaa` returned `0x2a` plus 48 zero
+bytes. This validates routing and non-flash framing only. No address or
+execute-READ was sent; the next phase still requires separate authorization.
 
 Risks / caveats:
 - Entering bootloader mode is a real command and a state change (low risk, but it

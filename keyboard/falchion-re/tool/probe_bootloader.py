@@ -8,9 +8,11 @@ The exact device-facing sequence is fixed:
   3. 0xaa reset-initialised response-buffer query
   4. 0x8f final status query
 
-No address or flash operation is selected or executed. Default mode is a dry
-run. Live mode requires --run --acknowledge-volatile-length and normally needs
-privilege because the bootloader's hidraw node is root-only.
+Reports are written on the FF01/EP6 command node and replies are read on the
+FF00/EP5 response node, as recovered from the bootloader endpoint tables. No
+address or flash operation is selected or executed. Default mode is a dry run.
+Live mode requires --run --acknowledge-volatile-length and normally needs
+privilege because the bootloader's hidraw nodes are root-only.
 """
 
 import argparse
@@ -63,6 +65,10 @@ class ExactSequenceTransport:
                 f"probe stopped after {self.index}/{len(SEQUENCE)} reports")
 
 
+SplitHidrawTransport = bf.SplitHidrawTransport
+select_bootloader_channels = bf.select_bootloader_channels
+
+
 def validate_status(resp, label):
     resp = bytes(resp)
     if len(resp) != bf.REPORT_LEN:
@@ -110,15 +116,20 @@ def dry_run():
     return 0
 
 
-def live_probe(open_transport=bf.HidrawTransport):
-    node, rejected, app_nodes = bf.select_bootloader_node()
-    print(f"validated_node={node}")
-    print(f"rejected_other_interfaces={len(rejected)}")
+def live_probe(open_transport=SplitHidrawTransport,
+               select_channels=select_bootloader_channels):
+    command_node, response_node, command_rejected, response_rejected, app_nodes = (
+        select_channels())
+    print(f"validated_command_node={command_node} usage_page=0x{bf.COMMAND_USAGE_PAGE:04x}")
+    print(f"validated_response_node={response_node} usage_page=0x{bf.RESPONSE_USAGE_PAGE:04x}")
+    print(f"command_selector_rejections={len(command_rejected)}")
+    print(f"response_selector_rejections={len(response_rejected)}")
     print(f"application_nodes={app_nodes}")
+    print("routing=write FF01/EP6; read FF00/EP5")
     print("action=4 exact reports; 3 queries + volatile set-length; no flash access")
     sys.stdout.flush()
 
-    transport = ExactSequenceTransport(open_transport(node))
+    transport = ExactSequenceTransport(open_transport(command_node, response_node))
     try:
         before, buffer_reply, after = run_probe(transport)
     finally:

@@ -2,6 +2,8 @@
 // interface and endpoint descriptors. Uses only the offline Ghidra program.
 // @category Falchion
 import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import ghidra.app.decompiler.*;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.util.PseudoDisassembler;
@@ -58,11 +60,13 @@ public class FalchionBootloaderInterfaceMap extends GhidraScript {
         }
     }
 
-    private byte[] reconstructInitializedRam(long prefixSource, int prefixLength,
-                                             long source, int length) throws Exception {
+    private byte[] reconstructInitializedRam(byte[] vendorImage, long prefixSource,
+                                             int prefixLength, long source,
+                                             int length) throws Exception {
         Memory memory = currentProgram.getMemory();
-        int lowerRamWindow = 0x1000;
+        int lowerRamWindow = 0x10000;
         byte[] output = new byte[lowerRamWindow + prefixLength + length];
+        System.arraycopy(vendorImage, 0x21000, output, 0, lowerRamWindow);
         for (int index = 0; index < prefixLength; index++) {
             output[lowerRamWindow + index] = memory.getByte(toAddr(prefixSource + index));
         }
@@ -72,6 +76,11 @@ public class FalchionBootloaderInterfaceMap extends GhidraScript {
         int token = 0;
         int control = memory.getByte(toAddr(source + sourceOffset++)) & 0xff;
         while (outputOffset < outputEnd) {
+            if (sourceOffset > 0x2f0) {
+                throw new IllegalStateException(String.format(
+                    "compressed boundary passed: source_consumed=0x%x output_from_dst=0x%x expected=0x%x token=%d",
+                    sourceOffset, outputOffset - lowerRamWindow - prefixLength, length, token));
+            }
             int tokenSource = sourceOffset - 1;
             int tokenOutput = outputOffset;
             int literalCode = control & 3;
@@ -79,13 +88,12 @@ public class FalchionBootloaderInterfaceMap extends GhidraScript {
                 literalCode = memory.getByte(toAddr(source + sourceOffset++)) & 0xff;
             }
             int literalCount = literalCode - 1;
-            for (int index = 0; index < literalCount && outputOffset < outputEnd; index++) {
-                output[outputOffset++] = memory.getByte(toAddr(source + sourceOffset++));
-            }
-
             int matchCode = control >>> 4;
             if (matchCode == 0) {
                 matchCode = memory.getByte(toAddr(source + sourceOffset++)) & 0xff;
+            }
+            for (int index = 0; index < literalCount && outputOffset < outputEnd; index++) {
+                output[outputOffset++] = memory.getByte(toAddr(source + sourceOffset++));
             }
             if (matchCode != 0) {
                 int distance = memory.getByte(toAddr(source + sourceOffset++)) & 0xff;
@@ -110,7 +118,7 @@ public class FalchionBootloaderInterfaceMap extends GhidraScript {
             }
             token++;
         }
-        println(String.format("DECOMPRESSED source=0x%08x consumed=0x%x output=0x%x lower_zero_window=0x%x",
+        println(String.format("DECOMPRESSED source=0x%08x consumed=0x%x output=0x%x candidate_dictionary=0x%x",
             source, sourceOffset, outputOffset, lowerRamWindow));
         return output;
     }
@@ -136,6 +144,42 @@ public class FalchionBootloaderInterfaceMap extends GhidraScript {
                 }
             }
             if (match) println(String.format("FOUND %s at RAM 0x%08x", label, ramBase + offset));
+        }
+    }
+
+    private void findUsbConfigurations(byte[] data, long ramBase) {
+        for (int offset = 0; offset + 9 <= data.length; offset++) {
+            if ((data[offset] & 0xff) != 9 || (data[offset + 1] & 0xff) != 2) continue;
+            int total = (data[offset + 2] & 0xff) | ((data[offset + 3] & 0xff) << 8);
+            int interfaces = data[offset + 4] & 0xff;
+            int configuration = data[offset + 5] & 0xff;
+            int attributes = data[offset + 7] & 0xff;
+            if (total < 9 || total > 512 || interfaces < 1 || interfaces > 8 ||
+                configuration == 0 || offset + total > data.length || (attributes & 0x80) == 0) {
+                continue;
+            }
+            println(String.format(
+                "USB_CONFIG RAM=0x%08x total=0x%x interfaces=%d value=%d attributes=0x%02x maxpower=%d",
+                ramBase + offset, total, interfaces, configuration, attributes, data[offset + 8] & 0xff));
+            int end = offset + total;
+            for (int cursor = offset + 9; cursor + 2 <= end;) {
+                int descriptorLength = data[cursor] & 0xff;
+                int descriptorType = data[cursor + 1] & 0xff;
+                if (descriptorLength < 2 || cursor + descriptorLength > end) break;
+                if (descriptorType == 4 && descriptorLength >= 9) {
+                    println(String.format(
+                        "  INTERFACE number=%d endpoints=%d class=%02x/%02x/%02x",
+                        data[cursor + 2] & 0xff, data[cursor + 4] & 0xff,
+                        data[cursor + 5] & 0xff, data[cursor + 6] & 0xff,
+                        data[cursor + 7] & 0xff));
+                } else if (descriptorType == 5 && descriptorLength >= 7) {
+                    int packet = (data[cursor + 4] & 0xff) | ((data[cursor + 5] & 0xff) << 8);
+                    println(String.format("  ENDPOINT address=0x%02x attributes=0x%02x maxpacket=%d interval=%d",
+                        data[cursor + 2] & 0xff, data[cursor + 3] & 0xff,
+                        packet, data[cursor + 6] & 0xff));
+                }
+                cursor += descriptorLength;
+            }
         }
     }
 
@@ -259,16 +303,26 @@ public class FalchionBootloaderInterfaceMap extends GhidraScript {
         pdis(0x17cL, 0x1e0L);
 
         println("=== H: reconstructed initialized RAM and descriptor locations ===");
-        long ramBase = 0x1800f000L;
-        byte[] initialized = reconstructInitializedRam(0xcdfcL, 0x50, 0xce4cL, 0x1118);
+        String[] scriptArgs = getScriptArgs();
+        if (scriptArgs.length != 1) {
+            throw new IllegalArgumentException("pass preserved vendor image path as the sole script argument");
+        }
+        byte[] vendorImage = Files.readAllBytes(Paths.get(scriptArgs[0]));
+        long ramBase = 0x18000000L;
+        byte[] initialized = reconstructInitializedRam(vendorImage, 0xcdfcL, 0x50,
+                                                       0xce4cL, 0x1118);
         findBytes(initialized, ramBase, "FF01 report", 0x06,0x01,0xff,0x09,0x01,0xa1,0x01);
         findBytes(initialized, ramBase, "FF00 report", 0x06,0x00,0xff,0x09,0x01,0xa1,0x01);
         findBytes(initialized, ramBase, "mouse report", 0x05,0x01,0x09,0x02,0xa1,0x01);
         findBytes(initialized, ramBase, "keyboard report", 0x05,0x01,0x09,0x06,0xa1,0x01);
         findBytes(initialized, ramBase, "configuration descriptor", 0x09,0x02);
+        findUsbConfigurations(initialized, ramBase);
         dumpRam(initialized, ramBase, 0x18010330L, 0x18010360L);
         dumpRam(initialized, ramBase, 0x18010620L, 0x18010820L);
         dumpRam(initialized, ramBase, 0x18010890L, 0x18010c20L);
+        dumpRam(initialized, ramBase, 0x18010c20L, 0x18011168L);
+        println("=== I: endpoint dispatch table context ===");
+        words(0x6bc0L, 0x6c40L);
         println("DONE");
     }
 }

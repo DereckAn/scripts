@@ -804,13 +804,21 @@ no signature check exists anywhere in the device. This maps the write protocol
 commands**, and none has been sent. Erase/program remain destructive and must not
 be issued until a verified recovery backup exists (roadmap step 5).
 
-### Bootloader vendor-HID wire framing (READ path) — log 82
+### Bootloader vendor-HID wire framing (READ path) — logs 82 and 89
 
-Transport: vendor HID, **usage page `0xFF01`**, **64-byte reports, no report ID**
-(descriptor at bootloader `0xce5b`). The router `FUN_0000bd40` reads `report[0]`
-as a sub-command (top bit `0x80` = query/IN vs action/OUT; low 7 bits = code) and
-passes `report[1..63]` as the payload to the OUT parser `FUN_0000380c` or the IN
-responder `FUN_00003740`.
+Transport uses **two distinct unnumbered 64-byte vendor-HID interfaces**:
+commands are written to usage page `0xFF01`, interface 0, physical endpoint 6
+(`/dev/hidraw6` during the log-88 enumeration); replies are read from usage page
+`0xFF00`, interface 1, physical endpoint 5 (`/dev/hidraw7` then). The endpoint
+numbers come from the bootloader's controller-channel initialization and handler
+table, not from descriptor proximity: OUT channel 0 maps to EP6 and calls router
+`FUN_0000bd40`; responder `FUN_00004f7c` sends on IN channel 1, which maps to
+EP5. Log 82's single-FF01 transport conclusion used descriptor presence alone
+and is superseded by this instruction-level mapping in log 89.
+
+The router reads `report[0]` as a sub-command (top bit `0x80` = query/IN vs
+action/OUT; low 7 bits = code) and passes `report[1..63]` as the payload to the
+OUT parser `FUN_0000380c` or the IN responder `FUN_00003740`.
 
 OUT sub-commands (`report[0]`, top bit clear):
 
@@ -956,9 +964,14 @@ node during the dump**. The handshake is also undecidable when a chunk's content
 equals the previously proven buffer; it re-bases through an anchor of proven,
 different content and aborts if none exists yet.
 
-Still unresolved and unchanged: the hidraw transfer convention is assumed, no
-live validation has been performed, and no installed-firmware backup exists, so
-`--run` stays gated behind `--force-unreviewed` and live use is unauthorised.
+The Linux leading-zero hidraw write convention, split FF01-command/FF00-response
+routing, status reply framing, volatile length setter, and zero-buffer reply are
+now validated live (log 90). Both status replies were locked, idle and
+error-free; `0xaa` returned response code `0x2a` plus 48 zero bytes, matching the
+static reset-state proof. No address or execute-READ was sent, so flash READ and
+the freshness handshake remain unvalidated. No installed-firmware backup exists;
+backup-tool `--run` stays gated behind `--force-unreviewed` and remains
+unauthorised.
 
 **Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
 execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and
@@ -984,11 +997,13 @@ flag. `tool/enter_bootloader.py` implements only the exact allowlisted reset
 frame, defaults to dry-run and requires two live flags. On 2026-09-02, after
 explicit approval, it sent that frame exactly once to `/dev/hidraw7`; the
 keyboard successfully re-enumerated from `0b05:1b7e` to `0b05:1b7f`. Live
-bootloader entry is therefore validated (log 88). No bootloader protocol report
-or flash operation has yet been sent.
+bootloader entry is therefore validated (log 88). One bootloader status query
+`0x8f` was later sent on FF01; its reply was not captured because the probe was
+then listening on the wrong node. No other bootloader probe report and no flash
+operation was sent (log 89).
 
-This documents the exact read-only dump recipe on paper (`notes/step5-recovery-plan.md`,
-Approach A). **No report has been sent to the device.**
+This documents the exact read-only dump recipe on paper
+(`notes/step5-recovery-plan.md`, Approach A). It has not been executed.
 
 ### Firmware modification roadmap (offline-first)
 
@@ -1062,19 +1077,25 @@ Evidence: `logs/46-documentation-synchronization-audit.txt`.
 
 ## Uncertain or superseded assumptions
 
-- **USB backup via proprietary HID:** static bootloader analysis supports a proprietary HID READ operation over the 64-byte vendor interface for the application region `0x10000..0x7bfff`. The live transport and behavior on this physical keyboard remain unvalidated, and no backup has been obtained.
+- **USB backup via proprietary HID:** static bootloader analysis supports a
+  proprietary HID READ operation for application region `0x10000..0x7bfff`.
+  Commands use the FF01/EP6 node and replies use the distinct FF00/EP5 node.
+  That split and the non-flash status/zero-buffer queries are live-validated
+  (log 90), but execute-READ and freshness are not; no backup has been obtained.
 - **Separate USB bootloader mode:** validated live in log 88. One authorized
   reset-only report caused re-enumeration as `0b05:1b7f`, bcdDevice `1.05`, with
-  four HID interfaces. Interface 0 / `/dev/hidraw6` is the expected FF01,
-  64-byte-IN/OUT, unnumbered bootloader channel. No physical boot-key method is
-  known.
+  four HID interfaces. At that enumeration, interface 0 `/dev/hidraw6` was the
+  FF01 command channel and interface 1 `/dev/hidraw7` was the FF00 response
+  channel; both were 64-byte-IN/OUT and unnumbered. No physical boot-key method
+  is known.
 - **Older `0xFF32` report descriptor:** `keyboard/falchion-re/notes/report-desc-0.txt` contains a 63-byte input/output report on vendor page `0xFF32`, but its provenance is not recorded strongly enough to associate it with the currently enumerated interface 4. Current direct enumeration identifies interface 4 as page `0x59` with a different 327-byte descriptor. Treat the older mapping as historical/unverified, not a current fact.
 - **Firmware version:** `bcdDevice 1.59` is verified; equating it with the version of every code image or external-flash region is an assumption.
-- **Current device-node permissions:** application-mode preflight verified
-  `/dev/hidraw6..9` mode `0666` and selected `/dev/hidraw7`. After the PID-1b7f
-  transition the re-created bootloader nodes are root-only (`0600`); the FF01
-  selector chose `/dev/hidraw6`, and `fuser` reported no holder. No permission
-  was changed.
+- **Device-node permissions during log 89:** the owner granted user `dereck`
+  read/write access to FF01 `/dev/hidraw6`; FF00 `/dev/hidraw7` remained
+  root-only, and neither node had a reported holder. A sandboxed `ls` later
+  reported both paths absent, but direct read-only enumeration proved the device
+  was still in bootloader mode and the same paths still existed; the sandbox
+  result was not a device result.
 
 ## Commands run
 
@@ -1083,6 +1104,10 @@ Exact command groups and their output files are recorded in `logs/COMMANDS.md`. 
 ```text
 lsusb -d 0b05:1b7e -v    # standard read-only descriptor/status queries
 dfu-util -l              # DFU enumeration only
+tool/enter_bootloader.py --run --acknowledge-reset
+                           # one explicitly authorized reset-only report
+probe_bootloader.py --run --acknowledge-volatile-length
+                           # sent only the first 0x8f status query, then timed out
 ```
 
 All other probes read sysfs, udev metadata, package metadata, kernel logs, repository files, or the saved logs. `usbhid-dump` was invoked only with `--help`; it was never pointed at the keyboard.
@@ -1091,11 +1116,11 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 
 1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recovery candidate even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
 2. **Decide whether to install fwupd:** installation changes the host, so ask first. Its value is limited because the current descriptors do not advertise DFU, but it can confirm whether a supported fwupd plugin recognizes the device.
-3. **Bootloader entry is resolved offline (log 87):** after explicit informed
-   approval, use only `tool/enter_bootloader.py --run --acknowledge-reset`. It
-   emits the single statically verified reset-only frame once. Do not substitute
-   the ordinary `0xb0/"reset"` command or run the ASUS updater, which proceeds to
-   erase/program after entry.
+3. **Bootloader entry is validated live (logs 87–88).** Before the next probe,
+   passively rediscover the current hidraw names. Grant only write access to the
+   FF01 command node and read access to the FF00 response node, verify no other
+   process holds either, then request fresh approval for the fixed four-report
+   probe. Do not reuse stale `/dev/hidrawN` names.
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater
@@ -1109,10 +1134,10 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    comparison applied to the selected entry value before the jump; until those
    are resolved, the set of conditions a modified image must satisfy is known to
    be incomplete.
-8. **Do not treat any of the recovered protocol as validated.** Logs 81–83 are
-   static analysis and a dry run. No command has been sent, no bootloader mode
-   entered, and no installed-firmware backup exists. Live use of
-   `tool/backup_firmware.py` remains unauthorised pending independent review.
+8. **Do not treat bootloader flash READ as live-validated.** The corrected
+   split-channel status/zero-buffer probe passed (log 90), but it deliberately
+   sent no address or execute-READ. No installed-firmware backup exists. Live use
+   of `tool/backup_firmware.py` remains unauthorised pending a separate decision.
 
 ## Evidence integrity
 
