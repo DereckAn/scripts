@@ -1,0 +1,134 @@
+ROG Falchion Ace HFX — live reset-only bootloader entry and passive validation
+Date: 2026-09-02T16:49:05-06:00
+
+AUTHORIZATION
+
+The owner explicitly replied:
+
+  Yes, send the one reset-only bootloader-entry report.
+
+SINGLE DEVICE WRITE
+
+Command:
+
+  python3 tool/enter_bootloader.py --run --acknowledge-reset
+
+Output:
+
+  payload_len=64
+  payload=7b aa 41 53 55 53 aa 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  hidraw_write_len=65
+  hidraw_write_sha256=de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8
+  validated_node=/dev/hidraw7
+  action=one reset-only hidraw write; no retry
+  report_sent=yes
+  RESULT: bootloader PID 0b05:1b7f observed
+  boot_node=/dev/hidraw6
+  boot_node=/dev/hidraw7
+  boot_node=/dev/hidraw8
+
+The initial poll returned as soon as PID 1b7f appeared. A fourth interface/node,
+hidraw9, bound shortly afterward; this is ordinary asynchronous udev enumeration,
+not a second device or a second command.
+
+LIVE RESULT
+
+  Bus 006 Device 008: ID 0b05:1b7f ASUSTek Computer, Inc.
+  Gaming Keyboard Bootloader
+  bcdUSB 2.00
+  bcdDevice 1.05
+  iManufacturer ASUSTek
+  iProduct Gaming Keyboard Bootloader
+  iSerial 0001
+  bNumConfigurations 1
+  bNumInterfaces 4
+  bus powered, MaxPower 500 mA
+  negotiated speed 480 Mbps
+
+`lsusb -v` printed "Couldn't open device, some information will be missing";
+it still reported the standard device/configuration/interface/endpoint data.
+The HID report descriptors below came from bound sysfs nodes, not from that
+incomplete libusb read.
+
+INTERFACES AND ENDPOINTS
+
+Interface 0, HID class/subclass/protocol 03/00/00, driver usbhid:
+  EP 0x81 IN, interrupt, 64 bytes, interval 4
+  EP 0x06 OUT, interrupt, 64 bytes, interval 4
+  hidraw6 descriptor (usage page FF01, usage 1, 64-byte IN/OUT, no Report ID):
+    06 01 ff 09 01 a1 01 09 02 75 08 95 40 15 00 26
+    ff 00 81 02 09 03 75 08 95 40 15 00 26 ff 00 91
+    02 c0
+
+Interface 1, HID class/subclass/protocol 03/00/00, driver usbhid:
+  EP 0x85 IN, interrupt, 64 bytes, interval 4
+  EP 0x0d OUT, interrupt, 64 bytes, interval 4
+  hidraw7 descriptor (usage page FF00, usage 1, 64-byte IN/OUT, no Report ID):
+    06 00 ff 09 01 a1 01 09 02 75 08 95 40 15 00 26
+    ff 00 81 02 09 03 75 08 95 40 15 00 26 ff 00 91
+    02 c0
+
+Interface 2, HID boot mouse 03/01/02, driver usbhid:
+  EP 0x8c IN, interrupt, 64 bytes, interval 4
+  hidraw8 descriptor:
+    05 01 09 02 a1 01 09 01 a1 00 05 09 19 01 29 05
+    15 00 25 01 75 01 95 05 81 02 75 01 95 03 81 01
+    05 01 09 30 09 31 09 38 15 81 25 7f 75 08 95 03
+    81 06 c0 c0
+
+Interface 3, HID keyboard protocol 03/00/01, driver usbhid:
+  EP 0x8e IN, interrupt, 64 bytes, interval 4
+  hidraw9 descriptor:
+    05 01 09 06 a1 01 05 08 15 00 25 01 19 01 29 05
+    95 05 75 01 91 02 95 01 75 03 91 03 05 07 15 00
+    25 01 19 e0 29 e7 75 01 95 08 81 02 75 08 95 01
+    81 01 95 06 15 00 26 ff 00 19 00 29 9f 75 08 81
+    00 c0
+
+BOOTLOADER CHANNEL SELECTION
+
+The descriptor-aware selector in tool/backup_firmware.py selected only:
+
+  selected=/dev/hidraw6
+
+It rejected hidraw7 (FF00), hidraw8 (mouse) and hidraw9 (keyboard). No normal
+PID-1b7e node remained. `fuser` reported no process holding hidraw6.
+
+Permissions after re-enumeration:
+
+  crw------- root root /dev/hidraw6
+  crw------- root root /dev/hidraw7
+  crw------- root root /dev/hidraw8
+  crw------- root root /dev/hidraw9
+
+No permission or ownership change was made. Further live access therefore needs
+a separately approved privileged execution or a separately approved permission
+change; neither has occurred.
+
+DFU AND FWUPD
+
+`dfu-util -l` printed only its banner and no targets: the live bootloader is not
+DFU.
+
+`fwupdmgr` and `fwupdtool` were not found on PATH. The host uses pacman, and
+`pacman -Q fwupd` reported package `fwupd` was not found. No fwupd device query
+was performed.
+
+SAFETY ACCOUNTING
+
+Exactly one device-facing report was transmitted in this phase: the authorized
+reset-only application report above. It caused the expected PID transition.
+
+No bootloader report has been sent. No status query, buffer query, set-address,
+set-length, READ execute, unlock, load-data, erase, program, leave/reset, or
+firmware-update report has been sent. No driver was detached, no permission was
+changed, no executable from ASUS was run, and no flash contents were read or
+written.
+
+VERDICT
+
+Live bootloader entry is VALIDATED. PID 1b7f and the expected FF01 64-byte
+unnumbered vendor-HID channel are present. Firmware read-back is not yet live-
+validated. The next phase must receive separate approval because it requires
+opening root-only /dev/hidraw6 and sending narrowly allowlisted read/query
+reports.

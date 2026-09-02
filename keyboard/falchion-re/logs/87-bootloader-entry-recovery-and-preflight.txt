@@ -1,0 +1,155 @@
+ROG Falchion Ace HFX — exact application-to-bootloader entry recovery
+Date: 2026-09-02 America/Mexico_City
+
+SCOPE AND SAFETY
+
+Offline static analysis plus a passive Linux preflight only. No HID/USB report
+was sent. No /dev/hidraw node was opened, read, or written. No reset,
+bootloader transition, unlock, erase, program, update, driver detach, permission
+change, or firmware modification occurred. The ASUS executables were parsed and
+disassembled as files; neither was executed.
+
+ARTIFACTS
+
+676cd5b3cc8aa2d2e3e426ad2586276b682e2579af86edab84257ed24ebdf090
+  FW_Update_Tool_M605.exe
+40de34851f0d693c90a3b5b5eb4c1e4250ba316a99ce470ae7c75ffe0040c480
+  FW/peripheral_fwu_pro.exe
+9bb8f484d337bf81deae97d4a19b709c8c83463e8f946ce5849a82afef4fa33c
+  FW/HidInterruptHandle.dll
+
+OFFICIAL CONFIGURATION
+
+Vid = 0x0b05
+Pid = 0x1B7E
+Usage = 0x01
+UsagePage = 0xff00
+Cmd 1 = m 1B7E 1B7F 64 432 FF00 FF00 4
+Executable file = peripheral_fwu_pro.exe
+
+APPLICATION-SIDE PROOF
+
+Candidate B FUN_180160d8 receives a 64-byte endpoint buffer. When bytes 0..6
+are:
+
+  7b aa 41 53 55 53 aa
+
+it performs:
+
+  *(uint32_t *)0x20000ffc = 0x73207320;
+  *(uint32_t *)0x40022000 |= 0x8000;
+  delay(100);
+  reset();
+
+The reset path is distinct from Candidate B's top-level vendor-HID command
+0xb0. That branch requires report[1] == 0, report[2:4] == 0 and
+report[4:9] == "reset", then writes AIRCR 0x05fa0004 without first writing the
+force-boot magic. It is an ordinary reset, not bootloader entry.
+
+The magic receiver is installed indirectly in the low-level USB endpoint
+interrupt callback table. FUN_18016908 references Thumb pointer 0x180160d9 at
+0x18016d4c while initialising the endpoint/IRQ structures, including the
+64-byte endpoint configuration.
+
+UPDATER-SIDE PROOF
+
+FW_Update_Tool_M605.exe is a managed wrapper. MainWindow.UpdateFW reads
+config.ini and launches FW/peripheral_fwu_pro.exe using Cmd 1, the BIN path and
+Cmd 2. It does not build the report itself.
+
+In peripheral_fwu_pro.exe, the "Jump to Bootloader" block is at
+0x00407231..0x0040735c. It:
+
+  1. zero-initialises a vector to the configured application packet length;
+  2. calls FUN_004054e0(vector, selector=4, 0, 0);
+  3. sends that vector through FUN_00401b30;
+  4. polls for the bootloader PID and prints "Entry Bootloader Success!".
+
+FUN_004054e0 selector 4, with the official lower-case "m" mode, writes exactly:
+
+  payload[0] = 0x7b
+  payload[1] = 0xaa
+  payload[2] = 0x41
+  payload[3] = 0x53
+  payload[4] = 0x55
+  payload[5] = 0x53
+  payload[6] = 0xaa
+
+All remaining bytes retain the zero fill. This independently matches the
+Candidate B receiver.
+
+HID FRAMING PROOF
+
+The current application interface 1 descriptor is:
+
+  06 00 ff 09 01 a1 01 09 02 75 08 95 40 15 00 26
+  ff 00 81 02 09 03 75 08 95 40 15 00 26 ff 00 91
+  02 c0
+
+It declares usage page 0xff00, usage 1, a 64-byte Input, a 64-byte Output and no
+Report ID.
+
+HidInterruptHandle.dll InterruptTransfer_WriteLen at 0x100013a0 allocates
+payload_length + 1, writes the separate report_id argument to byte 0, copies the
+payload to bytes 1..length, and calls WriteFile for the combined length. Thus
+the Linux hidraw write corresponding to the updater is exactly 65 bytes:
+
+  00 | 7b aa 41 53 55 53 aa | 57 zero bytes
+
+SHA-256 of those 65 bytes:
+
+  de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8
+
+TOOL AND TESTS
+
+Added tool/enter_bootloader.py. Default is dry-run. Live mode requires both
+--run and --acknowledge-reset. It validates exactly one 0b05:1b7e FF00,
+64-byte-IN/OUT, unnumbered hidraw interface; refuses if PID 1b7f is already
+present; allows only the exact 65-byte frame above; emits it once with no retry;
+closes the node; and only polls sysfs for PID 1b7f afterward. It contains no
+generic command builder and no unlock/erase/program/update path.
+
+Added tool/test_enter_bootloader.py. Full offline suite result:
+
+  Ran 115 tests in 1.230s
+  OK
+
+Dry-run result:
+
+  payload_len=64
+  hidraw_write_len=65
+  hidraw_write_sha256=de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8
+  DRY RUN: no device enumerated or opened; no report sent
+
+The --run path without --acknowledge-reset refused before device selection.
+
+PASSIVE LIVE PREFLIGHT
+
+Current normal-mode nodes are hidraw6..hidraw9. Descriptor validation selected
+only /dev/hidraw7 (interface 1, FF00, 64-byte IN/OUT, no Report ID). Mode was
+crw-rw-rw-. fuser reported no process holding /dev/hidraw7. The device remained
+0b05:1b7e. This preflight did not open the node.
+
+COMMAND GROUPS
+
+- read-only Ghidra -process app_candidate_b_18000000.bin -readOnly -noanalysis
+  with FalchionBootEntryTrace.java;
+- static file/objdump/strings/sha256sum inspection of the ASUS artifacts;
+- temporary /tmp-only installs of dnfile 0.18.0 and dncil 1.0.2, used solely to
+  parse managed metadata/IL;
+- Ghidra import/analysis of peripheral_fwu_pro.exe as data, followed by
+  -process ... -readOnly -noanalysis with FalchionUpdaterBootEntry.java;
+- objdump disassembly of peripheral_fwu_pro.exe 0x406f80..0x4073c0 and
+  HidInterruptHandle.dll 0x10001370..0x10001470;
+- read-only sysfs descriptor/uevent inspection;
+- py_compile, unittest, tool dry-run, flag-gated refusal and git diff --check;
+- outside-sandbox ls/fuser plus selector-only preflight of /dev/hidraw7.
+
+VERDICT
+
+The exact reset-only bootloader-entry report and Linux hidraw framing are
+statically recovered and independently cross-checked between the official
+updater, its HID DLL, the application firmware and the current report
+descriptor. The live transition has not yet been attempted. It remains a real
+reset/state change and requires explicit informed approval after this evidence
+is presented.

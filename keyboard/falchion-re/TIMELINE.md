@@ -855,6 +855,58 @@ run between any two reports rather than only around queries, starts from a
 zero-initialised buffer, and can be given a foreign pending operation. `--run`
 remains gated behind `--force-unreviewed`, which was not used.
 
+## 2026-09-02 — Exact bootloader-entry report recovered offline (log 87)
+
+The previously unresolved application-to-bootloader transition was traced from
+both sides. Candidate B `FUN_180160d8`, installed through the low-level USB
+endpoint callback table by `FUN_18016908`, recognizes the seven-byte prefix
+`7b aa 41 53 55 53 aa`. On a match it writes `0x73207320` to RAM
+`0x20000ffc`, delays, and resets. This is different from the application
+dispatcher's `0xb0` + `"reset"` branch, which performs an ordinary AIRCR reset
+without the force-boot flag.
+
+The official .NET front end was statically decoded and found to be only a
+wrapper. Its `UpdateFW` method launches `FW/peripheral_fwu_pro.exe` with the
+official `m 1B7E 1B7F 64 432 FF00 FF00 4` arguments. Native Ghidra analysis of
+that child recovered the "Jump to Bootloader" block at
+`0x00407231..0x0040735c`: it zero-fills a 64-byte vector, calls packet-builder
+selector 4, sends once, and waits for PID `1b7f`. Selector 4 writes exactly the
+same seven-byte prefix. The remaining 57 bytes stay zero.
+
+The DLL's `InterruptTransfer_WriteLen` independently resolved host framing: it
+prepends the separate report-number argument to the payload. Since the current
+interface-1 FF00 report descriptor has no Report ID, the Linux hidraw write is
+65 bytes: `00` plus the 64-byte payload. Its SHA-256 is
+`de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8`.
+
+`tool/enter_bootloader.py` was added with a one-frame equality guard, exact
+VID:PID/descriptor selection, default dry-run, two required live flags and no
+retry or generic command path. The full mocked suite now has 115 passing tests.
+A passive preflight found the normal keyboard at `0b05:1b7e`, selected only
+`/dev/hidraw7`, verified mode `0666`, and found no process holding that node.
+No device node was opened and no report was sent during that preflight; the live
+reset still required explicit informed approval.
+
+## 2026-09-02 — Live bootloader entry succeeds (log 88)
+
+The owner explicitly authorized the one reset-only report. The reviewed tool
+revalidated `/dev/hidraw7`, emitted the exact 65-byte hidraw frame once with no
+retry, and closed it. The keyboard immediately re-enumerated from application
+PID `0b05:1b7e` to `Gaming Keyboard Bootloader` PID `0b05:1b7f`, bcdDevice
+`1.05`. This validates the application-side entry command and host framing.
+
+Passive enumeration found four HID interfaces. The firmware channel is
+interface 0 / `/dev/hidraw6`, usage page `0xFF01`, with unnumbered 64-byte IN
+and OUT reports on endpoints `0x81` and `0x06`. Interface 1 is a separate FF00
+64-byte channel; interfaces 2 and 3 are mouse and keyboard. All use `usbhid`.
+`dfu-util -l` found no DFU target. fwupd is not installed (`fwupdmgr` and
+`fwupdtool` absent; pacman reports no `fwupd` package).
+
+The bootloader nodes reappeared root-only (`0600`), and `/dev/hidraw6` had no
+reported holder. No permission was changed. No bootloader report—including a
+status query or READ—was sent, and no flash operation occurred. The next phase
+requires separate approval for privileged, read/query-only access.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -928,11 +980,13 @@ For clarity, this investigation has not:
 
 The integrity calculation is now solved (logs 75–76): SN_FWIN per-record values
 are a sum of per-`0x10000`-chunk IEEE CRC-32, and the container guard is an
-additive word-sum, both recomputable offline. The safest high-value continuation
-is now Candidate B's true runtime entry/dispatch after scatter-load (it still has
-no verified vector), and — before any flashing — a read-only study of the
-bootloader's write/erase/program protocol and recovery path. Controlled firmware
-modification remains blocked on those, not on integrity.
+additive word-sum, both recomputable offline. Candidate B's runtime entry, the
+bootloader protocol and the exact reset-only entry report are also recovered.
+The next controlled phase, after explicit approval, is to enter PID `1b7f`,
+passively validate its descriptor/framing, and only then decide separately
+whether to authorize the read-only application-region backup. Controlled
+firmware modification remains blocked until a trustworthy installed-device
+backup and recovery path exist.
 
 Before any hardware modification, prepare a separate reviewed preservation
 plan for U5 and MCU readback: correct voltage, board-power isolation, bus

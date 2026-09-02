@@ -145,12 +145,35 @@ unlock is needed for READ (only erase/program require the `ASUSHIDFWU` unlock):
 5. Power-cycle to return to the application; confirm normal enumeration
    (VID:PID `0b05:1b7e`, v1.59).
 
-Entering bootloader mode (app side): the application vendor-HID dispatcher writes
-the magic `0x73207320` to RAM `0x20000ffc` and triggers an AIRCR system reset; the
-bootloader's `FUN_00002a44` reads that flag on boot, and when it matches it stays
-in service mode (and clears the flag). This is what the updater labels "Jump to
-Bootloader". (An app command `0xb0` + payload `"reset"` performs a plain reboot
-without the flag — that is a normal reset, not bootloader entry.)
+Entering bootloader mode (app side, recovered offline in log 87): send one
+unnumbered 64-byte payload on the normal PID-`1b7e` interface-1 FF00 channel:
+
+```text
+7b aa 41 53 55 53 aa 00 ... 00    # 64 payload bytes total
+```
+
+Linux hidraw requires the report-number placeholder, so the actual `write()` is
+65 bytes: `00` followed by that payload. Candidate B `FUN_180160d8` recognizes
+the seven-byte prefix, writes `0x73207320` to RAM `0x20000ffc`, and resets. The
+bootloader's `FUN_00002a44` reads and clears the flag and stays in service mode.
+The official updater and HID DLL independently confirm both the payload and the
+leading report-number framing. Use only the reviewed, exact-frame tool:
+
+```text
+python3 tool/enter_bootloader.py                         # dry-run
+python3 tool/enter_bootloader.py --run --acknowledge-reset
+```
+
+The live form is a real reset/state change. It was run once after explicit
+approval on 2026-09-02 and successfully produced PID `0b05:1b7f` (log 88). An
+app command `0xb0` + payload `"reset"` is different: it performs a plain reboot
+without setting the boot flag.
+
+Live enumeration selected interface 0 / `/dev/hidraw6`: usage page `0xFF01`,
+64-byte IN and OUT, no Report ID. The re-created bootloader nodes are root-only
+(`0600`), so the next read-only probe needs separately approved privileged
+execution or a separately approved permission change. No bootloader report has
+yet been sent.
 
 Risks / caveats:
 - Entering bootloader mode is a real command and a state change (low risk, but it

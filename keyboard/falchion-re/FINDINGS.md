@@ -968,12 +968,24 @@ application region `[0x10000, 0x7c000)`, in ≤`0x30`-byte chunks — not the
 bootloader region. (An earlier draft incorrectly stated the read handler had no
 address guard; the guard lives in the execute-trigger, not in `FUN_00003b64`.)
 
-Force-bootloader entry: the bootloader `FUN_00002a44` checks RAM `0x20000ffc`
+Force-bootloader entry (resolved offline in log 87): the bootloader
+`FUN_00002a44` checks RAM `0x20000ffc`
 against magic `0x73207320`; if set, it stays in service mode and clears the flag.
-The application writes that magic (Candidate B literals at `0x18016464`/`0x18016468`
-and `0x1801835c`, near the `"boot"` string) and then triggers an AIRCR reset —
-this is the updater's "Jump to Bootloader". A separate app command `0xb0` +
-`"reset"` performs a plain reboot without the flag.
+Candidate B `FUN_180160d8` accepts a 64-byte application-interface payload whose
+first seven bytes are `7b aa 41 53 55 53 aa`, writes the magic, and resets. The
+official `peripheral_fwu_pro.exe` independently builds that exact payload for
+selector 4 in the configured lower-case `m` mode: those seven bytes followed by
+57 zero bytes. `HidInterruptHandle.dll` proves the Windows write prepends the
+separate report-number byte; because application interface 1 declares no Report
+ID, the equivalent Linux hidraw write is `00` plus the 64-byte payload (65 bytes,
+SHA-256 `de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8`).
+A separate app command `0xb0` + `"reset"` performs a plain reboot without the
+flag. `tool/enter_bootloader.py` implements only the exact allowlisted reset
+frame, defaults to dry-run and requires two live flags. On 2026-09-02, after
+explicit approval, it sent that frame exactly once to `/dev/hidraw7`; the
+keyboard successfully re-enumerated from `0b05:1b7e` to `0b05:1b7f`. Live
+bootloader entry is therefore validated (log 88). No bootloader protocol report
+or flash operation has yet been sent.
 
 This documents the exact read-only dump recipe on paper (`notes/step5-recovery-plan.md`,
 Approach A). **No report has been sent to the device.**
@@ -1051,10 +1063,18 @@ Evidence: `logs/46-documentation-synchronization-audit.txt`.
 ## Uncertain or superseded assumptions
 
 - **USB backup via proprietary HID:** static bootloader analysis supports a proprietary HID READ operation over the 64-byte vendor interface for the application region `0x10000..0x7bfff`. The live transport and behavior on this physical keyboard remain unvalidated, and no backup has been obtained.
-- **Separate USB bootloader mode:** unresolved. No key combination or detach command was attempted.
+- **Separate USB bootloader mode:** validated live in log 88. One authorized
+  reset-only report caused re-enumeration as `0b05:1b7f`, bcdDevice `1.05`, with
+  four HID interfaces. Interface 0 / `/dev/hidraw6` is the expected FF01,
+  64-byte-IN/OUT, unnumbered bootloader channel. No physical boot-key method is
+  known.
 - **Older `0xFF32` report descriptor:** `keyboard/falchion-re/notes/report-desc-0.txt` contains a 63-byte input/output report on vendor page `0xFF32`, but its provenance is not recorded strongly enough to associate it with the currently enumerated interface 4. Current direct enumeration identifies interface 4 as page `0x59` with a different 327-byte descriptor. Treat the older mapping as historical/unverified, not a current fact.
 - **Firmware version:** `bcdDevice 1.59` is verified; equating it with the version of every code image or external-flash region is an assumption.
-- **Current device-node permissions:** not verified because `/dev/hidraw*` and `/dev/bus/usb/*` are hidden inside the managed sandbox. No permission changes were made. Prior notes claiming mode `0666` are historical, not re-verified here.
+- **Current device-node permissions:** application-mode preflight verified
+  `/dev/hidraw6..9` mode `0666` and selected `/dev/hidraw7`. After the PID-1b7f
+  transition the re-created bootloader nodes are root-only (`0600`); the FF01
+  selector chose `/dev/hidraw6`, and `fuser` reported no holder. No permission
+  was changed.
 
 ## Commands run
 
@@ -1071,10 +1091,11 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 
 1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recovery candidate even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
 2. **Decide whether to install fwupd:** installation changes the host, so ask first. Its value is limited because the current descriptors do not advertise DFU, but it can confirm whether a supported fwupd plugin recognizes the device.
-3. **Research bootloader entry offline first:** the updater establishes PID `1b7f`
-   and contains a jump-to-bootloader path, but its exact command and any physical
-   boot-key method remain unresolved. Do not send a detach/vendor command merely
-   to experiment.
+3. **Bootloader entry is resolved offline (log 87):** after explicit informed
+   approval, use only `tool/enter_bootloader.py --run --acknowledge-reset`. It
+   emits the single statically verified reset-only frame once. Do not substitute
+   the ordinary `0xb0/"reset"` command or run the ASUS updater, which proceeds to
+   erase/program after entry.
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater
