@@ -1,0 +1,284 @@
+PROGRAM correction-audit
+DATE 2026-08-31
+PURPOSE Audit and repair of commits fdacad9..05c35ad. Offline only.
+SCOPE tool/backup_firmware.py, tool/analyze_boot_structures.py,
+      tool/analyze_candidate_integrity.py, tool/build_modified_image.py,
+      tool/test_backup_firmware.py, tool/test_build_modified_image.py,
+      FINDINGS.md, TIMELINE.md, notes/step5-recovery-plan.md, logs/,
+      and the repository-root CLAUDE.md.
+
+=== DEVICE ACCESS: NONE ===
+/dev/hidraw* was never opened, read, or written.
+The CLI refusal path was invoked without its acknowledgement flag; it returned
+before sysfs or device selection. The live run path was never entered.
+No HID or USB report was transmitted. No reset, bootloader entry, erase,
+program, or permission change occurred. Every device-facing code path was
+exercised against in-process mocks and temporary sysfs trees only.
+
+=== DEFECTS FOUND AND FIXED ===
+1. FATAL, backup_firmware.py: the per-chunk sequence queued all five
+   reports and then performed a single read(), so the 0x8f status reply
+   was consumed as if it were the 0xaa read data. Every chunk would have
+   been wrong and no response was validated at all. Replaced with immediate
+   request-response exchanges.
+2. backup_firmware.py selected the first PID-1b7f hidraw node without
+   inspecting its report descriptor.
+3. backup_firmware.py wrote its output with no post-dump validation, so
+   three identical-but-wrong passes would have been accepted.
+4. A transport close() error could mask the protocol error that preceded it.
+5. FINDINGS.md cited 0x61000 as a duplicate checksum offset; 0x61000 is the
+   start of the duplicated bootloader region, not a checksum offset.
+6. TIMELINE.md claimed a live refusal against the app-mode device that was not
+   supported by log 83. This correction audit later exercised only the new
+   flag-gated refusal path, before device selection.
+7. The repository-root CLAUDE.md carried an unrelated appended block.
+
+=== PROTOCOL EVIDENCE USED (static, logs 81-82) ===
+log 81 FUN_00002db8, command byte 0x05:
+    *(+0x38) = (*(+0x38) & 0xfd) + 2;   // set busy bit 1
+    FUN_00003b64();                     // synchronous READ
+    *(+0x38) = *(+0x38) & 0xfd;         // clear busy bit 1
+    *(+0x34) = 0;                       // clear pending command
+  Erase (0x01) and program (0x51) use bit 0 identically, so bit 1 is
+  specifically the READ indicator.
+log 82 FUN_00003740: resp[0] = query & 0x7f, so 0x8f -> 0x0f, 0xaa -> 0x2a.
+  Status 0x0f returns resp[1] = state+0x38 and resp[2] = state+0x35.
+  Data 0x2a memcpys the payload starting at resp[1] for the set length, so
+  response[1:1+length] skips the response code, not a report-ID prefix.
+
+UNRESOLVED post-EXEC scheduling race: the 0x1f parser only sets the pending
+byte state+0x34; the service loop (FUN_00003a7c -> FUN_00002db8) is what
+sets bit 1 and performs the READ. Nothing recovered proves the service loop
+has run before the host's first 0x8f. In that window bit 1 reads clear and
+0xaa could return the previous chunk's buffer. Status does not expose
+state+0x34, so the host cannot distinguish 'finished' from 'not started'.
+No timing guarantee is claimed. The end-of-dump self-validation below is a
+mitigation, not a proof of correctness.
+
+=== VENDOR ARTIFACT ===
+6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+tool/build_modified_image.py EXPECTED_SOURCE_SHA256 matches this value.
+
+=== PY_COMPILE ===
+$ /usr/bin/python3 -m py_compile tool/analyze_boot_structures.py tool/analyze_candidate_b_tables.py tool/analyze_candidate_integrity.py tool/analyze_sonix_firmware.py tool/backup_firmware.py tool/build_modified_image.py tool/test_backup_firmware.py tool/test_build_modified_image.py
+
+[exit 0]
+
+=== UNIT TESTS (mocked; no device) ===
+$ /usr/bin/python3 -m unittest discover -s tool -t tool -p test_*.py
+Ran 85 tests in 0.248s
+OK
+[exit 0]
+
+=== BACKUP TOOL DRY-RUN (no device opened) ===
+$ /usr/bin/python3 tool/backup_firmware.py
+PROGRAM backup_firmware  (DRY-RUN — no device opened)
+REGION app-only base=0x10000 size=0x6c000 range 0x10000..0x7c000
+chunks=9216 chunk_max=0x30 bytes=0x6c000
+validated 46080 reports; all pass the read-only guard
+sample chunk @0x10000 len 0x30:
+  set_addr     20 00 00 01 00 00 00 00 ...
+  set_len      21 30 00 00 00 00 00 00 ...
+  exec_read    1f 05 00 00 00 00 00 00 ...
+  query_status 8f 00 00 00 00 00 00 00 ...
+  query_data   aa 00 00 00 00 00 00 00 ...
+expected replies: status resp[0]=0x0f (resp[1]=state+0x38 flags, READ-busy bit 0x02; resp[2]=state+0x35 error), data resp[0]=0x2a
+safety self-check: PASS (guard rejected every write/unlock/reset form; read reports built)
+RESULT dry_run_ok=True guard_rejected_forbidden=True
+LIMITATION No device was opened. A post-EXEC scheduling race, the hidraw transfer convention, and the absence of any live validation all remain unresolved, so --run stays gated behind --force-unreviewed.
+[exit 0]
+
+=== --run IS REFUSED WITHOUT ACKNOWLEDGEMENT (no device opened) ===
+$ /usr/bin/python3 tool/backup_firmware.py --run /tmp/must-not-exist.bin
+REFUSING to run live.
+
+The read-back protocol is recovered from static analysis only and has never been
+exercised against hardware. The READ-busy bit is identified (log 81 FUN_00002db8
+holds state+0x38 bit 1 across the synchronous READ; log 82 returns that byte as
+status resp[1]), but three things remain unvalidated:
+
+  1. A post-EXEC scheduling race: nothing proves the service loop has set bit 1
+     before the host's first status query, so an early poll could exit at once
+     and return a stale buffer. Status does not expose the pending byte
+     state+0x34, so the race cannot be closed from the host side. The end-of-dump
+     self-validation rejects the shifted/stale images this would produce, but it
+     is a mitigation, not a proof of correctness.
+  2. The Linux hidraw write() report-number prefix and read() framing for this
+     device are assumed, not observed.
+  3. No live validation of any kind has been performed and no installed-firmware
+     backup exists, so there is nothing to restore from if a read path misbehaves.
+
+Live use is unauthorised pending independent review. If that review has happened
+and you accept the risk, re-run with --force-unreviewed.
+[exit 2]
+
+/tmp/must-not-exist.bin created: False
+
+=== FULL IMAGE, BASE 0 ===
+$ /usr/bin/python3 tool/analyze_candidate_integrity.py
+PROGRAM analyze_candidate_integrity
+PURPOSE offline SN_FWIN integrity analysis
+IMAGE /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+IMAGE_BASE 0x0
+IMAGE_SIZE 0x7c000
+
+RECORDS
+  [0] addr=0x60011000 len=0x58ac dst=0x18000000 stored=0x5e75c17a calc=0x5e75c17a match=True
+  [1] addr=0x60021000 len=0x1e754 dst=0x18000000 stored=0x1a76c116 calc=0x1a76c116 match=True
+
+WORD_SUMS
+  bootloader: stored=0xfb665ae3 calc=0xfb665ae3 match=True
+  application: stored=0x5d27c5a9 calc=0x5d27c5a9 match=True
+  PASS SN_FWIN magic
+  PASS record[0] checksum
+  PASS record[1] checksum
+  PASS bootloader word-sum
+  PASS application word-sum
+
+RESULT integrity_checks_ok=True
+[exit 0]
+
+$ /usr/bin/python3 tool/analyze_boot_structures.py
+PROGRAM analyze_boot_structures
+PURPOSE offline known boot-container checks
+IMAGE /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+IMAGE_BASE 0x0
+IMAGE_SIZE 0x7c000
+PRESENT_CONTAINERS primary,backup
+RECORD 0 addr=0x60011000 len=0x58ac checksum=0x5e75c17a dst=0x18000000
+RECORD 1 addr=0x60021000 len=0x1e754 checksum=0x1a76c116 dst=0x18000000
+  PASS primary SNC7320A magic
+  PASS primary SN_BCFG magic
+  PASS primary bootloader pointer
+  PASS primary declared size
+  PASS primary slot0 -> SN_FWIN
+  PASS primary slot1 empty
+  PASS backup SNC7320A magic
+  PASS backup SN_BCFG magic
+  PASS backup bootloader pointer
+  PASS backup declared size
+  PASS backup slot0 -> SN_FWIN
+  PASS backup slot1 empty
+  PASS SN_FWIN magic
+  PASS SN_FWIN CRC-enable gate nonzero
+  PASS entry equals record[0] address
+  PASS record ranges inside application region
+  PASS entry initial-SP in observed RAM ranges
+  PASS entry reset vector is Thumb and within record[0] length
+RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+LIMITATION Passing means the known container constraints are internally consistent. It does not prove an edited image boots.
+[exit 0]
+
+=== APP-ONLY SLICE, BASE 0x10000 (temporary file; not committed) ===
+temporary slice /tmp/falchion-apponly.bin size 0x6c000 sha256 b9c35b2339b2d6316bdab5bb2799e28b89454fd5c2c133b89827902b7a2403c1
+
+$ /usr/bin/python3 tool/analyze_candidate_integrity.py /tmp/falchion-apponly.bin --base 0x10000
+PROGRAM analyze_candidate_integrity
+PURPOSE offline SN_FWIN integrity analysis
+IMAGE /tmp/falchion-apponly.bin
+IMAGE_BASE 0x10000
+IMAGE_SIZE 0x6c000
+
+RECORDS
+  [0] addr=0x60011000 len=0x58ac dst=0x18000000 stored=0x5e75c17a calc=0x5e75c17a match=True
+  [1] addr=0x60021000 len=0x1e754 dst=0x18000000 stored=0x1a76c116 calc=0x1a76c116 match=True
+
+WORD_SUMS
+  bootloader: SKIP (region absent from this partial image)
+  application: stored=0x5d27c5a9 calc=0x5d27c5a9 match=True
+  PASS SN_FWIN magic
+  PASS record[0] checksum
+  PASS record[1] checksum
+  PASS application word-sum
+
+RESULT integrity_checks_ok=True
+[exit 0]
+
+$ /usr/bin/python3 tool/analyze_boot_structures.py /tmp/falchion-apponly.bin --base 0x10000
+PROGRAM analyze_boot_structures
+PURPOSE offline known boot-container checks
+IMAGE /tmp/falchion-apponly.bin
+IMAGE_BASE 0x10000
+IMAGE_SIZE 0x6c000
+PRESENT_CONTAINERS backup
+  SKIP primary container: absent from this image (base 0x10000, size 0x6c000)
+RECORD 0 addr=0x60011000 len=0x58ac checksum=0x5e75c17a dst=0x18000000
+RECORD 1 addr=0x60021000 len=0x1e754 checksum=0x1a76c116 dst=0x18000000
+  PASS backup SNC7320A magic
+  PASS backup SN_BCFG magic
+  PASS backup bootloader pointer
+  PASS backup declared size
+  PASS backup slot0 -> SN_FWIN
+  PASS backup slot1 empty
+  PASS SN_FWIN magic
+  PASS SN_FWIN CRC-enable gate nonzero
+  PASS entry equals record[0] address
+  PASS record ranges inside application region
+  PASS entry initial-SP in observed RAM ranges
+  PASS entry reset vector is Thumb and within record[0] length
+RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+LIMITATION Passing means the known container constraints are internally consistent. It does not prove an edited image boots.
+[exit 0]
+
+=== OFFLINE IMAGE BUILDER DEMO (no output written) ===
+$ /usr/bin/python3 tool/build_modified_image.py --demo
+PROGRAM build_modified_image
+MODE offline demo; no output written
+SOURCE /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+SOURCE_SHA256 6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+IDEMPOTENT True
+PATCH 0x3f66f: 0x52 -> 0x72
+SCATTER_MAP 0x3f66f is a literal -> decompressed index 0x882 -> runtime 0x1801ebd6
+CHANGES_SCOPED True changed_bytes=9
+CHECKS
+  PASS SN_FWIN magic
+  PASS record[0] checksum
+  PASS record[1] checksum
+  PASS bootloader word-sum
+  PASS application word-sum
+  PASS known boot: primary SNC7320A magic
+  PASS known boot: primary SN_BCFG magic
+  PASS known boot: primary bootloader pointer
+  PASS known boot: primary declared size
+  PASS known boot: primary slot0 -> SN_FWIN
+  PASS known boot: primary slot1 empty
+  PASS known boot: backup SNC7320A magic
+  PASS known boot: backup SN_BCFG magic
+  PASS known boot: backup bootloader pointer
+  PASS known boot: backup declared size
+  PASS known boot: backup slot0 -> SN_FWIN
+  PASS known boot: backup slot1 empty
+  PASS known boot: SN_FWIN magic
+  PASS known boot: SN_FWIN CRC-enable gate nonzero
+  PASS known boot: entry equals record[0] address
+  PASS known boot: record ranges inside application region
+  PASS known boot: entry initial-SP in observed RAM ranges
+  PASS known boot: entry reset vector is Thumb and within record[0] length
+  PASS scatter stream (output=0xb04 consumed=0x3fe trailing=2 zero_padded=True)
+LIMITATION Passing means the known integrity fields and the scatter structure are internally consistent; it does not prove the image boots.
+[exit 0]
+
+=== SUPERSEDED CONCLUSIONS ===
+log 77: its CONCLUSION line said a patched image 'can be rebuilt offline to
+  pass every integrity field the bootloader checks... proving the checks are
+  live'. Superseded: the run shows the four fields are reproducible offline.
+  It does not show the bootloader accepts the image or that it boots.
+  FUN_000029d4 and the top-level selected-entry comparison are unresolved.
+log 83: its wording 'erase/program/unlock are unconstructable' is superseded
+  by 'the guard rejected every write/unlock/reset form in the self-check'.
+  Log 83 is also dry-run output only; it records no --run invocation, and
+  the TIMELINE claim of a live --run refusal has been withdrawn.
+Neither raw log was edited. Both retain their original bytes and hashes.
+
+=== RESULT ===
+correction_audit_ok=True
+device_accessed=False
+tests_passed=85
+live_use_authorised=False (unresolved: post-EXEC scheduling race, assumed
+  hidraw transfer convention, no hardware validation, no installed backup)

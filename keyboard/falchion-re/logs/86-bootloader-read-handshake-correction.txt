@@ -1,0 +1,427 @@
+PROGRAM bootloader-read-handshake-correction
+DATE 2026-08-31
+PURPOSE Correct the log-85 backup implementation. An independent review found the
+        buffer-change handshake unsound; this log records the counterexample, the
+        static evidence that closes the bootstrap, the corrected rule with its
+        interleaving proof, and what remains unresolved.
+SCOPE   supersedes parts of log 85. Logs 00-85 are unchanged.
+        ghidra/project/falchion-hfx :: bootloader_primary.bin
+        tool/backup_firmware.py, tool/test_backup_firmware.py
+
+=== DEVICE ACCESS: NONE ===
+No /dev/hidraw* node was opened, read, or written. No USB device, sysfs USB node,
+or HID/USB report was touched. No reset, driver detach, bootloader entry, erase,
+program, unlock, firmware update, or permission change occurred.
+backup_firmware.py was run only in its default dry-run mode, which opens nothing;
+--force-unreviewed was NOT used. Every Ghidra invocation used -readOnly
+-noanalysis against the existing project. Logs 00-85 were not modified.
+
+=== COMMANDS ===
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
+  XDG_CONFIG_HOME=/tmp/falchion-ghidra-config \
+  XDG_CACHE_HOME=/tmp/falchion-ghidra-cache \
+  XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+  ghidra-analyzeHeadless ghidra/project falchion-hfx \
+    -process bootloader_primary.bin -readOnly -noanalysis \
+    -scriptPath ghidra/scripts -postScript FalchionBootloaderStateZeroInit.java
+
+  /usr/bin/python3 -m py_compile tool/*.py
+  /usr/bin/python3 -m unittest discover -s $PWD/tool -t $PWD/tool -p 'test_*.py'
+  /usr/bin/python3 tool/backup_firmware.py                     # dry-run only
+  /usr/bin/python3 tool/backup_firmware.py --run /tmp/must-not-exist.bin
+  sha256sum -c logs/SHA256SUMS
+  git diff --check
+
+=== 1. THE DEFECT ===
+log 85's read_fresh() sampled in this order:
+
+    check_status()      # require state+0x38 bit 1 clear
+    fetch()             # accept any value differing from the baseline
+
+That is unsound, and log 85's own section 6 contained the fact that refutes it:
+FUN_00003b64 does not mask interrupts, so the 0xaa responder can run while
+state+4 is only partly written. Reading the status BEFORE the sample does not
+exclude that, because a whole READ can start and finish between two host
+reports, with the fetch landing inside it. The admissible interleaving:
+
+  1. the 0x8f status is answered before the pending READ has started, so bit 1
+     reads clear (this is exactly the log-85 result: dispatch waits for SysTick);
+  2. the SysTick tick fires and the main loop enters FUN_00002db8 -> FUN_00003b64;
+  3. a USB interrupt is taken while the flash transfer is only partly done;
+  4. the 0xaa reply carries a mixture of new and baseline bytes;
+  5. read_fresh() accepts it, because it differs from the baseline.
+
+Reproduced in memory by the reviewer: the implementation accepted 24 new bytes
+followed by 24 baseline bytes. The same shape is now pinned by
+test_log86_counterexample_step_by_step, which asserts each of the five steps on
+raw protocol primitives.
+
+The test harness hid this. The old FakeBootloader._tick() replaced the response
+buffer atomically, and its busy_rounds knob only toggled the status flag without
+being connected to any incremental buffer write, so no test could ever observe a
+half-written buffer.
+
+=== 2. NEW STATIC EVIDENCE: THE STATE BLOCK IS ZERO-INITIALISED ===
+The reset vector does not enter __rt_entry directly:
+
+  vector[1] = 0x000002f5
+    0x000002f4  movw r0,#0xed08 ; movt r0,#0xe000   ; SCB->VTOR
+    0x000002fc  ldr  r0,[r0,#0x0]
+    0x000002fe  ldr.w sp,[r0,#0x0]                  ; SP from vectors[0]
+    0x00000302  blx  *0x0000033c = 0x000049a5       ; pre-main init
+    0x00000306  bx   *0x00000340 = 0x00000141
+  0x00000140  bl 0x00000148        ; __scatterload
+  0x00000144  bl 0x000002d4        ; __rt_entry -> ... -> FUN_00007ec8 (main)
+
+  0x00000148  adr  r0,[0x174] ; ldm.w r0,{r10,r11} ; add r10,r0 ; add r11,r0
+  0x00000156  cmp  r10,r11 ; bne 0x15e ; bl 0x000002d4
+  0x00000162  ldm.w r10!,{r0,r1,r2,r3} ; ... ; bx r3
+
+That is the standard ARM Region$$Table walk. Decoding the table:
+
+  REGION_TABLE base=0x0000cca0 limit=0x0000ccd0 entries=3
+   @0x0000cca0 src=0x0000cdfc dst=0x18010000 len=0x50    fn=0x000001e0
+      handler: 10 3a 24 bf 78 c8 78 c1 ...   (__scatterload_copy)
+      covers: -
+   @0x0000ccb0 src=0x0000ce4c dst=0x18010050 len=0x1118  fn=0x0000017c
+      handler: 10 f8 01 3b 0a 44 13 f0 ...   (__scatterload_decompress)
+      covers: W (the service-loop flags at 0x18010bd4)
+   @0x0000ccc0 src=0x0000d13c dst=0x18011168 len=0x1a0c8 fn=0x000001fc
+      handler: 00 23 00 24 00 25 00 26 ...   (__scatterload_zeroinit:
+               movs r3,#0; movs r4,#0; movs r5,#0; movs r6,#0; stm r1!,{r3-r6})
+      covers: T (0x18011a8c), S (0x18012a8c), S+0x34, S+0x36, S+0x38, S+4
+
+So immediately after startup, before main() and therefore before any host report
+can be parsed:
+    state+0x34 == 0      no pending flash operation
+    state+4    == 0 x 0x30   a KNOWN first baseline, not a guessed one
+    state+0x36 == 0
+    state+0x38 == 0      locked (bit 7 clear) and not busy
+This is what makes the first baseline trustworthy. It also means a residual RAM
+value cannot leak into the pending byte across a jump-to-bootloader reset.
+
+=== 3. THE CORRECTED RULE, WITH ITS INTERLEAVING PROOF ===
+Per chunk the host now sends, in this order:
+    0x21 len ; 0x20 addr ; 0x1f/0x05
+then repeats: 0xaa (sample) ; 0x8f (status) ; and only on acceptance a second
+0xaa whose value is the one returned.
+
+Facts used (log 85 sections 2-3, plus section 2 of this log):
+  F1 state+4 is written only by FUN_00003b64; the host has no write path into it
+     (OUT 0x22's last reachable byte is state+3).
+  F2 FUN_00003b64 is called only from FUN_00002db8, strictly between the store
+     that sets state+0x38 bit 1 (0x00002e0a) and the store that clears it
+     (0x00002e1e). Every write to state+4 therefore happens at a time when bit 1
+     reads set.
+  F3 FUN_00003b64 takes its address from *(u32 *)(state-0x1000) and its length
+     from *(u16 *)(state+0x36) when it runs, not when the EXEC was parsed.
+  F4 FUN_00002db8 runs only from the single-threaded main loop FUN_00003a7c, so
+     READ episodes are serialised and non-overlapping.
+  F5 FUN_00003740, which answers 0x8f and 0xaa, writes neither state+4,
+     state+0x34, nor the service-loop flags.
+
+Call an episode one execution of FUN_00003b64 from the cmd-5 branch, and let
+E_i = [s_i, e_i] be the interval over which it holds bit 1 set. By F4 the E_i are
+disjoint and ordered; by F1/F2 state+4 is constant outside their union.
+
+Let t2 be the time of this chunk's set-address report. Length is sent before
+address, so from t2 onward both fields hold this chunk's values, and the host
+changes neither again until the next chunk's set-address. Hence, by F3:
+  * every episode dispatching at or after t2 writes content(addr);
+  * every episode dispatching before t2 writes the previous chunk's address,
+    whose content is exactly `baseline` -- storing bytes that are already there
+    cannot change the value.
+Let E* be the first episode dispatching at or after t2. Then:
+    state+4 == baseline          for t < s*
+    state+4 == content(addr)     for t > e*
+    state+4 == content(addr)     throughout every later episode, since they
+                                 store the same bytes again.
+
+Now let the host sample X at t_f and read a status with bit 1 clear at t_s > t_f.
+Bit 1 clear means t_s lies in no E_i (F2).
+  * If t_s < s*, then t_f < s* as well, so X == baseline.
+  * Otherwise t_s > e*, so state+4 == content(addr) at t_s and at every later
+    instant.
+Therefore X != baseline forces t_s > e*, and any fetch issued after t_s returns
+the complete content(addr). That fetch is the value returned. No timing
+assumption and no unexposed state is used.                                   QED
+
+Corollary. If content(addr) == baseline then every state during E* equals
+baseline, so X == baseline. Hence X != baseline also implies the confirming fetch
+differs from the baseline; the implementation asserts this and raises if it ever
+fails, because that would mean the recovered model is wrong.
+
+What the busy bit is and is not. It is NOT a completion signal -- log 85 already
+established that a clear bit 1 is also what "not started yet" looks like. Its
+only role here is to place a sample outside the interval in which FUN_00003b64
+can be writing, and it does that only when read AFTER the sample.
+
+=== 4. REPEATED EXEC: ANALYSED AND BOUNDED ===
+The review asked whether re-arming can invalidate the next chunk's
+baseline/address association. It cannot, and the proof above already covers it:
+every episode dispatching at or after t2 reads (addr, length), and every episode
+dispatching before t2 re-writes the previous chunk's content, which is exactly
+the baseline. So a re-armed EXEC still pending when read_fresh() returns is
+harmless: at the next chunk it either re-reads the old address (leaving state+4
+at that chunk's baseline) or performs the new one. Both are inside E*'s
+definition. A re-arm accepted for the *same* address also cannot change
+state+4's value, since it stores bytes already present.
+
+One change was still needed, for liveness rather than soundness. Re-arming on
+every round can lock in step with the dispatch cadence: a new episode starts at
+each sample and is still in flight at each status, so bit 1 is never observed
+clear and the chunk times out. Observed in the model at (write_step=1,
+dispatch_delay=0) and (write_step=24, dispatch_delay=1), where the three reports
+per round exactly matched the transfer period. Re-arming now stops as soon as a
+sample differs from the baseline: at that point an episode with this address has
+provably already begun writing, so no further EXEC is needed, the episode count
+is bounded, and bit 1 is eventually clear for good. The failure mode was a
+refusal, never a wrong acceptance.
+
+=== 5. INITIAL-BASELINE RACE: PARTLY CLOSED, RESIDUE NAMED ===
+Section 2 closes the part that static analysis can close: a bootloader that has
+just started has state+0x34 == 0 and state+4 == 0 x 0x30, so there is no pending
+operation and the first baseline is known rather than observed.
+
+bootstrap_baseline() now requires state+4 to read 0x30 zero bytes before the
+first EXEC and refuses otherwise. That is a real check: it fails whenever a READ
+has already completed in this bootloader session, which is exactly the case in
+which the first baseline could not be trusted.
+
+RESIDUE, NOT CLOSED. A foreign READ that has been queued by some other process
+but has not yet dispatched is invisible: state+0x34 is exposed by no query, and
+state+4 still reads zero. If it dispatches between this tool's bootstrap fetch
+and its first set-address report, it publishes an unrelated address's bytes and
+the handshake accepts them, because from the host's side that is
+indistinguishable from its own read completing. This is closed only by an
+operational precondition the protocol cannot enforce:
+
+    no other process may send reports to this hidraw node during the dump.
+
+test_foreign_pending_read_completing_after_the_bootstrap_is_the_known_hole
+asserts the hole rather than hiding it, and will fail loudly if anyone later
+believes they have fixed it. The preceding test covers the case the bootstrap
+does catch: a foreign READ that has already completed.
+
+Also worth recording, though outside this tool's control: because the pending
+byte is not observable, a bootloader entered with a queued erase or program
+would retarget that operation at whatever address is written next. Section 2
+shows this cannot arise from residual RAM, since the startup zero-init clears
+state+0x34 before main() runs; it can only arise from another host process,
+which is the same precondition as above.
+
+=== 6. OVERCLAIMS WITHDRAWN FROM LOG 85 ===
+Log 85 is preserved unedited. The following statements in it are superseded:
+
+  "and is the default outcome" / "is the default outcome, not a corner case"
+      WITHDRAWN. Log 85 section 4 itself records that the SysTick period in
+      wall-clock terms is not statically determined (FUN_00004910 selects the
+      core clock at runtime) and that the flash-transfer duration is not
+      recovered. Neither the frequency nor the probability of the race follows.
+      The defensible result is "proven possible".
+  "the busy window is orders of magnitude shorter than one host round trip"
+      WITHDRAWN. Both quantities are unrecovered.
+  "the READ itself is one 48-byte flash transfer (microseconds)"
+      WITHDRAWN. FUN_00004fac spins on flash-controller status bits whose timing
+      is not recoverable statically; log 85 section 7 already listed this as
+      unresolved, and the "microseconds" figure contradicts it.
+  "polling ... will essentially never observe the busy window" / "almost always"
+      WITHDRAWN. Replaced by the structural statement, which needs no timing:
+      a clear bit 1 does not distinguish "finished" from "not started", so it
+      cannot sequence a READ.
+  "every chunk after the first would have returned the previous chunk's 48 bytes"
+      WITHDRAWN. It could have; how often is not determined.
+  "the tool was wrong, not merely unproven"  (log 85 section 4, TIMELINE)
+      RETAINED as to the busy-poll, which cannot sequence a READ under any
+      timing. But log 85's own replacement was also wrong, for the different
+      reason in section 1 of this log.
+  Section 6's soundness argument
+      INCOMPLETE as written. It proved that a changed buffer implies a write
+      happened after the address was set; it did not address whether that write
+      had finished. Section 3 above supplies the missing ordering step.
+
+=== 7. FACT CLASSIFICATION ===
+VERIFIED (instruction-level, this image)
+  * The Region$$Table at 0x0000cca0..0x0000ccd0 and its three entries; entry 3
+    zero-initialises 0x18011168..0x1802b230 via __scatterload_zeroinit, covering
+    T, S, state+0x34, state+0x36, state+0x38 and state+4.
+  * The reset path 0x000002f4 -> __scatterload 0x00000148 -> __rt_entry 0x000002d4.
+  * All log-85 facts relied on here (F1-F5 in section 3) re-checked and unchanged.
+STRONG INFERENCE
+  * The flash transfer writes state+4 progressively rather than atomically. This
+    follows from FUN_00003b64 not masking interrupts and from the transfer being
+    a descriptor-driven controller operation, but the byte-granularity and
+    ordering of those writes were not recovered. The proof in section 3 does not
+    depend on the granularity: it only needs "all writes happen while bit 1 is
+    set", which is F2 and is verified.
+UNRESOLVED ASSUMPTIONS
+  * The Linux hidraw write() report-number prefix and read() framing for this
+    device are assumed, never observed.
+  * No live validation of any kind; no installed-firmware backup exists.
+  * The sole-host operational precondition in section 5.
+  * The wall-clock SysTick period and the flash-transfer duration remain
+    unrecovered, and no part of the design depends on either.
+  * The handshake is undecidable when a chunk's content equals the previously
+    proven buffer; it re-bases through an anchor of proven, different content and
+    aborts if none is available yet. In particular the first chunk cannot be all
+    zeros, because the bootstrap baseline is all zeros.
+
+=== 8. CHANGES ===
+tool/backup_firmware.py
+  * read_fresh(): sample first, THEN status, then a confirming fetch; the proof
+    is in its docstring. Re-arming stops once a sample differs from the baseline.
+    Raises if the confirming fetch returns the baseline (model violation).
+  * exec_read(): sends set-length before set-address, so that from the
+    set-address report onward both fields hold this chunk's values.
+  * chunk_exchange(): report order updated to match (len, addr, exec, data,
+    status).
+  * bootstrap_baseline(): new; requires state+4 to read 0x30 zero bytes and
+    refuses otherwise, citing the Region$$Table evidence.
+  * dump_once(): returns (image, final_baseline) and accepts a carried baseline,
+    because the all-zero bootstrap is only true before any READ has run.
+  * run_backup(): opens the node once for all passes and threads the baseline
+    between them.
+  * docstring, dry-run summary and LIVE_REFUSAL rewritten; the log-85 timing
+    overclaims removed. --run stays gated behind --force-unreviewed and was not
+    exercised.
+tool/test_backup_firmware.py
+  * FakeBootloader: incremental transfers (write_step) with a genuine
+    half-old/half-new response, bit 1 held for exactly the transfer, dispatch on
+    every report rather than only around queries, zero-initialised buffer, and a
+    foreign_pending/foreign_delay injector.
+  * new tests, including the step-by-step counterexample, a partial-write sweep,
+    the pending-operation cases (a) between baseline fetch and set-address and
+    (b) after a re-armed EXEC before the next chunk, the bootstrap cases, and the
+    carried-baseline requirement. 95 -> 108 tests.
+ghidra/scripts/FalchionBootloaderStateZeroInit.java  (new, read-only)
+FINDINGS.md, TIMELINE.md, logs/COMMANDS.md, notes/step5-recovery-plan.md updated
+to mark the log-85 conclusions superseded.
+
+=== VERIFICATION: PY_COMPILE ===
+$ /usr/bin/python3 -m py_compile tool/analyze_boot_structures.py tool/analyze_candidate_b_tables.py tool/analyze_candidate_integrity.py tool/analyze_sonix_firmware.py tool/backup_firmware.py tool/build_modified_image.py tool/test_backup_firmware.py tool/test_build_modified_image.py
+[exit 0]
+
+=== VERIFICATION: UNIT TESTS (mocked; no device) ===
+$ /usr/bin/python3 -m unittest discover -s $PWD/tool -t $PWD/tool -p 'test_*.py'
+[exit 0]
+----------------------------------------------------------------------
+Ran 108 tests in 1.259s
+
+OK
+
+=== VERIFICATION: THE REGRESSION TESTS FAIL AGAINST THE OLD ORDERING ===
+With read_fresh() reverted to status-then-fetch (temporary, reverted immediately):
+  ERROR: test_partial_buffer_is_never_returned
+  FAIL:  test_data_query_precedes_its_status
+  FAIL:  test_re_armed_exec_left_pending_does_not_corrupt_the_next_chunk
+  FAIL:  test_success_and_exact_order
+  Ran 107 tests -> FAILED (failures=3, errors=1)
+test_log86_counterexample_step_by_step asserts the counterexample on raw
+primitives, so it holds regardless of how read_fresh is written.
+
+=== VERIFICATION: BACKUP TOOL DRY-RUN (no device opened) ===
+$ /usr/bin/python3 tool/backup_firmware.py
+PROGRAM backup_firmware  (DRY-RUN — no device opened)
+REGION app-only base=0x10000 size=0x6c000 range 0x10000..0x7c000
+chunks=9216 chunk_max=0x30 bytes=0x6c000
+validated 46080 reports; all pass the read-only guard
+sample chunk @0x10000 len 0x30:
+  set_len      21 30 00 00 00 00 00 00 ...
+  set_addr     20 00 00 01 00 00 00 00 ...
+  exec_read    1f 05 00 00 00 00 00 00 ...
+  query_data   aa 00 00 00 00 00 00 00 ...
+  query_status 8f 00 00 00 00 00 00 00 ...
+expected replies: status resp[0]=0x0f (resp[1]=state+0x38 flags, resp[2]=state+0x35 error), data resp[0]=0x2a
+per-chunk freshness handshake: up to 64 rounds of data-then-status; a round is accepted only when the status that FOLLOWS the sample reports bit 0x02 clear and the sample differs from the known baseline, and the value returned is then a second, confirming data query; re-bases through up to 2 anchor chunks (proof in read_fresh, log 86)
+state+0x38 bit 0x02 (READ busy) is never a completion signal; it is only read AFTER a sample, to place that sample outside the interval in which FUN_00003b64 can be writing (log 86)
+bootstrap: state+4 must read 0x30 zero bytes before the first EXEC (log 86 Region$$Table zero-init at 0x0000ccc0); otherwise refuse
+safety self-check: PASS (guard rejected every write/unlock/reset form; read reports built)
+RESULT dry_run_ok=True guard_rejected_forbidden=True
+LIMITATION No device was opened. The post-EXEC scheduling race is proven possible (log 85) and the corrected handshake (log 86) is proven to return only complete buffers, but the hidraw transfer convention, the absence of any live validation, and the sole-host operational precondition all remain unresolved, so --run stays gated behind --force-unreviewed. Live use is still unauthorised.
+[exit 0]
+
+=== VERIFICATION: --run IS REFUSED (no device opened; --force-unreviewed NOT used) ===
+$ /usr/bin/python3 tool/backup_firmware.py --run /tmp/must-not-exist.bin
+REFUSING to run live.
+
+The read-back protocol is recovered from static analysis only and has never been
+exercised against hardware.
+
+Two protocol questions are now settled. The post-EXEC scheduling race is real
+(log 85): the 0x1f parser only sets the pending byte state+0x34 and the request
+flag at 0x18010bd8, while the READ runs from FUN_00002db8, reached only through
+FUN_00003a7c, whose loop body is gated on the SysTick flag that only the handler
+at 0x000048d0 writes. And the first version of the fix was wrong (log 86): it
+read status *before* the data query, which does not exclude a READ that starts
+and finishes between two status queries with the fetch landing inside it, so it
+could accept a half-old/half-new buffer. The handshake now fetches, then reads
+status, then re-fetches, which is proven to return only complete buffers; and the
+first baseline is the all-zero state+4 the Region$$Table zero-init leaves, not a
+guess.
+
+What is still unresolved:
+
+  1. The Linux hidraw write() report-number prefix and read() framing for this
+     device are assumed, not observed.
+  2. No live validation of any kind has been performed and no installed-firmware
+     backup exists, so there is nothing to restore from if a read path misbehaves.
+  3. An operational precondition that the protocol cannot enforce: no other
+     process may send reports to this hidraw node during the dump. A foreign READ
+     that is queued but has not dispatched is invisible -- state+0x34 is exposed
+     by no query -- and if it completes between the bootstrap fetch and the first
+     set-address it would publish an unrelated address's bytes. The bootstrap
+     catches a foreign READ that has already completed; it cannot catch a pending
+     one.
+  4. The handshake is undecidable when a chunk's content equals the previously
+     proven buffer; it re-bases through an anchor chunk of proven, different
+     content and aborts if none is available yet.
+
+Live use is unauthorised pending independent review. If that review has happened
+and you accept the risk, re-run with --force-unreviewed.
+[exit 2]
+
+/tmp/must-not-exist.bin created: False
+
+=== VERIFICATION: PRESERVED LOGS 00-85 UNCHANGED ===
+$ sha256sum -c logs/SHA256SUMS
+(all listed logs verify; no output above means none failed)
+
+=== VERIFICATION: git diff --check ===
+[exit 0] (no output = no whitespace errors)
+
+=== RESULT ===
+log85_handshake_sound=False  (counterexample in section 1)
+corrected_handshake_sound=True  (proof in section 3), given:
+  - the zero-initialised start proven in section 2, and
+  - the sole-host operational precondition in section 5
+complete_buffer_freshness=PROVEN under those two conditions
+initial_quiescence=PROVEN for a freshly started bootloader; the foreign
+  queued-but-undispatched READ in section 5 remains UNRESOLVED
+device_accessed=False
+force_unreviewed_used=False
+tests_passed=108
+live_use_authorised=False
+
+
+############################################################################
+# APPENDIX: raw output of the new read-only Ghidra report script.
+# Reproduce with the COMMANDS above.
+############################################################################
+
+PROGRAM bootloader_primary.bin
+PURPOSE offline read-only report: startup zero-init of the protocol state
+RESET vector[1] = 0x000002f5
+  0x00000302 blx *0x0000033c = 0x000049a5   (pre-main init)
+  0x00000306 bx  *0x00000340 = 0x00000141   (entry stub 0x140)
+  0x00000140: bl 0x00000148 (__scatterload) ; bl 0x000002d4 (__rt_entry)
+REGION_TABLE base=0x0000cca0 limit=0x0000ccd0 entries=3
+ENTRY @0x0000cca0 src=0x0000cdfc dst=0x18010000 len=0x50 end=0x18010050 fn=0x000001e0
+   handler bytes: 10 3a 24 bf 78 c8 78 c1 fa d8 52 07
+   covers: -
+ENTRY @0x0000ccb0 src=0x0000ce4c dst=0x18010050 len=0x1118 end=0x18011168 fn=0x0000017c
+   handler bytes: 10 f8 01 3b 0a 44 13 f0 03 04 08 bf
+   covers: W
+ENTRY @0x0000ccc0 src=0x0000d13c dst=0x18011168 len=0x1a0c8 end=0x1802b230 fn=0x000001fc
+   handler bytes: 00 23 00 24 00 25 00 26 10 3a 28 bf
+   covers: T S S+0x34 S+0x36 S+0x38 S+4
+DONE

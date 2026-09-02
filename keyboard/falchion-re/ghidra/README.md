@@ -42,8 +42,11 @@ Candidate B's runtime base is strongly supported as `0x18000000`. The firmware
 header records that address beside flash source `0x60021000` and length
 `0x1e754`; pointers such as `0x1801bff6` and `0x1801c810` then resolve to coherent
 tables inside the slice. The base-zero program is retained only to preserve the
-earlier analysis history. Candidate B still has no vector or verified true entry
-path; `CandidateB_Start_Function` is intentionally not named as an entry/reset.
+earlier analysis history. Candidate B has no vector table (it is not entered via
+reset); its true runtime entry is the application `main` at `0x1800023a`, called
+by Candidate A's post-scatter runtime `FUN_000002c8` after `__scatterload` copies
+B to `0x18000000` (logs 79–80). `CandidateB_Start_Function` is a separate provisional
+label, not the reset/entry.
 
 ## Recovered KBID maps
 

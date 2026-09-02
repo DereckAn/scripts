@@ -1,0 +1,361 @@
+openjdk version "21.0.11" 2026-04-21
+OpenJDK Runtime Environment (build 21.0.11+10)
+OpenJDK 64-Bit Server VM (build 21.0.11+10, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /tmp/falchion-ghidra-config/dereck-ghidra/ghidra_12.1.2_DEV/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (477 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (973 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 59 extension points (20 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /opt/ghidra/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts
+    /opt/ghidra/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/PDB/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/Ghidra/Features/BytePatterns/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessAnalyzer)  
+INFO  Opening project: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/project/falchion-hfx (HeadlessProject)  
+INFO  REPORT: Processing read-only project file: /bootloader_primary.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: FalchionBootloaderVerifyReport.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/ghidra/scripts/FalchionBootloaderVerifyReport.java (HeadlessAnalyzer)  
+INFO  FalchionBootloaderVerifyReport.java> PROGRAM bootloader_primary.bin (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> PURPOSE offline read-only bootloader integrity/verify path report (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> HDR_LITERAL @0000277c = 0x60010000 (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   hdr_ref from=000026dc fn=FUN_000026d0@000026d0 (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   hdr_ref from=00002746 fn=FUN_000026d0@000026d0 (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_00007ec8@00007ec8 body=[[00007ec8, 00007f8d]] callers=[FUN_000002d4@000002d4] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+/* WARNING: Removing unreachable block (ram,0x00007f5e) */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00007ec8(void)
+
+{
+  undefined1 uVar1;
+  int iVar2;
+  int iVar3;
+  
+  FUN_00002d60();
+  uVar1 = FUN_000030b0();
+  *DAT_00007f90 = uVar1;
+  iVar2 = FUN_00002af0();
+  FUN_00002b10();
+  FUN_0000a330();
+  FUN_00006638();
+  FUN_00002a68();
+  FUN_00005874();
+  FUN_00008938(*DAT_00007f94);
+  FUN_000036b4();
+  iVar3 = FUN_000029d4();
+  if ((((iVar3 == 0) && (iVar2 == DAT_00007f98)) && (iVar3 = FUN_00002a44(), iVar3 == 0)) &&
+     (iVar3 = FUN_000026d0(0x6c000), iVar3 == 0)) {
+    FUN_00000ffc(0);
+    FUN_00007fa8(iVar2);
+    thunk_EXT_FUN_18010000(0,iVar2,0x10000);
+  }
+  FUN_00004b70(3);
+  FUN_00006728(0);
+  FUN_00007db4();
+  if (DAT_00007f9c - 1U < 0x1000000) {
+    _DAT_e000e014 = DAT_00007f9c + -1;
+    *(undefined1 *)(DAT_00007fa4 + 0xb) = 0xe0;
+    _DAT_e000e018 = 0;
+    _DAT_e000e010 = 7;
+  }
+  do {
+    FUN_00003a7c();
+  } while( true );
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_00002af0@00002af0 body=[[00002af0, 00002b09]] callers=[FUN_00007ec8@00007ec8] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+int FUN_00002af0(void)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00008000(0x60000000);
+  if (iVar1 == 0) {
+    iVar1 = FUN_00008000(DAT_00002b0c);
+  }
+  return iVar1;
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_00008000@00008000 body=[[00008000, 00008079]] callers=[FUN_00002af0@00002af0] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+undefined4 FUN_00008000(int param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  
+  iVar3 = 0;
+  do {
+    if (1 < iVar3) {
+      return 0;
+    }
+    iVar2 = *(int *)(param_1 + 0x208 + iVar3 * 4);
+    iVar1 = FUN_00000434(iVar2,s_SN_FWIN_0000807c,8);
+    if (iVar1 == 0) {
+      FUN_00008648(s__BLD__boot_priority___d_found__0_000080b0,iVar3,iVar2);
+      iVar1 = FUN_00005240(*(undefined4 *)(iVar2 + 0x10));
+      if (iVar1 == 0) {
+        iVar1 = FUN_0000511c(iVar2);
+        if (iVar1 == 0) {
+          return *(undefined4 *)(iVar2 + 0x10);
+        }
+        FUN_00008648(s__BLD__err_crc_of_fw_info__d___0x_00008100,iVar3,*(undefined4 *)(iVar2 + 0x10)
+                    );
+        FUN_00008648(DAT_00008128);
+        FUN_00008648(DAT_0000812c);
+      }
+      else {
+        FUN_00008648(s__BLD__err_msb_of_fw_info__d___0x_000080d8,iVar3,*(undefined4 *)(iVar2 + 0x10)
+                    );
+      }
+    }
+    else {
+      FUN_00008648(s__BLD__boot_priority___d_mismatch_00008084,iVar3,iVar2);
+    }
+    iVar3 = iVar3 + 1;
+  } while( true );
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_0000511c@0000511c body=[[0000511c, 000051bf]] callers=[FUN_00008000@00008000] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+undefined4 FUN_0000511c(int param_1,undefined4 param_2,undefined4 param_3,int param_4)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int local_24;
+  
+  iVar3 = 0;
+  if (*(int *)(param_1 + 0x18) != 0) {
+    local_24 = param_4;
+    for (uVar1 = 0; uVar1 < 8; uVar1 = uVar1 + 1) {
+      if (*(int *)(param_1 + uVar1 * 0x10 + 0x28) != 0) {
+        iVar2 = *(int *)(param_1 + uVar1 * 0x10 + 0x24);
+        iVar4 = *(int *)(param_1 + uVar1 * 0x10 + 0x28);
+        FUN_00005028(&local_24,iVar2,*(undefined4 *)(param_1 + uVar1 * 0x10 + 0x28),0x18000000,
+                     0x10000);
+        iVar3 = iVar3 + local_24;
+        if (*(int *)(param_1 + uVar1 * 0x10 + 0x2c) != local_24) {
+          FUN_00008648(s__BLD__CRC_mismatch_at_region__d__000051c0,uVar1,iVar2,iVar2 + iVar4);
+          FUN_00008648(s__BLD__On_Flash__0x_08X__Actully___000051f8,
+                       *(undefined4 *)(param_1 + uVar1 * 0x10 + 0x2c),iVar3);
+          return 1;
+        }
+      }
+    }
+    FUN_00008648(s__BLD__CRC_Verify_PASS___00005224);
+  }
+  return 0;
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_00005028@00005028 body=[[00005028, 0000508d]] callers=[FUN_0000511c@0000511c] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+undefined4 FUN_00005028(int *param_1,int param_2,uint param_3,undefined4 param_4,uint param_5)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  
+  iVar3 = 0;
+  while( true ) {
+    if (param_3 == 0) {
+      *param_1 = iVar3;
+      return 0;
+    }
+    uVar1 = param_3;
+    if (param_5 <= param_3) {
+      uVar1 = param_5;
+    }
+    FUN_0000059c(param_4,param_2,uVar1);
+    iVar2 = FUN_000028e8(5,param_4,uVar1);
+    if (iVar2 != 0) break;
+    do {
+      iVar2 = FUN_00002818();
+    } while (iVar2 != 0);
+    iVar2 = FUN_000028c4();
+    iVar3 = iVar3 + iVar2;
+    param_2 = param_2 + (uVar1 & 0xfffffffc);
+    param_3 = param_3 - uVar1;
+  }
+  return 1;
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_000028e8@000028e8 body=[[000028e8, 000029c7]] callers=[FUN_00005028@00005028] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+undefined4 FUN_000028e8(uint param_1,uint param_2,uint param_3)
+
+{
+  uint *puVar1;
+  uint *puVar2;
+  int iVar3;
+  uint extraout_r2;
+  uint extraout_r3;
+  uint uVar4;
+  uint uVar5;
+  uint uVar6;
+  undefined4 uVar7;
+  uint uVar8;
+  uint uVar9;
+  
+  uVar7 = 0;
+  uVar8 = 0;
+  uVar9 = 0;
+  uVar4 = 0;
+  if (param_3 < 4) {
+    uVar7 = 2;
+  }
+  if ((param_2 < 0x18000000) || (DAT_000029c8 < param_2 + param_3)) {
+    uVar7 = 3;
+  }
+  else if ((int)param_1 < 6) {
+    for (iVar3 = 0; iVar3 < 6; iVar3 = iVar3 + 1) {
+      if (*(byte *)(DAT_000029cc + iVar3 * 0x10) == param_1) {
+        uVar4 = *(uint *)(DAT_000029cc + iVar3 * 0x10 + 4);
+        uVar8 = *(uint *)(DAT_000029cc + iVar3 * 0x10 + 8);
+        uVar9 = *(uint *)(DAT_000029cc + iVar3 * 0x10 + 0xc);
+      }
+    }
+    if (uVar4 == 0) {
+      uVar7 = 4;
+    }
+    else {
+      do {
+        iVar3 = FUN_00002818();
+        puVar1 = DAT_000029d0;
+      } while (iVar3 != 0);
+      uVar5 = 0;
+      for (uVar6 = uVar4; uVar6 != 0; uVar6 = uVar6 >> 1) {
+        uVar5 = uVar5 + 1 & 0xff;
+      }
+      *DAT_000029d0 = *DAT_000029d0 & 0xfffffffe;
+      puVar1[5] = puVar1[5] & 0xfffffffe | uVar8 & 1;
+      puVar1[5] = puVar1[5] & 0xfffffffd | (uVar9 & 1) << 1;
+      puVar1[6] = uVar4;
+      puVar2 = DAT_000029d0;
+      DAT_000029d0[5] = puVar1[5] & 0xfffffe0f | (uVar5 - 1 & 0x1f) << 4;
+      puVar2[1] = extraout_r3;
+      puVar2[2] = extraout_r2;
+      puVar1 = DAT_000029d0;
+      DAT_000029d0[3] = 1;
+      puVar1[4] = 1;
+      *puVar1 = (*puVar1 & 0xffffffef) + 0x10;
+    }
+  }
+  else {
+    uVar7 = 4;
+  }
+  return uVar7;
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_00005240@00005240 body=[[00005240, 00005263]] callers=[FUN_00008000@00008000] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+undefined4 FUN_00005240(uint *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  
+  uVar2 = *param_1;
+  if (((uVar2 < 0x20000001) || (DAT_00005264 <= uVar2)) &&
+     ((uVar2 < 0x18000001 || (DAT_00005268 <= uVar2)))) {
+    uVar1 = 1;
+  }
+  else {
+    uVar1 = 0;
+  }
+  return uVar1;
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DECOMPILE FUN_000026d0@000026d0 body=[[000026d0, 00002779]] callers=[FUN_00003740@00003740, FUN_00007ec8@00007ec8] (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java>   completed=true error= (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> 
+undefined4 FUN_000026d0(int param_1)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int local_1018 [1024];
+  
+  iVar4 = DAT_0000277c;
+  iVar5 = 0;
+  uVar1 = FUN_00003e0c(0xffffffff);
+  if ((uVar1 & 1) == 0) {
+    FUN_00003f08(2,iVar4,0x1000,local_1018,1);
+  }
+  if ((((local_1018[0] == 0xff) && (local_1018[1] == 0xff)) && (local_1018[2] == 0xff)) &&
+     (local_1018[3] == 0xff)) {
+    uVar2 = 1;
+  }
+  else {
+    while (iVar4 + 0x1000U < (uint)(param_1 + DAT_0000277c)) {
+      for (iVar3 = 0; iVar3 < 0x400; iVar3 = iVar3 + 1) {
+        iVar5 = iVar5 + local_1018[iVar3];
+      }
+      iVar4 = iVar4 + 0x1000;
+      FUN_00003f08(2,iVar4,0x1000,local_1018,1);
+    }
+    for (iVar4 = 0; iVar4 < 0x3ff; iVar4 = iVar4 + 1) {
+      iVar5 = iVar5 + local_1018[iVar4];
+    }
+    if (local_1018[0x3ff] == iVar5) {
+      uVar2 = 0;
+    }
+    else {
+      uVar2 = 1;
+    }
+  }
+  return uVar2;
+}
+
+ (GhidraScript)  
+INFO  FalchionBootloaderVerifyReport.java> DONE decompiled=8 (GhidraScript)  

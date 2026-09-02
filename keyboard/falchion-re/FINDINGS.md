@@ -22,7 +22,24 @@ the preservation-safe procedure.
 
 **No standard USB firmware-readback path is exposed in the keyboard's current operating mode.** The device exposes five HID interfaces and no DFU-class interface. A direct, read-only `dfu-util -l` enumeration completed successfully but listed no DFU targets.
 
-This does **not** prove that USB backup is impossible. The keyboard could have a separate bootloader mode or a proprietary vendor-HID readback command. Neither was tested because entering another mode may reset/re-enumerate the device, and undocumented vendor commands could change configuration or firmware. The current evidence therefore supports: **standard USB backup unavailable; proprietary/bootloader USB backup unresolved**.
+This does **not** prove that USB backup is impossible. Later static analysis
+(logs 81-82) **supports the existence of a proprietary bootloader READ path**:
+the PID-`1b7f` bootloader implements a vendor-HID READ (execute opcode `0x05`)
+over the application region `[0x10000, 0x7c000)` in ≤`0x30`-byte chunks.
+
+Status as of the 2026-08-31 correction pass:
+
+- **Statically recovered:** the bootloader READ path, the full write/erase/
+  program protocol, the 64-byte vendor-HID wire framing, Candidate B's runtime
+  entry, and both integrity mechanisms. All of this comes from decompiling
+  preserved artifacts.
+- **Not established:** none of it has been exercised. There has been **no live
+  validation of any command**, no bootloader-mode entry, and **no installed-
+  firmware backup exists**. `dumps/vendor/M605_V01_00_58.bin` is a vendor
+  reference image (v1.00.58), not a readback of this unit (v1.59).
+
+So: **standard USB backup unavailable; a proprietary bootloader READ path is
+supported by static analysis but unvalidated in practice.**
 
 No firmware backup was created during this session.
 
@@ -309,16 +326,24 @@ handlers decode as valid Cortex-M3 Thumb-2 code.
 
 ### Integrity and authentication
 
-- Candidate payload A is described by flash address `0x60011000`, length
-  `0x58ac`, and stored value `0x5e75c17a`. Standard IEEE CRC-32 over the mapped
-  file bytes matches that value exactly.
-- Candidate payload B appears to use address `0x60021000`, length `0x1e754`, and
-  stored value `0x1a76c116`, but standard CRC-32 over that apparent range is
-  `0x60c95a7b`. No natural prefix through `0x40000` matches the stored value.
-  The record interpretation or checksum process is therefore unresolved.
-- Terminal values `0xfb665ae3` (present in both bootloader copies) and
-  `0x5d27c5a9` do not match the common CRC-32 variants over obvious enclosing
-  ranges tested.
+- **Both SN_FWIN per-record checksums are now fully reproduced offline** (logs
+  75/76). The bootloader routine `FUN_00005028` copies each region to RAM in
+  `0x10000`-byte chunks, takes an independent IEEE CRC-32 of each chunk, and
+  **sums the per-chunk CRC-32 results mod 2³²**. Candidate A (`0x60011000`,
+  `0x58ac`) fits one chunk, so its stored value `0x5e75c17a` is a plain CRC-32.
+  Candidate B (`0x60021000`, `0x1e754`) spans two chunks, so its stored value
+  `0x1a76c116` equals `CRC32(file 0x21000..0x31000) + CRC32(file 0x31000..0x3f754)`
+  `= 0x35530359 + 0xe523bdbd`. This is why plain CRC-32 over B's whole range
+  (`0x60c95a7b`) never matched.
+- **The terminal values are additive 32-bit word-sums**, not CRCs (bootloader
+  `FUN_000026d0`): the last word of a region equals the 32-bit sum of every
+  preceding word. `0xfb665ae3` is the sum over the bootloader region
+  `0x00000..0x10000`, stored in that region's final word at offset **`0x0fffc`**;
+  the duplicate bootloader copy at `0x61000..0x71000` stores the same value in
+  its own final word at **`0x70ffc`**. (`0x61000` is the start of the duplicated
+  region, not a checksum offset — an earlier draft cited it as one.)
+  `0x5d27c5a9` is the sum over the whole application region `0x10000..0x7c000`,
+  stored at `0x7bffc`. All reproduce exactly.
 - The firmware/update path contains CRC/checksum language but no identified
   firmware signature-verification string, embedded public key, or crypto-library
   dependency. Certificate strings in the Windows executables are their own
@@ -537,6 +562,507 @@ Evidence: `logs/47-ghidra-candidate-b-opcode-search.txt` through
 `logs/54-ghidra-protocol-labels.txt`. Reproducible reports and conservative label
 script are under `ghidra/scripts/`. All work was offline; no USB command was sent.
 
+### Candidate A reset, scatter-load, and RAM base (logs 72–73)
+
+Offline read-only disassembly and decompilation of `app_candidate_a.bin` recovered
+Candidate A's startup and image-copy path. This is the boot/loader baseline that
+precedes the Candidate B integrity check; it does **not** itself contain or
+compute Candidate B's integrity field `0x1a76c116` (that is done by the
+bootloader — now resolved below, logs 75–76).
+
+- **Reset handler** `CandidateA_Reset_Handler @ 0x14a8`: loads the stack pointer
+  from the VTOR table (`0xe000ed08` → table[0] → `sp`), calls the C-runtime/clock
+  init `FUN_00001216` (via literal `DAT_000014ec = 0x1217`), then branches to
+  `0x140` (via literal `DAT_000014f0 = 0x141`).
+- **`0x140`** calls the scatter loader `FUN_00000148 (0x148)`, then `bl 0x2c8`
+  (application/`__rt_entry`, not analyzed here).
+- **Scatter loader `FUN_00000148`** is the standard ARM `__scatterload`: it walks a
+  region-descriptor table at `0x5750`, each entry `(src, dst, size, handler)`,
+  dispatching via `bx r3` to the region handler. Three regions were recovered:
+
+  | src | dst | size | handler @ | kind |
+  |---|---|---|---|---|
+  | `0x60021000` | `0x18000000` | `0x1e354` | `0x1d8` | `__scatterload_copy` |
+  | `0x6003f354` | `0x1801e354` | `0x0b04` | `0x17c` | `__scatterload_decompress` |
+  | `0x6003f754` | `0x1801ee58` | `0x172e8` | `0x1f4` | `__scatterload_zeroinit` |
+
+  The three handlers at `0x17c`/`0x1d8`/`0x1f4` were confirmed by ephemeral
+  disassembly to be the standard block-copy, LZ77-style decompress, and zero-init
+  routines. The read-only project was discarded (no database change).
+- **Corroboration of the runtime base:** Candidate A copies its image from source
+  region `0x60021000` (external/XIP flash window) into RAM at `0x18000000`. This
+  independently confirms the `0x18000000` runtime base already used to rebase and
+  decode Candidate B's tables in logs 62–70.
+- **`FUN_00001216`** performs low-level clock/PLL and power setup against the
+  system-control block at `0x45000000`, then bounds-checks the main stack pointer
+  to `[0x18000000, DAT_000014a4]` and faults via `FUN_00000dbc(7)` if it is out of
+  range — a startup integrity guard, distinct from Candidate B image verification.
+
+Evidence: `logs/72-ghidra-candidate-a-loader-report.txt`,
+`logs/73-ghidra-candidate-a-scatter-handler-report.txt`, and
+`ghidra/scripts/FalchionCandidateALoaderReport.java`. Both runs used
+`-readOnly -noanalysis`; the source BIN and keyboard were untouched. The next
+offline target remains Candidate B's loader/verification path and the derivation
+of `0x1a76c116`.
+
+### SN_FWIN integrity record table and Candidate B checksum status (log 74)
+
+The `SN_FWIN` header at file `0x10000` (`SN_FWIN\0v1.0.00\0`) contains a table of
+four-word records, each `(flash_addr, length, crc32, ram_dest)`, starting at file
+`0x10024`:
+
+| record | flash_addr | length | crc32 | ram_dest |
+|---|---|---|---|---|
+| A | `0x60011000` | `0x000058ac` | `0x5e75c17a` | `0x18000000` |
+| B | `0x60021000` | `0x0001e754` | `0x1a76c116` | `0x18000000` |
+| — | `0x60021000` | `0x00000000` | `0x00000000` | `0x00000000` (terminator) |
+
+- **Record A reproduces exactly.** IEEE CRC-32 over the mapped file bytes
+  `0x11000..0x168ac` equals the stored `0x5e75c17a`. This locks both the
+  flash→file mapping (`file = flash − 0x60000000`) and the algorithm; the analysis
+  tool asserts it as a hard self-check.
+- **Both records target RAM `0x18000000`.** Combined with logs 72–73 (Candidate A
+  scatter-loads flash `0x60021000` into `0x18000000`), Candidate A is a
+  first-stage loader for Candidate B; the two records are the loader's own image
+  and the application image it pulls in, both destined for the same runtime base.
+- **Record B's length is the exact flash footprint of B.**
+  `0x1e754 = 0x1e354` (Candidate A's copy region) `+ 0x400` (the compressed source
+  of A's decompress region), i.e. file `0x21000..0x3f754`.
+- **Record B does not match any file-byte checksum.** Over that range the IEEE
+  CRC-32 is `0x60c95a7b`, not `0x1a76c116`. Ruled out offline: CRC-32 variants
+  (init/xorout/reflect/forward), CRC seeded with A's value, running CRC across
+  `A+B`, record-prefixed CRC, simple sum/xor/adler accumulators, the copy-region
+  length `0x1e354`, and full-file range sweeps (fixed-start-vary-end and
+  fixed-length-vary-start, step 4) — zero hits.
+- The bootloader slice contains the reflected CRC-32 constant `0xedb88320`
+  (`bootloader_primary.bin` offset `0xc78c`), consistent with the reflected IEEE
+  CRC-32 that reproduces A.
+
+Log 74 established (before the verifier was read) that B's value is not a plain
+CRC-32 of the container's B bytes under any tested variant/seed/range. Reading
+the bootloader verify routine (below, logs 75/76) then resolved exactly why.
+
+Evidence: `logs/74-candidate-integrity-crc-analysis.txt`. Read-only; no device
+access.
+
+### Bootloader integrity/verify path recovered (logs 75–76)
+
+Read-only decompilation of `bootloader_primary.bin` recovered the whole boot
+verify chain. The boot orchestrator `FUN_00007ec8` selects a candidate via
+`FUN_00002af0 → FUN_00008000(0x60000000)`, then requires `FUN_000026d0(0x6c000)`
+to pass before jumping to the loaded image.
+
+- **`FUN_00008000`** scans the boot-priority pointer table at flash
+  `0x60000208`, checks each target's `SN_FWIN` magic, validates the entry
+  address (`FUN_00005240`), then verifies the records with `FUN_0000511c`
+  (strings `"[BLD] CRC Verify PASS!"`, `"[BLD] CRC mismatch at region %d"`,
+  `"On Flash: 0x%08X, Actually: 0x%x"`).
+- **`FUN_0000511c`** loops up to 8 region records (`+0x24` addr, `+0x28` len,
+  `+0x2c` stored checksum, `0x10`-byte stride), computes each region's checksum
+  with `FUN_00005028`, and compares it to the stored `+0x2c` word.
+- **`FUN_00005028(out, addr, len, 0x18000000, 0x10000)`** is the checksum:
+  it copies the region to RAM `0x18000000` in `0x10000`-byte chunks, runs the
+  hardware CRC-32 engine (`FUN_000028e8` mode 5, result read by `FUN_000028c4`)
+  over each chunk independently, and **accumulates the per-chunk CRC results by
+  32-bit addition**. One chunk ⇒ plain CRC-32 (Candidate A); two chunks ⇒ the
+  CRC sum (Candidate B). This exactly reproduces `0x5e75c17a` and `0x1a76c116`.
+- **`FUN_000026d0`** is a separate whole-region integrity pass: it reads the
+  region in `0x1000`-byte pages and 32-bit-sums every word, requiring the final
+  word to equal the running sum. This produces the terminal values `0xfb665ae3`
+  (bootloader) and `0x5d27c5a9` (application region).
+
+`tool/analyze_candidate_integrity.py` reproduces all four fields (A, B, and both
+word-sums) from the preserved BIN and asserts each against its stored value.
+
+Patchability consequence: the SN_FWIN integrity is a chunked-CRC **sum**, not a
+cryptographic signature, and the container-wide guard is an additive word-sum —
+both are recomputable offline. A modified Candidate B image can, in principle,
+be given a correct `+0x2c` record value (sum of its per-`0x10000`-chunk CRC-32s)
+and a corrected application word-sum. The safety conclusion is unchanged: this
+lowers the integrity barrier but flashing still depends on the unverified
+bootloader write protocol and recovery path, so no modified image should be
+flashed yet.
+
+Evidence: `logs/75-ghidra-bootloader-verify-report.txt` (read-only decompiles),
+`logs/76-candidate-integrity-resolved.txt`,
+`ghidra/scripts/FalchionBootloaderVerifyReport.java`,
+`tool/analyze_candidate_integrity.py`. Read-only; no device access.
+
+### Boot container structures and boot gate (logs 75, 78)
+
+The bootloader walks a layered container format before it CRC-verifies and jumps.
+Decoded offline and cross-checked against the decompiles in log 75:
+
+```
+SNC7320A wrapper  (primary @flash 0x60000000 / file 0x0;
+                   backup  @flash 0x60060000 / file 0x60000)
+  +0x10 bootloader_ptr (0x60001000 / 0x60062000)   +0x14 size 0x10000
+  +0x200 "SN_BCFG\0" boot-config
+    +0x208 boot-priority pointer table: slot0=0x60010000, slot1=0x00000000
+             -> SN_FWIN header @flash 0x60010000 (file 0x10000)
+                  +0x10 entry_ptr 0x60011000   +0x18 CRC-enable gate (=1)
+                  +0x24.. per-region records (A loader, B application)
+```
+
+Key facts:
+
+- **There is no populated second boot slot.** Slot 1 is `0`, and both the primary
+  and backup `SN_BCFG` point at the same `SN_FWIN` header. So "Candidate A/B" are
+  two *regions* of one firmware (loader + application), not two boot images. The
+  redundancy is a backup *container/bootloader* copy at `0x60060000`, which
+  re-references the same application header.
+- **`FUN_00008000`** selects a candidate by: reading each boot slot, checking
+  `SN_FWIN` magic, validating the entry image's initial SP (`FUN_00005240`),
+  then CRC-verifying the records (`FUN_0000511c`). It returns entry `0x60011000`.
+- **The `SN_FWIN +0x18` gate controls whether records are CRC-checked at all.**
+  It is `1` here, so the records are verified; a `0` there would bypass the CRC
+  loop entirely.
+- **`FUN_00005240`** dereferences the entry pointer and requires the image's
+  *initial stack pointer* (first word at `0x60011000`, here `0x18036140`) to lie
+  in valid RAM (`0x18000001..0x18040000` or `0x20000001..0x20001000`).
+- **Known constraints for a modified image:** the `SNC7320A`/`SN_BCFG`/`SN_FWIN`
+  magics, the slot-0 pointer, the `+0x18` gate, and the entry SP must all remain
+  valid, *in addition to* the recomputed integrity fields. A Candidate-B data
+  patch touches none of them, so the builder's rebuilt image satisfies every
+  constraint we have actually read.
+
+These are **necessary conditions we have observed, not a sufficient set.** Two
+things in this path are unresolved: `FUN_000029d4` is not decompiled, and the
+top-level comparison applied to the selected entry value before the jump has not
+been recovered, so the caller's accept/reject rule is unknown. Any ROM or
+first-stage condition ahead of the bootloader is also unexamined. Passing these
+checks therefore does not establish that an edited image boots.
+
+`tool/analyze_boot_structures.py` decodes this and reports the checks together
+with the unresolved points; the builder (`tool/build_modified_image.py`) checks
+the same constraints on its output.
+
+### Candidate B runtime entry and full boot chain (logs 79–80)
+
+Candidate B has no vector table — RAM `0x18000000` (file `0x21000`) begins with a
+function prologue (`push`), not an initial-SP/reset pair. It is entered by a
+direct call from the loader, and that call was found:
+
+- Candidate A's post-scatter C-runtime `FUN_000002c8` (invoked from the reset
+  handler after `__scatterload`) calls the veneer `thunk_EXT_FUN_1800023a`, i.e.
+  **Candidate B's true runtime entry is `0x1800023a`**.
+- `CandidateB_Entry@0x1800023a` is the application `main`: it emits the literal
+  string **"welcome to main"**, initialises clocks/GPIO/USB, creates the RTOS
+  task **`INIT_TASK`** (entry `0x1800004d`, stack `0x100`, priority `0x14`),
+  starts the scheduler (`func_0x180136be`), and enters the idle loop. It reaches
+  the already-identified `VendorHID_CommandDispatcher@0x18001fbe`.
+
+The boot chain is therefore complete end to end:
+
+```
+ROM/first-stage
+  -> bootloader FUN_00007ec8: select + verify (chunked-CRC records + word-sum)
+     -> Candidate A reset 0x14a8 -> __scatterload copies B to RAM 0x18000000
+        -> FUN_000002c8 -> call B entry 0x1800023a (main)
+           -> RTOS INIT_TASK -> VendorHID dispatcher 0x18001fbe
+```
+
+Consequence for modification: a Candidate-B behaviour patch targets code at
+`0x18000000`-relative addresses (file `0x21000`-relative), and its entry/main and
+dispatcher are now known, so a change can be traced from the vendor-HID command
+down to the affected handler. This does not affect the integrity/boot-gate
+recompute — those remain as recovered above.
+
+### Bootloader write/erase/program protocol (log 81, cross-checked with log 34)
+
+The `1b7f` "Gaming Keyboard Bootloader2" service loop (`FUN_00003a7c`) polls two
+USB flags; the OUT-report path (`FUN_00002db8`) dispatches on a command byte at
+report offset `0x34`:
+
+| cmd byte | handler | operation |
+|---|---|---|
+| `0x01` | `FUN_00003ab8` → `FUN_00003ca8(0, addr, 1)` | **ERASE** (flash-controller erase command `0xa`) |
+| `0x05` | `FUN_00003b64` → `FUN_00003f08` | **READ** flash into the report buffer |
+| `0x51` | `FUN_00003afc` → `FUN_000040a4(0, addr, len, data, 1)` | **PROGRAM** flash (loops over the range) |
+
+- **Self-protection:** both the erase and program handlers require
+  `0xffff < addr < 0x7c000`. The primary bootloader region `[0x0, 0x10000)` is
+  therefore **not** erasable or programmable through these commands; the SN_FWIN
+  header, both candidates, and the backup container region are writable.
+- Flash access is via a hardware flash/DMA controller, not raw SPI opcodes:
+  erase writes a command code (`8`/`9`/`10` for different granularities) to the
+  controller; program/read use `FUN_00002f0c` with a descriptor (`+0x0c` address,
+  `+0x04` data pointer, direction byte `0`=write / `1`=read). Read reuses the
+  same engine as the CRC verifier (`FUN_000026d0`).
+- Host side (updater, log 34) matches exactly: `Jump to Bootloader` →
+  re-enumerate as `1b7f` → `Bootloader Version` → `Start Erase...` (per page) →
+  program (`Programming Success! (no check checksum)`) → `Read checksum...`. The
+  transport is HID reports (`REPORT_ID`/`USAGEPAGE`/`OutputReportByteLength`); the
+  updater CLI takes `PAGE_SIZE` and `APP_PKT_LEN`/`BOOT_PKT_LEN`.
+
+Notably the program path has a **"no check checksum"** mode, and **no signature
+verification was found in the code paths that were decompiled** — consistent
+with the integrity being a recomputable checksum rather than a cryptographic
+signature. This is an absence of evidence in the paths examined, not proof that
+no signature check exists anywhere in the device. This maps the write protocol
+**as statically recovered**; **it does not authorise sending any of these
+commands**, and none has been sent. Erase/program remain destructive and must not
+be issued until a verified recovery backup exists (roadmap step 5).
+
+### Bootloader vendor-HID wire framing (READ path) — logs 82 and 89
+
+Transport uses **two distinct unnumbered 64-byte vendor-HID interfaces**:
+commands are written to usage page `0xFF01`, interface 0, physical endpoint 6
+(`/dev/hidraw6` during the log-88 enumeration); replies are read from usage page
+`0xFF00`, interface 1, physical endpoint 5 (`/dev/hidraw7` then). The endpoint
+numbers come from the bootloader's controller-channel initialization and handler
+table, not from descriptor proximity: OUT channel 0 maps to EP6 and calls router
+`FUN_0000bd40`; responder `FUN_00004f7c` sends on IN channel 1, which maps to
+EP5. Log 82's single-FF01 transport conclusion used descriptor presence alone
+and is superseded by this instruction-level mapping in log 89.
+
+The router reads `report[0]` as a sub-command (top bit `0x80` = query/IN vs
+action/OUT; low 7 bits = code) and passes `report[1..63]` as the payload to the
+OUT parser `FUN_0000380c` or the IN responder `FUN_00003740`.
+
+OUT sub-commands (`report[0]`, top bit clear):
+
+| `report[0]` | payload | effect |
+|---|---|---|
+| `0x10` | `"ASUSHIDFWU"` | unlock (sets a flag; required only for erase/program) |
+| `0x20` | addr, 4 bytes little-endian | set target address |
+| `0x21` | length, u16 LE | set length |
+| `0x22` | `[count≤0x3c][off u16][data…]` | load program data into the buffer |
+| `0x1f` | `[opcode]` | execute: `0x01`=erase, `0x05`=read, `0x51`=program |
+| `0x11` | — | system reset (reboot) |
+
+IN/query sub-commands (`report[0]` with top bit set, answered by `FUN_00003740`):
+`0x8e` → whole-image CRC verify result (`0xfa` pass / `0xfe` fail); `0x8f` →
+status; `0xaa` → the read-back data.
+
+**Response framing (log 82 `FUN_00003740`).** The responder writes
+`resp[0] = query & 0x7f`, so `0x8f` is answered by `0x0f` and `0xaa` by `0x2a`.
+For the `0x0f` status it returns `resp[1] = state+0x38` (flags) and
+`resp[2] = state+0x35` (error: `1` address out of range, `2` not unlocked,
+`3` bad length). For `0x2a` it memcpy's the data starting at `resp[1]` for the
+previously set length — so `response[1:1+length]` skips the **response code**,
+which is a protocol field, not a hidraw report-ID prefix.
+
+**READ-busy is statically exposed (log 81 `FUN_00002db8`).** On command byte
+`0x05` the dispatcher sets `state+0x38` bit 1 (`(+0x38 & 0xfd) + 2`), calls the
+synchronous READ `FUN_00003b64`, then clears bit 1 (`+0x38 & 0xfd`) and clears
+the pending byte `+0x34`. Erase (`0x01`) and program (`0x51`) use bit 0 the same
+way. `state+0x34` is the pending-command byte, cleared **after** the busy bit, so
+`+0x34 == 0` is the strictly stronger completion signal. Bit 7 of `resp[1]` is
+the unlock flag, bit 0 erase/program-busy.
+
+### Bootloader READ scheduling — log 85 (race resolved)
+
+**RAM layout, resolved by literal-pool value rather than by offset.** Three
+distinct objects, cross-checked three ways (log 85 §1):
+
+| base | contents |
+|---|---|
+| `T = 0x18011a8c` | `T+0` u32 target address (OUT `0x20`); `T+4..T+0x1003` the `0x1000`-byte PROGRAM source buffer (OUT `0x22`) |
+| `S = 0x18012a8c` (`== T + 0x1000`) | `S+4..S+0x33` the **`0x30`-byte READ response buffer**; `S+0x34` pending; `S+0x35` error; `S+0x36` u16 length; `S+0x38` flags; `S+0x39` host scratch (written by OUT `0x7f`, read by nothing) |
+| `W = 0x18010bd4` | `W+0` SysTick tick flag; `W+4` flash-operation request flag |
+
+This explains the `0x30` READ cap: `S+4 + 0x30 == S+0x34`, so the cap is the
+buffer size, not an arbitrary limit. It also shows the host has **no** write path
+into the response buffer — OUT `0x22`'s last reachable byte is `T+0x1003 == S+3`.
+
+**The post-EXEC scheduling race is PROVEN POSSIBLE.** Three instruction-level
+facts chain:
+
+1. the `0x1f` parser sets `S+0x34` and `W+4` (`str r0,[r1,#0x4]` at `0x0000397e`)
+   and **never** `W+0`; it performs no flash access;
+2. `FUN_00002db8` — the only code that sets the busy bit or performs the READ —
+   is reachable only from `FUN_00003a7c`, whose loop body is guarded by `W+0`
+   (`b 0x00003aa8` at `0x00003a7e` jumps straight to the `W+0` test, so a set
+   `W+4` alone does nothing);
+3. `W+0` is written **only** by the SysTick handler at `0x000048d0`
+   (`movs r0,#1; ldr r1,[0x000048d8]; str r0,[r1,#0x0]; bx lr`), confirmed by an
+   exhaustive scan of every image word equal to `0x18010bd4`.
+
+So an accepted EXEC waits for the next SysTick tick before the READ starts.
+`SYST_RVR` is the static constant `0x278d0 - 1 = 161999`, i.e. 162000 core
+clocks; the wall time is *not* statically determined, because `FUN_00004910`
+selects the core clock at runtime. The duration of one 48-byte flash transfer is
+not recovered either. **No claim is made about how often the race is hit** — only
+that it is possible. What does follow, and needs no timing at all, is structural:
+a clear `state+0x38` bit 1 is also exactly what "not started yet" looks like, so
+**polling bit 1 cannot sequence a READ**. Answering `0x8f` never advances the
+service loop (`FUN_00003740` touches neither `W` nor `S+0x34`), so the following
+`0xaa` can return the previous chunk's buffer.
+
+> **Superseded by log 86.** An earlier version of this section said the race "is
+> the default outcome", that the busy window is "orders of magnitude" shorter
+> than a host round trip and lasts "microseconds", and that every chunk after the
+> first "would have" been stale. All of those are withdrawn: log 85 itself
+> records that neither the tick period in wall-clock terms nor the flash-transfer
+> duration is statically determined. The defensible result is "proven possible".
+
+**No observable completion marker exists.** Log 85 §5 searched for and ruled out
+a generation counter, address echo, completion byte, and sequence number; `S+0x34`
+is exposed by no query. Over-reading `S+0x34` through `0xaa` was examined and
+**rejected**: it needs a set-length above `0x30` while a READ may still be
+pending, and every such value either misaligns the flash engine (`FUN_00002f0c`
+rejects a length with `& 3`, while `FUN_00003f08` ignores that return and spins)
+or corrupts `S+0x36` into the responder's unclamped `memcpy` length. A locked
+`1f 01`/`1f 51` probe *would* work — with bit 7 clear those handlers write
+exactly `S+0x35 = 2` and reach no flash code (`0x000038f0`/`0x0000398e`) — but it
+is not adopted, because it would require the backup tool to be able to construct
+an execute-ERASE report.
+
+### What closes it — corrected handshake, log 86
+
+An earlier attempt at this (log 85 §6) was **unsound**, and log 86 records the
+counterexample. It read the status *before* the data query and accepted any
+sample differing from the baseline. But `FUN_00003b64` does **not** mask
+interrupts (unlike `FUN_00003ab8`/`FUN_00003afc`, which bracket themselves with
+`cpsid`/`cpsie`), so the `0xaa` responder can run while `S+4` is only partly
+written — and a status taken *before* the sample does not exclude that, because a
+whole READ can start and finish between two host reports with the fetch landing
+inside it. The reviewer reproduced it: 24 new bytes followed by 24 baseline bytes,
+accepted.
+
+**Two pieces close it properly.**
+
+*Bootstrap (new static evidence, log 86 §2).* The reset path
+`0x000002f4` → `__scatterload` `0x00000148` → `__rt_entry` `0x000002d4` walks an
+ARM `Region$$Table` at `0x0000cca0..0x0000ccd0`. Its third entry
+(`dst=0x18011168 len=0x1a0c8 fn=0x000001fc`, whose handler begins
+`movs r3,#0; movs r4,#0; movs r5,#0; movs r6,#0; … stm r1!,{r3-r6}` —
+`__scatterload_zeroinit`) covers `T`, `S`, `S+0x34`, `S+0x36`, `S+0x38` and
+`S+4`. So a freshly started bootloader has **no pending operation** and an
+**all-zero response buffer**: the first baseline is *known*, not guessed. The
+tool now refuses to start unless `S+4` reads `0x30` zero bytes.
+
+*The rule (log 86 §3).* Per chunk: `0x21` length, `0x20` address, one `0x1f/0x05`;
+then repeat `0xaa` (sample) **then** `0x8f` (status), and accept only when that
+*following* status reports bit 1 clear and the sample differs from the baseline —
+returning a **second** `0xaa`, not the sample. The proof: every write to `S+4`
+happens while bit 1 is set (`FUN_00003b64` is called strictly between the stores
+at `0x00002e0a` and `0x00002e1e`); `FUN_00003b64` takes its address at dispatch
+time, so from the set-address report onward every episode writes `content(A)`,
+while any earlier episode re-writes the previous chunk's content, which is the
+baseline itself. A status with bit 1 clear therefore lies outside every transfer
+interval; if the preceding sample differed from the baseline it cannot lie before
+the first post-set-address episode, so it lies after it, and `S+4` holds the
+complete `content(A)` from then on. No timing assumption, no unexposed state.
+
+Re-arming the `0x1f` (needed because the parser drops an EXEC while `S+0x34` is
+non-zero) stops once a sample differs from the baseline — otherwise it can lock
+in step with the dispatch cadence and starve the busy-clear observation. That was
+a liveness bug only; it produced refusals, never wrong acceptances.
+
+Also verified and used: the status **error** byte *is* trustworthy for the EXEC's
+own verdict, because it is written by the same interrupt-context parser that
+consumed the EXEC report.
+
+**Residual, not closed.** A foreign READ queued by another process but not yet
+dispatched is invisible — `S+0x34` is exposed by no query and `S+4` still reads
+zero. If it lands between this tool's bootstrap fetch and its first set-address,
+it publishes an unrelated address's bytes. That is closed only by an operational
+precondition the protocol cannot enforce: **nothing else may talk to the hidraw
+node during the dump**. The handshake is also undecidable when a chunk's content
+equals the previously proven buffer; it re-bases through an anchor of proven,
+different content and aborts if none exists yet.
+
+The Linux leading-zero hidraw write convention, split FF01-command/FF00-response
+routing, status reply framing, volatile length setter, and zero-buffer reply are
+now validated live (log 90). Both status replies were locked, idle and
+error-free; `0xaa` returned response code `0x2a` plus 48 zero bytes, matching the
+static reset-state proof. No address or execute-READ was sent, so flash READ and
+the freshness handshake remain unvalidated. No installed-firmware backup exists;
+backup-tool `--run` stays gated behind `--force-unreviewed` and remains
+unauthorised.
+
+**Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
+execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and
+`0 < length <= 0x30`; erase (`1`) and program (`0x51`) additionally require the
+`ASUSHIDFWU` unlock and the same address range. So USB READ covers only the
+application region `[0x10000, 0x7c000)`, in ≤`0x30`-byte chunks — not the
+bootloader region. (An earlier draft incorrectly stated the read handler had no
+address guard; the guard lives in the execute-trigger, not in `FUN_00003b64`.)
+
+Force-bootloader entry (resolved offline in log 87): the bootloader
+`FUN_00002a44` checks RAM `0x20000ffc`
+against magic `0x73207320`; if set, it stays in service mode and clears the flag.
+Candidate B `FUN_180160d8` accepts a 64-byte application-interface payload whose
+first seven bytes are `7b aa 41 53 55 53 aa`, writes the magic, and resets. The
+official `peripheral_fwu_pro.exe` independently builds that exact payload for
+selector 4 in the configured lower-case `m` mode: those seven bytes followed by
+57 zero bytes. `HidInterruptHandle.dll` proves the Windows write prepends the
+separate report-number byte; because application interface 1 declares no Report
+ID, the equivalent Linux hidraw write is `00` plus the 64-byte payload (65 bytes,
+SHA-256 `de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8`).
+A separate app command `0xb0` + `"reset"` performs a plain reboot without the
+flag. `tool/enter_bootloader.py` implements only the exact allowlisted reset
+frame, defaults to dry-run and requires two live flags. On 2026-09-02, after
+explicit approval, it sent that frame exactly once to `/dev/hidraw7`; the
+keyboard successfully re-enumerated from `0b05:1b7e` to `0b05:1b7f`. Live
+bootloader entry is therefore validated (log 88). One bootloader status query
+`0x8f` was later sent on FF01; its reply was not captured because the probe was
+then listening on the wrong node. No other bootloader probe report and no flash
+operation was sent (log 89).
+
+This documents the exact read-only dump recipe on paper
+(`notes/step5-recovery-plan.md`, Approach A). It has not been executed.
+
+### Firmware modification roadmap (offline-first)
+
+Now that both integrity mechanisms are recomputable, a modified image that passes
+the checks we have read can be built entirely offline. The following steps are
+ordered so that everything with device risk comes last, and nothing is flashed
+until a verified recovery path exists.
+
+1. **Offline image builder + round-trip verifier** (done, `tool/build_modified_image.py`,
+   log 77, **conclusion superseded by log 84**). Applies byte patches to a copy of
+   the preserved BIN, recomputes the SN_FWIN per-record CRC-sum (`record+0x8`) and
+   the additive word-sum guards (`0x0fffc`, `0x7bffc`), and re-verifies the
+   rebuilt image. Self-checked: recompute of the unmodified image is idempotent
+   (matches the vendor method byte-for-byte), a naive one-byte patch fails, and
+   the rebuilt image reproduces all four fields. The builder is now version-locked
+   to the preserved 1.00.58 SHA-256, restricts patches to non-empty
+   non-overlapping ranges inside Candidate B, refuses to overwrite an existing
+   output, and re-validates the scatter-compressed stream after patching. Log 77's
+   wording ("passes every integrity field the bootloader checks... proving the
+   checks are live") overstated the result: it shows the fields are *reproducible
+   offline*, not that a rebuilt image boots. The preserved BIN is never modified.
+2. **Decode the remaining boot structures** — done (see "Boot container
+   structures and boot gate" above, log 78). The boot-priority table has one
+   populated slot (no A/B image scheme), the `+0x18` gate enables CRC checking,
+   `FUN_00005240` checks the entry SP, and the container magics/backup copy are
+   mapped. A Candidate-B data patch preserves all of these, so a CRC-valid
+   rebuilt image also satisfies **the constraints we have read** — which are
+   necessary but not known to be sufficient (`FUN_000029d4` and the top-level
+   selected-entry comparison remain unresolved).
+3. **Find Candidate B's true runtime entry** — done (see "Candidate B runtime
+   entry and full boot chain" above, logs 79–80). Entry is `0x1800023a`
+   (application main), called by Candidate A's `FUN_000002c8` after scatter-load.
+4. **Reverse the bootloader write/erase/program protocol** — done, read-only
+   (see "Bootloader write/erase/program protocol" above, log 81). Command bytes
+   `0x01` erase / `0x05` read / `0x51` program, guarded to `[0x10000, 0x7c000)`,
+   cross-checked against the updater strings. Documented on paper only; no
+   command has been or should be sent.
+5. **Recovery prerequisite — a verified backup of the installed 1.59 image**
+   (plan written: `notes/step5-recovery-plan.md`; **not done**). This is the
+   first step that reads *from the device*, so it is not offline. Two approaches:
+   (A) USB read-back via the bootloader READ command — application region
+   `[0x10000, 0x7c000)` only, base `0x10000` size `0x6c000`, ≤`0x30`
+   bytes/transfer, no unlock needed (least invasive), see the wire framing above
+   — or (B) a hardware 3.3 V SPI read of the external flash U5 (gold standard).
+   Either way: ≥3 identical dumps, validate with
+   `analyze_candidate_integrity.py --base 0x10000` and
+   `analyze_boot_structures.py --base 0x10000`, store redundantly. No
+   erase/program is ever issued during preservation, and nothing is flashed until
+   this backup exists and verifies.
+
+   Approach A covers only the application region, so it is **not** a complete
+   device image; the bootloader region `[0x0, 0x10000)` is unreadable over USB.
+   It is adequate for recovering app-region modifications only because that same
+   range is the only range erase/program can reach. Only Approach B captures the
+   bootloader.
+
+Steps 1–4 are pure static analysis and are complete on paper only. Do not send
+any step-4 command to the device or flash any image until step 5 exists.
+
 ### Documentation synchronization
 
 After integrating earlier commit `87e22df`, the historical protocol notes were
@@ -551,11 +1077,25 @@ Evidence: `logs/46-documentation-synchronization-audit.txt`.
 
 ## Uncertain or superseded assumptions
 
-- **USB backup via proprietary HID:** unresolved. Interface 1 can transport 64-byte vendor reports, but no safe claim about flash-read commands can be made from descriptors alone.
-- **Separate USB bootloader mode:** unresolved. No key combination or detach command was attempted.
+- **USB backup via proprietary HID:** static bootloader analysis supports a
+  proprietary HID READ operation for application region `0x10000..0x7bfff`.
+  Commands use the FF01/EP6 node and replies use the distinct FF00/EP5 node.
+  That split and the non-flash status/zero-buffer queries are live-validated
+  (log 90), but execute-READ and freshness are not; no backup has been obtained.
+- **Separate USB bootloader mode:** validated live in log 88. One authorized
+  reset-only report caused re-enumeration as `0b05:1b7f`, bcdDevice `1.05`, with
+  four HID interfaces. At that enumeration, interface 0 `/dev/hidraw6` was the
+  FF01 command channel and interface 1 `/dev/hidraw7` was the FF00 response
+  channel; both were 64-byte-IN/OUT and unnumbered. No physical boot-key method
+  is known.
 - **Older `0xFF32` report descriptor:** `keyboard/falchion-re/notes/report-desc-0.txt` contains a 63-byte input/output report on vendor page `0xFF32`, but its provenance is not recorded strongly enough to associate it with the currently enumerated interface 4. Current direct enumeration identifies interface 4 as page `0x59` with a different 327-byte descriptor. Treat the older mapping as historical/unverified, not a current fact.
 - **Firmware version:** `bcdDevice 1.59` is verified; equating it with the version of every code image or external-flash region is an assumption.
-- **Current device-node permissions:** not verified because `/dev/hidraw*` and `/dev/bus/usb/*` are hidden inside the managed sandbox. No permission changes were made. Prior notes claiming mode `0666` are historical, not re-verified here.
+- **Device-node permissions during log 89:** the owner granted user `dereck`
+  read/write access to FF01 `/dev/hidraw6`; FF00 `/dev/hidraw7` remained
+  root-only, and neither node had a reported holder. A sandboxed `ls` later
+  reported both paths absent, but direct read-only enumeration proved the device
+  was still in bootloader mode and the same paths still existed; the sandbox
+  result was not a device result.
 
 ## Commands run
 
@@ -564,6 +1104,10 @@ Exact command groups and their output files are recorded in `logs/COMMANDS.md`. 
 ```text
 lsusb -d 0b05:1b7e -v    # standard read-only descriptor/status queries
 dfu-util -l              # DFU enumeration only
+tool/enter_bootloader.py --run --acknowledge-reset
+                           # one explicitly authorized reset-only report
+probe_bootloader.py --run --acknowledge-volatile-length
+                           # sent only the first 0x8f status query, then timed out
 ```
 
 All other probes read sysfs, udev metadata, package metadata, kernel logs, repository files, or the saved logs. `usbhid-dump` was invoked only with `--help`; it was never pointed at the keyboard.
@@ -572,21 +1116,28 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 
 1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recovery candidate even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
 2. **Decide whether to install fwupd:** installation changes the host, so ask first. Its value is limited because the current descriptors do not advertise DFU, but it can confirm whether a supported fwupd plugin recognizes the device.
-3. **Research bootloader entry offline first:** the updater establishes PID `1b7f`
-   and contains a jump-to-bootloader path, but its exact command and any physical
-   boot-key method remain unresolved. Do not send a detach/vendor command merely
-   to experiment.
+3. **Bootloader entry is validated live (logs 87–88).** Before the next probe,
+   passively rediscover the current hidraw names. Grant only write access to the
+   FF01 command node and read access to the FF00 response node, verify no other
+   process holds either, then request fresh approval for the fixed four-report
+   probe. Do not reuse stale `/dev/hidrawN` names.
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater
    handshake and whether readback commands exist.
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
-7. **Continue offline with Candidate B's load/integrity path:** the KBID maps and
-   ordinary target translation are now decoded. The next high-value static
-   target is the code that loads/verifies Candidate B, which may identify the
-   true entry path and explain integrity value `0x1a76c116` without touching the
-   keyboard.
+7. **Candidate B integrity is solved (logs 75–76) and the runtime entry is
+   recovered (logs 79–80).** The SN_FWIN checksum is a sum of per-`0x10000`-chunk
+   IEEE CRC-32 and the container guard is an additive word-sum, both recomputable
+   offline. The remaining static targets are `FUN_000029d4` and the top-level
+   comparison applied to the selected entry value before the jump; until those
+   are resolved, the set of conditions a modified image must satisfy is known to
+   be incomplete.
+8. **Do not treat bootloader flash READ as live-validated.** The corrected
+   split-channel status/zero-buffer probe passed (log 90), but it deliberately
+   sent no address or execute-READ. No installed-firmware backup exists. Live use
+   of `tool/backup_firmware.py` remains unauthorised pending a separate decision.
 
 ## Evidence integrity
 

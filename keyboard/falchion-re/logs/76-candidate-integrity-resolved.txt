@@ -1,0 +1,25 @@
+PROGRAM analyze_candidate_integrity
+PURPOSE offline read-only SN_FWIN integrity-record analysis
+BIN /home/dereck/Documents/GIT/scripts/keyboard/falchion-re/dumps/vendor/M605_V01_00_58.bin
+BIN_SIZE 0x7c000
+
+HEADER magic=b'SN_FWIN\x00v1.0.00\x00'
+RECORD_TABLE (4 words each: flash_addr length crc32 ram_dest)
+  @0x10024: addr=0x60011000 len=0x000058ac crc=0x5e75c17a dst=0x18000000
+  @0x10034: addr=0x60021000 len=0x0001e754 crc=0x1a76c116 dst=0x18000000
+  @0x10044: addr=0x60021000 len=0x00000000 crc=0x00000000 dst=0x00000000
+
+CHUNK_SIZE 0x10000
+A_RANGE file 0x11000..0x168ac (1 chunk => plain CRC-32)
+A_CHECKSUM calc=0x5e75c17a stored=0x5e75c17a match=True
+B_RANGE file 0x21000..0x3f754 (2 chunks => CRC sum)
+  B chunk0 crc=0x35530359 (file 0x21000..0x31000)
+  B chunk1 crc=0xe523bdbd (file 0x31000..0x3f754, len 0xe754)
+B_CHECKSUM calc=0x1a76c116 stored=0x1a76c116 match=True
+
+WORD_SUM regions (last word == sum of preceding words):
+  bootloader 0x00000..0x10000    stored=0xfb665ae3 calc=0xfb665ae3 match=True
+  application 0x10000..0x7c000   stored=0x5d27c5a9 calc=0x5d27c5a9 match=True
+
+RESULT A_ok=True B_ok=True word_sums_ok=True
+CONCLUSION All container integrity fields reproduced offline: SN_FWIN per-record values are a sum of per-0x10000-chunk IEEE CRC-32 (FUN_00005028); the terminal values are additive 32-bit word-sums (FUN_000026d0).

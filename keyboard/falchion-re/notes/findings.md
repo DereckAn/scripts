@@ -79,8 +79,10 @@ udev claim is historical and was not re-verified in the managed environment.
 - Updater regions: 64 KiB bootloader plus 432 KiB application, 4 KiB pages
 
 The image contains SONiX headers, Cortex-M Thumb code, a duplicated bootloader,
-two application payload candidates, and an executable RAM image. Candidate A's
-CRC-32 is understood; Candidate B's integrity field remains unresolved. See the
+two application payload candidates, and an executable RAM image. Both candidates'
+integrity fields are now understood: the SN_FWIN per-record value is a sum of
+per-`0x10000`-chunk IEEE CRC-32 (Candidate A is one chunk, Candidate B two), and
+the container terminal values are additive 32-bit word-sums. See the
 authoritative findings and `../ghidra/README.md` for the current memory map.
 
 ## Earlier protocol observations
@@ -163,8 +165,12 @@ and reset operations remain prohibited unless explicitly planned and approved.
   read-only method; no vendor query has been sent.
 - What runtime behavior does frequent record index `0x4b` represent: a dummy,
   fallback, or valid shared record?
-- Which loader function verifies Candidate B and transfers control to its true
-  entry point, and how is integrity value `0x1a76c116` calculated?
+- Candidate B's load, integrity, and entry are now solved: bootloader
+  `FUN_00005028` sums per-`0x10000`-chunk IEEE CRC-32
+  (`0x1a76c116 = CRC32(0x21000..0x31000) + CRC32(0x31000..0x3f754)`), Candidate A
+  scatter-loads B to `0x18000000`, and `FUN_000002c8` calls B's `main` at
+  `0x1800023a`. See `../FINDINGS.md` and logs 75–76, 79–80. Remaining unknowns
+  are the bootloader write/erase protocol and a verified recovery backup.
 - Can the missing PCAP files be recovered from the Windows capture system and
   preserved with hashes?
 
