@@ -1,0 +1,66 @@
+ASUS ROG Falchion Ace HFX — one-block flash-read validation
+Date: 2026-09-02 America/Mexico_City
+Status: prepared; live read not yet run because passive preflight found application mode
+
+OWNER AUTHORIZATION
+After being told that the next phase was one 48-byte flash block at address
+0x10000, the owner answered: "Ok lets do it".
+
+OFFLINE PREPARATION
+Added tool/probe_flash_read.py, whose exact allowlist permits only:
+  - length 0x30;
+  - address 0x00010000;
+  - exactly one execute-READ report 1f 05;
+  - status and data queries needed for bootstrap/freshness.
+
+It cannot construct another address, a second execute-READ, unlock, erase,
+program, reset, or update. Unlike the full backup handshake, this first probe
+does not re-arm EXEC: it sends exactly one execute-READ and waits boundedly for
+the buffer to change and for the following status to prove it is outside the
+transfer interval. It then performs the confirming fetch.
+
+Offline vendor reference at 0x10000:
+  00010000: 53 4e 5f 46 57 49 4e 00 76 31 2e 30 2e 30 30 00  SN_FWIN.v1.0.00.
+  00010010: 00 10 01 60 ff ff ff ff 01 00 00 00 ff ff ff ff  ...`............
+  00010020: 00 00 00 00 00 10 01 60 ac 58 00 00 7a c1 75 5e  .......`.X..z.u^
+
+Offline verification:
+  python3 -m py_compile tool/probe_flash_read.py tool/test_probe_flash_read.py
+  python3 -m unittest discover -s tool -p 'test_*.py'
+  Ran 136 tests in 1.239s
+  OK
+
+Dry-run output:
+  MODE=dry-run; no device enumerated or opened
+  TARGET address=0x10000 length=0x30
+    set_len    21 30 00 00 00 00 00 00 ...
+    status     8f 00 00 00 00 00 00 00 ...
+    data       aa 00 00 00 00 00 00 00 ...
+    set_len    21 30 00 00 00 00 00 00 ...
+    set_addr   20 00 00 01 00 00 00 00 ...
+    exec_read  1f 05 00 00 00 00 00 00 ...
+    data       aa 00 00 00 00 00 00 00 ...
+    status     8f 00 00 00 00 00 00 00 ...
+    data       aa 00 00 00 00 00 00 00 ...
+  EXECUTE_READ_COUNT=exactly_one
+  FORBIDDEN=other-address, unlock, erase, program, reset, update
+
+One test initially failed because its FakeBootloader setup sent the first test
+EXEC without initializing the fake address/length. The production guard was not
+at fault; the test fixture was corrected, after which all 136 tests passed.
+
+PASSIVE LIVE PREFLIGHT
+Command:
+  python3 -c '... print(b.select_bootloader_channels())'
+  getfacl -p /dev/hidraw6 /dev/hidraw7
+  fuser /dev/hidraw6 /dev/hidraw7
+
+Output:
+  backup_firmware.SelectionError: no validated PID-1b7f vendor node
+  application-mode (1b7e) nodes present: hidraw6, hidraw7, hidraw8, hidraw9
+
+The command chain stopped at descriptor selection, before ACL/fuser and before
+opening any hidraw node. The keyboard had automatically returned to normal mode.
+No report was sent and no flash byte was read. Re-entry requires another
+reset-only report and therefore fresh explicit authorization under the project's
+safety rules.
