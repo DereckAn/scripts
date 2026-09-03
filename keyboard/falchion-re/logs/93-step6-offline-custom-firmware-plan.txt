@@ -1,0 +1,42 @@
+LOG 93 — STEP 6 OFFLINE CUSTOM-FIRMWARE PLAN
+DATE 2026-09-02 America/Mexico_City
+
+PURPOSE
+Create a detailed, staged handoff plan that Claude Code can execute one phase at
+a time, followed by independent Codex review. This log records planning and
+documentation only.
+
+INPUTS REVIEWED
+  ghidra/README.md
+  tool/build_modified_image.py
+  tool/analyze_sonix_firmware.py
+  tool/analyze_candidate_integrity.py
+  tool/analyze_boot_structures.py
+  current TIMELINE.md continuation and safety sections
+  repository Markdown/Python inventory
+
+OUTPUT
+  notes/step6-offline-custom-firmware-plan.md
+
+PLAN CONTENTS
+  - immutable artifact identities and hashes
+  - offline-only safety boundary
+  - one-phase-per-Claude-invocation review model
+  - redundant preservation owner checkpoint
+  - installed-versus-vendor deterministic comparison
+  - version-aware image-format library
+  - installed code extraction and Ghidra mapping
+  - remaining boot-acceptance analysis
+  - hardware/runtime interface mapping
+  - patch-versus-clean-room architecture decision
+  - fail-closed installed-image builder
+  - explicitly UNTESTED offline experimental artifact
+  - independent review and separate future live-test gate
+  - ready-to-paste Phase 1 Claude Code prompt
+
+SAFETY
+No keyboard, USB device, hidraw node, sysfs USB node, updater, network, or
+privileged operation was accessed. No firmware binary was created, changed, or
+sent. No reset, unlock, erase, program, update, SPI Write Enable, SPI Program, or
+SPI Erase command was constructed or transmitted.
+

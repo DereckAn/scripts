@@ -92,3 +92,4 @@ c845ceb25b6f58b3dca6f1edf3f13b4b5fb2f6d01b7128840a964a0c2bec2d2d  logs/88-live-b
 423de7fee48e795e00cd676ac4bbb1424f9cc26913f4117f59d152dfcef29a53  logs/90-live-split-channel-status-buffer-probe.txt
 df8f99580024c48ad8dd1acc2449760e6564ef9b8bf580a04bfa730ebfd6a8cd  logs/91-one-block-read-validation.txt
 73e17fcd9e3c8b0485fdcd8d9fcc6623f068761b33097ffd88e98ac1d0354463  logs/92-full-app-region-backup.txt
+5d712de678f7063c4acdbfd429ef7419ebd570e87d3b430e32b7b54f7e71e84d  logs/93-step6-offline-custom-firmware-plan.txt

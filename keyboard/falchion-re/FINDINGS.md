@@ -1136,8 +1136,9 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 3. **USB application-region readback is complete (log 92).** The next firmware
    work should be offline: compare this installed dump with vendor 1.00.58,
    improve code/data maps, and resolve the remaining boot-gate routines before
-   designing any patch. Every future device access still requires separate
-   approval.
+   designing any patch. The staged handoff and review gates are defined in
+   `notes/step6-offline-custom-firmware-plan.md`. Every future device access
+   still requires separate approval.
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater

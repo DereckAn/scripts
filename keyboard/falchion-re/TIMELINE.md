@@ -1001,6 +1001,20 @@ This completes the USB application-region preservation objective, but it is not
 a complete physical-flash dump. The protocol cannot read the bootloader
 `[0,0x10000)` or the remainder of the 4 MiB U5 address space.
 
+## 2026-09-02 — Step 6 offline custom-firmware plan written (log 93)
+
+`notes/step6-offline-custom-firmware-plan.md` defines a nine-phase, offline-only
+path from installed-versus-vendor comparison through a version-aware parser,
+installed-code mapping, boot-gate recovery, hardware-interface mapping, strategy
+selection, a fail-closed image builder, and an explicitly untested experimental
+artifact. Each Claude Code invocation is limited to one phase and must stop for
+independent Codex review. The plan includes a ready-to-paste Phase 1 prompt,
+deliverables, exit gates, evidence-handling rules, and a strict prohibition on
+device, USB, updater, reset, unlock, erase, program, update, and SPI access.
+
+This was documentation work only. No binary was generated or modified, and no
+device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1075,8 +1089,9 @@ The USB-readable application region is now preserved and verified (log 92). The
 next phase should remain offline: make a redundant copy of the dump and checksum,
 compare the installed image with vendor 1.00.58, improve the code/data map, and
 resolve `FUN_000029d4` plus the top-level selected-entry comparison before
-designing a minimal patch. Any flashing remains a separately reviewed and
-explicitly authorized phase.
+designing a minimal patch. The controlled sequence is documented in
+`notes/step6-offline-custom-firmware-plan.md`. Any flashing remains a separately
+reviewed and explicitly authorized phase.
 
 Before any hardware modification, prepare a separate reviewed preservation
 plan for U5 and MCU readback: correct voltage, board-power isolation, bus
