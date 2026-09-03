@@ -1,6 +1,6 @@
 # ASUS ROG Falchion Ace HFX reverse-engineering timeline
 
-Last updated: 2026-09-02 (America/Mexico_City)
+Last updated: 2026-09-03 (America/Mexico_City)
 
 This document is the chronological record of the investigation. It explains
 what was done, why it was done, what changed, and where the supporting evidence
@@ -1015,6 +1015,76 @@ device, USB, updater, reset, unlock, erase, program, update, and SPI access.
 This was documentation work only. No binary was generated or modified, and no
 device was accessed.
 
+## 2026-09-03 — Plan review and Step 6 Phase 1: shared image-format library (log 94)
+
+The plan was reviewed against the evidence before execution. The review confirmed
+both immutable hashes, the `[0x10000,0x7c000)` range arithmetic, the log
+numbering, and that `sha256sum -c logs/SHA256SUMS` passes. It produced four
+corrections, all applied to `notes/step6-offline-custom-firmware-plan.md`: the
+parser phase now runs before the comparator so SN_FWIN parsing is not written
+twice; the exact complete-suite invocation
+`python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"` is pinned, because
+running it from inside `tool/` discovers only 130 tests and then fails to import
+`test_enter_bootloader.py`; Phase 7 now names the three additive word-sum guards
+(`0x7bffc`, `0x70ffc`, and the unavailable `0x0fffc`) instead of saying
+"dependent integrity fields"; and the Phase 1 prompt no longer tells Claude Code
+to use `apply_patch`, which it does not have. The review also found the plan's
+Phase 4 too pessimistic about the bootloader, which log 94 then settled.
+
+Phase 1 added `tool/falchion_image.py` and `tool/test_falchion_image.py` (38
+tests). The library separates parsing, validation and mutation-source policy,
+expresses every offset as a logical flash offset with a single translation point,
+reads record lengths from the image being parsed, and returns a deterministic
+machine-readable result so later phases never parse stdout. No existing analyzer
+was refactored: the plan permits that only where regression tests preserve known
+output, `analyze_sonix_firmware.py` and `analyze_candidate_b_tables.py` have no
+tests at all, and the two covered analyzers are the reference implementations
+logs 74–92 were produced with. Four parity tests prove agreement instead, leaving
+a refactor as a separate reviewed change.
+
+Three facts came out of it. The installed record[1] length is `0x1e780` against
+vendor `0x1e754`, so the application record grew by 44 bytes while record[0] and
+both load addresses stayed the same. The installed dump's logical
+`[0x61000,0x71000)` is byte-identical to the vendor 1.00.58 backup range and to
+its primary bootloader region `[0,0x10000)` — all three hash to
+`4a4568b6…686a` — and that mirrored copy validates its own word-sum `0xfb665ae3`
+at `0x70ffc`, so the bootloader already under static analysis is proven to exist
+on the device. The unread installed primary region, which container the device
+actually booted, and ROM/first-stage behavior all remain unresolved. `SN_FWIN
++0x8` is `v1.0.00` in both images, confirming it is the container format version
+rather than the ASUS release version.
+
+174 offline tests pass under the pinned invocation, both evidence hashes are
+unchanged, both accepted analyzers still produce their published results, the
+installed-dump results still match log 92, and malformed inputs fail closed with
+one line and no partial report. No device was accessed. Phase 2 was not started
+and the work was left uncommitted for Codex review.
+
+**Independent review rejected the first cut of Phase 1 (log 95).** The record
+parser had invented a terminator: it stopped at the first slot with a zero
+address or zero length, while `FUN_0000511c` in log 75 loops `uVar1 < 8` and
+processes every slot whose length field is nonzero. The reviewer built an
+in-memory image with an active slot 3 behind the empty slot 2, corrected the
+application word-sum, and the library returned `known_checks_ok=True` while
+omitting slot 3 — a checksum dependency the Phase-2 comparator and the Phase-7
+builder would both have missed. `parse_records` now scans all eight slots, skips
+only zero-length holes, keeps physical slot indices, bounds-checks every active
+slot, and fails closed on a zero address with a nonzero length, a truncated
+table, or no active slot. The plan's Phase 1 wording and test list were corrected
+to the proven eight-slot behavior and Phase 2's log moved to 96.
+
+The earlier "zero terminator" reading of the record table (log 74) is corrected
+rather than quietly replaced: slot 2 carries a stale nonzero address with a zero
+length, so it is an inactive hole. Slots 3 to 7 are all-zero in both preserved
+images, which is why the old rule produced the right two records for the wrong
+reason, and why no published result moves. `analyze_candidate_integrity.py`,
+`analyze_boot_structures.py` and `build_modified_image.py` still carry the
+assumption; a test pins the divergence and reconciling them is now a Phase 7
+prerequisite. The review also found the log-94 row in `logs/COMMANDS.md` stating
+37 new / 173 total tests where the raw log correctly said 38 / 174; the row is
+fixed and log 94 is unedited. 179 offline tests pass, both evidence hashes are
+unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1028,6 +1098,7 @@ The investigation deliberately records mistakes and superseded interpretations:
 | “No USB bootloader” | Narrowed to no DFU/bootloader interface in normal mode |
 | `CandidateB_Entry` label | Corrected to evidence-bounded `CandidateB_Start_Function`; runtime base later resolved separately |
 | Raw `51 21` byte hit | Identified as an instruction constant, not a command table |
+| SN_FWIN record-table “zero terminator” | `FUN_0000511c` scans a fixed eight slots and gates only on a nonzero length; slot 2 is an inactive hole, not a terminator (log 95) |
 | First binary-pointer search | Shell escaping was malformed; log 50 was regenerated byte-safely |
 | Generic STM32 recipes | Removed; not valid evidence for SNC73270 |
 | Eight `0x86` rows at `0x1801c37c` | Corrected to three overlapping 189-byte logical wire windows plus a separate three-row `0x100` scan map |
@@ -1085,11 +1156,12 @@ The integrity calculation is now solved (logs 75–76): SN_FWIN per-record value
 are a sum of per-`0x10000`-chunk IEEE CRC-32, and the container guard is an
 additive word-sum, both recomputable offline. Candidate B's runtime entry, the
 bootloader protocol and the exact reset-only entry report are also recovered.
-The USB-readable application region is now preserved and verified (log 92). The
-next phase should remain offline: make a redundant copy of the dump and checksum,
-compare the installed image with vendor 1.00.58, improve the code/data map, and
-resolve `FUN_000029d4` plus the top-level selected-entry comparison before
-designing a minimal patch. The controlled sequence is documented in
+The USB-readable application region is now preserved and verified (log 92), and
+the shared version-aware image-format library is in place (log 94). Work should
+remain offline: make a redundant copy of the dump and checksum, then Phase 2's
+installed-versus-vendor comparison, then improve the code/data map and resolve
+`FUN_000029d4` plus the top-level selected-entry comparison before designing a
+minimal patch. The controlled sequence is documented in
 `notes/step6-offline-custom-firmware-plan.md`. Any flashing remains a separately
 reviewed and explicitly authorized phase.
 

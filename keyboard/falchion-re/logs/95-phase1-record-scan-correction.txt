@@ -1,0 +1,235 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 1 correction: fixed eight-slot record scan
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed. Corrects log 94; log 94 is unedited.
+
+WHY THIS LOG EXISTS
+Independent review of Phase 1 rejected log 94's record-table parser. It also
+found one bookkeeping error in logs/COMMANDS.md. Both are corrected here. The
+raw log 94 is left byte-for-byte as published; this log supersedes its
+record-table behaviour only.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no bootloader entry, no probe
+or backup tool run, no sudo, no package install, no network access, and no
+unlock/erase/program/reset/SPI construction. Both evidence binaries were opened
+read-only and are unchanged.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+DEFECT 1 (blocker) — the parser invented a terminator the firmware does not have
+
+Evidence, logs/75-ghidra-bootloader-verify-report.txt, FUN_0000511c:
+$ grep -n 'uVar1 < 8' -A 4 -B 3 logs/75-ghidra-bootloader-verify-report.txt
+  167-  iVar3 = 0;
+  168-  if (*(int *)(param_1 + 0x18) != 0) {
+  169-    local_24 = param_4;
+  170:    for (uVar1 = 0; uVar1 < 8; uVar1 = uVar1 + 1) {
+  171-      if (*(int *)(param_1 + uVar1 * 0x10 + 0x28) != 0) {
+  172-        iVar2 = *(int *)(param_1 + uVar1 * 0x10 + 0x24);
+  173-        iVar4 = *(int *)(param_1 + uVar1 * 0x10 + 0x28);
+  174-        FUN_00005028(&local_24,iVar2,*(undefined4 *)(param_1 + uVar1 * 0x10 + 0x28),0x18000000,
+  [exit 0]
+  NOTE the loop bound is a constant 8 and the only per-slot condition is length != 0 at record +0x4 (header +0x28). There is no terminator test.
+
+Log 94's parse_records stopped at the first slot whose address or length was
+zero. Three consequences, all reproduced by the reviewer:
+  * a nonzero-length record whose address is zero was ignored;
+  * an active record after a zero-length hole was ignored, so its checksum
+    dependency would have been invisible to the Phase-2 comparator and the
+    Phase-7 builder;
+  * a fully populated eight-slot table was rejected as unterminated.
+
+The reviewer's own reproduction: an in-memory image with an active slot 3
+behind the empty slot 2, with the application word-sum corrected, returned
+known_checks_ok=True while omitting slot 3. Reproduced and re-run after the fix:
+$ python3 - <<'PY'
+import struct, sys
+sys.path.insert(0, 'tool')
+import falchion_image as fi
+data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+table = fi.FWIN_OFF + fi.FWIN_REC0_OFF
+struct.pack_into('<4I', data, table + 3*0x10, 0x60011000, 0x100, 0, 0x18000000)
+crc = fi.chunked_crc_sum(fi.ImageView(bytes(data), 0), 0x11000, 0x100)
+struct.pack_into('<4I', data, table + 3*0x10, 0x60011000, 0x100, crc, 0x18000000)
+words = list(struct.unpack_from('<%dI' % ((0x7c000-0x10000)//4), data, 0x10000))
+struct.pack_into('<I', data, 0x7bffc, sum(words[:-1]) & 0xffffffff)
+result = fi.validate(fi.ImageView(bytes(data), 0))
+print('records            ', [(r.index, hex(r.addr), hex(r.length)) for r in result.layout.records])
+print('record[3] surfaced ', any(c.name == 'record[3] checksum' for c in result.checks))
+print('known_checks_ok    ', result.ok)
+PY
+  records             [(0, '0x60011000', '0x58ac'), (1, '0x60021000', '0x1e754'), (3, '0x60011000', '0x100')]
+  record[3] surfaced  True
+  known_checks_ok     True
+  [exit 0]
+  NOTE slot 3 is now parsed with its physical index and gets its own checksum check; before the fix it was absent from both the record list and the checks
+
+FIX
+tool/falchion_image.py parse_records now mirrors FUN_0000511c:
+  * it scans exactly MAX_RECORDS = 8 slots;
+  * it skips a slot only when the length field is zero;
+  * it continues past holes and preserves physical slot indices;
+  * it bounds-checks every active slot against the image;
+  * a zero address with a nonzero length raises ImageFormatError naming the
+    slot, instead of being read as a terminator;
+  * a table truncated before all eight slots raises ImageFormatError;
+  * an all-zero-length table raises ImageFormatError.
+The 'unterminated table' concept and its test are removed. Slot 2 of both
+preserved images carries address 0x60021000 with length 0, so the old rule
+happened to stop for the right number of records by the wrong reason.
+
+UNCHANGED RESULTS FOR BOTH PRESERVED IMAGES
+$ python3 tool/falchion_image.py | grep -E '^(RECORD|WORD_SUM|RESULT)'
+  RECORD 0 addr=0x60011000 flash=0x11000..0x168ac len=0x58ac checksum=0x5e75c17a dst=0x18000000
+  RECORD 1 addr=0x60021000 flash=0x21000..0x3f754 len=0x1e754 checksum=0x1a76c116 dst=0x18000000
+  WORD_SUM bootloader range=0x0..0x10000 stored=0xfb665ae3 computed=0xfb665ae3 match=True
+  WORD_SUM application range=0x10000..0x7c000 stored=0x5d27c5a9 computed=0x5d27c5a9 match=True
+  WORD_SUM bootloader_mirror range=0x61000..0x71000 stored=0xfb665ae3 computed=0xfb665ae3 match=True
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  [exit 0]
+
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^(RECORD|WORD_SUM|RESULT)'
+  RECORD 0 addr=0x60011000 flash=0x11000..0x168ac len=0x58ac checksum=0x7d552485 dst=0x18000000
+  RECORD 1 addr=0x60021000 flash=0x21000..0x3f780 len=0x1e780 checksum=0xeb0a9879 dst=0x18000000
+  WORD_SUM application range=0x10000..0x7c000 stored=0x2d7486db computed=0x2d7486db match=True
+  WORD_SUM bootloader_mirror range=0x61000..0x71000 stored=0xfb665ae3 computed=0xfb665ae3 match=True
+  RESULT known_checks_ok=True checks_run=16 containers_skipped=1 word_sums_skipped=1
+  [exit 0]
+  NOTE identical to log 94 and to log 92: records (0x60011000,0x58ac,0x7d552485) and (0x60021000,0x1e780,0xeb0a9879), application word-sum 0x2d7486db
+
+ALL EIGHT SLOTS AS THE BOOTLOADER SEES THEM
+$ python3 -c "import struct
+for name, path, base in (('vendor', 'dumps/vendor/M605_V01_00_58.bin', 0), ('installed', 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin', 0x10000)):
+    d = open(path, 'rb').read(); t = 0x10024 - base
+    print(name)
+    for i in range(8):
+        a, l, c, x = struct.unpack_from('<4I', d, t + i*0x10)
+        state = 'active' if l else 'hole'
+        print('  slot%d %-6s addr=0x%08x len=0x%-6x crc=0x%08x dst=0x%08x' % (i, state, a, l, c, x))"
+  vendor
+    slot0 active addr=0x60011000 len=0x58ac   crc=0x5e75c17a dst=0x18000000
+    slot1 active addr=0x60021000 len=0x1e754  crc=0x1a76c116 dst=0x18000000
+    slot2 hole   addr=0x60021000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot3 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot4 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot5 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot6 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot7 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+  installed
+    slot0 active addr=0x60011000 len=0x58ac   crc=0x7d552485 dst=0x18000000
+    slot1 active addr=0x60021000 len=0x1e780  crc=0xeb0a9879 dst=0x18000000
+    slot2 hole   addr=0x60021000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot3 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot4 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot5 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot6 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+    slot7 hole   addr=0x00000000 len=0x0      crc=0x00000000 dst=0x00000000
+  [exit 0]
+  NOTE only slots 0 and 1 are active in either image; slot 2 is a hole that still carries a stale nonzero address
+
+DELIBERATE DIVERGENCE RECORDED, NOT SILENTLY ABSORBED
+analyze_candidate_integrity.py and analyze_boot_structures.py still carry the
+terminator assumption, and build_modified_image.py mutates records through the
+former. They are unchanged in this correction because the plan gates analyzer
+changes on regression tests that preserve their published output, and logs
+74-92 were produced with them. On the two preserved images all three agree, so
+no published result moves. A test asserts the divergence on a holed table so it
+cannot rot, and reconciling them is now a prerequisite for Phase 7:
+$ timeout 600 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" -p 'test_falchion_image.py' -v 2>&1 | grep -E '(hole|eight_slot|zero_address|no_active_slot|diverges|Ran |^OK)'
+  test_hole_scanning_deliberately_diverges_from_the_old_analyzers (test_falchion_image.AnalyzerParity.test_hole_scanning_deliberately_diverges_from_the_old_analyzers)
+  test_active_slot_after_a_zero_length_hole_is_not_dropped (test_falchion_image.Malformed.test_active_slot_after_a_zero_length_hole_is_not_dropped)
+  The defect this test exists for: FUN_0000511c keeps scanning holes. ... ok
+  test_all_eight_slots_populated_are_all_parsed (test_falchion_image.Malformed.test_all_eight_slots_populated_are_all_parsed) ... ok
+  test_nonzero_address_with_zero_length_stays_a_hole (test_falchion_image.Malformed.test_nonzero_address_with_zero_length_stays_a_hole)
+  test_table_with_no_active_slot_fails_closed (test_falchion_image.Malformed.test_table_with_no_active_slot_fails_closed) ... ok
+  test_truncated_eight_slot_table_fails_closed (test_falchion_image.Malformed.test_truncated_eight_slot_table_fails_closed) ... ok
+  test_zero_address_with_nonzero_length_fails_bounds (test_falchion_image.Malformed.test_zero_address_with_nonzero_length_fails_bounds) ... ok
+  Ran 43 tests in 0.062s
+  OK
+  [exit 0]
+
+DEFECT 2 (bookkeeping) — logs/COMMANDS.md test counts
+The log-94 row said 37 new / 173 total tests. The correct figures at the time
+log 94 was written were 38 / 174; the row is corrected and the raw log 94,
+which already stated 38 / 174, is untouched.
+$ grep -c '38 tests\|174 offline tests' logs/COMMANDS.md
+  1
+  [exit 0]
+  NOTE the corrected row now carries the right counts
+
+EXIT-GATE RE-RUN
+$ python3 -m py_compile tool/falchion_image.py tool/test_falchion_image.py
+  [exit 0]
+  NOTE no output means both files compiled
+
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+$ timeout 600 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmpdgh881ey/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpmbevhzz2/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpu2af89j4/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpga0efrzn/dump.bin
+  Ran 179 tests in 1.298s
+  OK
+  [exit 0]
+  NOTE 179 tests = the 136 previously accepted plus 43 in this phase (38 from log 94, minus 2 removed terminator tests, plus 7 new)
+
+$ python3 -c "import json, subprocess
+a = subprocess.run(['python3','tool/falchion_image.py','--json'], capture_output=True, text=True).stdout
+b = subprocess.run(['python3','tool/falchion_image.py','--json'], capture_output=True, text=True).stdout
+print('deterministic json:', a == b)"
+  deterministic json: True
+  [exit 0]
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  [exit 0]
+  NOTE no output means no whitespace errors in either the worktree or the index
+
+$ git status --short
+   M FINDINGS.md
+   M TIMELINE.md
+   M logs/COMMANDS.md
+   M logs/SHA256SUMS
+  MM notes/step6-offline-custom-firmware-plan.md
+  ?? logs/94-version-aware-image-format-library.txt
+  ?? tool/falchion_image.py
+  ?? tool/test_falchion_image.py
+  [exit 0]
+
+RESULT
+The Phase 1 blocker is fixed: the record table is modelled as the fixed
+eight-slot, length-gated scan that FUN_0000511c performs, so no active slot
+can be hidden from a later comparator or builder. Results for both preserved
+images are unchanged and still match log 92. The COMMANDS.md counts are
+corrected to 38 / 174 for log 94. 179 offline tests pass under the pinned
+invocation, both evidence hashes are unchanged, and no device was accessed.
+Phase 2 not started; everything left uncommitted for review.

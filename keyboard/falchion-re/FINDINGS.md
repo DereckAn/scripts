@@ -615,8 +615,18 @@ four-word records, each `(flash_addr, length, crc32, ram_dest)`, starting at fil
 |---|---|---|---|---|
 | A | `0x60011000` | `0x000058ac` | `0x5e75c17a` | `0x18000000` |
 | B | `0x60021000` | `0x0001e754` | `0x1a76c116` | `0x18000000` |
-| — | `0x60021000` | `0x00000000` | `0x00000000` | `0x00000000` (terminator) |
+| 2 | `0x60021000` | `0x00000000` | `0x00000000` | `0x00000000` (inactive hole, **not** a terminator — see log 95) |
 
+- **The table is a fixed eight-slot array, not a terminated list (log 95).**
+  `FUN_0000511c` loops `uVar1 < 8` and processes every slot whose length field
+  (record `+0x4`) is nonzero. Slot 2 above carries a stale nonzero address with a
+  zero length, so it is an inactive hole; the bootloader skips it and keeps
+  scanning slots 3 to 7. Slots 3 to 7 are all-zero in both preserved images, so
+  the earlier "terminator" reading produced the right two records for the wrong
+  reason. Consequences that matter for tooling: a nonzero-length slot with a zero
+  address is an active slot with an invalid address, an active slot behind a hole
+  still contributes a checksum dependency, and a fully populated eight-slot table
+  is legal.
 - **Record A reproduces exactly.** IEEE CRC-32 over the mapped file bytes
   `0x11000..0x168ac` equals the stored `0x5e75c17a`. This locks both the
   flash→file mapping (`file = flash − 0x60000000`) and the algorithm; the analysis
@@ -1013,6 +1023,57 @@ operation was sent (log 89).
 The exact read-only dump recipe is documented in
 `notes/step5-recovery-plan.md`. Approach A was executed successfully in log 92.
 
+### Shared image-format library and installed-versus-vendor layout facts (log 94)
+
+Step 6 Phase 1 added `tool/falchion_image.py`, one shared parser, validation model
+and mutation-source gate for every later offline tool, plus 38 tests. Parsing,
+validation and source policy are separate: parsing may inspect an unknown image
+and fails closed with `ImageFormatError`; validation reports the known
+constraints and names every region it could not check; `require_supported_source`
+refuses any image whose SHA-256/base/size tuple is not allowlisted. Every offset
+is a logical flash offset, translated in exactly one place (`ImageView.index`).
+No existing analyzer was refactored — four parity tests prove the library agrees
+with `analyze_candidate_integrity.py` and `analyze_boot_structures.py` on both
+preserved images, and the installed-dump results still match log 92.
+
+Three layout facts were established:
+
+- **The installed application record grew.** Record[1] length is `0x1e780` in the
+  installed 1.59 dump against `0x1e754` in vendor 1.00.58 — 44 bytes longer.
+  Record[0] length (`0x58ac`) and both load addresses (`0x60011000`,
+  `0x60021000`) are unchanged. Any tool that reuses a vendor length for the
+  installed image mis-slices it, so record lengths are read per image.
+- **The bootloader under static analysis exists on the device.** The installed
+  dump's logical range `[0x61000,0x71000)` — file `[0x51000,0x61000)` — is
+  byte-identical to the vendor 1.00.58 backup range `[0x61000,0x71000)` and to
+  its primary bootloader region `[0,0x10000)`. All three hash to
+  `4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a`. The
+  mirrored copy also validates its own additive word-sum, `0xfb665ae3` at
+  `0x70ffc`, the same value the primary region stores at `0x0fffc`; the library
+  reports this as a third word-sum region, `bootloader_mirror`, which
+  `analyze_candidate_integrity.py` does not cover. **This does not** show that
+  the unread installed primary region `[0,0x10000)` is identical, which container
+  the device actually booted, or anything about ROM/first-stage behavior.
+- **`SN_FWIN +0x8` is `v1.0.00` in both images**, confirming it is the container
+  format version and does not track the ASUS release version.
+
+The mirrored copy carries a third `SNC7320A`/`SN_BCFG` header at `0x61000` whose
+bootloader pointer is `0x60001000`. It is not modelled as a container; the
+container table still holds exactly the two the bootloader is known to consult
+(`0x0` and `0x60000`).
+
+**Correction after independent review (log 95).** The first version of
+`parse_records` stopped at the first slot with a zero address or zero length. It
+therefore dropped a nonzero-length record whose address was zero, dropped active
+records behind a zero-length hole, and rejected a full eight-slot table. It now
+mirrors `FUN_0000511c`: scan all eight slots, skip only zero-length holes,
+preserve physical slot indices, bounds-check every active slot, and fail closed
+on a zero address with a nonzero length, a truncated table, or no active slot.
+Results for both preserved images are unchanged. `analyze_candidate_integrity.py`,
+`analyze_boot_structures.py` and `build_modified_image.py` still carry the
+terminator assumption; a test pins the divergence, and reconciling them is a
+prerequisite for Phase 7 mutation.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
@@ -1153,8 +1214,11 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    are resolved, the set of conditions a modified image must satisfy is known to
    be incomplete.
 8. **Keep the scope precise.** Log 92 is a verified backup of the USB-readable,
-   USB-writable application region. It is not a complete 4 MiB U5 image and does
-   not include the bootloader. A read-only hardware dump remains the gold
+   USB-writable application region. It is not a complete 4 MiB U5 image. It does
+   not include the primary bootloader region `[0,0x10000)`, but log 94 corrects
+   the earlier blanket "does not include the bootloader": the dump does contain
+   the mirrored copy at logical `[0x61000,0x71000)`, which is byte-identical to
+   the vendor 1.00.58 bootloader. A read-only hardware dump remains the gold
    standard before physical modification.
 
 ## Evidence integrity

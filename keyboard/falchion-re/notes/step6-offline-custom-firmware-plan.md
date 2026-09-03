@@ -22,6 +22,17 @@ erase/program, but it is not a complete 4 MiB U5 or internal-MCU backup. No live
 test of a modified image should be planned until the offline gates in this
 document pass and a separate recovery/risk plan is approved.
 
+The installed dump nevertheless contains important bootloader evidence. Its
+file range `[0x51000,0x61000)`, corresponding to logical flash
+`[0x61000,0x71000)`, has SHA-256
+`4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a`
+and is byte-identical to both the vendor 1.00.58 backup bootloader at
+`[0x61000,0x71000)` and its primary bootloader at `[0,0x10000)`. Therefore the
+bootloader image already under static analysis is proven to exist as the
+installed backup copy. This does not prove that the unread installed primary
+bootloader `[0,0x10000)` is identical, that the backup copy was the one active
+during log 92, or that ROM/first-stage checks are known.
+
 ## Immutable inputs
 
 Treat these as read-only evidence. Never edit or overwrite them:
@@ -84,7 +95,12 @@ Every phase must:
 6. Add its command/result description to `logs/COMMANDS.md`.
 7. Update `FINDINGS.md` and `TIMELINE.md` only for conclusions actually proven.
 8. Run `python3 -m py_compile` on changed Python files, the complete unit-test
-   suite, `sha256sum -c logs/SHA256SUMS`, and `git diff --check`.
+   suite from the repository directory using exactly
+   `python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"`,
+   `sha256sum -c logs/SHA256SUMS`, and `git diff --check`. Do not run the suite
+   from inside `tool/`: that discovers only 130 tests and then fails to import
+   `test_enter_bootloader.py` because `from tool import enter_bootloader` cannot
+   resolve the top-level `tool` package.
 9. State explicitly that no device was accessed.
 
 Historical raw logs are immutable. A later correction gets a new log; it does
@@ -108,53 +124,11 @@ Actions:
 Exit gate: at least two independently stored copies verify to the expected hash.
 This phase is for the owner; Claude must not choose or write to external media.
 
-## Phase 1 — Compare installed application 1.59 with vendor 1.00.58
+## Phase 1 — Create a version-aware image-format library
 
-Purpose: establish precisely what changed before interpreting either image.
-
-Required implementation:
-
-- Add `tool/compare_firmware_images.py` as an offline, read-only comparator.
-- Treat the installed file as logical range `[0x10000,0x7c000)` and compare it
-  with the same slice of the full vendor file. Do not compare misaligned offsets.
-- Verify both input size/hash tuples before analysis; refuse unknown inputs unless
-  an explicit analysis-only option prints a strong warning.
-- Report:
-  - whole-range SHA-256 and equality;
-  - total differing bytes and contiguous difference ranges;
-  - per-`0x1000` page hashes and changed-page list;
-  - parsed SN_FWIN fields and record table for each image;
-  - each record payload's length, SHA-256, and differing ranges;
-  - application word-sum fields and recomputed values;
-  - regions that are identical, all-zero, all-`0xff`, or changed;
-  - strings added, removed, or changed, while avoiding misleading substring spam.
-- Emit both a human-readable report and deterministic JSON from one underlying
-  data model.
-- Add unit tests for identical images, one-byte differences, differences crossing
-  a page boundary, partial-image base translation, malformed/truncated records,
-  and deterministic JSON ordering.
-
-Required outputs:
-
-- `tool/compare_firmware_images.py`
-- `tool/test_compare_firmware_images.py`
-- `notes/installed-vs-vendor.md`
-- `logs/94-installed-vs-vendor-comparison.txt` (log 93 is reserved for this plan)
-
-Do not infer function meaning in this phase. A byte range being changed is a
-fact; its purpose is a later hypothesis.
-
-Exit gate:
-
-- Both source hashes still match.
-- Comparator tests and the full suite pass.
-- Counts/ranges in Markdown, JSON, and raw log agree.
-- Existing analyzers still accept both source images with their correct bases.
-
-## Phase 2 — Create a version-aware image-format library
-
-Purpose: remove hard-coded 1.00.58 assumptions from parsing while retaining
-strict version locks for mutation.
+Purpose: establish one shared parser before comparison or later extraction, and
+remove hard-coded 1.00.58 assumptions while retaining strict version locks for
+mutation.
 
 Required implementation:
 
@@ -171,15 +145,81 @@ Required implementation:
   do not mix file offsets, mapped `0x60000000` addresses, and runtime addresses.
 - Parse record lengths from each image. Do not reuse vendor 1.00.58 lengths for
   the installed dump.
-- Provide machine-readable validation results so later builders cannot parse
-  human-formatted stdout.
+- Model the record table as the fixed eight-slot table the bootloader actually
+  scans. `FUN_0000511c` (log 75) loops `uVar1 < 8` and processes every slot whose
+  length field is nonzero; there is no terminator. A zero-length slot is a hole
+  to skip, not the end of the table; a zero address with a nonzero length is an
+  active slot with an invalid address and must fail rather than be dropped; a
+  fully populated eight-slot table is legal. Preserve physical slot indices and
+  bounds-check every active slot.
+- Provide machine-readable validation results so later comparators and builders
+  cannot parse human-formatted stdout.
+
+Required outputs:
+
+- `tool/falchion_image.py`
+- `tool/test_falchion_image.py`
+- `logs/94-version-aware-image-format-library.txt`
+- `logs/95-phase1-record-scan-correction.txt` (added after independent review
+  found the record-table parser inconsistent with `FUN_0000511c`)
 
 Tests must cover full images, base-`0x10000` partial images, absent containers,
-out-of-range records, unterminated tables, checksum failure, and integer/bounds
-edge cases.
+out-of-range records, a zero-length hole followed by an active record, a zero
+address with a nonzero length, all eight slots populated, a truncated eight-slot
+table, checksum failure, and integer/bounds edge cases.
 
 Exit gate: old known-good results are unchanged, installed-image results match
-log 92, and malformed inputs fail closed without tracebacks or partial output.
+log 92, the exact complete-suite command passes, and malformed inputs fail
+closed without tracebacks or partial output.
+
+## Phase 2 — Compare installed application 1.59 with vendor 1.00.58
+
+Purpose: establish precisely what changed before interpreting either image.
+
+Required implementation:
+
+- Add `tool/compare_firmware_images.py` as an offline, read-only comparator.
+- Use the Phase-1 `falchion_image.py` parser and validation models; do not add a
+  second SN_FWIN parser or duplicate offset/checksum policy in the comparator.
+- Treat the installed file as logical range `[0x10000,0x7c000)` and compare it
+  with the same slice of the full vendor file. Do not compare misaligned offsets.
+- Verify both input size/hash tuples before analysis; refuse unknown inputs unless
+  an explicit analysis-only option prints a strong warning.
+- Report:
+  - whole-range SHA-256 and equality;
+  - total differing bytes and contiguous difference ranges;
+  - per-`0x1000` page hashes and changed-page list;
+  - parsed SN_FWIN fields and record table for each image;
+  - each record payload's length, SHA-256, and differing ranges;
+  - application word-sum fields and recomputed values;
+  - the three-way bootloader-copy relationship: installed logical
+    `[0x61000,0x71000)`, vendor backup `[0x61000,0x71000)`, and vendor primary
+    `[0,0x10000)`, including hashes and any differing ranges;
+  - regions that are identical, all-zero, all-`0xff`, or changed;
+  - strings added, removed, or changed, while avoiding misleading substring spam.
+- Emit both a human-readable report and deterministic JSON from one underlying
+  data model.
+- Add unit tests for identical images, one-byte differences, differences crossing
+  a page boundary, partial-image base translation, malformed/truncated records,
+  and deterministic JSON ordering.
+
+Required outputs:
+
+- `tool/compare_firmware_images.py`
+- `tool/test_compare_firmware_images.py`
+- `notes/installed-vs-vendor.md`
+- `notes/installed-vs-vendor.json`
+- `logs/96-installed-vs-vendor-comparison.txt` (log 95 is the Phase-1 correction)
+
+Do not infer function meaning in this phase. A byte range being changed is a
+fact; its purpose is a later hypothesis.
+
+Exit gate:
+
+- Both source hashes still match.
+- Comparator tests and the full suite pass.
+- Counts/ranges in Markdown, JSON, and raw log agree.
+- Existing analyzers still accept both source images with their correct bases.
 
 ## Phase 3 — Extract and map the installed code images
 
@@ -188,7 +228,7 @@ that vendor addresses, lengths, or functions stayed unchanged.
 
 Required work:
 
-1. Extract each installed SN_FWIN record using the Phase-2 parser. Name slices
+1. Extract each installed SN_FWIN record using the Phase-1 parser. Name slices
    with record number, logical source address, runtime destination, length, and
    short source hash. Generated slices belong under an ignored Ghidra/import
    area, not in `dumps/device/`.
@@ -216,8 +256,13 @@ has a cited loader/record basis, and a second script run reproduces the reports.
 
 ## Phase 4 — Resolve the remaining boot-acceptance checks
 
-Purpose: determine the full set of bootloader conditions visible in the preserved
-vendor bootloader before any generated image is called structurally acceptable.
+Purpose: determine the full set of bootloader conditions visible in the
+installed backup bootloader copy before any generated image is called
+structurally acceptable. The installed logical range `[0x61000,0x71000)` is
+byte-identical to the vendor 1.00.58 primary and backup bootloader slices, so the
+existing vendor-derived Ghidra program is a valid analysis view of those bytes.
+Treat the unread installed primary bootloader and any ROM/first-stage behavior
+as separate unresolved questions.
 
 Primary targets:
 
@@ -313,7 +358,18 @@ Requirements:
 - Reject overlapping, empty, out-of-record, metadata, bootloader, and
   structurally unsafe patches unless a later reviewed policy explicitly permits
   them.
-- Recompute only proven dependent integrity fields.
+- Recompute only these proven dependent integrity fields, in dependency order:
+  - each affected SN_FWIN record's chunked-CRC sum in its `record+0x8` field;
+  - if a later reviewed policy ever permits a change in the backup bootloader
+    region `[0x61000,0x71000)`, its additive word-sum at logical `0x70ffc`;
+  - the application-region additive word-sum at logical `0x7bffc` after all
+    other dependent fields are final. It covers `[0x10000,0x7bffc)`, so changes
+    to record checksum fields or the backup-copy word-sum also affect it.
+- The primary-bootloader word-sum at logical `0x0fffc` covers
+  `[0,0x0fffc)`. It is absent from an installed app-only source and outside the
+  USB-readable/writable range, so that builder mode must report it unavailable,
+  must not claim to recompute it, and must refuse any operation that would
+  require changing it. An application-region patch does not depend on it.
 - Run all known boot/layout checks after construction and list unresolved checks.
 - No-op rebuild must be byte-identical to its source.
 - Write with exclusive create, never overwrite, and never create partial output.
@@ -382,12 +438,15 @@ Read completely:
 - tool/analyze_candidate_integrity.py
 - tool/analyze_boot_structures.py
 - tool/analyze_sonix_firmware.py
+- tool/build_modified_image.py
 - relevant existing tests
 
-Execute Phase 1 ONLY: compare the installed base-0x10000 application dump with
-the aligned 0x10000..0x7bfff slice of vendor 1.00.58. Implement the deterministic
-offline comparator, tests, human report, and raw log required by the plan. Do not
-start Phase 2 and do not commit.
+Execute Phase 1 ONLY: create the shared version-aware `tool/falchion_image.py`
+library, tests, and raw log required by the plan. Consolidate SN_FWIN parsing,
+logical-base translation, records, checksums, and machine-readable validation
+models there. Refactor an existing analyzer only when regression tests preserve
+its known output. Do not implement the installed-versus-vendor comparator, start
+Phase 2, or commit.
 
 Safety is absolute: no USB/sysfs device inspection, /dev/hidraw access, sudo,
 permission changes, package installation, network access, bootloader entry,
@@ -396,18 +455,20 @@ program, update, or SPI command. Do not modify either source binary. If anything
 would require device or network access, stop.
 
 Before editing, show git status and preserve all pre-existing changes. Verify
-both immutable source hashes before and after. Use logical-base translation; do
-not compare the installed byte 0 with vendor byte 0. Do not infer function
-semantics from byte differences. Use apply_patch for edits. Keep generated output
-deterministic. Finalize the new raw log before adding its SHA-256 to
-logs/SHA256SUMS. Update FINDINGS.md and TIMELINE.md only with demonstrated facts.
+both immutable source hashes before and after. Express offsets through explicit
+logical-base translation, parse record lengths from each image, fail closed on
+malformed inputs, and keep generated output deterministic. Finalize the new raw
+log before adding its SHA-256 to `logs/SHA256SUMS`. Update `FINDINGS.md` and
+`TIMELINE.md` only with demonstrated facts.
 
-Run py_compile for changed Python, the full unittest suite, both existing
-analyzers on the appropriate images/bases, sha256sum -c logs/SHA256SUMS, and git
-diff --check. At the end report: files changed, exact commands, test counts,
-source hashes before/after, key factual results, assumptions/unresolved items,
-and an explicit statement that no device was accessed. Leave everything
-uncommitted for Codex review.
+Run `py_compile` for changed Python; from the repository directory run the full
+suite using exactly
+`python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"`; run the existing
+analyzers on the appropriate images/bases; then run
+`sha256sum -c logs/SHA256SUMS` and `git diff --check`. At the end report: files
+changed, exact commands, test counts, source hashes before/after, key factual
+results, assumptions/unresolved items, and an explicit statement that no device
+was accessed. Leave everything uncommitted for Codex review.
 ```
 
 ## Prompt template for later phases
@@ -439,4 +500,3 @@ successful when we have:
 - an experimental artifact clearly marked untested;
 - a reviewed recovery plan strong enough to justify a separate decision about a
   live experiment.
-

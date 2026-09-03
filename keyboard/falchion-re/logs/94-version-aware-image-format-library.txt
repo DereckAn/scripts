@@ -1,0 +1,334 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 1: version-aware image-format library
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed at any point in this phase
+
+SCOPE
+Phase 1 of notes/step6-offline-custom-firmware-plan.md: one shared parser and
+validation model for every later offline tool, so the Phase-2 comparator, the
+Phase-3 extractor and the Phase-7 builder never re-derive container offsets,
+record layout or checksum policy. No comparator, no mutation, no device I/O.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no lsusb/dfu-util/fwupd, no
+bootloader entry, no probe or backup tool run, no sudo, no package install, no
+network access, and no unlock/erase/program/reset/SPI construction. Both
+evidence binaries were opened read-only and are unchanged.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+ADDED FILES
+  tool/falchion_image.py       — immutable models, parsing, validation, source policy
+  tool/test_falchion_image.py  — 38 offline tests
+
+DESIGN
+  * Parsing (parse) may inspect an unknown image and fails closed with
+    ImageFormatError; it applies no pass/fail policy.
+  * Validation (validate) reports the known constraints and names every
+    region it could not check (skipped_containers, skipped_word_sums).
+  * Source policy (require_supported_source) refuses any image whose
+    SHA-256/base/size tuple is not allowlisted. Mutation tooling must call
+    it; read-only analysis must not.
+  * Every offset is a logical flash offset. File indices exist only inside
+    ImageView.index, which is the single translation point.
+  * Record lengths are read from the image being parsed. No vendor 1.00.58
+    length is reused for another release.
+  * to_dict() is the machine-readable result, so Phase 2+ never parses stdout.
+
+COMPILE
+$ python3 -m py_compile tool/falchion_image.py tool/test_falchion_image.py
+  [exit 0]
+  NOTE no output means both files compiled
+
+NEW LIBRARY ON THE VENDOR 1.00.58 FULL IMAGE (base 0)
+$ python3 tool/falchion_image.py
+  PROGRAM falchion_image
+  PURPOSE shared offline image-format parse and validation
+  IMAGE_BASE 0x0
+  IMAGE_SIZE 0x7c000
+  IMAGE_SHA256 6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+  SOURCE vendor-1.00.58-full
+  FWIN flash_off=0x10000 magic=True format_version='v1.0.00' entry_ptr=0x60011000 crc_gate=1
+  PRESENT_CONTAINERS primary,backup
+  RECORD 0 addr=0x60011000 flash=0x11000..0x168ac len=0x58ac checksum=0x5e75c17a dst=0x18000000
+  RECORD 1 addr=0x60021000 flash=0x21000..0x3f754 len=0x1e754 checksum=0x1a76c116 dst=0x18000000
+  WORD_SUM bootloader range=0x0..0x10000 stored=0xfb665ae3 computed=0xfb665ae3 match=True
+  WORD_SUM application range=0x10000..0x7c000 stored=0x5d27c5a9 computed=0x5d27c5a9 match=True
+  WORD_SUM bootloader_mirror range=0x61000..0x71000 stored=0xfb665ae3 computed=0xfb665ae3 match=True
+    PASS primary SNC7320A magic
+    PASS primary SN_BCFG magic
+    PASS primary bootloader pointer
+    PASS primary declared size
+    PASS primary slot0 -> SN_FWIN
+    PASS primary slot1 empty
+    PASS backup SNC7320A magic
+    PASS backup SN_BCFG magic
+    PASS backup bootloader pointer
+    PASS backup declared size
+    PASS backup slot0 -> SN_FWIN
+    PASS backup slot1 empty
+    PASS SN_FWIN magic
+    PASS SN_FWIN CRC-enable gate nonzero
+    PASS entry equals record[0] address
+    PASS record ranges inside application region
+    PASS record[0] checksum
+    PASS record[1] checksum
+    PASS entry initial-SP in observed RAM ranges
+    PASS entry reset vector is Thumb and within record[0] length
+    PASS bootloader word-sum
+    PASS application word-sum
+    PASS bootloader_mirror word-sum
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  LIMITATION Passing means the known constraints are internally consistent. It does not prove an edited image boots.
+  [exit 0]
+
+NEW LIBRARY ON THE INSTALLED 1.59 APPLICATION DUMP (base 0x10000)
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000
+  PROGRAM falchion_image
+  PURPOSE shared offline image-format parse and validation
+  IMAGE_BASE 0x10000
+  IMAGE_SIZE 0x6c000
+  IMAGE_SHA256 fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  SOURCE installed-1.59-application
+  FWIN flash_off=0x10000 magic=True format_version='v1.0.00' entry_ptr=0x60011000 crc_gate=1
+  PRESENT_CONTAINERS backup
+    SKIP primary container: absent from this image
+  RECORD 0 addr=0x60011000 flash=0x11000..0x168ac len=0x58ac checksum=0x7d552485 dst=0x18000000
+  RECORD 1 addr=0x60021000 flash=0x21000..0x3f780 len=0x1e780 checksum=0xeb0a9879 dst=0x18000000
+  WORD_SUM application range=0x10000..0x7c000 stored=0x2d7486db computed=0x2d7486db match=True
+  WORD_SUM bootloader_mirror range=0x61000..0x71000 stored=0xfb665ae3 computed=0xfb665ae3 match=True
+    SKIP bootloader word-sum: region absent from this image
+    PASS backup SNC7320A magic
+    PASS backup SN_BCFG magic
+    PASS backup bootloader pointer
+    PASS backup declared size
+    PASS backup slot0 -> SN_FWIN
+    PASS backup slot1 empty
+    PASS SN_FWIN magic
+    PASS SN_FWIN CRC-enable gate nonzero
+    PASS entry equals record[0] address
+    PASS record ranges inside application region
+    PASS record[0] checksum
+    PASS record[1] checksum
+    PASS entry initial-SP in observed RAM ranges
+    PASS entry reset vector is Thumb and within record[0] length
+    PASS application word-sum
+    PASS bootloader_mirror word-sum
+  RESULT known_checks_ok=True checks_run=16 containers_skipped=1 word_sums_skipped=1
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  LIMITATION Passing means the known constraints are internally consistent. It does not prove an edited image boots.
+  [exit 0]
+
+MACHINE-READABLE RESULT (installed dump, truncated to the fields that matter)
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 --json | python3 -c "import json,sys; d=json.load(sys.stdin); print('sha256', d['sha256']); print('base', hex(d['base']), 'size', hex(d['size'])); print('source', d['source']); print('ok', d['ok'], 'checks', len(d['checks'])); print('records', [(r['index'], hex(r['addr']), hex(r['length']), hex(r['stored_checksum'])) for r in d['records']]); print('word_sums', [(w['name'], hex(w['stored']), w['ok']) for w in d['word_sums']]); print('skipped', d['skipped_containers'], d['skipped_word_sums'])"
+  sha256 fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  base 0x10000 size 0x6c000
+  source installed-1.59-application
+  ok True checks 16
+  records [(0, '0x60011000', '0x58ac', '0x7d552485'), (1, '0x60021000', '0x1e780', '0xeb0a9879')]
+  word_sums [('application', '0x2d7486db', True), ('bootloader_mirror', '0xfb665ae3', True)]
+  skipped ['primary'] ['bootloader']
+  [exit 0]
+
+BOOTLOADER MIRROR IDENTITY (the evidence Phase 4 rests on)
+$ python3 -c "import hashlib
+v=open('dumps/vendor/M605_V01_00_58.bin','rb').read()
+i=open('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin','rb').read()
+m=i[0x61000-0x10000:0x71000-0x10000]
+print('installed mirror [0x61000,0x71000) sha256', hashlib.sha256(m).hexdigest())
+print('vendor  mirror [0x61000,0x71000) sha256', hashlib.sha256(v[0x61000:0x71000]).hexdigest())
+print('vendor primary [0x0,0x10000)     sha256', hashlib.sha256(v[0:0x10000]).hexdigest())
+print('installed mirror == vendor mirror ', m==v[0x61000:0x71000])
+print('installed mirror == vendor primary', m==v[0:0x10000])"
+  installed mirror [0x61000,0x71000) sha256 4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a
+  vendor  mirror [0x61000,0x71000) sha256 4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a
+  vendor primary [0x0,0x10000)     sha256 4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a
+  installed mirror == vendor mirror  True
+  installed mirror == vendor primary True
+  [exit 0]
+  NOTE the bootloader under static analysis is byte-for-byte present on the device; the unread installed primary [0,0x10000) and any ROM/first stage remain unresolved
+
+FAIL-CLOSED BEHAVIOUR (malformed input, one line, no traceback)
+$ python3 -c "import sys; sys.path.insert(0,'tool'); import falchion_image as fi; open('/tmp/falchion_phase1_broken.bin','wb').write(b'\\x00'*0x1000); sys.exit(fi.main(['/tmp/falchion_phase1_broken.bin']))"
+  RESULT known_checks_ok=False error=flash range 0x10000..0x10034 is absent from image base 0x0 size 0x1000
+  [exit 1]
+  NOTE exit 1 with a single RESULT line is the required fail-closed shape
+
+EXIT-GATE CHECK 1 — existing analyzers still produce their accepted results
+$ python3 tool/analyze_candidate_integrity.py | tail -n 12
+    [1] addr=0x60021000 len=0x1e754 dst=0x18000000 stored=0x1a76c116 calc=0x1a76c116 match=True
+  
+  WORD_SUMS
+    bootloader: stored=0xfb665ae3 calc=0xfb665ae3 match=True
+    application: stored=0x5d27c5a9 calc=0x5d27c5a9 match=True
+    PASS SN_FWIN magic
+    PASS record[0] checksum
+    PASS record[1] checksum
+    PASS bootloader word-sum
+    PASS application word-sum
+  
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | tail -n 12
+    [0] addr=0x60011000 len=0x58ac dst=0x18000000 stored=0x7d552485 calc=0x7d552485 match=True
+    [1] addr=0x60021000 len=0x1e780 dst=0x18000000 stored=0xeb0a9879 calc=0xeb0a9879 match=True
+  
+  WORD_SUMS
+    bootloader: SKIP (region absent from this partial image)
+    application: stored=0x2d7486db calc=0x2d7486db match=True
+    PASS SN_FWIN magic
+    PASS record[0] checksum
+    PASS record[1] checksum
+    PASS application word-sum
+  
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+Both analyzers are byte-for-byte unmodified in this phase. Their installed-dump
+output still matches logs/92-full-app-region-backup.txt: records
+(0x60011000,0x58ac,0x7d552485) and (0x60021000,0x1e780,0xeb0a9879), application
+word-sum 0x2d7486db, 12 boot checks, 1 container skipped.
+
+EXIT-GATE CHECK 2 — the new library agrees with them (AnalyzerParity tests)
+$ timeout 600 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" -p 'test_falchion_image.py' -v 2>&1 | grep -E '^(test_|Ran |OK|FAILED)'
+  test_boot_checks_match_analyze_boot_structures (test_falchion_image.AnalyzerParity.test_boot_checks_match_analyze_boot_structures) ... ok
+  test_checksums_match_analyze_candidate_integrity (test_falchion_image.AnalyzerParity.test_checksums_match_analyze_candidate_integrity) ... ok
+  test_chunked_crc_sum_matches_analyze_candidate_integrity (test_falchion_image.AnalyzerParity.test_chunked_crc_sum_matches_analyze_candidate_integrity) ... ok
+  test_records_match_analyze_candidate_integrity (test_falchion_image.AnalyzerParity.test_records_match_analyze_candidate_integrity) ... ok
+  test_gate_and_magic_regressions_are_reported (test_falchion_image.ChecksumFailure.test_gate_and_magic_regressions_are_reported) ... ok
+  test_mirror_region_change_fails_its_own_word_sum (test_falchion_image.ChecksumFailure.test_mirror_region_change_fails_its_own_word_sum) ... ok
+  test_record_payload_change_fails_only_the_dependent_fields (test_falchion_image.ChecksumFailure.test_record_payload_change_fails_only_the_dependent_fields) ... ok
+  test_installed_image_reports_skips (test_falchion_image.Cli.test_installed_image_reports_skips) ... ok
+  test_json_mode_is_parseable (test_falchion_image.Cli.test_json_mode_is_parseable) ... ok
+  test_malformed_image_prints_one_line_and_no_partial_report (test_falchion_image.Cli.test_malformed_image_prints_one_line_and_no_partial_report) ... ok
+  test_vendor_image_reports_pass (test_falchion_image.Cli.test_vendor_image_reports_pass) ... ok
+  test_bootloader_mirror_word_sum_is_present_in_both (test_falchion_image.Evidence.test_bootloader_mirror_word_sum_is_present_in_both)
+  test_full_vendor_image_validates (test_falchion_image.Evidence.test_full_vendor_image_validates) ... ok
+  test_fwin_version_is_the_container_format_string (test_falchion_image.Evidence.test_fwin_version_is_the_container_format_string) ... ok
+  test_installed_bootloader_mirror_equals_the_vendor_bootloader (test_falchion_image.Evidence.test_installed_bootloader_mirror_equals_the_vendor_bootloader)
+  test_installed_partial_image_matches_log_92 (test_falchion_image.Evidence.test_installed_partial_image_matches_log_92) ... ok
+  test_record_lengths_come_from_their_own_image (test_falchion_image.Evidence.test_record_lengths_come_from_their_own_image)
+  test_source_hashes_unchanged (test_falchion_image.Evidence.test_source_hashes_unchanged) ... ok
+  test_json_carries_the_facts_and_the_caveats (test_falchion_image.MachineReadable.test_json_carries_the_facts_and_the_caveats) ... ok
+  test_json_is_deterministic (test_falchion_image.MachineReadable.test_json_is_deterministic) ... ok
+  test_models_are_immutable (test_falchion_image.MachineReadable.test_models_are_immutable) ... ok
+  test_absent_containers_are_reported_not_dropped (test_falchion_image.Malformed.test_absent_containers_are_reported_not_dropped) ... ok
+  test_empty_image_fails_closed (test_falchion_image.Malformed.test_empty_image_fails_closed) ... ok
+  test_empty_record_table_fails_closed (test_falchion_image.Malformed.test_empty_record_table_fails_closed) ... ok
+  test_index_boundaries_are_inclusive_of_the_last_byte (test_falchion_image.Malformed.test_index_boundaries_are_inclusive_of_the_last_byte) ... ok
+  test_missing_fwin_header_fails_closed (test_falchion_image.Malformed.test_missing_fwin_header_fails_closed) ... ok
+  test_negative_base_rejected (test_falchion_image.Malformed.test_negative_base_rejected) ... ok
+  test_out_of_range_record_length_fails_closed (test_falchion_image.Malformed.test_out_of_range_record_length_fails_closed) ... ok
+  test_record_address_below_flash_base_fails_closed (test_falchion_image.Malformed.test_record_address_below_flash_base_fails_closed) ... ok
+  test_unaligned_image_size_rejected (test_falchion_image.Malformed.test_unaligned_image_size_rejected) ... ok
+  test_unterminated_record_table_fails_closed (test_falchion_image.Malformed.test_unterminated_record_table_fails_closed) ... ok
+  test_word_sum_range_bounds (test_falchion_image.Malformed.test_word_sum_range_bounds) ... ok
+  test_wrong_base_fails_closed_instead_of_misreading (test_falchion_image.Malformed.test_wrong_base_fails_closed_instead_of_misreading) ... ok
+  test_zero_length_crc_rejected (test_falchion_image.Malformed.test_zero_length_crc_rejected) ... ok
+  test_both_preserved_images_are_supported (test_falchion_image.SourcePolicy.test_both_preserved_images_are_supported) ... ok
+  test_changed_byte_is_refused (test_falchion_image.SourcePolicy.test_changed_byte_is_refused) ... ok
+  test_right_bytes_wrong_base_is_refused (test_falchion_image.SourcePolicy.test_right_bytes_wrong_base_is_refused) ... ok
+  test_unknown_image_still_parses_for_analysis (test_falchion_image.SourcePolicy.test_unknown_image_still_parses_for_analysis) ... ok
+  Ran 38 tests in 0.056s
+  OK
+  [exit 0]
+
+EXIT-GATE CHECK 3 — complete offline suite, exact plan invocation
+$ timeout 600 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmpnedmyp3v/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp5s_01fi8/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp4omowo6c/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpbknp6b0h/dump.bin
+  Ran 174 tests in 1.296s
+  OK
+  [exit 0]
+  NOTE 174 tests = the 136 previously accepted plus 38 new ones
+
+NEW FACTS ESTABLISHED IN THIS PHASE
+  1. The installed 1.59 record[1] length is 0x1e780; the vendor 1.00.58 value
+     is 0x1e754. The application record grew by 44 bytes. record[0] length
+     (0x58ac) and both load addresses (0x60011000, 0x60021000) are unchanged.
+  2. The installed dump's logical range [0x61000,0x71000) is byte-identical to
+     the vendor 1.00.58 backup range [0x61000,0x71000) and to its primary
+     bootloader region [0,0x10000); all three hash to
+     4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a. The
+     bootloader already under static analysis therefore exists on the device as
+     the mirrored copy. This does not cover the unread installed primary region
+     [0,0x10000), which container the device actually booted, or ROM behaviour.
+  3. The additive word-sum guard of the mirrored bootloader copy validates in
+     both images: logical [0x61000,0x71000), guard word at 0x70ffc, value
+     0xfb665ae3 — the same value the primary region stores at 0x0fffc. The
+     library reports this as a third word-sum region, 'bootloader_mirror',
+     which analyze_candidate_integrity.py does not cover.
+  4. The SN_FWIN +0x8 string is 'v1.0.00' in both images. It is the container
+     format version and does not track the ASUS release version.
+
+ASSUMPTIONS AND DELIBERATE LIMITS
+  * No existing analyzer was refactored. The plan permits refactoring only
+    where regression tests preserve known output; analyze_sonix_firmware.py and
+    analyze_candidate_b_tables.py have no tests at all, and the two covered
+    analyzers are the reference implementations that logs 74-92 were produced
+    with. Instead the new library is self-contained and four AnalyzerParity
+    tests prove it agrees with both on the two real images, so a later
+    refactor can be a separate reviewed change.
+  * chunked_crc_sum keeps the source's word-aligned pointer advance
+    (pos += size & 0xfffffffc) for bit-exact parity with the audited
+    implementation. It can only differ from size on the final chunk, after
+    which nothing is left to read.
+  * SP_RANGES, EXPECTED_CONTAINER_SIZE, the container table and the
+    application region bounds are carried over unchanged from
+    analyze_boot_structures.py; this phase re-homed them, it did not re-derive
+    them from the bootloader.
+  * validate() reports internal consistency only. The UNRESOLVED lines
+    (FUN_000029d4, the top-level selected-entry comparison, ROM/first-stage)
+    are attached to every result so a pass is never read as 'this boots'.
+  * The mirrored copy at [0x61000,0x71000) carries a third SNC7320A/SN_BCFG
+    header at 0x61000 whose bootloader pointer is 0x60001000. It is not
+    modelled as a container here; the container table still holds exactly the
+    two the bootloader is known to consult (0x0 and 0x60000).
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check
+  [exit 0]
+  NOTE no output means no whitespace errors
+
+$ git status --short
+   M logs/COMMANDS.md
+   M logs/SHA256SUMS
+  M  notes/step6-offline-custom-firmware-plan.md
+  ?? logs/94-version-aware-image-format-library.txt
+  ?? tool/falchion_image.py
+  ?? tool/test_falchion_image.py
+  [exit 0]
+
+RESULT
+Phase 1 complete. tool/falchion_image.py is the single shared parser,
+validation model and mutation-source gate for the later phases. 174 offline
+tests pass under the exact invocation the plan requires, both evidence hashes
+are unchanged, the accepted analyzers still produce their published results,
+the installed-dump results still match log 92, and malformed inputs fail
+closed with a single line and no partial report. No device was accessed.
+Left uncommitted for Codex review. Phase 2 not started.
