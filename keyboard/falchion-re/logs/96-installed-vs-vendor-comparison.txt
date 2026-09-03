@@ -1,0 +1,351 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 2: installed 1.59 versus vendor 1.00.58
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed at any point in this phase
+
+SCOPE
+Phase 2 of notes/step6-offline-custom-firmware-plan.md: establish precisely what
+changed between the two preserved images before either is interpreted. This log
+records facts about byte ranges. It assigns no meaning to any change; that is
+Phase 3 onward.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no lsusb/dfu-util/fwupd, no
+bootloader entry, no probe or backup tool run, no sudo, no package install, no
+network access, and no unlock/erase/program/reset/SPI construction. Both
+evidence binaries were opened read-only and are unchanged.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+ADDED FILES
+  tool/compare_firmware_images.py       — offline read-only comparator
+  tool/test_compare_firmware_images.py  — 41 offline tests
+  notes/installed-vs-vendor.md          — human-readable report
+  notes/installed-vs-vendor.json        — complete deterministic result
+
+DESIGN
+  * All structure parsing, offset translation and checksum policy come from
+    the Phase-1 falchion_image module. The comparator adds no second SN_FWIN
+    parser and no second copy of the offset rules.
+  * The installed dump covers logical [0x10000,0x7c000), so the vendor file is
+    read over the same logical range through ImageView.index. Byte 0 is never
+    compared against byte 0.
+  * Both inputs must be allowlisted sources. --analysis-only lifts that after
+    printing a warning that the results must not be cited as evidence about
+    the shipped firmware. The comparator implements this refusal itself rather
+    than calling require_supported_source, which is the mutation gate.
+  * Markdown and JSON render one model. The JSON is complete; the Markdown
+    tables the 25 longest differing ranges and says so.
+
+COMPILE
+$ python3 -m py_compile tool/compare_firmware_images.py tool/test_compare_firmware_images.py
+  [exit 0]
+  NOTE no output means both files compiled
+
+HEADLINE RESULT
+$ python3 tool/compare_firmware_images.py | sed -n '/## Whole-range result/,/^## Contiguous/p'
+  ## Whole-range result
+  
+  - installed range SHA-256: `fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b`
+  - vendor range SHA-256: `b9c35b2339b2d6316bdab5bb2799e28b89454fd5c2c133b89827902b7a2403c1`
+  - ranges equal: **False**
+  - differing bytes: **101297** of 442368 (22.90%)
+  - contiguous differing ranges: **3509**
+  - changed `0x1000` pages: **39** of 108
+  
+  ## Contiguous differing ranges
+  [exit 0]
+
+RECORD PAYLOADS
+$ python3 tool/compare_firmware_images.py | sed -n '/## Record payloads/,/^## Word sums/p'
+  ## Record payloads
+  
+  Slots are physical slot indices in the fixed eight-slot table. Where the
+  lengths differ, differing ranges cover the common prefix only.
+  
+  | slot | addr | installed len | vendor len | delta | differing bytes | ranges |
+  |---|---|---|---|---|---|---|
+  | 0 | `0x60011000` | `0x58ac` | `0x58ac` | +0 | 131 | 106 |
+  | 1 | `0x60021000` | `0x1e780` | `0x1e754` | +44 | 101112 | 3399 |
+  
+  - slot 0 installed payload SHA-256: `f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835`
+  - slot 0 vendor payload SHA-256: `a0f4ddd2ce0b5f57a6bbf6eb6b10b3d5e58d886ec8f5d866de46d8b6615e988b`
+  - slot 0 stored checksums: installed `0x7d552485`, vendor `0x5e75c17a`
+  - slot 1 installed payload SHA-256: `ccbd61f85dade3d2d7db2d3ccac89158f6fba2cf1b97c7997e19f5f47a289b81`
+  - slot 1 vendor payload SHA-256: `8fe68a13d7a0cd3bf8b4fd0dbe0575c0b7e67c1d4373e8d63970cf248684e668`
+  - slot 1 stored checksums: installed `0xeb0a9879`, vendor `0x1a76c116`
+  
+  ## Word sums
+  [exit 0]
+
+WORD SUMS
+$ python3 tool/compare_firmware_images.py | sed -n '/## Word sums/,/^## Bootloader copy/p'
+  ## Word sums
+  
+  | region | installed stored | installed computed | vendor stored | vendor computed |
+  |---|---|---|---|---|
+  | `application` | `0x2d7486db` | `0x2d7486db` | `0x5d27c5a9` | `0x5d27c5a9` |
+  | `bootloader` | absent | absent | `0xfb665ae3` | `0xfb665ae3` |
+  | `bootloader_mirror` | `0xfb665ae3` | `0xfb665ae3` | `0xfb665ae3` | `0xfb665ae3` |
+  
+  Skipped in the installed dump (region absent): `bootloader`.
+  
+  ## Bootloader copy, three-way
+  [exit 0]
+
+BOOTLOADER COPY, THREE-WAY
+$ python3 tool/compare_firmware_images.py | sed -n '/## Bootloader copy/,/^## Region map/p'
+  ## Bootloader copy, three-way
+  
+  Installed logical `0x61000..0x71000` against the
+  same vendor range and against the vendor primary bootloader region
+  `0x0..0x10000`.
+  
+  - installed mirror SHA-256: `4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a`
+  - vendor mirror SHA-256: `4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a`
+  - vendor primary SHA-256: `4a4568b61bc245397b0ede6f285eb1bd8a7fa2018bc1373bc05e73eabb0f686a`
+  - installed mirror vs vendor mirror: 0 differing ranges
+  - installed mirror vs vendor primary: 0 differing ranges
+  
+  This shows the bootloader bytes under static analysis are present on the
+  device as the mirrored copy. It says nothing about the unread installed
+  primary region, which container the device booted, or ROM behaviour.
+  
+  ## Region map
+  [exit 0]
+
+REGION MAP AND CHANGED PAGES
+$ python3 tool/compare_firmware_images.py | sed -n '/## Region map/,/^## Strings/p'
+  ## Region map
+  
+  Consecutive `0x1000` pages collapsed by change state and fill.
+  
+  | logical range | pages | changed | installed | vendor |
+  |---|---|---|---|---|
+  | `0x10000..0x17000` | 7 | yes | data | data |
+  | `0x17000..0x21000` | 10 | no | ff | ff |
+  | `0x21000..0x40000` | 31 | yes | data | data |
+  | `0x40000..0x60000` | 32 | no | zero | zero |
+  | `0x60000..0x71000` | 17 | no | data | data |
+  | `0x71000..0x74000` | 3 | no | zero | zero |
+  | `0x74000..0x79000` | 5 | no | data | data |
+  | `0x79000..0x7b000` | 2 | no | zero | zero |
+  | `0x7b000..0x7c000` | 1 | yes | data | data |
+  
+  ## Changed pages
+  
+  `0x10000`, `0x11000`, `0x12000`, `0x13000`, `0x14000`, `0x15000`, `0x16000`, `0x21000`, `0x22000`, `0x23000`, `0x24000`, `0x25000`, `0x26000`, `0x27000`, `0x28000`, `0x29000`, `0x2a000`, `0x2b000`, `0x2c000`, `0x2d000`, `0x2e000`, `0x2f000`, `0x30000`, `0x31000`, `0x32000`, `0x33000`, `0x34000`, `0x35000`, `0x36000`, `0x37000`, `0x38000`, `0x39000`, `0x3a000`, `0x3b000`, `0x3c000`, `0x3d000`, `0x3e000`, `0x3f000`, `0x7b000`
+  
+  ## Strings
+  [exit 0]
+
+STRINGS
+$ python3 tool/compare_firmware_images.py | sed -n '/## Strings/,/^Added:/p'
+  ## Strings
+  
+  ASCII runs of at least 6 printable bytes. Substrings of a longer hit are
+  dropped. A removed string paired with an addition at difflib ratio >= 0.8 is reported once as changed.
+  
+  - present in both: 603
+  - added: 0
+  - removed: 0
+  - changed: 0
+  
+  Added:
+  [exit 0]
+
+FAIL-CLOSED AND SOURCE-POLICY BEHAVIOUR
+$ python3 tool/compare_firmware_images.py --installed-base 0x0
+  RESULT compared=False error=the installed image does not cover logical 0x10000..0x7c000 at base 0x0
+  [exit 1]
+  NOTE a wrong base fails closed on one line with exit 1, no traceback and no partial report; this is the bounds guard, not the source policy
+
+$ python3 - <<'PY'
+import io, sys
+sys.path.insert(0, 'tool')
+import compare_firmware_images as c, falchion_image as fi
+data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+data[0x41000] ^= 0xff
+left = fi.ImageView(bytes(data[0x10000:0x7c000]), 0x10000)
+right = fi.ImageView(bytes(open('dumps/vendor/M605_V01_00_58.bin','rb').read()), 0)
+result = c.compare(left, right)
+stream = io.StringIO()
+print('default  allowed:', c.check_sources(result, False, stream))
+print('  ', stream.getvalue().strip()[:110], '...')
+stream = io.StringIO()
+print('analysis allowed:', c.check_sources(result, True, stream))
+print('  ', stream.getvalue().strip()[:110], '...')
+PY
+  default  allowed: False
+     RESULT compared=False error=unknown source image(s): installed; expected an allowlisted SHA-256/base/size tupl ...
+  analysis allowed: True
+     WARNING installed is not an allowlisted source image. Every conclusion below describes bytes of unverified pro ...
+  [exit 0]
+
+ARTIFACTS WRITTEN
+$ python3 tool/compare_firmware_images.py > notes/installed-vs-vendor.md && python3 tool/compare_firmware_images.py --json > notes/installed-vs-vendor.json && wc -c notes/installed-vs-vendor.md notes/installed-vs-vendor.json
+    6062 notes/installed-vs-vendor.md
+  615369 notes/installed-vs-vendor.json
+  621431 total
+  [exit 0]
+
+$ sha256sum notes/installed-vs-vendor.md notes/installed-vs-vendor.json
+  ea2bcee45f23759f26a0be7f95c01ef16cd47623c9aab39dd6b761c7f67a0bb4  notes/installed-vs-vendor.md
+  8320b12b6facfc724649db25916f31ca88313f9cef7d539b0beca801968c32d4  notes/installed-vs-vendor.json
+  [exit 0]
+
+EXIT-GATE CHECK — Markdown, JSON and this log agree on every count
+$ python3 - <<'PY'
+import json, re
+payload = json.load(open('notes/installed-vs-vendor.json'))
+text = open('notes/installed-vs-vendor.md').read()
+pairs = [
+    ('differing bytes', payload['differing_bytes'], 101297),
+    ('differing ranges', payload['differing_range_count'], 3509),
+    ('range entries in json', len(payload['differing_ranges']), 3509),
+    ('pages', len(payload['pages']), 108),
+    ('changed pages', payload['changed_page_count'], 39),
+    ('changed page entries', len(payload['changed_pages']), 39),
+]
+for name, got, expected in pairs:
+    print('%-22s json=%-8s expected=%-8s match=%s' % (name, got, expected, got == expected))
+for value in (101297, 3509, 39):
+    print('markdown mentions %-7s %s' % (value, ('**%d**' % value) in text))
+print('json range sum equals total:', sum(r['length'] for r in payload['differing_ranges']) == payload['differing_bytes'])
+print('json page diff sum equals total:', sum(p['differing_bytes'] for p in payload['pages']) == payload['differing_bytes'])
+PY
+  differing bytes        json=101297   expected=101297   match=True
+  differing ranges       json=3509     expected=3509     match=True
+  range entries in json  json=3509     expected=3509     match=True
+  pages                  json=108      expected=108      match=True
+  changed pages          json=39       expected=39       match=True
+  changed page entries   json=39       expected=39       match=True
+  markdown mentions 101297  True
+  markdown mentions 3509    True
+  markdown mentions 39      True
+  json range sum equals total: True
+  json page diff sum equals total: True
+  [exit 0]
+  NOTE the raw counts in this log, the Markdown note and the JSON all derive from the same model and are cross-checked here
+
+EXIT-GATE CHECK — deterministic JSON
+$ python3 tool/compare_firmware_images.py --json | sha256sum; python3 tool/compare_firmware_images.py --json | sha256sum
+  8320b12b6facfc724649db25916f31ca88313f9cef7d539b0beca801968c32d4  -
+  8320b12b6facfc724649db25916f31ca88313f9cef7d539b0beca801968c32d4  -
+  [exit 0]
+  NOTE two independent runs hash identically
+
+EXIT-GATE CHECK — existing analyzers still accept both images
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  [exit 0]
+
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=16 containers_skipped=1 word_sums_skipped=1
+  [exit 0]
+
+EXIT-GATE CHECK — complete offline suite, exact plan invocation
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmpdkjfg784/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpx7_epoyh/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpr9rk_j4j/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpfy9rletg/dump.bin
+  Ran 220 tests in 2.037s
+  OK
+  [exit 0]
+  NOTE 220 tests = 179 accepted in Phase 1 plus 41 comparator tests
+
+FACTS ESTABLISHED IN THIS PHASE
+  1. Over logical [0x10000,0x7c000) the two images differ in 101,297 of
+     442,368 bytes (22.90%), in 3,509 contiguous ranges, touching 39 of 108
+     0x1000 pages. First difference 0x1002c, last range ends at 0x7c000.
+  2. Every change is confined to three runs: [0x10000,0x17000),
+     [0x21000,0x40000) and [0x7b000,0x7c000). Everything else is identical,
+     including the whole container/bootloader-copy area [0x60000,0x71000),
+     the 0xff fill [0x17000,0x21000), the zero fill [0x40000,0x60000) and
+     [0x71000,0x74000) and [0x79000,0x7b000), and the RAM image
+     [0x74000,0x79000).
+  3. Record slot 0 keeps its length 0x58ac and differs in 131 bytes across
+     106 ranges. Record slot 1 grows from 0x1e754 to 0x1e780 (+44) and
+     differs in 101,112 bytes across 3,399 ranges over the common prefix.
+     Neither record moved: both remain at 0x60011000 and 0x60021000.
+  4. The installed mirrored bootloader copy [0x61000,0x71000) is identical to
+     both the vendor backup range and the vendor primary region [0,0x10000),
+     with zero differing ranges in either comparison.
+  5. All 603 ASCII strings of six or more printable bytes are present in both
+     images. Nothing was added, removed, or rewritten. The changed regions
+     therefore carry no plain-text string differences at all.
+  6. Both images independently satisfy their own known structural checks and
+     word sums: application 0x2d7486db installed against 0x5d27c5a9 vendor,
+     bootloader_mirror 0xfb665ae3 in both.
+
+ASSUMPTIONS AND DELIBERATE LIMITS
+  * No function, field or behavior is inferred from any changed range. The
+     report states this and repeats the three open UNRESOLVED items.
+  * Record diff ranges cover the common prefix only. Slot 1's extra 44 bytes
+    have no counterpart in the vendor image and are reported as a length
+    delta, not as a difference.
+  * The comparator refuses a record slot that is active in only one image, or
+    a record whose address moved, instead of guessing a correspondence.
+  * String comparison uses ASCII runs of at least six printable bytes, drops
+    substrings of longer hits, and pairs a removal with an addition at difflib
+    ratio >= 0.8 so a rewrite is reported once. It is a text-level signal and
+    cannot see changes inside compressed or non-ASCII data.
+  * Region classification is per-0x1000 page and collapsed into runs. A run
+    marked unchanged means every page in it is byte-identical.
+  * The Markdown note tables the 25 longest differing ranges and says so; the
+    JSON carries all 3,509 plus all 108 page hashes.
+  * Phase 1 was corrected under independent review in log 95 and had not been
+    formally accepted when this phase was executed at the owner's direction.
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  [exit 0]
+  NOTE no output means no whitespace errors in either the worktree or the index
+
+$ git status --short
+  ?? logs/96-installed-vs-vendor-comparison.txt
+  ?? notes/installed-vs-vendor.json
+  ?? notes/installed-vs-vendor.md
+  ?? tool/compare_firmware_images.py
+  ?? tool/test_compare_firmware_images.py
+  [exit 0]
+
+RESULT
+Phase 2 complete. The two preserved images are compared over one aligned
+logical range with a single shared parser; the differences are fully
+enumerated and confined to three region runs; the record table, payload
+hashes, word sums and the three-way bootloader-copy relationship are all
+recorded; and the Markdown note, the JSON result and this log agree on every
+count. 220 offline tests pass under the pinned invocation, both evidence
+hashes are unchanged, and no device was accessed. Phase 3 not started;
+everything left uncommitted for review.

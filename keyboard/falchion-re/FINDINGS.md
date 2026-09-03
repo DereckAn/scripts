@@ -1074,6 +1074,70 @@ Results for both preserved images are unchanged. `analyze_candidate_integrity.py
 terminator assumption; a test pins the divergence, and reconciling them is a
 prerequisite for Phase 7 mutation.
 
+### Installed 1.59 versus vendor 1.00.58, byte-exact (log 96)
+
+Step 6 Phase 2 added `tool/compare_firmware_images.py`, built on the Phase-1
+parser so no second SN_FWIN parser or offset policy exists, plus 41 tests. It
+compares the installed dump against the *same logical range* of the vendor file,
+`[0x10000,0x7c000)`, and refuses inputs that are not allowlisted sources unless
+`--analysis-only` is given with a warning. The full result is
+`notes/installed-vs-vendor.md` and `notes/installed-vs-vendor.json`.
+
+Nothing below assigns meaning to a changed range. A changed byte range is a fact;
+its purpose is a Phase-3-onward hypothesis.
+
+- **Scale of the change.** 101,297 of 442,368 bytes differ (22.90%), in 3,509
+  contiguous ranges, touching 39 of 108 `0x1000` pages. The first difference is
+  at `0x1002c` — inside the SN_FWIN header, immediately after the `0x00..0x2b`
+  prefix that log 91 already showed matching — and the last range ends at
+  `0x7c000`.
+- **Every change is confined to three runs.** `[0x10000,0x17000)`,
+  `[0x21000,0x40000)` and `[0x7b000,0x7c000)`. Everything else in the
+  application region is byte-identical between releases, including the whole
+  container and bootloader-copy area `[0x60000,0x71000)`, the `0xff` fill
+  `[0x17000,0x21000)`, the zero fill `[0x40000,0x60000)`, `[0x71000,0x74000)`
+  and `[0x79000,0x7b000)`, and the independently executable RAM image
+  `[0x74000,0x79000)`.
+- **Records.** Slot 0 keeps its length `0x58ac` and differs in 131 bytes across
+  106 ranges. Slot 1 grows from `0x1e754` to `0x1e780`, and differs in 101,112
+  bytes across 3,399 ranges over the common prefix `0x21000..0x3f754`. Its extra
+  44 bytes are reported as the explicit installed-only span
+  `0x3f754..0x3f780`, which has no vendor counterpart to differ from. Neither
+  record moved and neither runtime destination changed: source addresses are
+  still `0x60011000` and `0x60021000` and both destinations are still
+  `0x18000000`. Both stored checksums changed. Payload SHA-256 values for all
+  four slices are in the note and JSON.
+- **No string changed.** Each image contains 802 occurrences of 603 distinct
+  ASCII runs of six or more printable bytes, and the two *multisets are equal* —
+  same values, same occurrence counts. Nothing was added, removed, rewritten, or
+  duplicated a different number of times. So the changed regions carry no
+  plain-text differences, which is consistent with slot 1 being compressed but is
+  not by itself evidence of that. Offsets are not compared: an equal multiset
+  does not mean identical placement, and the byte-range diff above is what
+  carries position.
+- **The bootloader copy is identical three ways**, confirming log 94 with an
+  independent code path: installed `[0x61000,0x71000)`, vendor
+  `[0x61000,0x71000)` and vendor `[0,0x10000)` all hash to
+  `4a4568b6…686a`, with zero differing ranges in either pairing.
+
+The comparator refuses rather than guesses on two layout changes it does not
+model: a record slot active in only one image, and a record whose address moved.
+
+**Corrections after independent review (log 97).** Five defects were found and
+fixed. Record destinations (`dst`) were parsed but omitted from both renderings,
+so a runtime-load-address change could have passed unreported; both images'
+complete record fields are now reported with explicit `addr_changed`,
+`dst_changed` and `checksum_changed` flags. Provenance was checked *after*
+`compare()` ran, contrary to the plan's "verify both tuples before analysis";
+the allowlist gate now runs before any parsing, hashing or diffing.
+`--analysis-only --json` emitted the warning on stdout ahead of the document and
+so produced unparseable JSON; the warning now goes to stderr and the waiver is
+also recorded structurally under a `provenance` key. The string comparison
+counted distinct values only and was described as "603 ASCII runs"; it now
+compares multisets and reports 603 distinct values in 802 occurrences, so a
+changed duplicate count cannot vanish. Slot 1's extra 44 bytes were disclosed
+only as a scalar length delta and are now an explicit span.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

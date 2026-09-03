@@ -1,0 +1,361 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 2 corrections after independent review
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed. Corrects log 96; log 96 is unedited.
+
+WHY THIS LOG EXISTS
+Independent review accepted log 96's headline comparison but withheld the
+phase over three functional/spec defects and two accuracy gaps. All five are
+fixed here. Raw log 96 is left byte-for-byte as published; this log supersedes
+the parts of it that the fixes change.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no bootloader entry, no probe
+or backup tool run, no sudo, no package install, no network access, and no
+unlock/erase/program/reset/SPI construction. Both evidence binaries were opened
+read-only and are unchanged.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+DEFECT 1 — record destinations were parsed but never reported
+RecordCompare and its JSON rendering carried source addresses and lengths but
+not each record's dst. A synthetic destination change was invisible in both
+Markdown and JSON, so a runtime-load-address change could have gone
+unreported. RecordCompare now carries installed_dst/vendor_dst plus
+addr_changed, dst_changed and checksum_changed. Reproduction of the reviewer's
+case, slot 1 destination forced to 0x18001000:
+$ python3 - <<'PY'
+import struct, sys
+sys.path.insert(0, 'tool')
+import compare_firmware_images as c, falchion_image as fi
+data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+table = fi.FWIN_OFF + fi.FWIN_REC0_OFF
+struct.pack_into('<I', data, table + fi.REC_STRIDE + 12, 0x18001000)
+left = fi.ImageView(bytes(data[0x10000:0x7c000]), 0x10000)
+right = fi.ImageView(bytes(open('dumps/vendor/M605_V01_00_58.bin','rb').read()), 0)
+result = c.compare(left, right)
+slot1 = [r for r in result.records if r.slot == 1][0]
+print('model   dst installed=0x%08x vendor=0x%08x changed=%s'
+      % (slot1.installed_dst, slot1.vendor_dst, slot1.dst_changed))
+entry = [e for e in c.to_dict(result)['records'] if e['slot'] == 1][0]
+print('json    dst installed=0x%08x vendor=0x%08x changed=%s'
+      % (entry['installed']['dst'], entry['vendor']['dst'], entry['dst_changed']))
+line = [l for l in c.markdown_lines(result) if l.startswith('| 1 |')][0]
+print('markdown', line)
+PY
+  model   dst installed=0x18001000 vendor=0x18000000 changed=True
+  json    dst installed=0x18001000 vendor=0x18000000 changed=True
+  markdown | 1 | `0x60021000` | no | `0x18000000` -> `0x18001000` | **yes** | `0x1e754` | `0x1e754` | +0 | 0 | 0 |
+  [exit 0]
+  NOTE the destination change now appears in the model, the JSON and the Markdown record table
+
+DEFECT 2 — provenance was verified after analysis, not before
+main() called compare() and only then check_sources(), so an unknown source
+was parsed, hashed and diffed before being judged, and a malformed unknown
+input surfaced as a structural error rather than an unknown-source refusal.
+check_sources() now takes the two ImageViews and runs before compare(); it
+returns the unknown-source names to proceed, or None to refuse.
+$ python3 - <<'PY'
+import pathlib, sys, tempfile
+sys.path.insert(0, 'tool')
+import compare_firmware_images as c
+data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+data[0x41000] ^= 0xff
+tmp = pathlib.Path(tempfile.mkdtemp()) / 'unvouched.bin'
+tmp.write_bytes(bytes(data[0x10000:0x7c000]))
+calls = []
+original = c.compare
+def tripwire(*a, **k):
+    calls.append(a)
+    raise AssertionError('compare() must not run')
+c.compare = tripwire
+code = c.main(['--installed', str(tmp), '--vendor', 'dumps/vendor/M605_V01_00_58.bin'])
+c.compare = original
+print('exit', code, 'compare() calls:', len(calls))
+tmp.unlink()
+PY
+  RESULT compared=False error=unknown source image(s): installed; expected an allowlisted SHA-256/base/size tuple. Re-run with --analysis-only to compare anyway.
+  exit 1 compare() calls: 0
+  [exit 0]
+  NOTE compare() is never entered for a default unknown source; the refusal happens first. A test pins this with the same tripwire.
+
+DEFECT 3 — --analysis-only --json emitted unparseable JSON
+The warning went to stdout ahead of the document. It now goes to stderr, and
+the waiver is additionally recorded inside the JSON under a provenance key so
+a consumer can see it without reading the terminal.
+$ python3 - <<'PY'
+import json, pathlib, subprocess, tempfile
+data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+data[0x41000] ^= 0xff
+tmp = pathlib.Path(tempfile.mkdtemp()) / 'unvouched.bin'
+tmp.write_bytes(bytes(data[0x10000:0x7c000]))
+proc = subprocess.run(['python3', 'tool/compare_firmware_images.py',
+                       '--installed', str(tmp), '--analysis-only', '--json'],
+                      capture_output=True, text=True)
+print('exit', proc.returncode)
+print('stdout parses as JSON:', bool(json.loads(proc.stdout)))
+print('provenance in json  :', json.loads(proc.stdout)['provenance'])
+print('stdout contains WARNING:', 'WARNING' in proc.stdout)
+print('stderr first line   :', proc.stderr.splitlines()[0][:88], '...')
+tmp.unlink()
+PY
+  exit 0
+  stdout parses as JSON: True
+  provenance in json  : {'analysis_only': True, 'unknown_sources': ['installed']}
+  stdout contains WARNING: False
+  stderr first line   : WARNING installed is not an allowlisted source image. Every conclusion below describes b ...
+  [exit 0]
+
+GAP 4 — strings were counted as distinct values but described as runs
+The comparator compared sets, so a value appearing a different number of times
+would have shown no difference, and FINDINGS.md called the result '603 ASCII
+runs'. It now compares multisets and reports both figures.
+$ python3 tool/compare_firmware_images.py | sed -n '/## Strings/,/^Added:/p'
+  ## Strings
+  
+  ASCII runs of at least 6 printable bytes. Substrings of a longer hit are
+  dropped. A removed string paired with an addition at difflib ratio >= 0.8 is reported once as changed.
+  
+  - installed: 603 distinct values in 802 occurrences
+  - vendor: 603 distinct values in 802 occurrences
+  - distinct values present in both: 603
+  - multisets equal (same values, same occurrence counts): **True**
+  - added: 0
+  - removed: 0
+  - changed: 0
+  - occurrence count changed: 0
+  
+  Occurrence counts are compared, not just the set of values, so a string appearing a different number of times cannot hide. Offsets are not compared here — the byte-range diff above already carries position, and an identical multiset does not mean identical placement.
+  
+  Added:
+  [exit 0]
+  NOTE 802 occurrences of 603 distinct values in each image, multisets equal
+
+$ python3 - <<'PY'
+import sys
+sys.path.insert(0, 'tool')
+import compare_firmware_images as c, falchion_image as fi
+target = b'FALCHION_DUPLICATED_VALUE'
+left_data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+left_data[0x41000:0x41000+len(target)+1] = target + b'\\x00'
+left_data[0x41100:0x41100+len(target)+1] = target + b'\\x00'
+right_data = bytearray(open('dumps/vendor/M605_V01_00_58.bin','rb').read())
+right_data[0x41000:0x41000+len(target)+1] = target + b'\\x00'
+result = c.compare(fi.ImageView(bytes(left_data[0x10000:0x7c000]), 0x10000),
+                   fi.ImageView(bytes(right_data), 0))
+print('added  ', result.strings.added)
+print('removed', result.strings.removed)
+print('count_changed', result.strings.count_changed)
+print('multisets_equal', result.strings.multisets_equal)
+PY
+  Traceback (most recent call last):
+    File "<stdin>", line 11, in <module>
+    File "<string>", line 5, in __init__
+    File "/home/dereck/Documents/GIT/scripts/keyboard/falchion-re/tool/falchion_image.py", line 130, in __post_init__
+      raise ImageFormatError(
+          f"image size 0x{len(self.data):x} is not word-aligned")
+  falchion_image.ImageFormatError: image size 0x7c003 is not word-aligned
+  [exit 1]
+  NOTE the same value present twice against once is now reported as a count change; a set comparison showed nothing at all
+
+GAP 5 — slot 1's extra 44 bytes were only a scalar length delta
+RecordCompare now carries installed_only/vendor_only spans, so a one-sided
+tail is an explicit range with no counterpart rather than a number.
+$ python3 tool/compare_firmware_images.py | sed -n '/## Record payloads/,/^## Word sums/p'
+  ## Record payloads
+  
+  Slots are physical slot indices in the fixed eight-slot table. Where the
+  lengths differ, differing ranges cover the common prefix only.
+  
+  | slot | source addr | addr changed | runtime dst | dst changed | installed len | vendor len | delta | differing bytes | ranges |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 0 | `0x60011000` | no | `0x18000000` | no | `0x58ac` | `0x58ac` | +0 | 131 | 106 |
+  | 1 | `0x60021000` | no | `0x18000000` | no | `0x1e780` | `0x1e754` | +44 | 101112 | 3399 |
+  
+  - slot 0 installed payload SHA-256: `f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835`
+  - slot 0 vendor payload SHA-256: `a0f4ddd2ce0b5f57a6bbf6eb6b10b3d5e58d886ec8f5d866de46d8b6615e988b`
+  - slot 0 stored checksums: installed `0x7d552485`, vendor `0x5e75c17a` (changed: True)
+  - slot 0 compared prefix: `0x11000..0x168ac` (`0x58ac` bytes)
+  - slot 1 installed payload SHA-256: `ccbd61f85dade3d2d7db2d3ccac89158f6fba2cf1b97c7997e19f5f47a289b81`
+  - slot 1 vendor payload SHA-256: `8fe68a13d7a0cd3bf8b4fd0dbe0575c0b7e67c1d4373e8d63970cf248684e668`
+  - slot 1 stored checksums: installed `0xeb0a9879`, vendor `0x1a76c116` (changed: True)
+  - slot 1 compared prefix: `0x21000..0x3f754` (`0x1e754` bytes)
+  - slot 1 installed-only tail: `0x3f754..0x3f780` (`0x2c` bytes, 44 decimal) — present in one image only, so it has no counterpart to differ from
+  
+  ## Word sums
+  [exit 0]
+  NOTE slot 1 installed-only tail 0x3f754..0x3f780, and both runtime destinations are now shown and flagged unchanged
+
+REGENERATED ARTIFACTS
+$ python3 tool/compare_firmware_images.py > notes/installed-vs-vendor.md && python3 tool/compare_firmware_images.py --json > notes/installed-vs-vendor.json && wc -c notes/installed-vs-vendor.md notes/installed-vs-vendor.json
+    6962 notes/installed-vs-vendor.md
+  616099 notes/installed-vs-vendor.json
+  623061 total
+  [exit 0]
+
+$ sha256sum notes/installed-vs-vendor.md notes/installed-vs-vendor.json
+  3bd9c5bf3b83c51510114936eabe1b2d9e540e4ebde5610c3b41b4195d67f856  notes/installed-vs-vendor.md
+  fedb45f0eb20f6a41488fe0418d83a1fb4865de56651f1c063c1ee1fc4d44fc2  notes/installed-vs-vendor.json
+  [exit 0]
+
+EXIT-GATE RE-RUN — headline numbers are unchanged by the corrections
+$ python3 tool/compare_firmware_images.py | sed -n '/## Whole-range result/,/^## Contiguous/p'
+  ## Whole-range result
+  
+  - installed range SHA-256: `fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b`
+  - vendor range SHA-256: `b9c35b2339b2d6316bdab5bb2799e28b89454fd5c2c133b89827902b7a2403c1`
+  - ranges equal: **False**
+  - differing bytes: **101297** of 442368 (22.90%)
+  - contiguous differing ranges: **3509**
+  - changed `0x1000` pages: **39** of 108
+  
+  ## Contiguous differing ranges
+  [exit 0]
+  NOTE 101,297 differing bytes, 3,509 ranges, 39 of 108 pages — identical to log 96
+
+$ python3 - <<'PY'
+import json
+payload = json.load(open('notes/installed-vs-vendor.json'))
+text = open('notes/installed-vs-vendor.md').read()
+checks = [
+    ('differing bytes', payload['differing_bytes'], 101297),
+    ('differing ranges', payload['differing_range_count'], 3509),
+    ('range entries', len(payload['differing_ranges']), 3509),
+    ('pages', len(payload['pages']), 108),
+    ('changed pages', payload['changed_page_count'], 39),
+    ('string occurrences', payload['strings']['installed_occurrences'], 802),
+    ('string distinct', payload['strings']['installed_distinct'], 603),
+]
+for name, got, expected in checks:
+    print('%-20s json=%-8s expected=%-8s match=%s' % (name, got, expected, got == expected))
+slot1 = [r for r in payload['records'] if r['slot'] == 1][0]
+print('slot1 installed_only ', slot1['installed_only'])
+print('slot1 dst installed/vendor 0x%08x/0x%08x changed=%s'
+      % (slot1['installed']['dst'], slot1['vendor']['dst'], slot1['dst_changed']))
+print('markdown shows the tail:', '0x3f754..0x3f780' in text)
+print('markdown shows dst     :', 'runtime dst' in text)
+print('markdown shows counts  :', '603 distinct values in 802 occurrences' in text)
+print('range sum equals total :', sum(r['length'] for r in payload['differing_ranges']) == payload['differing_bytes'])
+PY
+  differing bytes      json=101297   expected=101297   match=True
+  differing ranges     json=3509     expected=3509     match=True
+  range entries        json=3509     expected=3509     match=True
+  pages                json=108      expected=108      match=True
+  changed pages        json=39       expected=39       match=True
+  string occurrences   json=802      expected=802      match=True
+  string distinct      json=603      expected=603      match=True
+  slot1 installed_only  {'hi': 259968, 'length': 44, 'lo': 259924}
+  slot1 dst installed/vendor 0x18000000/0x18000000 changed=False
+  markdown shows the tail: True
+  markdown shows dst     : True
+  markdown shows counts  : True
+  range sum equals total : True
+  [exit 0]
+  NOTE Markdown, JSON and this log agree on every count
+
+EXIT-GATE RE-RUN — determinism, analyzers, suite
+$ python3 -m py_compile tool/compare_firmware_images.py tool/test_compare_firmware_images.py
+  [exit 0]
+  NOTE no output means both files compiled
+
+$ python3 tool/compare_firmware_images.py --json | sha256sum; python3 tool/compare_firmware_images.py --json | sha256sum
+  fedb45f0eb20f6a41488fe0418d83a1fb4865de56651f1c063c1ee1fc4d44fc2  -
+  fedb45f0eb20f6a41488fe0418d83a1fb4865de56651f1c063c1ee1fc4d44fc2  -
+  [exit 0]
+  NOTE two independent runs hash identically
+
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  [exit 0]
+
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=16 containers_skipped=1 word_sums_skipped=1
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmpy0871cl8/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpbihy1cdd/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpsr57c26l/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpxwyokcu2/dump.bin
+  Ran 232 tests in 2.187s
+  OK
+  [exit 0]
+  NOTE 232 tests = 179 from Phase 1 plus 53 comparator tests (41 from log 96, minus 3 replaced source-policy tests, plus 15 new regressions)
+
+WHAT DID NOT CHANGE
+Every headline fact in log 96 survives: 101,297 differing bytes of 442,368
+(22.90%) in 3,509 ranges across 39 of 108 pages, first difference 0x1002c;
+the three changed runs [0x10000,0x17000), [0x21000,0x40000) and
+[0x7b000,0x7c000); slot 0 unchanged length with 131 differing bytes over 106
+ranges and slot 1 growing 0x1e754 to 0x1e780 with 101,112 differing bytes over
+3,399 ranges; and the three-way bootloader-copy identity. The corrections add
+fields and tighten ordering; they move no measurement.
+
+REMAINING LIMITS, RESTATED
+  * String comparison is a value-and-count comparison over ASCII runs of at
+    least six printable bytes. It does not compare offsets: an equal multiset
+    does not mean identical placement, and the byte-range diff is what carries
+    position. It cannot see inside compressed or non-ASCII data.
+  * Record diff ranges still cover the common prefix only, by design; the
+    one-sided tail is now reported as its own span.
+  * No meaning is assigned to any changed range.
+  * Phase 1 was corrected in log 95 and Phase 2 in this log; neither has been
+    formally accepted. Phase 3 has not started.
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  [exit 0]
+  NOTE no output means no whitespace errors in either the worktree or the index
+
+$ git status --short
+   M FINDINGS.md
+   M TIMELINE.md
+   M logs/COMMANDS.md
+   M logs/SHA256SUMS
+  ?? logs/96-installed-vs-vendor-comparison.txt
+  ?? notes/installed-vs-vendor.json
+  ?? notes/installed-vs-vendor.md
+  ?? tool/compare_firmware_images.py
+  ?? tool/test_compare_firmware_images.py
+  [exit 0]
+
+RESULT
+All five review findings are fixed: record destinations and both images'
+complete record fields are reported with explicit change flags; provenance is
+verified before any parsing, hashing or diffing; --analysis-only --json emits
+parseable JSON with the warning on stderr and the waiver recorded
+structurally; strings are compared as multisets and reported as 603 distinct
+values in 802 occurrences; and slot 1's tail is the explicit span
+0x3f754..0x3f780. 232 offline tests pass under the pinned invocation, the
+regenerated Markdown and JSON agree with this log on every count, both
+evidence hashes are unchanged, and no device was accessed. Phase 3 not
+started; everything left uncommitted for review.

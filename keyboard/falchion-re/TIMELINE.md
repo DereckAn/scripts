@@ -1085,6 +1085,65 @@ prerequisite. The review also found the log-94 row in `logs/COMMANDS.md` stating
 fixed and log 94 is unedited. 179 offline tests pass, both evidence hashes are
 unchanged, and no device was accessed.
 
+## 2026-09-03 — Step 6 Phase 2: installed 1.59 compared with vendor 1.00.58 (log 96)
+
+`tool/compare_firmware_images.py` and 41 tests. The comparator is built on the
+Phase-1 parser, so there is no second SN_FWIN parser and no second copy of the
+offset or checksum rules. It reads both images over the same logical range,
+`[0x10000,0x7c000)`, through the single translation point, refuses inputs whose
+SHA-256/base/size tuple is not allowlisted unless `--analysis-only` is passed
+with a warning, and renders one model as a Markdown note and a complete
+deterministic JSON result. The 25 longest differing ranges are tabled in the
+note, which says so; all 3,509 are in the JSON along with all 108 page hashes.
+
+The two releases differ in 101,297 of 442,368 bytes, 22.90%, across 3,509
+contiguous ranges and 39 of 108 pages, first at `0x1002c` and last ending at
+`0x7c000`. The useful result is how contained that is: every change falls in
+`[0x10000,0x17000)`, `[0x21000,0x40000)` or `[0x7b000,0x7c000)`. The container
+and bootloader-copy area `[0x60000,0x71000)`, both fill regions, and the RAM
+image `[0x74000,0x79000)` are byte-identical between releases. Record slot 0
+keeps length `0x58ac` and differs in 131 bytes over 106 ranges; slot 1 grows
+`0x1e754` to `0x1e780` and differs in 101,112 bytes over 3,399 ranges; neither
+moved. All 603 ASCII strings appear in both images with nothing added, removed or
+rewritten. The three-way bootloader-copy identity from log 94 reproduced through
+an independent code path.
+
+No meaning is assigned to any changed range, and the report repeats the three
+open unresolved items so a reader cannot mistake a clean comparison for boot
+evidence. The comparator refuses rather than guesses on a slot active in only one
+image or a record whose address moved. 220 offline tests pass under the pinned
+invocation, the Markdown note, the JSON and the raw log agree on every count, two
+`--json` runs hash identically, both evidence hashes are unchanged, and no device
+was accessed. Phase 3 was not started and the work was left uncommitted.
+
+Phase 1 had been corrected under independent review (log 95) but not formally
+re-accepted when this phase was executed at the owner's direction.
+
+**Independent review withheld Phase 2 over five findings, all now fixed (log
+97).** Record destinations were parsed by the Phase-1 model but never reported,
+so a synthetic `dst` change to `0x18001000` was invisible in both Markdown and
+JSON — a runtime-load-address change could have passed unreported. Provenance
+was verified *after* `compare()` had already parsed, hashed and diffed, contrary
+to the plan's "verify both tuples before analysis". `--analysis-only --json`
+printed its warning to stdout ahead of the document and so emitted unparseable
+JSON. The string comparison compared sets rather than multisets, so a value
+appearing a different number of times would have shown nothing, and the result
+was described as "603 ASCII runs" when the images hold 802 occurrences of 603
+distinct values. Slot 1's extra 44 bytes were disclosed only as a scalar length
+delta.
+
+The comparator now reports both images' complete record fields with explicit
+`addr_changed`, `dst_changed` and `checksum_changed` flags; gates on the
+allowlist before any parsing, hashing or diffing, pinned by a test that trips if
+`compare()` is entered for a default unknown source; sends the analysis-only
+warning to stderr and records the waiver structurally under a `provenance` key;
+compares string multisets and reports distinct values and occurrences separately
+with a `count_changed` list; and represents a one-sided record tail as its own
+span, `0x3f754..0x3f780` for slot 1. Every measurement in log 96 survives
+unchanged — the fixes add fields and tighten ordering rather than moving any
+number. 232 offline tests pass, the regenerated note and JSON agree with the log
+on every count, both evidence hashes are unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
