@@ -1,8 +1,9 @@
-# Step 5 — Recovery backup of the installed firmware (plan only)
+# Step 5 — Recovery backup of the installed firmware
 
-**Status: PLAN. No device interaction has occurred. Nothing here has been
-executed.** This document is written so that a verified backup of the *installed*
-firmware exists before any erase/program command is ever considered.
+**Status: APPROACH A COMPLETED on 2026-09-02 (log 92).** The USB-readable
+application region was captured in three identical passes and verified. No
+erase/program command was sent. Approach B, a complete physical U5 read, remains
+unperformed.
 
 ## Why this step exists
 
@@ -14,13 +15,15 @@ firmware exists before any erase/program command is ever considered.
   has **no guaranteed recovery**.
 
 So step 5 = obtain and verify a byte-exact backup of what is on the keyboard now.
-This is the gate that turns "bricked" into "restore from backup."
+For failures confined to the USB-writable application range, Approach A now
+provides restore material. A complete hardware recovery image still requires
+Approach B.
 
-## Important: this is the first device interaction
+## Device-interaction boundary
 
-Steps 1–4 were entirely offline (reading files we already had). Step 5 is the
-first action that reads *from the keyboard*. Do not begin it without an explicit
-decision to cross that line, and only after the safety rules below are in place.
+Steps 1–4 were entirely offline. Each live part of step 5 was separately
+authorized and is recorded in logs 88–92. Repeating it remains a new device
+interaction and still requires a fresh decision plus the safety rules below.
 
 ## Two approaches
 
@@ -44,10 +47,11 @@ Scope of that limitation: the bootloader region is also *unwritable* over USB
 USB write path can produce**, an app-region backup is the material you would
 restore from. It is **not** a complete device image and is not a general-purpose
 recovery guarantee — it does not cover bootloader corruption from any other
-cause, and it has never been produced or tested. Only a hardware read
-(Approach B) captures the bootloader.
+cause. Approach A was produced and verified in log 92. Only a hardware read
+(Approach B) captures the bootloader and the rest of physical U5.
 
-Sequence (each item is a device interaction — do not run until authorised).
+Sequence used for log 92 (each repetition is a new device interaction and must
+not run until authorized).
 Every report below is written to FF01 and every response is read from FF00. No
 unlock is needed for READ (only erase/program require the `ASUSHIDFWU` unlock):
 1. Enter bootloader mode (jump-to-bootloader, see the app path below) so the
@@ -257,20 +261,24 @@ Procedure (all read-only):
   against the guard, and the guard rejected every erase/program/unlock/reset form
   in the self-check. Device selection requires distinct validated `1b7f` FF01
   command and FF00 response nodes.
-- **One-block READ is confirmed; full backup remains unauthorised.** Log 91
-  validates one 48-byte READ at `0x10000` using the corrected freshness
-  handshake. Multi-chunk sequencing, anchor rebasing, and repeated full passes
-  remain untested on hardware. `backup_firmware.py --run` is still gated behind
-  `--force-unreviewed` and needs a separate explicit decision. The handshake
-  aborts, rather than guesses,
+- **Approach A completed and verified.** Log 92 records three byte-identical
+  reads of `[0x10000,0x7c000)`, each with SHA-256
+  `fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b`.
+  The 442,368-byte artifact is
+  `dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin`.
+  Both record checksums, the application word-sum, and all 12 applicable boot
+  structure checks passed. Any repeat of `backup_firmware.py --run` remains
+  separately gated and requires explicit authorization. The handshake aborts,
+  rather than guesses,
   if a chunk's content matches the proven baseline and no anchor chunk of
   different proven content is available to re-base through — including the case
   of an all-zero first chunk, since the bootstrap baseline is all zeros.
 - **Every completed dump is self-validated in memory before it is written**, and
   the output is published with an exclusive temp file plus `os.link`, so an
   existing backup is never overwritten and no partial file is left behind.
-- **Still not done:** no installed-firmware backup exists. One validated block
-  is evidence for the method, not recovery material.
+- **Still not done:** Approach B. The USB artifact excludes the bootloader and
+  unused/unmapped portions of the 4 MiB U5 flash, so it is application-range
+  recovery material rather than a complete physical-device image.
 
 ## Only after a verified backup
 

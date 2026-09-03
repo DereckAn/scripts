@@ -1,6 +1,10 @@
 # Command-to-log manifest
 
-All commands below were run on 2026-08-29. Device-facing access was read-only. Shell loops only aggregate kernel/sysfs metadata.
+The investigation began on 2026-08-29 and continued through 2026-09-02. Each
+row records its own scope. Device-facing firmware preservation used only USB
+READ operations plus separately authorized reset-only bootloader entries; no
+erase, program, unlock, update, or SPI command was sent. Shell loops only
+aggregate kernel/sysfs metadata.
 
 | Log | Command or command group | Result / note |
 |---|---|---|
@@ -96,6 +100,7 @@ All commands below were run on 2026-08-29. Device-facing access was read-only. S
 | `89-bootloader-split-channel-correction.txt` | First separately authorized probe (only `0x8f` sent before timeout); read-only Ghidra `FalchionBootloaderInterfaceMap.java` with `-readOnly -noanalysis`; passive `lsusb`, sysfs selector, `ls -l`, `getfacl`, `fuser`; `py_compile`; `unittest discover` | Corrected log 82's single-node inference: commands use FF01/EP6 and responses use distinct FF00/EP5. Shared split transport opens FF00 read-only and FF01 write-only; 130 offline tests pass. FF00 still lacks the owner's read ACL, so no corrected live retry occurred; no READ or flash operation sent |
 | `90-live-split-channel-status-buffer-probe.txt` | After explicit approval: `python3 tool/probe_bootloader.py --run --acknowledge-volatile-length` | Exact four-report probe passed: FF01 commands, FF00 responses, locked/idle/error-free `0x0f` status before and after, and `0x2a` plus 48 zero bytes after the RAM-only length setter. No address, execute-READ, unlock, erase, program, reset, update, or SPI command |
 | `91-one-block-read-validation.txt` | Offline `probe_flash_read.py` construction/dry-run and 136-test suite; passive mode/descriptor/ACL/holder checks; after separate approval one exact bootloader-entry reset; after narrow ACL restoration, `python3 tool/probe_flash_read.py --run --acknowledge-one-read` | Exactly one execute-READ returned a fresh complete 48-byte `SN_FWIN` block at `0x10000` (SHA-256 `5ed6cf84…5815`). First 44 bytes match vendor 1.00.58; final checksum u32 differs. No second address/READ, unlock, erase, program, update, or SPI command; no full backup |
+| `92-full-app-region-backup.txt` | Offline dry-run and 136-test suite; physical power cycle; after separate approval one exact bootloader-entry reset; passive descriptor/ACL/holder checks; after narrow ACL restoration, `python3 -u tool/backup_firmware.py --run dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin --passes 3 --force-unreviewed`; independent `stat`, `sha256sum`, `analyze_candidate_integrity.py --base 0x10000`, and `analyze_boot_structures.py --base 0x10000` | Accepted a 442,368-byte application-region readback after three byte-identical passes, each SHA-256 `fc6128ab…37b`. Both record checksums, application word-sum, and all 12 applicable boot checks pass. READ only: no unlock, erase, program, update, persistent configuration, driver detach, or SPI operation. USB scope excludes the bootloader and the remainder of physical U5. |
 
 Repository/context commands also run: `pwd`, `rg --files -g AGENTS.md`, `rg --files`, `git status --short`, `sed` on existing Falchion notes, `mkdir -p logs`, `diff` on prior captures, and `sha256sum logs/*.txt`. Reading the newly created logs with `sed`, `wc`, and `tail` did not access the USB device.
 

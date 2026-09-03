@@ -969,9 +969,17 @@ validates exactly one 48-byte execute-READ at `0x10000` plus the corrected
 sample/status/confirm freshness handshake. It returned a complete `SN_FWIN`
 header. Bytes `0x00..0x2b` match the preserved 1.00.58 image; the u32 field at
 `0x2c` differs (`85 24 55 7d` installed versus `7a c1 75 5e` preserved), evidence
-that the installed record payload differs. Multi-chunk sequencing, anchor
-rebasing, repeated passes, and the full backup remain unvalidated. No
-installed-firmware backup exists; backup-tool `--run` remains unauthorised.
+that the installed record payload differs.
+
+Log 92 validates the full USB-readable application-region workflow. Three
+sequential reads of `[0x10000,0x7c000)` were byte-identical, each with SHA-256
+`fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b`.
+The accepted 442,368-byte artifact is
+`dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin`.
+Both record checksums, the application word-sum, and all 12 applicable boot
+structure checks pass. This is a verified backup of the installed
+**application region**, not the complete 4 MiB U5 flash: USB cannot read the
+bootloader `[0,0x10000)` or physical-flash space outside the exposed range.
 
 **Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
 execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and
@@ -1002,8 +1010,8 @@ bootloader entry is therefore validated (log 88). One bootloader status query
 then listening on the wrong node. No other bootloader probe report and no flash
 operation was sent (log 89).
 
-This documents the exact read-only dump recipe on paper
-(`notes/step5-recovery-plan.md`, Approach A). It has not been executed.
+The exact read-only dump recipe is documented in
+`notes/step5-recovery-plan.md`. Approach A was executed successfully in log 92.
 
 ### Firmware modification roadmap (offline-first)
 
@@ -1041,9 +1049,9 @@ until a verified recovery path exists.
    `0x01` erase / `0x05` read / `0x51` program, guarded to `[0x10000, 0x7c000)`,
    cross-checked against the updater strings. Documented on paper only; no
    command has been or should be sent.
-5. **Recovery prerequisite — a verified backup of the installed 1.59 image**
-   (plan written: `notes/step5-recovery-plan.md`; **not done**). This is the
-   first step that reads *from the device*, so it is not offline. Two approaches:
+5. **Recovery prerequisite — preserve installed firmware**. Approach A is
+   **done** (log 92): the USB-readable application region was captured in three
+   identical passes and verified. Two approaches were defined:
    (A) USB read-back via the bootloader READ command — application region
    `[0x10000, 0x7c000)` only, base `0x10000` size `0x6c000`, ≤`0x30`
    bytes/transfer, no unlock needed (least invasive), see the wire framing above
@@ -1051,8 +1059,8 @@ until a verified recovery path exists.
    Either way: ≥3 identical dumps, validate with
    `analyze_candidate_integrity.py --base 0x10000` and
    `analyze_boot_structures.py --base 0x10000`, store redundantly. No
-   erase/program is ever issued during preservation, and nothing is flashed until
-   this backup exists and verifies.
+   erase/program is ever issued during preservation. Approach A now satisfies
+   the preservation prerequisite for the USB-writable application range.
 
    Approach A covers only the application region, so it is **not** a complete
    device image; the bootloader region `[0x0, 0x10000)` is unreadable over USB.
@@ -1060,8 +1068,9 @@ until a verified recovery path exists.
    range is the only range erase/program can reach. Only Approach B captures the
    bootloader.
 
-Steps 1–4 are pure static analysis and are complete on paper only. Do not send
-any step-4 command to the device or flash any image until step 5 exists.
+Steps 1–4 are static analysis. No step-4 write command has been sent. Any future
+flashing remains a separate, explicitly authorized phase; the unresolved boot
+checks and lack of a complete physical U5 dump still matter.
 
 ### Documentation synchronization
 
@@ -1077,11 +1086,12 @@ Evidence: `logs/46-documentation-synchronization-audit.txt`.
 
 ## Uncertain or superseded assumptions
 
-- **USB backup via proprietary HID:** static bootloader analysis supports a
-  proprietary HID READ operation for application region `0x10000..0x7bfff`.
+- **USB backup via proprietary HID:** static bootloader analysis and log 92
+  confirm a proprietary HID READ operation for application region
+  `0x10000..0x7bfff`.
   Commands use the FF01/EP6 node and replies use the distinct FF00/EP5 node.
-  That split, the status/zero-buffer queries, and one fresh 48-byte READ at
-  `0x10000` are live-validated (logs 90–91); no backup has been obtained.
+  Three complete sequential passes matched and passed all applicable integrity
+  checks. This is not a complete U5 or bootloader backup.
 - **Separate USB bootloader mode:** validated live in log 88. One authorized
   reset-only report caused re-enumeration as `0b05:1b7f`, bcdDevice `1.05`, with
   four HID interfaces. At that enumeration, interface 0 `/dev/hidraw6` was the
@@ -1110,18 +1120,24 @@ probe_bootloader.py --run --acknowledge-volatile-length
                            # first attempt stopped after 0x8f; corrected retry passed
 probe_flash_read.py --run --acknowledge-one-read
                            # exactly one 48-byte execute-READ at 0x10000
+backup_firmware.py --run <app-region-output> --passes 3 --force-unreviewed
+                           # separately authorized three-pass READ-only backup
 ```
 
 All other probes read sysfs, udev metadata, package metadata, kernel logs, repository files, or the saved logs. `usbhid-dump` was invoked only with `--help`; it was never pointed at the keyboard.
 
 ## Recommended next steps
 
-1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recovery candidate even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
+1. **Preserve the new backup redundantly:** copy the log-92 app-region artifact
+   and its checksum to at least one independent storage location. The official
+   1.00.58 image remains a useful vendor reference but is not the installed
+   image.
 2. **Decide whether to install fwupd:** installation changes the host, so ask first. Its value is limited because the current descriptors do not advertise DFU, but it can confirm whether a supported fwupd plugin recognizes the device.
-3. **USB readback is validated for one chunk (logs 90–91).** The next device
-   phase would be the full app-region backup: three passes, byte-for-byte and
-   SHA-256 agreement, then structural validation. That remains a separate,
-   longer live operation requiring explicit approval.
+3. **USB application-region readback is complete (log 92).** The next firmware
+   work should be offline: compare this installed dump with vendor 1.00.58,
+   improve code/data maps, and resolve the remaining boot-gate routines before
+   designing any patch. Every future device access still requires separate
+   approval.
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater
@@ -1135,9 +1151,10 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    comparison applied to the selected entry value before the jump; until those
    are resolved, the set of conditions a modified image must satisfy is known to
    be incomplete.
-8. **Do not treat one block as a backup.** Log 91 validates one READ and its
-   freshness proof only. No installed-firmware backup exists. Live use of
-   `tool/backup_firmware.py` remains unauthorised pending a separate decision.
+8. **Keep the scope precise.** Log 92 is a verified backup of the USB-readable,
+   USB-writable application region. It is not a complete 4 MiB U5 image and does
+   not include the bootloader. A read-only hardware dump remains the gold
+   standard before physical modification.
 
 ## Evidence integrity
 

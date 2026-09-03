@@ -1,0 +1,197 @@
+ASUS ROG Falchion Ace HFX — full USB application-region backup
+Date: 2026-09-02 America/Mexico_City
+Status: offline preparation complete; waiting for a fresh power-cycled session
+
+OWNER AUTHORIZATION
+After the successful one-block validation, the owner was told that the next
+step was the full application-region backup with three identical passes and
+answered: "lets do the next step".
+
+SCOPE
+  flash range: 0x10000..0x7bfff
+  size per pass: 0x6c000 = 442368 bytes
+  chunks per pass: 9216
+  chunk size: 0x30 = 48 bytes
+  required passes: 3
+  acceptance: byte-identical and SHA-256-identical passes, then structural
+              validation before publishing one output
+  planned output:
+    dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+
+The USB bootloader cannot read 0x00000..0x0ffff, so this is an application-region
+backup, not a complete 4 MiB U5 dump.
+
+OFFLINE PREPARATION
+Created dumps/device/README.md to keep device readbacks distinct from official
+ASUS artifacts. Updated the --force-unreviewed help text to describe its actual
+remaining purpose: acknowledgement of unvalidated multi-chunk/three-pass live
+use, not basic framing (which logs 90-91 validate).
+
+Dry-run command:
+  python3 tool/backup_firmware.py
+
+Key raw output:
+  PROGRAM backup_firmware  (DRY-RUN — no device opened)
+  REGION app-only base=0x10000 size=0x6c000 range 0x10000..0x7c000
+  chunks=9216 chunk_max=0x30 bytes=0x6c000
+  validated 46080 reports; all pass the read-only guard
+  bootstrap: state+4 must read 0x30 zero bytes before the first EXEC
+  safety self-check: PASS (guard rejected every write/unlock/reset form; read reports built)
+  RESULT dry_run_ok=True guard_rejected_forbidden=True
+
+Offline test command:
+  python3 -m unittest discover -s tool -p 'test_*.py'
+
+Result:
+  Ran 136 tests in 1.238s
+  OK
+
+FRESH-SESSION PREFLIGHT
+Passive USB/sysfs selection found the keyboard still at bootloader PID 0b05:1b7f
+on FF01=/dev/hidraw6 and FF00=/dev/hidraw7. This is the same session in which
+log 91 read address 0x10000, so state+4 is nonzero. The full tool would correctly
+reject its all-zero bootstrap rather than trust that stale session.
+
+No protocol node was opened and no report was sent during this full-backup
+preparation. A complete physical power cycle is required. The unvalidated
+bootloader 0x11 reset command will not be used.
+
+POWER CYCLE AND AUTHORIZED FRESH ENTRY
+The owner physically power-cycled the keyboard and explicitly authorized one
+reset-only bootloader-entry report.
+
+Command:
+  python3 tool/enter_bootloader.py --run --acknowledge-reset
+
+Output:
+  payload_len=64
+  payload=7b aa 41 53 55 53 aa 00 ... 00
+  hidraw_write_len=65
+  hidraw_write_sha256=de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8
+  validated_node=/dev/hidraw7
+  action=one reset-only hidraw write; no retry
+  report_sent=yes
+  RESULT: bootloader PID 0b05:1b7f observed
+  boot_node=/dev/hidraw6
+  boot_node=/dev/hidraw7
+  boot_node=/dev/hidraw8
+
+POST-ENTRY PASSIVE PREFLIGHT
+Descriptor selection resolved FF01 command=/dev/hidraw6 and FF00
+response=/dev/hidraw7. Neither recreated node has a user:dereck ACL; both are
+root-only. No process holder was reported. The full backup has not started and
+no flash READ has occurred. The owner must restore write-only access to FF01 and
+read-only access to FF00 before the final preflight.
+
+ACL RESTORATION AND FINAL PREFLIGHT
+The owner manually restored the narrow ACLs:
+  /dev/hidraw6 user:dereck:-w-   (FF01 command channel)
+  /dev/hidraw7 user:dereck:r--   (FF00 response channel)
+Descriptor selection still resolved those exact interfaces. No process holder
+was reported, and the planned output path did not exist.
+
+AUTHORIZED FULL BACKUP
+Command:
+  python3 -u tool/backup_firmware.py \
+    --run dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin \
+    --passes 3 --force-unreviewed
+
+Raw completion output:
+  Bootloader command HID device (FF01): /dev/hidraw6
+  Bootloader response HID device (FF00): /dev/hidraw7
+  REGION app-only base=0x10000 size=0x6c000 (bootloader [0x0,0x10000) is not readable and is not included)
+  pass 1/3: 0x6c000 bytes sha256=fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  pass 2/3: 0x6c000 bytes sha256=fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  pass 3/3: 0x6c000 bytes sha256=fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+    SKIP bootloader word-sum (below 0x10000, not readable over USB)
+    SKIP primary container (below 0x10000, not readable over USB)
+    PASS SN_FWIN magic
+    PASS record[0] checksum
+    PASS record[1] checksum
+    PASS application word-sum
+    PASS boot: backup SNC7320A magic
+    PASS boot: backup SN_BCFG magic
+    PASS boot: backup bootloader pointer
+    PASS boot: backup declared size
+    PASS boot: backup slot0 -> SN_FWIN
+    PASS boot: backup slot1 empty
+    PASS boot: SN_FWIN magic
+    PASS boot: SN_FWIN CRC-enable gate nonzero
+    PASS boot: entry equals record[0] address
+    PASS boot: record ranges inside application region
+    PASS boot: entry initial-SP in observed RAM ranges
+    PASS boot: entry reset vector is Thumb and within record[0] length
+  self-validation: PASS (dump re-parses as the app region)
+  OK: 3 identical passes; wrote dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+
+INDEPENDENT OFFLINE VERIFICATION
+Commands:
+  stat --printf='size=%s bytes\n' dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  sha256sum dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  python3 tool/analyze_candidate_integrity.py <dump> --base 0x10000
+  python3 tool/analyze_boot_structures.py <dump> --base 0x10000
+
+Output:
+  size=442368 bytes
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+
+  RECORDS
+    [0] addr=0x60011000 len=0x58ac dst=0x18000000 stored=0x7d552485 calc=0x7d552485 match=True
+    [1] addr=0x60021000 len=0x1e780 dst=0x18000000 stored=0xeb0a9879 calc=0xeb0a9879 match=True
+  WORD_SUMS
+    bootloader: SKIP (region absent from this partial image)
+    application: stored=0x2d7486db calc=0x2d7486db match=True
+  RESULT integrity_checks_ok=True
+
+  PRESENT_CONTAINERS backup
+    SKIP primary container: absent from this image (base 0x10000, size 0x6c000)
+    PASS backup SNC7320A magic
+    PASS backup SN_BCFG magic
+    PASS backup bootloader pointer
+    PASS backup declared size
+    PASS backup slot0 -> SN_FWIN
+    PASS backup slot1 empty
+    PASS SN_FWIN magic
+    PASS SN_FWIN CRC-enable gate nonzero
+    PASS entry equals record[0] address
+    PASS record ranges inside application region
+    PASS entry initial-SP in observed RAM ranges
+    PASS entry reset vector is Thumb and within record[0] length
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+
+RESULT
+The application-region backup is accepted. Three independent sequential passes
+were byte-identical and SHA-256-identical, the tool self-validation passed, and
+both analyzers independently passed every check applicable to a base-0x10000
+partial image.
+
+SCOPE AND SAFETY
+This file covers 0x10000..0x7bfff only. The bootloader 0x00000..0x0ffff and the
+remainder of the physical 4 MiB U5 flash are not covered by the USB protocol.
+No unlock, erase, program, firmware update, persistent configuration change,
+driver detach, or SPI command occurred. The backup used READ operations only.
+
+POST-COMPLETION STATUS CHECK
+The owner asked whether the long-running command had finished. Read-only host
+process inspection found no `backup_firmware.py` process. A second independent
+file check returned:
+
+  size=442368 bytes
+  modified=2026-09-02 21:43:50.773167919 -0600
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+
+These checks accessed only the host process table and completed output file; no
+USB or hidraw node was opened.
+
+DOCUMENTATION-SYNC AUDIT NOTE
+One later `rg` consistency-search pattern contained shell backticks. zsh tried
+to execute `tool/backup_firmware.py` with no arguments, but the file was not
+executable and the shell returned `permission denied`; Python was never invoked,
+the tool did not run, and no device node was accessed. The search was repeated
+with safe single-quoted arguments.
+
+FINAL OFFLINE REVALIDATION
+After synchronizing current-status documentation, `py_compile` passed, the full
+unit-test suite ran 136 tests successfully, and both structural analyzers again
+accepted the saved dump. Test output mentioning `/dev/fake*`, `/dev/ff00`, or
+`/dev/ff01` comes from mocked transports; this revalidation did not access USB.

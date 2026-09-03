@@ -13,10 +13,10 @@ SAFETY
     `guard()` re-runs on the exact bytes immediately before every write.
   * Default action is --dry-run: it builds and validates the whole dump plan
     without opening any device.
-  * --run additionally requires --force-unreviewed. Live use is unauthorised
-    pending independent review; see UNRESOLVED below.
+  * --run additionally requires --force-unreviewed so every later live use
+    remains an explicit, separately reviewed decision; see RESIDUAL LIMITS below.
 
-PROTOCOL EVIDENCE (the READ behavior below is static; no READ has run on hardware)
+PROTOCOL EVIDENCE (static analysis plus live validation in logs 90-92)
   * log 81 `FUN_00002db8`: on command byte 0x05 it sets state+0x38 bit 1
     (`(+0x38 & 0xfd) + 2`), calls the synchronous READ `FUN_00003b64`, then
     clears bit 1 (`+0x38 & 0xfd`) and clears the pending byte +0x34. Erase (0x01)
@@ -66,11 +66,12 @@ PROTOCOL EVIDENCE (the READ behavior below is static; no READ has run on hardwar
     state+0x38 == 0 (locked, not busy). This is what makes the first baseline
     trustworthy instead of merely observed.
 
-UNRESOLVED (why --run stays gated)
-  * Log 91 validates one 48-byte execute-READ at 0x10000 and the freshness
-    handshake. Multi-chunk sequencing, anchor rebasing, and repeated full passes
-    have not been exercised on hardware.
-  * No installed-firmware backup exists.
+RESIDUAL LIMITS (why every --run remains explicitly gated)
+  * Log 92 live-validates the full application-region workflow: three sequential
+    0x6c000-byte passes were byte-identical, SHA-256-identical, and passed every
+    structural check applicable to a base-0x10000 partial image. The accepted
+    dump is not a complete 4 MiB U5 image: USB cannot read [0,0x10000) or flash
+    outside [0x10000,0x7c000).
   * OPERATIONAL PRECONDITION, not provable from the protocol: no other process
     may send reports to either hidraw node during the dump. A foreign pending
     READ is invisible (state+0x34 is not exposed), and one that completes between
@@ -968,19 +969,20 @@ def dry_run():
           "(log 86 Region$$Table zero-init at 0x0000ccc0); otherwise refuse")
     _safety_selfcheck()
     print("RESULT dry_run_ok=True guard_rejected_forbidden=True")
-    print("LIMITATION No device was opened. The post-EXEC scheduling race is "
-          "proven possible (log 85) and the corrected handshake (log 86) is "
-          "proven to return only complete buffers. Log 91 live-validates one "
-          "48-byte READ, but multi-chunk/repeated-pass behavior and the sole-host "
-          "operational precondition remain unresolved, so --run stays gated "
-          "behind --force-unreviewed. Live use is still unauthorised.")
+    print("LIMITATION No device was opened by this dry-run. The post-EXEC "
+          "scheduling race is proven possible (log 85), the corrected handshake "
+          "is proven to return only complete buffers (log 86), and log 92 "
+          "live-validates a complete three-pass application-region backup. The "
+          "sole-host precondition and USB scope limit remain, so every new live "
+          "use stays gated behind --force-unreviewed and separate authorization.")
     return 0
 
 
 LIVE_REFUSAL = """REFUSING to run live.
 
-Bootloader entry, split-channel framing, and exactly one 48-byte READ at 0x10000
-are live-validated (log 91). No full firmware backup has been attempted.
+Bootloader entry, split-channel framing, and one complete three-pass
+application-region backup are live-validated (logs 91-92). The accepted log-92
+artifact covers 0x10000..0x7bfff only; it is not a complete 4 MiB U5 image.
 
 Two protocol questions are now settled. The post-EXEC scheduling race is real
 (log 85): the 0x1f parser only sets the pending byte state+0x34 and the request
@@ -996,23 +998,23 @@ guess.
 
 What is still unresolved:
 
-  1. A single first chunk and its freshness handshake are validated. Multi-chunk
-     sequencing, anchor rebasing, and three repeated full passes are not.
-  2. No installed-firmware backup exists, so there is nothing to restore from if
-     a later read path unexpectedly changes device state.
-  3. An operational precondition that the protocol cannot enforce: no other
+  1. USB cannot read the bootloader at 0x00000..0x0ffff or the rest of physical
+     U5 outside 0x10000..0x7bfff. The log-92 artifact is recovery material for
+     the USB-writable application range, not a complete device backup.
+  2. An operational precondition that the protocol cannot enforce: no other
      process may send reports to either hidraw node during the dump. A foreign READ
      that is queued but has not dispatched is invisible -- state+0x34 is exposed
      by no query -- and if it completes between the bootstrap fetch and the first
      set-address it would publish an unrelated address's bytes. The bootstrap
      catches a foreign READ that has already completed; it cannot catch a pending
      one.
-  4. The handshake is undecidable when a chunk's content equals the previously
+  3. The handshake is undecidable when a chunk's content equals the previously
      proven buffer; it re-bases through an anchor chunk of proven, different
      content and aborts if none is available yet.
 
-Live use is unauthorised pending independent review. If that review has happened
-and you accept the risk, re-run with --force-unreviewed."""
+Every new live use still requires separate review and authorization. If that has
+happened and you accept the documented limits, re-run with
+--force-unreviewed."""
 
 
 def parse_args(argv=None):
@@ -1022,7 +1024,7 @@ def parse_args(argv=None):
     parser.add_argument("--run", metavar="OUT",
                         help="perform the read-back into OUT (needs --force-unreviewed)")
     parser.add_argument("--force-unreviewed", action="store_true",
-                        help="acknowledge the unvalidated hidraw transfer convention")
+                        help="acknowledge separately reviewed live USB readback")
     parser.add_argument("--passes", type=int, default=3,
                         help="identical passes required before writing (minimum 3)")
     return parser.parse_args(argv)

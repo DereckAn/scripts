@@ -23,7 +23,8 @@ The initial preservation boundary was strict: no device write or state change.
 Every later device action was individually owner-authorized: the first
 reset-only bootloader entry (log 88), the first status request (log 89), the
 successful status/zero-buffer probe (log 90), and a second reset-only entry plus
-one 48-byte flash READ (log 91). No firmware update, DFU operation, driver
+one 48-byte flash READ (log 91), followed by the fresh entry and three-pass
+application-region READ backup in log 92. No firmware update, DFU operation, driver
 detach, erase, program, unlock, persistent configuration write, or SPI
 transaction was performed. No SPI Write Enable (`0x06`) was sent. Offline
 analysis scripts never communicated with the keyboard.
@@ -38,15 +39,16 @@ are retained as historical evidence and were not repeated during preservation.
 - Both physical keyboard connectors expose the same normal-mode USB layout.
 - Standard USB firmware backup is not exposed. A proprietary bootloader-mode
   READ path is supported by static analysis. Bootloader entry and split-channel
-  framing are live-validated, and one fresh 48-byte flash block was read from
-  `0x10000` (log 91). No full backup exists.
+  framing are live-validated. Three complete application-region passes were
+  byte-identical and structurally valid (log 92).
 - Official ASUS firmware 1.00.58 is preserved and hashed, but it is not a dump
   of the installed 1.59 firmware.
 - The vendor updater is a proprietary HID erase/program tool using normal PID
   `1b7e` and bootloader PID `1b7f`; it was never executed.
 - Candidate B contains the vendor-HID dispatcher and device-side unsupported-key
   policy logic.
-- No installed-firmware, U5, or MCU readback has yet been obtained.
+- A verified installed application-region readback now exists. No complete U5,
+  bootloader, or internal-MCU readback has been obtained.
 
 ## 2026-08-17 — Initial USB investigation
 
@@ -976,6 +978,29 @@ checksum differs (`85 24 55 7d` installed, `7a c1 75 5e` preserved), evidence
 that their record payloads differ. No other flash address or write-capable
 operation was used. Multi-chunk sequencing and a full backup remain untested.
 
+## 2026-09-02 — Three-pass application-region backup completed (log 92)
+
+The owner physically power-cycled the keyboard, separately authorized one exact
+reset-only bootloader-entry report, and restored narrow temporary ACLs after
+re-enumeration: write-only for the FF01 command node and read-only for the FF00
+response node. Descriptor selection and holder checks passed before the dump.
+
+The authorized backup read `[0x10000,0x7c000)` three times through the
+read-only bootloader path. All three 442,368-byte passes produced the identical
+SHA-256
+`fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b`.
+The tool then accepted and atomically published
+`dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin`.
+
+Independent offline validation confirmed both SN_FWIN record checksums, the
+application word-sum, and all 12 boot-structure checks applicable to an image
+whose base is `0x10000`. No unlock, erase, program, update, persistent
+configuration, driver detach, or SPI operation occurred.
+
+This completes the USB application-region preservation objective, but it is not
+a complete physical-flash dump. The protocol cannot read the bootloader
+`[0,0x10000)` or the remainder of the 4 MiB U5 address space.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1028,18 +1053,16 @@ and text evidence are normal repository artifacts.
 
 For clarity, this investigation has not:
 
-- backed up the installed 1.59 firmware;
+- captured a complete 4 MiB U5 image, the bootloader region, or internal MCU
+  storage; the verified log-92 artifact is application-region only;
 - read U5 or verified its JEDEC ID electrically;
 - connected SWD, SPI, Bus Pirate, or another hardware probe;
 - executed the ASUS updater;
 - used `fwupd` to update or modify the keyboard;
 - sent any persistent configuration command;
-- erased, programmed, unlocked, detached a driver, or executed a flash READ;
+- erased, programmed, unlocked, or detached a driver;
 - proven that the official 1.00.58 image is a safe downgrade or recovery path;
 - sent any erase, program, or flash-unlock command, or flashed anything;
-- run `tool/backup_firmware.py --run`, in any mode, at any time (the flag-gated
-  CLI refusal has been exercised, which returns before device selection);
-- completed a multi-chunk or full installed-firmware backup;
 - built or flashed custom firmware.
 
 ## Recommended continuation
@@ -1048,13 +1071,12 @@ The integrity calculation is now solved (logs 75–76): SN_FWIN per-record value
 are a sum of per-`0x10000`-chunk IEEE CRC-32, and the container guard is an
 additive word-sum, both recomputable offline. Candidate B's runtime entry, the
 bootloader protocol and the exact reset-only entry report are also recovered.
-The next controlled phase is to passively rediscover the current bootloader HID
-nodes, grant only write access to FF01 and read access to FF00, verify no other
-process holds either, and request fresh approval for the exact four-report
-status/zero-buffer probe. Only a successful reply capture should lead to a
-separate decision about authorizing application-region READ. Controlled firmware
-modification remains blocked until a trustworthy installed-device backup and
-recovery path exist.
+The USB-readable application region is now preserved and verified (log 92). The
+next phase should remain offline: make a redundant copy of the dump and checksum,
+compare the installed image with vendor 1.00.58, improve the code/data map, and
+resolve `FUN_000029d4` plus the top-level selected-entry comparison before
+designing a minimal patch. Any flashing remains a separately reviewed and
+explicitly authorized phase.
 
 Before any hardware modification, prepare a separate reviewed preservation
 plan for U5 and MCU readback: correct voltage, board-power isolation, bus
