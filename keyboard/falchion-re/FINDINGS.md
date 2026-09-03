@@ -964,14 +964,14 @@ node during the dump**. The handshake is also undecidable when a chunk's content
 equals the previously proven buffer; it re-bases through an anchor of proven,
 different content and aborts if none exists yet.
 
-The Linux leading-zero hidraw write convention, split FF01-command/FF00-response
-routing, status reply framing, volatile length setter, and zero-buffer reply are
-now validated live (log 90). Both status replies were locked, idle and
-error-free; `0xaa` returned response code `0x2a` plus 48 zero bytes, matching the
-static reset-state proof. No address or execute-READ was sent, so flash READ and
-the freshness handshake remain unvalidated. No installed-firmware backup exists;
-backup-tool `--run` stays gated behind `--force-unreviewed` and remains
-unauthorised.
+The Linux framing and split channel are validated live (log 90), and log 91
+validates exactly one 48-byte execute-READ at `0x10000` plus the corrected
+sample/status/confirm freshness handshake. It returned a complete `SN_FWIN`
+header. Bytes `0x00..0x2b` match the preserved 1.00.58 image; the u32 field at
+`0x2c` differs (`85 24 55 7d` installed versus `7a c1 75 5e` preserved), evidence
+that the installed record payload differs. Multi-chunk sequencing, anchor
+rebasing, repeated passes, and the full backup remain unvalidated. No
+installed-firmware backup exists; backup-tool `--run` remains unauthorised.
 
 **Correction to an earlier note:** the READ path *is* address-guarded. The `0x1f`
 execute-trigger requires, for read (`opcode 5`), `0x10000 <= addr <= 0x7bfff` and
@@ -1080,8 +1080,8 @@ Evidence: `logs/46-documentation-synchronization-audit.txt`.
 - **USB backup via proprietary HID:** static bootloader analysis supports a
   proprietary HID READ operation for application region `0x10000..0x7bfff`.
   Commands use the FF01/EP6 node and replies use the distinct FF00/EP5 node.
-  That split and the non-flash status/zero-buffer queries are live-validated
-  (log 90), but execute-READ and freshness are not; no backup has been obtained.
+  That split, the status/zero-buffer queries, and one fresh 48-byte READ at
+  `0x10000` are live-validated (logs 90–91); no backup has been obtained.
 - **Separate USB bootloader mode:** validated live in log 88. One authorized
   reset-only report caused re-enumeration as `0b05:1b7f`, bcdDevice `1.05`, with
   four HID interfaces. At that enumeration, interface 0 `/dev/hidraw6` was the
@@ -1105,9 +1105,11 @@ Exact command groups and their output files are recorded in `logs/COMMANDS.md`. 
 lsusb -d 0b05:1b7e -v    # standard read-only descriptor/status queries
 dfu-util -l              # DFU enumeration only
 tool/enter_bootloader.py --run --acknowledge-reset
-                           # one explicitly authorized reset-only report
+                           # two separately authorized reset-only entries total
 probe_bootloader.py --run --acknowledge-volatile-length
-                           # sent only the first 0x8f status query, then timed out
+                           # first attempt stopped after 0x8f; corrected retry passed
+probe_flash_read.py --run --acknowledge-one-read
+                           # exactly one 48-byte execute-READ at 0x10000
 ```
 
 All other probes read sysfs, udev metadata, package metadata, kernel logs, repository files, or the saved logs. `usbhid-dump` was invoked only with `--help`; it was never pointed at the keyboard.
@@ -1116,11 +1118,10 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 
 1. **Look for the exact installed release without touching the keyboard:** obtain the exact ASUS updater package for VID:PID `0b05:1b7e` / release 1.59, hash the original download, and extract/analyze it offline. This may yield a recovery candidate even if chip readout is unavailable. The official 1.00.58 image is now preserved locally but is not an installed-firmware backup.
 2. **Decide whether to install fwupd:** installation changes the host, so ask first. Its value is limited because the current descriptors do not advertise DFU, but it can confirm whether a supported fwupd plugin recognizes the device.
-3. **Bootloader entry is validated live (logs 87–88).** Before the next probe,
-   passively rediscover the current hidraw names. Grant only write access to the
-   FF01 command node and read access to the FF00 response node, verify no other
-   process holds either, then request fresh approval for the fixed four-report
-   probe. Do not reuse stale `/dev/hidrawN` names.
+3. **USB readback is validated for one chunk (logs 90–91).** The next device
+   phase would be the full app-region backup: three passes, byte-for-byte and
+   SHA-256 agreement, then structural validation. That remains a separate,
+   longer live operation requiring explicit approval.
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater
@@ -1134,10 +1135,9 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
    comparison applied to the selected entry value before the jump; until those
    are resolved, the set of conditions a modified image must satisfy is known to
    be incomplete.
-8. **Do not treat bootloader flash READ as live-validated.** The corrected
-   split-channel status/zero-buffer probe passed (log 90), but it deliberately
-   sent no address or execute-READ. No installed-firmware backup exists. Live use
-   of `tool/backup_firmware.py` remains unauthorised pending a separate decision.
+8. **Do not treat one block as a backup.** Log 91 validates one READ and its
+   freshness proof only. No installed-firmware backup exists. Live use of
+   `tool/backup_firmware.py` remains unauthorised pending a separate decision.
 
 ## Evidence integrity
 

@@ -64,3 +64,75 @@ opening any hidraw node. The keyboard had automatically returned to normal mode.
 No report was sent and no flash byte was read. Re-entry requires another
 reset-only report and therefore fresh explicit authorization under the project's
 safety rules.
+
+BOOTLOADER RE-ENTRY
+The owner explicitly authorized one more reset-only bootloader-entry report.
+
+Command:
+  python3 tool/enter_bootloader.py --run --acknowledge-reset
+
+Output:
+  payload_len=64
+  payload=7b aa 41 53 55 53 aa 00 ... 00
+  hidraw_write_len=65
+  hidraw_write_sha256=de6cfe16cc4639b2593bdfe86dade88e4e282a9ad6552b5684fbd35ef50506d8
+  validated_node=/dev/hidraw7
+  action=one reset-only hidraw write; no retry
+  report_sent=yes
+  RESULT: bootloader PID 0b05:1b7f observed
+  boot_node=/dev/hidraw6
+  boot_node=/dev/hidraw7
+  boot_node=/dev/hidraw8
+
+POST-ENTRY PASSIVE PREFLIGHT
+Descriptor selection again resolved command FF01=/dev/hidraw6 and response
+FF00=/dev/hidraw7. Neither recreated node retained a user:dereck ACL:
+  /dev/hidraw6 user::rw- group::--- other::---
+  /dev/hidraw7 user::rw- group::--- other::---
+No process holder was reported. The one-block read tool was not started, so no
+address, execute-READ, or flash access occurred. Narrow ACLs must be reapplied
+because devtmpfs recreated the nodes during the reset/re-enumeration.
+
+ACL RESTORATION AND FINAL PREFLIGHT
+The owner manually applied the requested narrow ACLs. Passive verification:
+  /dev/hidraw6 user:dereck:-w-   (FF01 command channel)
+  /dev/hidraw7 user:dereck:r--   (FF00 response channel)
+  fuser: no holder reported for either node
+Descriptor selection still resolved FF01=/dev/hidraw6 and FF00=/dev/hidraw7.
+
+AUTHORIZED LIVE ONE-BLOCK READ
+Command:
+  python3 tool/probe_flash_read.py --run --acknowledge-one-read
+
+Raw output:
+  validated_command_node=/dev/hidraw6 usage_page=0xff01
+  validated_response_node=/dev/hidraw7 usage_page=0xff00
+  command_selector_rejections=3
+  response_selector_rejections=3
+  application_nodes=[]
+  target=0x10000+0x30; execute_read_count=1
+  data=53 4e 5f 46 57 49 4e 00 76 31 2e 30 2e 30 30 00 00 10 01 60 ff ff ff ff 01 00 00 00 ff ff ff ff 00 00 00 00 00 10 01 60 ac 58 00 00 85 24 55 7d
+  ascii=SN_FWIN.v1.0.00....`...................`.X...$U}
+  sha256=5ed6cf849410a373aa7f64c2c3ac8e3e6b710d1c52da3c4124e1510f51ad5815
+  RESULT=PASS fresh_complete=true magic=SN_FWIN
+  FLASH_ACCESS=one execute-READ of 48 bytes at 0x10000
+
+INTERPRETATION
+The bootloader accepted exactly one execute-READ at address 0x10000 and length
+0x30. The sample/status/confirm ordering proved the returned buffer was complete
+and newer than the all-zero bootstrap. It begins with the expected SN_FWIN
+container magic.
+
+The installed and preserved-vendor 48-byte blocks match at offsets 0x00..0x2b.
+The final u32 record-checksum field differs:
+  installed: 85 24 55 7d
+  vendor 1.00.58: 7a c1 75 5e
+This is evidence that the installed record payload differs from the preserved
+1.00.58 image. The shared `v1.0.00` container string is not the keyboard's
+bcdDevice firmware release.
+
+FINAL SAFETY ACCOUNTING
+Exactly one flash execute-READ was sent, for 48 bytes at 0x10000. No other
+address, second execute-READ, unlock, erase, program, reset after entry, update,
+driver detach, or SPI command occurred. The read returned data only; no firmware
+or persistent configuration was changed. No full backup was attempted.

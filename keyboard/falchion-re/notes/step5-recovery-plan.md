@@ -247,37 +247,30 @@ Procedure (all read-only):
 4. Do not proceed to any flashing (a separate, later, still-gated procedure)
    until this backup exists, verifies, and is stored redundantly.
 
-## Readiness status (2026-08-31, supersedes the 2026-08-30 entry)
+## Readiness status (updated 2026-09-02)
 
-- **Host access: confirmed** (read-only, from sysfs metadata). The keyboard
-  enumerates as `0b05:1b7e` (application mode) and `/dev/hidraw1-4` are world
-  read/write, so no elevated privilege is needed. `hidapi`/`pyusb` are not
-  installed; the tool uses raw hidraw instead.
+- **Host transport: confirmed live.** Bootloader commands use FF01/EP6 and
+  responses use FF00/EP5. The recreated nodes are root-only, so the owner used
+  temporary narrow ACLs; these disappear on every re-enumeration.
 - **Read-only tool: rebuilt and tested offline** — `tool/backup_firmware.py`
   (logs 83, 84, 85, 86). Its default dry-run validates all 46080 dump-plan reports
   against the guard, and the guard rejected every erase/program/unlock/reset form
-  in the self-check. Device selection requires exactly one `1b7f` node whose
-  report descriptor declares usage page `0xFF01`, 64-byte IN and OUT, and no
-  report ID.
-- **Live use remains unauthorised pending independent review.** `--run` is gated
-  behind `--force-unreviewed`. The CLI refusal path was exercised without that
-  acknowledgement and returned before device selection; the live path has never
-  been entered. The
-  post-EXEC scheduling race is resolved as *proven possible* (log 85), and the
-  tool implements the corrected sample-then-status handshake (log 86) instead of
-  a busy poll. Three things are still unresolved: the Linux hidraw write
-  report-number prefix and read framing for this device (assumed rather than
-  observed), the total absence of any hardware validation, and the sole-host
-  operational precondition above. The handshake also aborts, rather than guess,
+  in the self-check. Device selection requires distinct validated `1b7f` FF01
+  command and FF00 response nodes.
+- **One-block READ is confirmed; full backup remains unauthorised.** Log 91
+  validates one 48-byte READ at `0x10000` using the corrected freshness
+  handshake. Multi-chunk sequencing, anchor rebasing, and repeated full passes
+  remain untested on hardware. `backup_firmware.py --run` is still gated behind
+  `--force-unreviewed` and needs a separate explicit decision. The handshake
+  aborts, rather than guesses,
   if a chunk's content matches the proven baseline and no anchor chunk of
   different proven content is available to re-base through — including the case
   of an all-zero first chunk, since the bootstrap baseline is all zeros.
 - **Every completed dump is self-validated in memory before it is written**, and
   the output is published with an exclusive temp file plus `os.link`, so an
   existing backup is never overwritten and no partial file is left behind.
-- **Still not done:** the device is in application mode, so nothing can be dumped
-  yet; entering bootloader mode is the first real device interaction and needs an
-  explicit decision. No installed-firmware backup exists.
+- **Still not done:** no installed-firmware backup exists. One validated block
+  is evidence for the method, not recovery material.
 
 ## Only after a verified backup
 

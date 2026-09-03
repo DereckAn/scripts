@@ -67,10 +67,10 @@ PROTOCOL EVIDENCE (the READ behavior below is static; no READ has run on hardwar
     trustworthy instead of merely observed.
 
 UNRESOLVED (why --run stays gated)
-  * Log 90 validates Linux report framing, FF01 command routing, FF00 response
-    routing, status, volatile length, and the zero-buffer bootstrap. It did not
-    set an address or execute a flash READ.
-  * No execute-READ has been sent and no installed-firmware backup exists.
+  * Log 91 validates one 48-byte execute-READ at 0x10000 and the freshness
+    handshake. Multi-chunk sequencing, anchor rebasing, and repeated full passes
+    have not been exercised on hardware.
+  * No installed-firmware backup exists.
   * OPERATIONAL PRECONDITION, not provable from the protocol: no other process
     may send reports to either hidraw node during the dump. A foreign pending
     READ is invisible (state+0x34 is not exposed), and one that completes between
@@ -970,17 +970,17 @@ def dry_run():
     print("RESULT dry_run_ok=True guard_rejected_forbidden=True")
     print("LIMITATION No device was opened. The post-EXEC scheduling race is "
           "proven possible (log 85) and the corrected handshake (log 86) is "
-          "proven to return only complete buffers. Log 90 live-validates the "
-          "non-flash framing/bootstrap, but execute-READ and the sole-host "
-          "operational precondition all remain unresolved, so --run stays gated "
+          "proven to return only complete buffers. Log 91 live-validates one "
+          "48-byte READ, but multi-chunk/repeated-pass behavior and the sole-host "
+          "operational precondition remain unresolved, so --run stays gated "
           "behind --force-unreviewed. Live use is still unauthorised.")
     return 0
 
 
 LIVE_REFUSAL = """REFUSING to run live.
 
-Bootloader entry and the exact split-channel status/zero-buffer probe are
-live-validated (log 90). No address or execute-READ has been sent.
+Bootloader entry, split-channel framing, and exactly one 48-byte READ at 0x10000
+are live-validated (log 91). No full firmware backup has been attempted.
 
 Two protocol questions are now settled. The post-EXEC scheduling race is real
 (log 85): the 0x1f parser only sets the pending byte state+0x34 and the request
@@ -996,11 +996,10 @@ guess.
 
 What is still unresolved:
 
-  1. Linux report framing, FF01 command routing, FF00 response routing, status,
-     volatile length, and the zero-buffer bootstrap are validated. Flash READ
-     behavior and the freshness handshake have not been exercised on hardware.
-  2. No execute-READ has been sent and no installed-firmware backup exists, so
-     there is nothing to restore from if a read path misbehaves.
+  1. A single first chunk and its freshness handshake are validated. Multi-chunk
+     sequencing, anchor rebasing, and three repeated full passes are not.
+  2. No installed-firmware backup exists, so there is nothing to restore from if
+     a later read path unexpectedly changes device state.
   3. An operational precondition that the protocol cannot enforce: no other
      process may send reports to either hidraw node during the dump. A foreign READ
      that is queued but has not dispatched is invisible -- state+0x34 is exposed

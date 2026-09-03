@@ -20,12 +20,13 @@ command-to-log index.
 - **Unresolved** means the available evidence does not support a safe answer.
 
 The initial preservation boundary was strict: no device write or state change.
-It was crossed only twice with explicit owner approval: one exact reset-only
-report entered the bootloader (log 88), then one `0x8f` bootloader status request
-was sent during the minimal probe (log 89). No firmware update, DFU operation,
-driver detach, erase, program, unlock, execute-READ, or SPI transaction was
-performed. No SPI Write Enable (`0x06`) was sent. Offline analysis scripts never
-communicated with the keyboard.
+Every later device action was individually owner-authorized: the first
+reset-only bootloader entry (log 88), the first status request (log 89), the
+successful status/zero-buffer probe (log 90), and a second reset-only entry plus
+one 48-byte flash READ (log 91). No firmware update, DFU operation, driver
+detach, erase, program, unlock, persistent configuration write, or SPI
+transaction was performed. No SPI Write Enable (`0x06`) was sent. Offline
+analysis scripts never communicated with the keyboard.
 
 Earlier protocol experiments did send configuration-changing HID reports. They
 are retained as historical evidence and were not repeated during preservation.
@@ -37,8 +38,8 @@ are retained as historical evidence and were not repeated during preservation.
 - Both physical keyboard connectors expose the same normal-mode USB layout.
 - Standard USB firmware backup is not exposed. A proprietary bootloader-mode
   READ path is supported by static analysis. Bootloader entry and split-channel
-  status/zero-buffer framing are live-validated (log 90). No flash READ has been
-  executed.
+  framing are live-validated, and one fresh 48-byte flash block was read from
+  `0x10000` (log 91). No full backup exists.
 - Official ASUS firmware 1.00.58 is preserved and hashed, but it is not a dump
   of the installed 1.59 firmware.
 - The vendor updater is a proprietary HID erase/program tool using normal PID
@@ -952,6 +953,29 @@ not set an address or send execute-READ, so it does not validate flash readback,
 the freshness handshake, the full backup tool, or any installed-firmware byte.
 No unlock, erase, program, reset, update, or SPI command occurred.
 
+## 2026-09-02 — One installed-flash block read successfully (log 91)
+
+The owner authorized one 48-byte read at `0x10000`. A dedicated tool and six
+tests were added first; the full suite increased to 136 passing tests. Its guard
+fixes the address and length, permits exactly one `0x1f/0x05` execute-READ, and
+cannot construct another address, a second execute, unlock, erase, program, or
+reset. Unlike the eventual backup tool, it does not re-arm EXEC.
+
+The first preflight found that the bootloader had automatically returned to
+application mode, so it stopped before opening a protocol node. After separate
+approval, the exact reset-only entry report was sent once more. Re-enumeration
+removed the temporary ACLs; the owner restored write-only access to FF01 and
+read-only access to FF00. Descriptor and holder checks passed.
+
+The live probe then sent exactly one 48-byte flash READ at `0x10000`. The
+sample/status/confirm handshake returned a complete fresh block beginning
+`SN_FWIN\0`; its SHA-256 is
+`5ed6cf849410a373aa7f64c2c3ac8e3e6b710d1c52da3c4124e1510f51ad5815`.
+The first 44 bytes match the preserved 1.00.58 image, while the last u32 record
+checksum differs (`85 24 55 7d` installed, `7a c1 75 5e` preserved), evidence
+that their record payloads differ. No other flash address or write-capable
+operation was used. Multi-chunk sequencing and a full backup remain untested.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1015,7 +1039,7 @@ For clarity, this investigation has not:
 - sent any erase, program, or flash-unlock command, or flashed anything;
 - run `tool/backup_firmware.py --run`, in any mode, at any time (the flag-gated
   CLI refusal has been exercised, which returns before device selection);
-- executed a bootloader flash READ or obtained any installed-firmware byte;
+- completed a multi-chunk or full installed-firmware backup;
 - built or flashed custom firmware.
 
 ## Recommended continuation
