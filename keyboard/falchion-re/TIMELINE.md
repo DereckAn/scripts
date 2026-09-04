@@ -1144,6 +1144,99 @@ unchanged — the fixes add fields and tighten ordering rather than moving any
 number. 232 offline tests pass, the regenerated note and JSON agree with the log
 on every count, both evidence hashes are unchanged, and no device was accessed.
 
+## 2026-09-03 — Step 6 Phase 3: installed code map and function matching (log 98)
+
+Three new pieces: `tool/extract_installed_records.py` (26 tests),
+`tool/match_functions.py` (22 tests) and
+`ghidra/scripts/FalchionFunctionInventory.java`, plus the two required reports.
+`classify_fill` moved into `falchion_image`, which re-exports it, so the fill
+classifier has one home instead of two.
+
+The runtime map is built from installed bytes alone. Candidate A's
+scatter-region table is found by structure — the first descriptor whose source
+and destination match the SN_FWIN record it loads — rather than at a remembered
+vendor offset, and it lands at flash `0x16750` in both releases. It gives copy
+`0x21000..0x3f380` into RAM `0x18000000..0x1801e380`, decompress
+`0x3f380..0x3f780` (`0x400` in) into `0x1801e380..0x1801ee84` (`0xb04` out), and
+zeroinit up to `0x18036168`. That last address is the entry image's initial stack
+pointer, in both releases, which is an independent confirmation of the chain: the
+loader's top of RAM and the vector table agree. Record slot 1 is exactly the copy
+region plus the `0x400` compressed input in both releases, so the +44 growth is
+entirely in the copy region while the compressed input and decompressed output
+stay the same size and zeroinit shrinks by 4.
+
+Four slices went into a new ignored project, `ghidra/project-step6/`, at bases
+their own records and loader behaviour support. The pre-existing
+`project/falchion-hfx` was not opened, analyzed or modified. Functions were then
+paired on body bytes, masked instruction shape, constants, strings, size,
+instruction and block counts, and call degree — with address equality reported
+but never used to match, so no vendor symbol is carried across on an address.
+Both pairs came out fully matched: Candidate A 80/80 and Candidate B 293/293,
+nothing unmatched.
+
+The most useful result is a correction of scale. Log 96 measured raw
+byte-position differences. Once the gaps between matched functions are aligned by
+their brackets, Candidate A's change is 131 bytes — identical to the raw count,
+because A did not move — and Candidate B's is 1,232 bytes plus a single 44-byte
+insertion. Candidate B is uniformly relocated by `+0x2c` after one point, a shift
+measured from the confident matches rather than assumed, so roughly 99,880 of the
+101,112 raw differing bytes were the relocation. The insertion site is exactly
+one data gap, vendor `0x180047fc..0x180057d2` against installed
+`0x180047fc..0x180057fe`, outside every function body. What those 44 bytes hold
+was not investigated.
+
+Two limits are recorded rather than papered over. The decompressed RAM range is
+located and sized but its contents are not reconstructed, because the ARM
+decompressor was not reimplemented. And the SN_FWIN record word at `+0xc` is
+never read by `FUN_0000511c`, so calling it a RAM destination is an assumption;
+slice names carry the runtime base the loader evidence supports instead, which is
+`0` for Candidate A. Separately, the RAM image at flash `0x74000..0x7c000` is
+reachable from no record and no scatter region on this path.
+
+Exit gates: every extracted byte round-trips to its named source range, every
+runtime range cites the descriptor that puts it there, and a second run of both
+report generators reproduces identical hashes. 280 offline tests pass, both
+evidence hashes are unchanged, and no device was accessed. Phase 4 was not
+started and the work was left uncommitted.
+
+**Independent review accepted the scatter/load map but rejected the function
+comparison and the extraction gate; all five findings are fixed (log 99).** Two
+were blockers. Ghidra function bodies can be discontiguous, and here many are —
+15 of 80 in Candidate A and 61 of 293 in Candidate B — yet both the inventory
+script and the matcher assumed `entry..entry+size`. That invalidated the
+exact-body hashes, the body-versus-data classification and the 21/446 body-byte
+totals. The script now iterates the real address ranges, hashes their
+concatenation in address order and emits them; the matcher parses them, refuses
+an inventory that lacks them or whose ranges disagree with the reported size,
+diffs bodies only when the two range shapes match, and derives data spans from
+the complement of the union of real ranges. Every number was regenerated. The
+result changed materially: **Candidate A has no differing function-body bytes at
+all** — all 131 of its changed bytes are data — and Candidate B is 253 body plus
+977 data, 1,230 aligned, against the earlier 1,232. The tier counts moved to
+78/0/2 and 260/24/9, and the insertion site is four bytes earlier, at vendor
+`0x180047f8`, because the old span boundary came from an over-long body extent.
+
+The second blocker: slot 1 was extracted only as its loadable copy region
+`0x21000..0x3f380`, leaving the `0x400` compressed tail mapped but not
+extracted, and a test pinned that. Each active record is now extracted whole,
+with a check that every active record byte is covered by some slice.
+
+Three smaller fixes. The complete 373-pairing mapping lived only in transient
+JSON and the notes came from an ephemeral `/tmp` script, so
+`tool/report_phase3.py` is now checked in: it renders both notes plus three JSON
+artifacts including the full mapping, and has a `--check` mode that fails if the
+committed files drift. The claim that an address is "only ever reported" was
+false — one tentative rule uses the measured shift — and is now stated as "never
+the *sole* signal", with the caveat that the rule also requires byte equality and
+can never promote a pairing above tentative. And `--write` could previously emit
+slices before the aggregate check result was enforced; it is now gated on every
+check passing, verified by a reproduction that leaves the output directory empty.
+
+The scatter/load map itself stands unaltered, as do the function counts, the
+`+0x2c` shift and the conclusion that almost all of log 96's raw byte difference
+is relocation. 303 offline tests pass, both evidence hashes are unchanged, and no
+device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

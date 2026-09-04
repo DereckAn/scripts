@@ -1,0 +1,436 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 3 corrections after independent review
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed. Corrects log 98; log 98 is unedited.
+
+WHY THIS LOG EXISTS
+Independent review accepted the scatter/load map but rejected the function
+comparison and the extraction gate: two blockers, one major and two minor
+findings. All five are fixed here and every affected number is regenerated.
+Raw log 98 is left byte-for-byte as published; this log supersedes its
+function-body figures, its extraction slice set and its 'address is never
+used to match' wording.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no bootloader entry, no
+probe or backup tool run, no sudo, no package install, no network access, and
+no unlock/erase/program/reset/SPI construction. Both evidence binaries were
+opened read-only and are unchanged. The pre-existing Ghidra project was not
+opened; only ghidra/project-step6 was used, read-only, for the inventories.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+BLOCKER 1 — function bodies were treated as contiguous, and many are not
+FalchionFunctionInventory.java allocated body.getNumAddresses() bytes and
+read them contiguously from the entry point; match_functions.py made the same
+entry..entry+size assumption for body diffs and gap boundaries. Ghidra bodies
+can be discontiguous and in this firmware many are, so the exact-body hashes,
+the body-versus-data classification and the 21/446 body-byte totals in log 98
+were all unsound.
+
+Scale of the problem, from the regenerated inventories:
+$ python3 - <<'PY'
+import re
+FR = re.compile(r'(\w+)=(.*?)(?=\s+\w+=|$)')
+for tag in ('vendor_a','installed_a','vendor_b','installed_b'):
+    total = multi = holes = 0
+    for line in open('ghidra/inventories/%s.txt' % tag):
+        if not line.startswith('FUNC '):
+            continue
+        fields = dict(FR.findall(line[5:].strip()))
+        parts = fields['ranges'].split(';')
+        total += 1
+        if len(parts) > 1:
+            multi += 1
+            holes += len(parts) - 1
+    print('%-12s %3d functions, %3d discontiguous, %3d holes'
+          % (tag, total, multi, holes))
+PY
+  vendor_a      80 functions,  15 discontiguous,  27 holes
+  installed_a   80 functions,  15 discontiguous,  27 holes
+  vendor_b     293 functions,  61 discontiguous,  93 holes
+  installed_b  293 functions,  61 discontiguous,  93 holes
+  [exit 0]
+  NOTE 15 of 80 Candidate A bodies and 61 of 293 Candidate B bodies are discontiguous; the review's overlap count understated it
+
+FIX 1
+The inventory script now iterates body.getAddressRanges(true), reads each
+real range, hashes the concatenation in address order, and emits the ordered
+ranges as a new 'ranges=' field. match_functions.py parses those ranges,
+refuses an inventory that lacks them, refuses one whose ranges do not sum to
+the reported size, computes body diffs only when the two range *shapes*
+match, and derives data spans from the complement of the union of real
+ranges. All four inventories were regenerated and every number recomputed.
+$ grep -n 'getAddressRanges' ghidra/scripts/FalchionFunctionInventory.java
+  133:            for (AddressRange range : body.getAddressRanges(true)) {
+  [exit 0]
+
+$ head -n 1 ghidra/inventories/installed_a.txt; grep -m 2 '^FUNC entry=00000210' ghidra/inventories/vendor_a.txt | cut -c1-200
+  PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  FUNC entry=00000210 name=FUN_00000210 size=0x8f4 ranges=00000210-000002a0;00002908-00002970;00002980-000029a8;00002ab0-00002b1c;00002b2c-00002b92;00002b9c-00002c2c;00002e42-00002ef4;000030a6-00003312;
+  [exit 0]
+  NOTE function 0x210 has a 0x8f4-byte body that log 98 read as 0x210..0xb04; its real ranges exclude the other functions inside that span
+
+EFFECT OF FIX 1 — the classification changed materially
+$ python3 tool/match_functions.py --program app_a --vendor-inventory ghidra/inventories/vendor_a.txt --installed-inventory ghidra/inventories/installed_a.txt --vendor-bin ghidra/imports/vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin --installed-bin ghidra/imports/installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin --base 0x0 --flash-base 0x11000 --top 0 | grep -vE '^(DATA |  vendor )'
+  PROGRAM match_functions
+  PAIR app_a
+  VENDOR_PROGRAM vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
+  INSTALLED_PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  BASE 0x00000000 FLASH_BASE 0x11000
+  COUNTS vendor=80 installed=80
+  TIERS identical=78 structural=0 tentative=2 unmatched=0
+  CHANGED 0 of 80 pairings
+  MOVED 0
+  DATA_REGIONS 106 bytes=131 unaligned_gaps=0
+  DISCONTIGUOUS_BODIES vendor=15 installed=15 of 80/80 — body bytes and gaps come from the real ranges, not entry..entry+size
+  UNCOVERED_SPANS vendor=70 installed=70 aligned=True
+  DOMINANT_SHIFT 0x0 (+0 bytes), measured from the identical and structural matches only
+  REVIEW_RANKING showing 0 of 0
+  DATA_RANGES showing 106 of 106; the complete list is in the JSON
+  MUST_NOT_ASSUME_EQUAL 2
+  RESULT matched=80 unmatched=0
+  LIMITATION Data regions are the spans no real body range covers, paired in address order, which is only valid because both sides produced the same span count. A paired span whose sides differ in length is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary.
+  LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
+  LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  [exit 0]
+
+$ python3 tool/match_functions.py --program app_b --vendor-inventory ghidra/inventories/vendor_b.txt --installed-inventory ghidra/inventories/installed_b.txt --vendor-bin ghidra/imports/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin --installed-bin ghidra/imports/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin --base 0x18000000 --flash-base 0x21000 --top 6 | grep -vE '^(DATA vendor|  vendor )'
+  PROGRAM match_functions
+  PAIR app_b
+  VENDOR_PROGRAM vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
+  INSTALLED_PROGRAM installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  BASE 0x18000000 FLASH_BASE 0x21000
+  COUNTS vendor=293 installed=293
+  TIERS identical=260 structural=24 tentative=9 unmatched=0
+  CHANGED 24 of 293 pairings
+  MOVED 275
+  DATA_REGIONS 847 bytes=977 unaligned_gaps=1
+  DISCONTIGUOUS_BODIES vendor=61 installed=61 of 293/293 — body bytes and gaps come from the real ranges, not entry..entry+size
+  UNCOVERED_SPANS vendor=229 installed=229 aligned=True
+  DOMINANT_SHIFT 0x2c (+44 bytes), measured from the identical and structural matches only
+  REVIEW_RANKING showing 6 of 24
+    structural vendor=0x18000d56 installed=0x18000d56 size=0xf46 differing_bytes=204 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x18000bb8 installed=0x18000bb8 size=0xda differing_bytes=9 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x18000a70 installed=0x18000a70 size=0x68 differing_bytes=5 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x18000b28 installed=0x18000b28 size=0x70 differing_bytes=4 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x1800075a installed=0x1800075a size=0x28a differing_bytes=3 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x18000aec installed=0x18000aec size=0x3c differing_bytes=3 :: same instruction shape with scalars and addresses masked
+  DATA_RANGES showing 6 of 847; the complete list is in the JSON
+  UNALIGNED_GAP vendor 0x180047f8..0x180057d2 (0xfda) vs installed 0x180047f8..0x180057fe (0x1006) — lengths differ, not compared
+  MUST_NOT_ASSUME_EQUAL 275
+  RESULT matched=293 unmatched=0
+  LIMITATION Data regions are the spans no real body range covers, paired in address order, which is only valid because both sides produced the same span count. A paired span whose sides differ in length is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary.
+  LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
+  LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  [exit 0]
+
+$ python3 /tmp/claude-1000/-home-dereck-Documents-GIT-scripts/f6170744-6cfc-4396-b654-dfbc7202a611/scratchpad/aligned_totals.py
+  candidate A: body=0 data=131 aligned_total=131 raw_log96=131 shift=0x0
+  candidate B: body=253 data=977 aligned_total=1230 raw_log96=101112 shift=0x2c
+      insertion: vendor 0x180047f8..0x180057d2 (0xfda) vs installed 0x180047f8..0x180057fe (0x1006), +44 bytes
+  [exit 0]
+  NOTE Candidate A now has ZERO differing function-body bytes: all 131 of its changed bytes are data. Candidate B is 253 body + 977 data = 1,230, against log 98's 446 + 786 = 1,232. Log 98's body figures counted bytes that sit in the holes of discontiguous bodies
+
+BLOCKER 2 — slot 1 was not extracted in full
+The plan requires extracting each complete SN_FWIN record. The installed
+slot-1 record is 0x21000..0x3f780 (0x1e780) but log 98 emitted only the
+loadable copy region 0x21000..0x3f380 (0x1e380), leaving the 0x400 compressed
+bytes mapped but not extracted, and a test pinned that behaviour.
+
+FIX 2: one complete slice per active record, plus the runtime image, and a
+new check that every active record byte is covered by some slice.
+$ python3 tool/extract_installed_records.py | grep -E '^SLICE|^  slot|^  source=0x|^  import_base'
+  SLICE installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+    slot=0 role=complete SN_FWIN record and the entry image, executed in place
+    source=0x11000..0x168ac (0x58ac bytes) sha256=f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835
+    import_base=0x00000000
+  SLICE installed_rec1_slot1_flash21000_dstNA_len1e780_ccbd61f8.bin
+    slot=1 role=complete SN_FWIN record: scatter region sources __scatterload_copy 0x21000..0x3f380 + __scatterload_decompress 0x3f380..0x3f780 — not one runtime image, so it has no import base
+    source=0x21000..0x3f780 (0x1e780 bytes) sha256=ccbd61f85dade3d2d7db2d3ccac89158f6fba2cf1b97c7997e19f5f47a289b81
+    import_base=none
+  SLICE installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+    slot=1 role=runtime image from scatter region 0, __scatterload_copy
+    source=0x21000..0x3f380 (0x1e380 bytes) sha256=be463863b8cd6ca7dae56a1bba396ec7906f248389fd3e2a6656210ca20773be
+    import_base=0x18000000
+    source=0x21000..0x3f380
+    source=0x3f380..0x3f780
+  [exit 0]
+
+$ python3 tool/extract_installed_records.py | grep -E '^  (PASS|FAIL)|^RESULT'
+    PASS entry pointer is record slot 0 — 0x60011000
+    PASS region table lies inside the entry image — 0x16750 in 0x11000..0x168ac
+    PASS region 0 source is record slot 1 — 0x60021000
+    PASS region destinations are contiguous
+    PASS last region RAM end equals the entry initial stack pointer — 0x18036168 vs 0x18036168
+    PASS every region handler is one identified in log 73 — 0x1d8=__scatterload_copy, 0x17c=__scatterload_decompress, 0x1f4=__scatterload_zeroinit
+    PASS flash-backed region inputs tile record slot 1 exactly — 0x21000..0x3f380 + 0x3f380..0x3f780 == 0x21000..0x3f780
+    PASS every active record byte is covered by an extracted slice — slot 0 0x11000..0x168ac; slot 1 0x21000..0x3f780
+    PASS every extracted byte round-trips to its source range
+  RESULT extraction_ok=True checks_run=9 slices=3 runtime_ranges=3
+  [exit 0]
+  NOTE 9 checks now, including 'every active record byte is covered by an extracted slice'
+
+MINOR 5 — a failed check could still write slices
+Writes happened before the aggregate check result was enforced, so a broken
+stack-pointer relationship or an unknown handler could leave files behind
+next to a non-zero exit. Writing is now gated on every check passing.
+$ python3 - <<'PY'
+import pathlib, struct, sys, tempfile
+sys.path.insert(0, 'tool')
+import extract_installed_records as ex, falchion_image as fi
+data = bytearray(open('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin','rb').read())
+struct.pack_into('<I', data, 0x11000 - 0x10000, 0x18030000)
+view = fi.ImageView(bytes(data), 0x10000)
+out = pathlib.Path(tempfile.mkdtemp())
+try:
+    ex.extract(view, out, write=True)
+    print('FAIL: write was allowed')
+except ex.ExtractError as exc:
+    print('refused:', exc)
+print('files written:', sorted(p.name for p in out.iterdir()))
+PY
+  refused: refusing to write slices because 1 check(s) failed: last region RAM end equals the entry initial stack pointer — 0x18036168 vs 0x18030000
+  files written: []
+  [exit 0]
+  NOTE the broken stack-pointer relationship refuses the write and leaves the output directory empty
+
+MAJOR 3 — the complete correspondence was not a preserved, reproducible report
+report_lines() emitted rankings and the must-not-assume-equal list but not
+all 373 pairings, and the Markdown notes were produced by an ephemeral
+/tmp generator rather than a repository script.
+
+FIX 3: tool/report_phase3.py is now checked in. It renders both notes plus
+three JSON artifacts, including the complete per-pairing mapping, and has a
+--check mode that fails if the files on disk drift from a fresh render.
+$ python3 tool/report_phase3.py
+  WROTE notes/installed-record-load-map.md (10021 bytes)
+  WROTE notes/installed-record-load-map.json (6528 bytes)
+  WROTE notes/vendor-to-installed-functions.md (73823 bytes)
+  WROTE notes/vendor-to-installed-functions-app-a.json (86948 bytes)
+  WROTE notes/vendor-to-installed-functions-app-b.json (470183 bytes)
+  RESULT reports_written=5
+  [exit 0]
+
+$ python3 tool/report_phase3.py --check
+    CURRENT notes/installed-record-load-map.md
+    CURRENT notes/installed-record-load-map.json
+    CURRENT notes/vendor-to-installed-functions.md
+    CURRENT notes/vendor-to-installed-functions-app-a.json
+    CURRENT notes/vendor-to-installed-functions-app-b.json
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ wc -c notes/installed-record-load-map.md notes/installed-record-load-map.json notes/vendor-to-installed-functions.md notes/vendor-to-installed-functions-app-a.json notes/vendor-to-installed-functions-app-b.json
+   10041 notes/installed-record-load-map.md
+    6528 notes/installed-record-load-map.json
+   73841 notes/vendor-to-installed-functions.md
+   86948 notes/vendor-to-installed-functions-app-a.json
+  470183 notes/vendor-to-installed-functions-app-b.json
+  647541 total
+  [exit 0]
+
+$ sha256sum notes/installed-record-load-map.md notes/installed-record-load-map.json notes/vendor-to-installed-functions.md notes/vendor-to-installed-functions-app-a.json notes/vendor-to-installed-functions-app-b.json
+  8844b5a1c9945593c1aff74db098b1eb0c09438898668db603c21ed8f33aa715  notes/installed-record-load-map.md
+  c238a9d2b4c5e25899684b29b57cd33f59984f6140355071b10618f06d2168ec  notes/installed-record-load-map.json
+  f90d9a93b4679b7099a169dd5038c98a20020f623f41698e7aab161440c097ac  notes/vendor-to-installed-functions.md
+  ffed80232e0fceb0e883b25f0158f6bece847cc969cc0d90022e8c1f44414bec  notes/vendor-to-installed-functions-app-a.json
+  5334f65de703153f943ceb1cb8ee5e0f76176944bcc51bab9f7eca4e529b615f  notes/vendor-to-installed-functions-app-b.json
+  [exit 0]
+
+$ grep -c '^| `0x' notes/vendor-to-installed-functions.md
+  674
+  [exit 0]
+  NOTE every pairing and every must-not-assume-equal entry is now a table row in the tracked Markdown, not only in an ignored directory
+
+MINOR 4 — the 'address is never used to match' claim was inaccurate
+Tier 3a selects left.entry + shift, so an address does participate. The claim
+is now stated precisely: an address is never the *sole* signal; the identical
+and structural tiers use no address at all; the one tentative rule that uses
+the measured shift also requires body-byte equality and can never raise a
+pairing above tentative.
+$ python3 tool/match_functions.py --program app_a --vendor-inventory ghidra/inventories/vendor_a.txt --installed-inventory ghidra/inventories/installed_a.txt --top 0 | grep '^LIMITATION'
+  LIMITATION Data regions are the spans no real body range covers, paired in address order, which is only valid because both sides produced the same span count. A paired span whose sides differ in length is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary.
+  LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
+  LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.
+  [exit 0]
+
+EXIT GATE — every active record byte round-trips to its source range
+$ python3 /tmp/claude-1000/-home-dereck-Documents-GIT-scripts/f6170744-6cfc-4396-b654-dfbc7202a611/scratchpad/roundtrip_check.py
+  installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin       round_trip=True
+  installed_rec1_slot1_flash21000_dstNA_len1e780_ccbd61f8.bin              round_trip=True
+  installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin       round_trip=True
+  vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin          round_trip=True
+  vendor_rec1_slot1_flash21000_dstNA_len1e754_8fe68a13.bin                 round_trip=True
+  vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin          round_trip=True
+  [exit 0]
+
+$ python3 - <<'PY'
+import sys
+sys.path.insert(0, 'tool')
+import extract_installed_records as ex, falchion_image as fi
+for path, base in (('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin', 0x10000), ('dumps/vendor/M605_V01_00_58.bin', 0)):
+    view = fi.ImageView(open(path, 'rb').read(), base)
+    result = ex.extract(view)
+    covered = ex.merge_spans((s.source_lo, s.source_hi) for s in result.slices)
+    for record in fi.parse(view).records:
+        inside = any(lo <= record.flash_off and record.flash_end <= hi
+                     for lo, hi in covered)
+        print('%-10s slot %d 0x%05x..0x%05x fully_extracted=%s'
+              % (base and 'installed' or 'vendor', record.index,
+                 record.flash_off, record.flash_end, inside))
+PY
+  installed  slot 0 0x11000..0x168ac fully_extracted=True
+  installed  slot 1 0x21000..0x3f780 fully_extracted=True
+  vendor     slot 0 0x11000..0x168ac fully_extracted=True
+  vendor     slot 1 0x21000..0x3f754 fully_extracted=True
+  [exit 0]
+
+EXIT GATE — a second run reproduces the reports
+$ python3 tool/report_phase3.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/extract_installed_records.py --json | sha256sum; python3 tool/extract_installed_records.py --json | sha256sum
+  c238a9d2b4c5e25899684b29b57cd33f59984f6140355071b10618f06d2168ec  -
+  c238a9d2b4c5e25899684b29b57cd33f59984f6140355071b10618f06d2168ec  -
+  [exit 0]
+
+EXIT GATE — analyzers, suite, checksums
+$ python3 -m py_compile tool/*.py
+  [exit 0]
+  NOTE every tool compiles
+
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  [exit 0]
+
+$ python3 tool/compare_firmware_images.py | grep -E '^- differing bytes'
+  - differing bytes: **101297** of 442368 (22.90%)
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmp3ffinl1q/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp_98fa6bq/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpggzbmgry/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpccx50n1h/dump.bin
+  Ran 303 tests in 2.354s
+  OK
+  [exit 0]
+  NOTE 303 tests = 280 from log 98 plus 4 extractor, 11 matcher and 8 report-generator tests
+
+CORRECTED NUMBERS, SUPERSEDING LOG 98
+  Candidate A: 80/80 matched — 78 identical, 0 structural, 2 tentative, 0
+    unmatched. 15 discontiguous bodies each side. ZERO differing
+    function-body bytes: all 131 changed bytes are data, in 106 spans.
+    Log 98 said 76/2/2 with 21 body bytes and 110 data bytes.
+  Candidate B: 293/293 matched — 260 identical, 24 structural, 9 tentative,
+    0 unmatched. 61 discontiguous bodies each side. 253 differing body bytes
+    and 977 data bytes, 1,230 aligned total, against log 98's 236/48/9 with
+    446 + 786 = 1,232.
+  Uncovered span counts match on both sides (A 70/70, B 229/229), which is
+    what makes the address-order span pairing valid; the tool refuses to
+    compare any span if the counts differ.
+  Insertion site: vendor 0x180047f8..0x180057d2 (0xfda) against installed
+    0x180047f8..0x180057fe (0x1006), +44 bytes. Log 98 reported the same
+    site four bytes later, at 0x180047fc, because the span boundary came
+    from an over-long body extent.
+  Extraction: 3 slices per image instead of 2, adding the complete
+    slot-1 record 0x21000..0x3f780 alongside the runtime copy image.
+
+WHAT DID NOT CHANGE
+The scatter/load map stands unaltered: region table at flash 0x16750 found
+by structure, the three regions and their handlers, record slot 1 = copy +
+0x400 in both releases, the zeroinit end equalling the entry initial SP
+(installed 0x18036168, vendor 0x18036140), full source coverage, the +0x2c
+dominant shift, 293/293 and 80/80 function counts with nothing unmatched, and
+the conclusion that almost all of log 96's 101,112 raw differing bytes are
+relocation rather than content.
+
+REMAINING LIMITS, RESTATED
+  * Ghidra's auto-analysis still defines the function set, so the counts are
+    'functions Ghidra found', not a completeness proof.
+  * The decompressed RAM range 0x1801e380..0x1801ee84 is located and sized
+    but its contents are still not reconstructed.
+  * The SN_FWIN record word at +0xc is still never read by FUN_0000511c, so
+    treating it as a RAM destination remains an assumption.
+  * The RAM image at flash 0x74000..0x7c000 is still reachable from no
+    record and no scatter region on this path.
+  * Span pairing in address order is valid only because both sides produced
+    equal span counts. That is checked and reported, not assumed.
+  * No function meaning is inferred anywhere in this phase.
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  [exit 0]
+  NOTE no output means no whitespace errors
+
+$ git status --short
+   M FINDINGS.md
+   M TIMELINE.md
+   M ghidra/.gitignore
+   M ghidra/README.md
+   M logs/COMMANDS.md
+   M logs/SHA256SUMS
+   M tool/compare_firmware_images.py
+   M tool/falchion_image.py
+  ?? ghidra/scripts/FalchionFunctionInventory.java
+  ?? logs/98-installed-code-map-and-function-matching.txt
+  ?? notes/installed-record-load-map.json
+  ?? notes/installed-record-load-map.md
+  ?? notes/vendor-to-installed-functions-app-a.json
+  ?? notes/vendor-to-installed-functions-app-b.json
+  ?? notes/vendor-to-installed-functions.md
+  ?? tool/extract_installed_records.py
+  ?? tool/match_functions.py
+  ?? tool/report_phase3.py
+  ?? tool/test_extract_installed_records.py
+  ?? tool/test_match_functions.py
+  ?? tool/test_report_phase3.py
+  [exit 0]
+
+RESULT
+All five review findings are fixed. Function bodies are read from their real
+ordered Ghidra ranges, so body hashes, the body-versus-data split and every
+byte total are regenerated; Candidate A turns out to have no changed
+instruction bytes at all. Each active SN_FWIN record is now extracted whole,
+with a check that proves it, and nothing is written unless every check
+passes. The complete 373-pairing mapping and three JSON artifacts are
+produced by a tracked generator with a --check mode. The address claim is
+stated precisely. 303 offline tests pass, both evidence hashes are unchanged,
+and no device was accessed. Phase 4 not started; everything left uncommitted.

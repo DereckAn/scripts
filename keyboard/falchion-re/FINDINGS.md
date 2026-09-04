@@ -1138,6 +1138,111 @@ compares multisets and reports 603 distinct values in 802 occurrences, so a
 changed duplicate count cannot vanish. Slot 1's extra 44 bytes were disclosed
 only as a scalar length delta and are now an explicit span.
 
+### Installed runtime map and cross-release function correspondence (log 98)
+
+Step 6 Phase 3 added `tool/extract_installed_records.py`,
+`tool/match_functions.py` and `ghidra/scripts/FalchionFunctionInventory.java`,
+with 48 tests between the two Python tools. Reports:
+`notes/installed-record-load-map.md` and
+`notes/vendor-to-installed-functions.md`.
+
+Nothing below is taken from the vendor image or from a vendor address. No
+function meaning is inferred; this is structure and correspondence only.
+
+**The installed runtime map, derived from installed bytes.** Candidate A's
+scatter-region table is located by structure — the first descriptor whose source
+and destination match the SN_FWIN record it loads — and lands at flash `0x16750`
+(image offset `0x5750`) in both releases:
+
+| region | flash source | runtime destination | size | handler |
+|---|---|---|---|---|
+| 0 | `0x21000..0x3f380` | `0x18000000..0x1801e380` | `0x1e380` | `__scatterload_copy` |
+| 1 | `0x3f380..0x3f780` (`0x400` in) | `0x1801e380..0x1801ee84` (`0xb04` out) | `0xb04` | `__scatterload_decompress` |
+| 2 | none | `0x1801ee84..0x18036168` | `0x172e4` | `__scatterload_zeroinit` |
+
+- **The zeroinit end equals the entry image's initial stack pointer** in both
+  releases — installed `0x18036168`, vendor `0x18036140`. The loader's top of RAM
+  and the vector table agree, which corroborates the whole chain independently.
+- **Record slot 1 is exactly the copy region plus the `0x400` compressed input**
+  in both releases: `0x1e380 + 0x400 = 0x1e780` installed, `0x1e354 + 0x400 =
+  0x1e754` vendor. So the +44 growth is entirely in the copy region; the
+  compressed input and decompressed output sizes are unchanged, and zeroinit
+  shrank by 4, moving the RAM top by `+0x28`.
+- **The decompressed range is mapped, not known.** Its location and size come
+  from the region table, but the ARM decompressor was not reimplemented, so
+  `0x1801e380..0x1801ee84` has no reconstructed contents.
+- **Every byte of the installed dump is accounted for** with no gaps or overlap.
+  Each active SN_FWIN record is extracted **whole** — slot 1 as
+  `0x21000..0x3f780`, not just the loadable `0x21000..0x3f380` — every slice is
+  proved to round-trip against its source range, and nothing is written unless
+  every check passes.
+
+**Cross-release correspondence.** Four slices were imported into a new ignored
+project, `ghidra/project-step6/`, at bases their own records and loader behaviour
+support: Candidate A at `0` (its reset vector `0x000014a9`, region table offset
+and handler pointers are all base-0), Candidate B at `0x18000000` (region 0
+copies it there). Functions are paired on body bytes, masked instruction shape,
+constants, strings, size, instruction and block counts, and call degree.
+**An address is never the sole signal**: the identical and structural tiers use
+no address at all, and the one tentative rule that uses the measured shift also
+requires body-byte equality and can never promote a pairing above tentative. So
+no vendor symbol crosses over on an address alone.
+
+| program | vendor | installed | identical | structural | tentative | unmatched | shift |
+|---|---|---|---|---|---|---|---|
+| Candidate A | 80 | 80 | 78 | 0 | 2 | 0 | `0x0` |
+| Candidate B | 293 | 293 | 260 | 24 | 9 | 0 | `+0x2c` |
+
+- **Function bodies are read from their real ordered Ghidra ranges** (log 99).
+  Bodies here are frequently discontiguous — 15 of 80 in Candidate A, 61 of 293
+  in Candidate B — so `entry..entry+size` is not the body and was corrected.
+- **The real change is far smaller than the raw byte diff.** Comparing the spans
+  that no body range covers, paired in address order: Candidate A changed 131
+  bytes, **all of them data and none of them instruction bytes**, which equals
+  log 96's raw count exactly because A did not move. Candidate B changed
+  **1,230 bytes** (253 in bodies, 977 in data spans) plus one 44-byte insertion
+  — so roughly 99,880 of log 96's 101,112 raw differing bytes for slot 1 are the
+  relocation, not content. The address-order span pairing is only valid because
+  both sides produced equal span counts (A 70/70, B 229/229); the tool checks
+  that and refuses to compare any span if they differ.
+- **The `+0x2c` shift is measured, not assumed**, from the byte- and
+  shape-confident matches only. Ambiguous duplicate bodies that are consistent
+  with it are recorded as *tentative*, never promoted.
+- **The insertion site is a single span that no function body covers**: vendor
+  `0x180047f8..0x180057d2` (`0xfda`) against installed
+  `0x180047f8..0x180057fe` (`0x1006`). What those 44 bytes are is a later
+  question.
+- **Addresses that must no longer be assumed equal** are listed in full in the
+  correspondence note: 2 entries for Candidate A and 275 for Candidate B,
+  covering every relocated pairing, every tentative pairing and every function
+  without a counterpart.
+
+Two limits worth carrying forward. The SN_FWIN record word at `+0xc`
+(`0x18000000` in both slots) is never read by `FUN_0000511c`, so treating it as a
+RAM destination is an assumption — slice names therefore carry the runtime base
+the loader evidence supports, which is `0` for Candidate A. And the RAM image at
+flash `0x74000..0x7c000` (log 43) is referenced by no SN_FWIN record and no
+scatter region on this path, so how it is loaded remains unestablished.
+
+Function sets come from Ghidra's auto-analysis, so the counts are "functions
+Ghidra found", not a completeness proof.
+
+The reports are produced by the tracked generator `tool/report_phase3.py`, which
+also writes `notes/installed-record-load-map.json` and the complete per-pairing
+mapping as `notes/vendor-to-installed-functions-app-a.json` and `-app-b.json`.
+Its `--check` mode fails if the committed artifacts drift from a fresh render.
+
+**Corrections after independent review (log 99).** Five defects were found and
+fixed. The inventory script and the matcher both assumed contiguous function
+bodies, which invalidated the body hashes, the body-versus-data split and log
+98's 21/446 body-byte totals; both now use the real ordered ranges, and every
+figure above is regenerated. Slot 1 was extracted only as its loadable copy
+region, leaving the `0x400` compressed tail mapped but not extracted. The
+complete correspondence existed only in transient JSON, and the notes were
+generated by an ephemeral script rather than a tracked one. The claim that an
+address is "only ever reported" was inaccurate. And `--write` could emit slices
+before the aggregate check result was enforced.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

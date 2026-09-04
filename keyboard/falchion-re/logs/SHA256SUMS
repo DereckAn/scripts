@@ -97,3 +97,5 @@ da26698462ef0cca8c04da24dba4df63c84f5170741dd43725093bf69fc6a358  logs/94-versio
 84dc9e300ae2242ed5409e828468c272361a3ac6d70cf3802727ca29291664c3  logs/95-phase1-record-scan-correction.txt
 201e99ebae5b32211e4eaccbfd157433e5f2b92ab6849ab88e3b92af04ca10bc  logs/96-installed-vs-vendor-comparison.txt
 d9d837e9187236b00e457f349612dda097b97f3bbec67517d587dff8a2c993ac  logs/97-phase2-review-corrections.txt
+d1d9a8b9892011b8dd75ad4635188bf66074d1f7dab1209c73b492f6b6c2e7fb  logs/98-installed-code-map-and-function-matching.txt
+776b3aa47c9d4967b8eafd06f376e1340634122fc77c1ca8f102e640947def87  logs/99-phase3-review-corrections.txt

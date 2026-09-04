@@ -1,0 +1,745 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 3: installed code map and function matching
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed at any point in this phase
+
+SCOPE
+Phase 3 of notes/step6-offline-custom-firmware-plan.md: extract the installed
+application's code images, reconstruct its runtime map from its own bytes, and
+match functions across the two releases with stated confidence. No function
+meaning is inferred; this log records structure and correspondence only.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no lsusb/dfu-util/fwupd, no
+bootloader entry, no probe or backup tool run, no sudo, no package install, no
+network access, and no unlock/erase/program/reset/SPI construction. Both
+evidence binaries were opened read-only and are unchanged. Generated slices go
+only to the ignored ghidra/imports/ area.
+
+GHIDRA PROJECT HANDLING
+The pre-existing project ghidra/project/falchion-hfx was NOT opened, analyzed or
+modified in this phase. A separate project, ghidra/project-step6/, was created
+for the four Phase-3 slices and added to ghidra/.gitignore along with the
+generated ghidra/inventories/ directory. Report runs use -readOnly -noanalysis.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+ADDED FILES
+  tool/extract_installed_records.py           — extraction and runtime map
+  tool/test_extract_installed_records.py      — 26 offline tests
+  tool/match_functions.py                     — cross-release matcher
+  tool/test_match_functions.py                — 22 offline tests
+  ghidra/scripts/FalchionFunctionInventory.java — per-function inventory
+  notes/installed-record-load-map.md          — record/load/scatter map
+  notes/vendor-to-installed-functions.md      — correspondence and ranking
+classify_fill moved from compare_firmware_images into falchion_image, which
+re-exports it, so the fill classifier has one home rather than two.
+
+COMPILE
+$ python3 -m py_compile tool/extract_installed_records.py tool/test_extract_installed_records.py tool/match_functions.py tool/test_match_functions.py tool/falchion_image.py tool/compare_firmware_images.py
+  [exit 0]
+  NOTE no output means every changed file compiled
+
+STEP 1 — EXTRACTION AND RUNTIME MAP FROM INSTALLED BYTES ONLY
+$ python3 tool/extract_installed_records.py
+  PROGRAM extract_installed_records
+  PURPOSE installed record extraction and runtime map
+  IMAGE_BASE 0x10000
+  IMAGE_SIZE 0x6c000
+  IMAGE_SHA256 fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  SOURCE installed-1.59-application
+  ENTRY pointer=0x60011000 initial_sp=0x18036168 reset=0x000014a9
+  REGION_TABLE flash=0x16750
+  REGION 0 src=0x60021000 (flash 0x21000) dst=0x18000000..0x1801e380 size=0x1e380 handler=0x1d8 __scatterload_copy
+  REGION 1 src=0x6003f380 (flash 0x3f380) dst=0x1801e380..0x1801ee84 size=0xb04 handler=0x17c __scatterload_decompress
+  REGION 2 src=0x6003f780 (flash 0x3f780) dst=0x1801ee84..0x18036168 size=0x172e4 handler=0x1f4 __scatterload_zeroinit
+  SLICE installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+    slot=0 role=entry image, executed in place
+    source=0x11000..0x168ac (0x58ac bytes) sha256=f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835
+    import_base=0x00000000
+    basis=linked at 0: the reset vector 0x000014a9, the region table at 0x5750 and its handler pointers are all base-0 offsets within this image
+  SLICE installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+    slot=1 role=scatter region 0, __scatterload_copy
+    source=0x21000..0x3f380 (0x1e380 bytes) sha256=be463863b8cd6ca7dae56a1bba396ec7906f248389fd3e2a6656210ca20773be
+    import_base=0x18000000
+    basis=Candidate A region 0 copies flash 0x21000..0x3f380 to RAM 0x18000000..0x1801e380
+  RUNTIME 0x18000000..0x1801e380 (0x1e380) __scatterload_copy materialized=True
+    source=0x21000..0x3f380
+    basis=Candidate A region 0 at 0x16750, source 0x60021000 inside SN_FWIN record slot 1
+  RUNTIME 0x1801e380..0x1801ee84 (0xb04) __scatterload_decompress materialized=False
+    source=0x3f380..0x3f780
+    basis=Candidate A region 1 at 0x16760, source 0x6003f380 inside SN_FWIN record slot 1
+  RUNTIME 0x1801ee84..0x18036168 (0x172e4) __scatterload_zeroinit materialized=True
+    source=none (zero-filled)
+    basis=Candidate A region 2 at 0x16770, zero-filled with no flash source
+  COVERAGE 0x10000..0x10024 (0x24) fill=data SN_FWIN header
+  COVERAGE 0x10024..0x100a4 (0x80) fill=data SN_FWIN 8-slot record table
+  COVERAGE 0x100a4..0x11000 (0xf5c) fill=zero unclaimed by any parsed structure
+  COVERAGE 0x11000..0x168ac (0x58ac) fill=data record slot 0 payload (entry image)
+  COVERAGE 0x168ac..0x21000 (0xa754) fill=ff unclaimed by any parsed structure
+  COVERAGE 0x21000..0x3f380 (0x1e380) fill=data record slot 1 region 0 (__scatterload_copy source)
+  COVERAGE 0x3f380..0x3f780 (0x400) fill=data record slot 1 region 1 (__scatterload_decompress source)
+  COVERAGE 0x3f780..0x60000 (0x20880) fill=zero unclaimed by any parsed structure
+  COVERAGE 0x60000..0x60210 (0x210) fill=data backup container header
+  COVERAGE 0x60210..0x61000 (0xdf0) fill=data unclaimed by any parsed structure
+  COVERAGE 0x61000..0x71000 (0x10000) fill=data mirrored bootloader copy
+  COVERAGE 0x71000..0x7c000 (0xb000) fill=data unclaimed by any parsed structure
+    PASS entry pointer is record slot 0 — 0x60011000
+    PASS region table lies inside the entry image — 0x16750 in 0x11000..0x168ac
+    PASS region 0 source is record slot 1 — 0x60021000
+    PASS region destinations are contiguous
+    PASS last region RAM end equals the entry initial stack pointer — 0x18036168 vs 0x18036168
+    PASS every region handler is one identified in log 73 — 0x1d8=__scatterload_copy, 0x17c=__scatterload_decompress, 0x1f4=__scatterload_zeroinit
+    PASS flash-backed region inputs tile record slot 1 exactly — 0x21000..0x3f380 + 0x3f380..0x3f780 == 0x21000..0x3f780
+    PASS every extracted byte round-trips to its source range
+  RESULT extraction_ok=True checks_run=8 slices=2 runtime_ranges=3
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  UNRESOLVED The SN_FWIN record word at +0xc is not read by FUN_0000511c, so calling it a RAM destination is an assumption, not recovered behavior.
+  UNRESOLVED The decompressed RAM range is located and sized by the region table, but its contents are not reconstructed here, so its runtime bytes are mapped rather than known.
+  UNRESOLVED The separately documented RAM image at flash 0x74000..0x7c000 (log 43) is reachable from no SN_FWIN record and no scatter region on this path, so how it is loaded is not established by this extraction.
+  [exit 0]
+
+STEP 1b — THE SAME LOCATOR ON THE OTHER RELEASE, WITHOUT VENDOR CONSTANTS
+$ python3 tool/extract_installed_records.py dumps/vendor/M605_V01_00_58.bin --base 0 | grep -E '^(REGION|ENTRY|REGION_TABLE|RESULT)'
+  ENTRY pointer=0x60011000 initial_sp=0x18036140 reset=0x000014a9
+  REGION_TABLE flash=0x16750
+  REGION 0 src=0x60021000 (flash 0x21000) dst=0x18000000..0x1801e354 size=0x1e354 handler=0x1d8 __scatterload_copy
+  REGION 1 src=0x6003f354 (flash 0x3f354) dst=0x1801e354..0x1801ee58 size=0xb04 handler=0x17c __scatterload_decompress
+  REGION 2 src=0x6003f754 (flash 0x3f754) dst=0x1801ee58..0x18036140 size=0x172e8 handler=0x1f4 __scatterload_zeroinit
+  RESULT extraction_ok=True checks_run=8 slices=2 runtime_ranges=3
+  [exit 0]
+  NOTE the table is found at the same offset in both releases by structure alone; the sizes differ, which is the point
+
+STEP 1c — WRITE THE SLICES TO THE IGNORED IMPORT AREA
+$ python3 tool/extract_installed_records.py --write | grep -E '^SLICE|RESULT'
+  SLICE installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  SLICE installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  RESULT extraction_ok=True checks_run=8 slices=2 runtime_ranges=3
+  [exit 0]
+
+$ python3 tool/extract_installed_records.py dumps/vendor/M605_V01_00_58.bin --base 0 --write | grep -E '^SLICE|RESULT'
+  SLICE vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
+  SLICE vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
+  RESULT extraction_ok=True checks_run=8 slices=2 runtime_ranges=3
+  [exit 0]
+
+$ sha256sum ghidra/imports/vendor_app_*.bin ghidra/imports/installed_app_*.bin
+  a0f4ddd2ce0b5f57a6bbf6eb6b10b3d5e58d886ec8f5d866de46d8b6615e988b  ghidra/imports/vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
+  aafcf2fd56c92bd063acf2b0ed93ba5cb60356a145d706d857294c6de053e454  ghidra/imports/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
+  f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835  ghidra/imports/installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  be463863b8cd6ca7dae56a1bba396ec7906f248389fd3e2a6656210ca20773be  ghidra/imports/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  [exit 0]
+
+$ python3 /tmp/claude-1000/-home-dereck-Documents-GIT-scripts/f6170744-6cfc-4396-b654-dfbc7202a611/scratchpad/roundtrip_check.py
+  installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin       round_trip=True
+  installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin       round_trip=True
+  vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin          round_trip=True
+  vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin          round_trip=True
+  [exit 0]
+  NOTE every extracted byte maps back to its source range — the first half of the Phase-3 exit gate
+
+STEP 2 — GHIDRA IMPORTS (recorded; already performed)
+Each slice was imported once into the new project at the base its own
+records and loader behaviour support:
+
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -import "$PWD/ghidra/imports/vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin" \
+      -processor ARM:LE:32:Cortex -loader BinaryLoader -loader-baseAddr 0x0
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -import "$PWD/ghidra/imports/installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin" \
+      -processor ARM:LE:32:Cortex -loader BinaryLoader -loader-baseAddr 0x0
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -import "$PWD/ghidra/imports/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin" \
+      -processor ARM:LE:32:Cortex -loader BinaryLoader -loader-baseAddr 0x18000000
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -import "$PWD/ghidra/imports/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin" \
+      -processor ARM:LE:32:Cortex -loader BinaryLoader -loader-baseAddr 0x18000000
+
+Candidate A is imported at 0 because its own reset vector 0x000014a9, its
+region table at image offset 0x5750 and that table's handler pointers are all
+base-0 offsets inside the image. Candidate B is imported at 0x18000000 because
+Candidate A's region 0 copies it there. Neither base is taken from the vendor
+project, and no vendor symbol was transferred.
+
+STEP 3 — FUNCTION INVENTORIES (read-only, reproducible)
+For each of the four programs:
+
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -process <slice> -readOnly -noanalysis \
+      -scriptPath "$PWD/ghidra/scripts" \
+      -postScript FalchionFunctionInventory.java
+
+$ wc -l ghidra/inventories/*.txt; grep -c '^FUNC' ghidra/inventories/*.txt
+      85 ghidra/inventories/installed_a.txt
+     298 ghidra/inventories/installed_b.txt
+      85 ghidra/inventories/vendor_a.txt
+     298 ghidra/inventories/vendor_b.txt
+     766 total
+  ghidra/inventories/installed_a.txt:80
+  ghidra/inventories/installed_b.txt:293
+  ghidra/inventories/vendor_a.txt:80
+  ghidra/inventories/vendor_b.txt:293
+  [exit 0]
+  NOTE 80 functions in each Candidate A, 293 in each Candidate B
+
+$ head -n 5 ghidra/inventories/installed_b.txt
+  PROGRAM installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  IMAGE_BASE 00000000
+  LANGUAGE ARM:LE:32:Cortex
+  BLOCK ram 18000000 1801e37f size=0x1e380
+  FUNC entry=18000420 name=FUN_18000420 size=0x1a insns=10 blocks=1 bytes_sha=dcec98d8e142c98cf08dbe071e9a4b2d6e54f7d5109d4a9f044f041c7aa5434b shape_sha=2f6c23151b603353ffe7dbb1fdd9d601ff110979cb37954e50a9c7fc76d5e60f callers=1 callees= consts=0x0,0x1,0x2,0x7,0x8,0x14,0x18,0x20 strings=
+  [exit 0]
+  NOTE one line per function: exact-byte hash, masked-shape hash, constants, call degree and referenced strings
+
+STEP 4 — CANDIDATE A CORRESPONDENCE
+$ python3 tool/match_functions.py --program app_a --vendor-inventory ghidra/inventories/vendor_a.txt --installed-inventory ghidra/inventories/installed_a.txt --vendor-bin ghidra/imports/vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin --installed-bin ghidra/imports/installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin --base 0x0 --flash-base 0x11000 --top 0 | grep -vE '^DATA '
+  PROGRAM match_functions
+  PAIR app_a
+  VENDOR_PROGRAM vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
+  INSTALLED_PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  BASE 0x00000000 FLASH_BASE 0x11000
+  COUNTS vendor=80 installed=80
+  TIERS identical=76 structural=2 tentative=2 unmatched=0
+  CHANGED 2 of 80 pairings
+  MOVED 0
+  DATA_REGIONS 90 bytes=110 unaligned_gaps=0
+  DOMINANT_SHIFT 0x0 (+0 bytes), measured from the identical and structural matches only
+  REVIEW_RANKING showing 2 of 2
+    structural vendor=0x00000210 installed=0x00000210 size=0x8f4 differing_bytes=20 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x0000253a installed=0x0000253a size=0x2e differing_bytes=1 :: same instruction shape with scalars and addresses masked
+  DATA_RANGES showing 90 of 90; the complete list is in the JSON
+  MUST_NOT_ASSUME_EQUAL 2
+    vendor 0x00003704 -> 0x00003704: tentative match only; the correspondence is not proven
+    vendor 0x00003884 -> 0x00003884: tentative match only; the correspondence is not proven
+  RESULT matched=80 unmatched=0
+  LIMITATION Data-region gaps are aligned by the matched functions that bracket them, so a gap whose two sides differ in length is reported as unaligned rather than compared. Bytes are never diffed across an insertion boundary.
+  LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence, and no vendor symbol may be carried across on an address alone.
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  [exit 0]
+  NOTE the 90 individual data ranges are omitted here for length and are listed in full in notes/vendor-to-installed-functions.md and the JSON
+
+STEP 5 — CANDIDATE B CORRESPONDENCE
+$ python3 tool/match_functions.py --program app_b --vendor-inventory ghidra/inventories/vendor_b.txt --installed-inventory ghidra/inventories/installed_b.txt --vendor-bin ghidra/imports/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin --installed-bin ghidra/imports/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin --base 0x18000000 --flash-base 0x21000 --top 20 | grep -vE '^DATA vendor'
+  PROGRAM match_functions
+  PAIR app_b
+  VENDOR_PROGRAM vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
+  INSTALLED_PROGRAM installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  BASE 0x18000000 FLASH_BASE 0x21000
+  COUNTS vendor=293 installed=293
+  TIERS identical=236 structural=48 tentative=9 unmatched=0
+  CHANGED 48 of 293 pairings
+  MOVED 275
+  DATA_REGIONS 686 bytes=786 unaligned_gaps=1
+  DOMINANT_SHIFT 0x2c (+44 bytes), measured from the identical and structural matches only
+  REVIEW_RANKING showing 20 of 48
+    structural vendor=0x18000d56 installed=0x18000d56 size=0xf46 differing_bytes=216 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x18005eac installed=0x18005ed8 size=0x102 differing_bytes=19 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x18018c4a installed=0x18018c76 size=0xfc differing_bytes=18 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800075a installed=0x1800075a size=0x28a differing_bytes=14 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x18006d10 installed=0x18006d3c size=0x2be differing_bytes=13 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x18017af4 installed=0x18017b20 size=0x21c differing_bytes=12 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800b07e installed=0x1800b0aa size=0x1b4 differing_bytes=12 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800ab78 installed=0x1800aba4 size=0x3a6 differing_bytes=11 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800f0b8 installed=0x1800f0e4 size=0x23e differing_bytes=9 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x18000bb8 installed=0x18000bb8 size=0xda differing_bytes=9 :: same instruction shape with scalars and addresses masked
+    structural vendor=0x1800c3b0 installed=0x1800c3dc size=0xa2 differing_bytes=9 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800eb4e installed=0x1800eb7a size=0x9a differing_bytes=8 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x180100d6 installed=0x18010102 size=0x24a differing_bytes=6 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x18014d3a installed=0x18014d66 size=0x320 differing_bytes=5 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x180159b0 installed=0x180159dc size=0x278 differing_bytes=5 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800c83c installed=0x1800c868 size=0x178 differing_bytes=5 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x180167fc installed=0x18016828 size=0xea differing_bytes=5 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1801642c installed=0x18016458 size=0x86 differing_bytes=5 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x1800b654 installed=0x1800b680 size=0x70 differing_bytes=5 :: same instruction shape with scalars and addresses masked, relocated
+    structural vendor=0x18000a70 installed=0x18000a70 size=0x68 differing_bytes=5 :: same instruction shape with scalars and addresses masked
+  DATA_RANGES showing 20 of 686; the complete list is in the JSON
+  UNALIGNED_GAP vendor 0x180047fc..0x180057d2 (0xfd6) vs installed 0x180047fc..0x180057fe (0x1002) — lengths differ, not compared
+  MUST_NOT_ASSUME_EQUAL 275
+    vendor 0x180057d2 -> 0x180057fe: identical match, relocated
+    vendor 0x18005eac -> 0x18005ed8: structural match, relocated
+    vendor 0x18006024 -> 0x18006050: identical match, relocated
+    vendor 0x18006800 -> 0x1800682c: identical match, relocated
+    vendor 0x18006956 -> 0x18006982: structural match, relocated
+    vendor 0x18006a90 -> 0x18006abc: identical match, relocated
+    vendor 0x18006aa8 -> 0x18006ad4: structural match, relocated
+    vendor 0x18006c9a -> 0x18006cc6: identical match, relocated
+    vendor 0x18006d10 -> 0x18006d3c: structural match, relocated
+    vendor 0x18006f4e -> 0x18006f7a: identical match, relocated
+    vendor 0x18006fb4 -> 0x18006fe0: identical match, relocated
+    vendor 0x18007ba0 -> 0x18007bcc: identical match, relocated
+    vendor 0x18007d78 -> 0x18007da4: identical match, relocated
+    vendor 0x180088c8 -> 0x180088f4: identical match, relocated
+    vendor 0x180088d2 -> 0x180088fe: identical match, relocated
+    vendor 0x1800897c -> 0x180089a8: identical match, relocated
+    vendor 0x180089be -> 0x180089ea: identical match, relocated
+    vendor 0x180089d6 -> 0x18008a02: structural match, relocated
+    vendor 0x18008a4a -> 0x18008a76: structural match, relocated
+    vendor 0x18008f1e -> 0x18008f4a: identical match, relocated
+    vendor 0x18008f9c -> 0x18008fc8: identical match, relocated
+    vendor 0x18009016 -> 0x18009042: identical match, relocated
+    vendor 0x18009096 -> 0x180090c2: identical match, relocated
+    vendor 0x18009102 -> 0x1800912e: identical match, relocated
+    vendor 0x180091c4 -> 0x180091f0: identical match, relocated
+    vendor 0x180092f0 -> 0x1800931c: structural match, relocated
+    vendor 0x1800937e -> 0x180093aa: identical match, relocated
+    vendor 0x180094ca -> 0x180094f6: identical match, relocated
+    vendor 0x180096da -> 0x18009706: structural match, relocated
+    vendor 0x1800983c -> 0x18009868: identical match, relocated
+    vendor 0x18009d28 -> 0x18009d54: structural match, relocated
+    vendor 0x18009e40 -> 0x18009e6c: identical match, relocated
+    vendor 0x1800a51e -> 0x1800a54a: identical match, relocated
+    vendor 0x1800a934 -> 0x1800a960: identical match, relocated
+    vendor 0x1800aa84 -> 0x1800aab0: identical match, relocated
+    vendor 0x1800ab78 -> 0x1800aba4: structural match, relocated
+    vendor 0x1800b07e -> 0x1800b0aa: structural match, relocated
+    vendor 0x1800b654 -> 0x1800b680: structural match, relocated
+    vendor 0x1800b6d8 -> 0x1800b704: identical match, relocated
+    vendor 0x1800b7be -> 0x1800b7ea: identical match, relocated
+    vendor 0x1800bf28 -> 0x1800bf54: identical match, relocated
+    vendor 0x1800c048 -> 0x1800c074: identical match, relocated
+    vendor 0x1800c106 -> 0x1800c132: identical match, relocated
+    vendor 0x1800c188 -> 0x1800c1b4: identical match, relocated
+    vendor 0x1800c3b0 -> 0x1800c3dc: structural match, relocated
+    vendor 0x1800c472 -> 0x1800c49e: identical match, relocated
+    vendor 0x1800c4f0 -> 0x1800c51c: identical match, relocated
+    vendor 0x1800c5d4 -> 0x1800c600: identical match, relocated
+    vendor 0x1800c678 -> 0x1800c6a4: identical match, relocated
+    vendor 0x1800c6fa -> 0x1800c726: identical match, relocated
+    vendor 0x1800c7c4 -> 0x1800c7f0: identical match, relocated
+    vendor 0x1800c83c -> 0x1800c868: structural match, relocated
+    vendor 0x1800c9d6 -> 0x1800ca02: identical match, relocated
+    vendor 0x1800ca10 -> 0x1800ca3c: identical match, relocated
+    vendor 0x1800ca9c -> 0x1800cac8: identical match, relocated
+    vendor 0x1800cae4 -> 0x1800cb10: identical match, relocated
+    vendor 0x1800caf4 -> 0x1800cb20: identical match, relocated
+    vendor 0x1800ce1e -> 0x1800ce4a: structural match, relocated
+    vendor 0x1800cf4c -> 0x1800cf78: identical match, relocated
+    vendor 0x1800cf6c -> 0x1800cf98: identical match, relocated
+    vendor 0x1800d814 -> 0x1800d840: identical match, relocated
+    vendor 0x1800d8a4 -> 0x1800d8d0: identical match, relocated
+    vendor 0x1800d8e8 -> 0x1800d914: identical match, relocated
+    vendor 0x1800d99c -> 0x1800d9c8: tentative match, relocated
+    vendor 0x1800d99e -> 0x1800d9ca: tentative match, relocated
+    vendor 0x1800d9a0 -> 0x1800d9cc: tentative match, relocated
+    vendor 0x1800d9a2 -> 0x1800d9ce: identical match, relocated
+    vendor 0x1800da1c -> 0x1800da48: identical match, relocated
+    vendor 0x1800da52 -> 0x1800da7e: identical match, relocated
+    vendor 0x1800da72 -> 0x1800da9e: identical match, relocated
+    vendor 0x1800dbde -> 0x1800dc0a: identical match, relocated
+    vendor 0x1800dc40 -> 0x1800dc6c: identical match, relocated
+    vendor 0x1800e246 -> 0x1800e272: identical match, relocated
+    vendor 0x1800e252 -> 0x1800e27e: identical match, relocated
+    vendor 0x1800e27c -> 0x1800e2a8: identical match, relocated
+    vendor 0x1800e298 -> 0x1800e2c4: identical match, relocated
+    vendor 0x1800e2b4 -> 0x1800e2e0: identical match, relocated
+    vendor 0x1800e2d0 -> 0x1800e2fc: identical match, relocated
+    vendor 0x1800e33c -> 0x1800e368: identical match, relocated
+    vendor 0x1800e37c -> 0x1800e3a8: identical match, relocated
+    vendor 0x1800e39c -> 0x1800e3c8: identical match, relocated
+    vendor 0x1800e454 -> 0x1800e480: identical match, relocated
+    vendor 0x1800e48a -> 0x1800e4b6: identical match, relocated
+    vendor 0x1800e4a4 -> 0x1800e4d0: identical match, relocated
+    vendor 0x1800e4be -> 0x1800e4ea: identical match, relocated
+    vendor 0x1800e622 -> 0x1800e64e: identical match, relocated
+    vendor 0x1800e7c2 -> 0x1800e7ee: identical match, relocated
+    vendor 0x1800eb4e -> 0x1800eb7a: structural match, relocated
+    vendor 0x1800ebfc -> 0x1800ec28: structural match, relocated
+    vendor 0x1800ed80 -> 0x1800edac: identical match, relocated
+    vendor 0x1800ee46 -> 0x1800ee72: identical match, relocated
+    vendor 0x1800f0b8 -> 0x1800f0e4: structural match, relocated
+    vendor 0x1800f7d2 -> 0x1800f7fe: identical match, relocated
+    vendor 0x1800fb82 -> 0x1800fbae: identical match, relocated
+    vendor 0x1800fb8c -> 0x1800fbb8: structural match, relocated
+    vendor 0x1800fbd6 -> 0x1800fc02: identical match, relocated
+    vendor 0x1800fbf6 -> 0x1800fc22: identical match, relocated
+    vendor 0x1800fd20 -> 0x1800fd4c: structural match, relocated
+    vendor 0x1800ff7e -> 0x1800ffaa: identical match, relocated
+    vendor 0x180100d6 -> 0x18010102: structural match, relocated
+    vendor 0x1801011c -> 0x18010148: identical match, relocated
+    vendor 0x180104aa -> 0x180104d6: identical match, relocated
+    vendor 0x18010740 -> 0x1801076c: identical match, relocated
+    vendor 0x18010764 -> 0x18010790: tentative match, relocated
+    vendor 0x18010770 -> 0x1801079c: identical match, relocated
+    vendor 0x18010784 -> 0x180107b0: structural match, relocated
+    vendor 0x18010824 -> 0x18010850: identical match, relocated
+    vendor 0x180109b8 -> 0x180109e4: identical match, relocated
+    vendor 0x180109ec -> 0x18010a18: identical match, relocated
+    vendor 0x18010a90 -> 0x18010abc: identical match, relocated
+    vendor 0x18010e08 -> 0x18010e34: identical match, relocated
+    vendor 0x18011014 -> 0x18011040: identical match, relocated
+    vendor 0x18011234 -> 0x18011260: identical match, relocated
+    vendor 0x18011440 -> 0x1801146c: identical match, relocated
+    vendor 0x18011664 -> 0x18011690: identical match, relocated
+    vendor 0x18011828 -> 0x18011854: identical match, relocated
+    vendor 0x18011a00 -> 0x18011a2c: identical match, relocated
+    vendor 0x18011aca -> 0x18011af6: identical match, relocated
+    vendor 0x18011cca -> 0x18011cf6: identical match, relocated
+    vendor 0x18011cd6 -> 0x18011d02: identical match, relocated
+    vendor 0x18011ce2 -> 0x18011d0e: tentative match, relocated
+    vendor 0x18011d2e -> 0x18011d5a: identical match, relocated
+    vendor 0x18011d88 -> 0x18011db4: identical match, relocated
+    vendor 0x18011da4 -> 0x18011dd0: identical match, relocated
+    vendor 0x18011ea2 -> 0x18011ece: identical match, relocated
+    vendor 0x18011fec -> 0x18012018: identical match, relocated
+    vendor 0x18012004 -> 0x18012030: identical match, relocated
+    vendor 0x180120dc -> 0x18012108: identical match, relocated
+    vendor 0x18012114 -> 0x18012140: identical match, relocated
+    vendor 0x18012522 -> 0x1801254e: identical match, relocated
+    vendor 0x18012544 -> 0x18012570: tentative match, relocated
+    vendor 0x1801255e -> 0x1801258a: tentative match, relocated
+    vendor 0x18012570 -> 0x1801259c: identical match, relocated
+    vendor 0x180125f4 -> 0x18012620: identical match, relocated
+    vendor 0x1801263c -> 0x18012668: identical match, relocated
+    vendor 0x180126a6 -> 0x180126d2: identical match, relocated
+    vendor 0x18012712 -> 0x1801273e: identical match, relocated
+    vendor 0x180128ce -> 0x180128fa: identical match, relocated
+    vendor 0x180128f4 -> 0x18012920: identical match, relocated
+    vendor 0x18012aa6 -> 0x18012ad2: identical match, relocated
+    vendor 0x18012d40 -> 0x18012d6c: identical match, relocated
+    vendor 0x18012da2 -> 0x18012dce: identical match, relocated
+    vendor 0x18012dc8 -> 0x18012df4: identical match, relocated
+    vendor 0x18012eb4 -> 0x18012ee0: identical match, relocated
+    vendor 0x18012ffa -> 0x18013026: identical match, relocated
+    vendor 0x1801307e -> 0x180130aa: identical match, relocated
+    vendor 0x1801313a -> 0x18013166: identical match, relocated
+    vendor 0x180131f2 -> 0x1801321e: identical match, relocated
+    vendor 0x18013246 -> 0x18013272: identical match, relocated
+    vendor 0x18013250 -> 0x1801327c: structural match, relocated
+    vendor 0x1801330c -> 0x18013338: identical match, relocated
+    vendor 0x18013752 -> 0x1801377e: identical match, relocated
+    vendor 0x180137a0 -> 0x180137cc: identical match, relocated
+    vendor 0x180137ea -> 0x18013816: identical match, relocated
+    vendor 0x18013890 -> 0x180138bc: identical match, relocated
+    vendor 0x1801395c -> 0x18013988: identical match, relocated
+    vendor 0x1801397a -> 0x180139a6: identical match, relocated
+    vendor 0x180139e0 -> 0x18013a0c: identical match, relocated
+    vendor 0x18013a32 -> 0x18013a5e: identical match, relocated
+    vendor 0x18013a48 -> 0x18013a74: identical match, relocated
+    vendor 0x18013aaa -> 0x18013ad6: identical match, relocated
+    vendor 0x18013b40 -> 0x18013b6c: identical match, relocated
+    vendor 0x18013b52 -> 0x18013b7e: identical match, relocated
+    vendor 0x18013dce -> 0x18013dfa: identical match, relocated
+    vendor 0x18013f5c -> 0x18013f88: identical match, relocated
+    vendor 0x18013f76 -> 0x18013fa2: identical match, relocated
+    vendor 0x18014430 -> 0x1801445c: identical match, relocated
+    vendor 0x18014478 -> 0x180144a4: identical match, relocated
+    vendor 0x18014554 -> 0x18014580: identical match, relocated
+    vendor 0x1801460c -> 0x18014638: identical match, relocated
+    vendor 0x1801466a -> 0x18014696: identical match, relocated
+    vendor 0x1801467e -> 0x180146aa: identical match, relocated
+    vendor 0x180146c0 -> 0x180146ec: identical match, relocated
+    vendor 0x180148c6 -> 0x180148f2: identical match, relocated
+    vendor 0x18014a28 -> 0x18014a54: structural match, relocated
+    vendor 0x18014d3a -> 0x18014d66: structural match, relocated
+    vendor 0x1801506c -> 0x18015098: identical match, relocated
+    vendor 0x1801515e -> 0x1801518a: identical match, relocated
+    vendor 0x18015310 -> 0x1801533c: identical match, relocated
+    vendor 0x180155bc -> 0x180155e8: identical match, relocated
+    vendor 0x18015670 -> 0x1801569c: identical match, relocated
+    vendor 0x18015720 -> 0x1801574c: identical match, relocated
+    vendor 0x180158b2 -> 0x180158de: identical match, relocated
+    vendor 0x18015924 -> 0x18015950: identical match, relocated
+    vendor 0x180159b0 -> 0x180159dc: structural match, relocated
+    vendor 0x18015c58 -> 0x18015c84: identical match, relocated
+    vendor 0x18015f26 -> 0x18015f52: structural match, relocated
+    vendor 0x18016056 -> 0x18016082: identical match, relocated
+    vendor 0x180160d8 -> 0x18016104: structural match, relocated
+    vendor 0x18016202 -> 0x1801622e: identical match, relocated
+    vendor 0x18016290 -> 0x180162bc: identical match, relocated
+    vendor 0x1801642c -> 0x18016458: structural match, relocated
+    vendor 0x180164d6 -> 0x18016502: identical match, relocated
+    vendor 0x18016558 -> 0x18016584: identical match, relocated
+    vendor 0x180166f0 -> 0x1801671c: identical match, relocated
+    vendor 0x18016778 -> 0x180167a4: identical match, relocated
+    vendor 0x180167fc -> 0x18016828: structural match, relocated
+    vendor 0x18016b50 -> 0x18016b7c: identical match, relocated
+    vendor 0x18016b62 -> 0x18016b8e: identical match, relocated
+    vendor 0x18016c1c -> 0x18016c48: identical match, relocated
+    vendor 0x18017184 -> 0x180171b0: identical match, relocated
+    vendor 0x180172c4 -> 0x180172f0: identical match, relocated
+    vendor 0x180174f0 -> 0x1801751c: identical match, relocated
+    vendor 0x180174f6 -> 0x18017522: identical match, relocated
+    vendor 0x18017538 -> 0x18017564: identical match, relocated
+    vendor 0x1801753e -> 0x1801756a: identical match, relocated
+    vendor 0x18017636 -> 0x18017662: identical match, relocated
+    vendor 0x18017646 -> 0x18017672: identical match, relocated
+    vendor 0x1801764c -> 0x18017678: identical match, relocated
+    vendor 0x180177f6 -> 0x18017822: identical match, relocated
+    vendor 0x18017830 -> 0x1801785c: identical match, relocated
+    vendor 0x18017848 -> 0x18017874: structural match, relocated
+    vendor 0x1801787c -> 0x180178a8: identical match, relocated
+    vendor 0x180178b4 -> 0x180178e0: identical match, relocated
+    vendor 0x180178d2 -> 0x180178fe: structural match, relocated
+    vendor 0x18017952 -> 0x1801797e: identical match, relocated
+    vendor 0x18017a14 -> 0x18017a40: identical match, relocated
+    vendor 0x18017a94 -> 0x18017ac0: identical match, relocated
+    vendor 0x18017a9e -> 0x18017aca: identical match, relocated
+    vendor 0x18017ada -> 0x18017b06: identical match, relocated
+    vendor 0x18017af4 -> 0x18017b20: structural match, relocated
+    vendor 0x18017df8 -> 0x18017e24: identical match, relocated
+    vendor 0x18017f32 -> 0x18017f5e: identical match, relocated
+    vendor 0x18017f6e -> 0x18017f9a: identical match, relocated
+    vendor 0x18018044 -> 0x18018070: identical match, relocated
+    vendor 0x18018056 -> 0x18018082: identical match, relocated
+    vendor 0x180181d8 -> 0x18018204: structural match, relocated
+    vendor 0x18018454 -> 0x18018480: identical match, relocated
+    vendor 0x1801848a -> 0x180184b6: identical match, relocated
+    vendor 0x18018738 -> 0x18018764: identical match, relocated
+    vendor 0x180188c4 -> 0x180188f0: identical match, relocated
+    vendor 0x1801896a -> 0x18018996: identical match, relocated
+    vendor 0x18018baa -> 0x18018bd6: identical match, relocated
+    vendor 0x18018c4a -> 0x18018c76: structural match, relocated
+    vendor 0x18018e50 -> 0x18018e7c: identical match, relocated
+    vendor 0x18018eae -> 0x18018eda: identical match, relocated
+    vendor 0x18019440 -> 0x1801946c: tentative match, relocated
+    vendor 0x18019442 -> 0x1801946e: identical match, relocated
+    vendor 0x180194ca -> 0x180194f6: identical match, relocated
+    vendor 0x180194d2 -> 0x180194fe: identical match, relocated
+    vendor 0x1801956c -> 0x18019598: identical match, relocated
+    vendor 0x1801958a -> 0x180195b6: identical match, relocated
+    vendor 0x180195f6 -> 0x18019622: identical match, relocated
+    vendor 0x1801963e -> 0x1801966a: identical match, relocated
+    vendor 0x18019648 -> 0x18019674: identical match, relocated
+    vendor 0x18019654 -> 0x18019680: identical match, relocated
+    vendor 0x18019664 -> 0x18019690: identical match, relocated
+    vendor 0x18019670 -> 0x1801969c: identical match, relocated
+    vendor 0x18019680 -> 0x180196ac: identical match, relocated
+    vendor 0x18019690 -> 0x180196bc: identical match, relocated
+    vendor 0x180196a0 -> 0x180196cc: identical match, relocated
+    vendor 0x180196b0 -> 0x180196dc: identical match, relocated
+    vendor 0x180196d4 -> 0x18019700: identical match, relocated
+    vendor 0x180196ec -> 0x18019718: identical match, relocated
+    vendor 0x180196fe -> 0x1801972a: identical match, relocated
+    vendor 0x1801993e -> 0x1801996a: identical match, relocated
+    vendor 0x18019ac4 -> 0x18019af0: identical match, relocated
+    vendor 0x18019dc2 -> 0x18019dee: identical match, relocated
+    vendor 0x18019ddc -> 0x18019e08: tentative match, relocated
+    vendor 0x18019df6 -> 0x18019e22: identical match, relocated
+    vendor 0x18019e12 -> 0x18019e3e: identical match, relocated
+    vendor 0x18019e68 -> 0x18019e94: identical match, relocated
+    vendor 0x18019f0c -> 0x18019f38: identical match, relocated
+    vendor 0x18019f68 -> 0x18019f94: identical match, relocated
+    vendor 0x1801a168 -> 0x1801a194: identical match, relocated
+    vendor 0x1801a172 -> 0x1801a19e: identical match, relocated
+    vendor 0x1801a1a2 -> 0x1801a1ce: identical match, relocated
+    vendor 0x1801a214 -> 0x1801a240: identical match, relocated
+    vendor 0x1801aa26 -> 0x1801aa52: identical match, relocated
+    vendor 0x1801aad8 -> 0x1801ab04: identical match, relocated
+    vendor 0x1801aaf2 -> 0x1801ab1e: identical match, relocated
+    vendor 0x1801ac24 -> 0x1801ac50: identical match, relocated
+    vendor 0x1801ad1e -> 0x1801ad4a: identical match, relocated
+    vendor 0x1801add8 -> 0x1801ae04: identical match, relocated
+    vendor 0x1801b0b8 -> 0x1801b0e4: identical match, relocated
+  RESULT matched=293 unmatched=0
+  LIMITATION Data-region gaps are aligned by the matched functions that bracket them, so a gap whose two sides differ in length is reported as unaligned rather than compared. Bytes are never diffed across an insertion boundary.
+  LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence, and no vendor symbol may be carried across on an address alone.
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  [exit 0]
+  NOTE 686 data ranges omitted here; the one unaligned gap is the insertion site
+
+STEP 6 — THE ALIGNED CHANGE IS FAR SMALLER THAN THE RAW DIFF
+$ python3 /tmp/claude-1000/-home-dereck-Documents-GIT-scripts/f6170744-6cfc-4396-b654-dfbc7202a611/scratchpad/aligned_totals.py
+  candidate A: body=21 data=110 aligned_total=131 raw_log96=131 shift=0x0
+  candidate B: body=446 data=786 aligned_total=1232 raw_log96=101112 shift=0x2c
+      insertion: vendor 0x180047fc..0x180057d2 (0xfd6) vs installed 0x180047fc..0x180057fe (0x1002), +44 bytes
+  [exit 0]
+  NOTE Candidate A's aligned total equals log 96's raw 131 exactly because it did not move. Candidate B's real change is 1,232 bytes plus one 44-byte insertion; the other ~99,880 raw differing bytes are the 0x2c relocation
+
+STEP 7 — GENERATED REPORTS
+$ wc -c notes/installed-record-load-map.md notes/vendor-to-installed-functions.md
+   8704 notes/installed-record-load-map.md
+  44472 notes/vendor-to-installed-functions.md
+  53176 total
+  [exit 0]
+
+$ sha256sum notes/installed-record-load-map.md notes/vendor-to-installed-functions.md
+  12059de28c609c842ddd1866fc35e1a47125d8eba5e9c6e6aa263ed36b40b905  notes/installed-record-load-map.md
+  82f76b12ecf90b77168f2fe6d5786444794ff714d50739d96b989d237b52378b  notes/vendor-to-installed-functions.md
+  [exit 0]
+
+EXIT GATE — a second run reproduces the reports
+$ python3 tool/extract_installed_records.py --json | sha256sum; python3 tool/extract_installed_records.py --json | sha256sum
+  1239fdaa991a81e22b9f3cb4ca6b1e61a0fe039a74bc847257260a2f41f85d16  -
+  1239fdaa991a81e22b9f3cb4ca6b1e61a0fe039a74bc847257260a2f41f85d16  -
+  [exit 0]
+
+$ for i in 1 2; do python3 tool/match_functions.py --program app_b --vendor-inventory ghidra/inventories/vendor_b.txt --installed-inventory ghidra/inventories/installed_b.txt --vendor-bin ghidra/imports/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin --installed-bin ghidra/imports/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin --base 0x18000000 --flash-base 0x21000 --json | sha256sum; done
+  13e484f2caacbbb8bc22203827ef73432f1f6f5a80424b343a025780e411e955  -
+  13e484f2caacbbb8bc22203827ef73432f1f6f5a80424b343a025780e411e955  -
+  [exit 0]
+
+$ python3 /tmp/claude-1000/-home-dereck-Documents-GIT-scripts/f6170744-6cfc-4396-b654-dfbc7202a611/scratchpad/gen_phase3_notes.py && sha256sum notes/installed-record-load-map.md notes/vendor-to-installed-functions.md
+  wrote notes/installed-record-load-map.md
+  wrote notes/vendor-to-installed-functions.md
+  12059de28c609c842ddd1866fc35e1a47125d8eba5e9c6e6aa263ed36b40b905  notes/installed-record-load-map.md
+  82f76b12ecf90b77168f2fe6d5786444794ff714d50739d96b989d237b52378b  notes/vendor-to-installed-functions.md
+  [exit 0]
+  NOTE regenerating both notes yields the same hashes printed above
+
+EXIT GATE — every runtime range cites a loader or record basis
+$ python3 tool/extract_installed_records.py | grep -A 2 '^RUNTIME'
+  RUNTIME 0x18000000..0x1801e380 (0x1e380) __scatterload_copy materialized=True
+    source=0x21000..0x3f380
+    basis=Candidate A region 0 at 0x16750, source 0x60021000 inside SN_FWIN record slot 1
+  RUNTIME 0x1801e380..0x1801ee84 (0xb04) __scatterload_decompress materialized=False
+    source=0x3f380..0x3f780
+    basis=Candidate A region 1 at 0x16760, source 0x6003f380 inside SN_FWIN record slot 1
+  RUNTIME 0x1801ee84..0x18036168 (0x172e4) __scatterload_zeroinit materialized=True
+    source=none (zero-filled)
+    basis=Candidate A region 2 at 0x16770, zero-filled with no flash source
+  [exit 0]
+
+EXIT GATE — analyzers, suite, checksums
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  [exit 0]
+
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=16 containers_skipped=1 word_sums_skipped=1
+  [exit 0]
+
+$ python3 tool/compare_firmware_images.py | grep -E '^- differing bytes'
+  - differing bytes: **101297** of 442368 (22.90%)
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmputrwzs68/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpltuhq2az/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpvzv_nc3w/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpnb3ouqy5/dump.bin
+  Ran 280 tests in 2.226s
+  OK
+  [exit 0]
+  NOTE 280 tests = 232 accepted in Phase 2 plus 26 extractor and 22 matcher tests
+
+FACTS ESTABLISHED IN THIS PHASE
+  1. The installed runtime map is derived entirely from installed bytes.
+     Candidate A's scatter-region table sits at flash 0x16750 (image offset
+     0x5750) and is located by structure, not by a vendor offset. Its three
+     regions are copy flash 0x21000..0x3f380 -> RAM 0x18000000..0x1801e380,
+     decompress flash 0x3f380..0x3f780 (0x400 in) -> RAM
+     0x1801e380..0x1801ee84 (0xb04 out), and zeroinit RAM
+     0x1801ee84..0x18036168.
+  2. The zeroinit end equals the entry image's initial stack pointer in both
+     releases (installed 0x18036168, vendor 0x18036140). The loader's top of
+     RAM and the vector table agree, which corroborates the whole chain.
+  3. Record slot 1's length is exactly the copy region plus the 0x400
+     compressed input, in both releases: 0x1e380 + 0x400 = 0x1e780 installed,
+     0x1e354 + 0x400 = 0x1e754 vendor. The +44 growth is entirely in the copy
+     region; the compressed input and decompressed output sizes are unchanged
+     and zeroinit shrank by 4, moving the RAM top by +0x28.
+  4. Both programs have identical function counts across releases and nothing
+     is unmatched: Candidate A 80/80 (76 identical, 2 structural, 2
+     tentative), Candidate B 293/293 (236 identical, 48 structural, 9
+     tentative).
+  5. Candidate B is relocated by a uniform +0x2c after a single insertion
+     point; Candidate A does not move at all. The shift is measured from the
+     byte- and shape-confident matches, never assumed.
+  6. The real change is far smaller than log 96's raw count. Aligned:
+     Candidate A 131 bytes (21 in bodies, 110 in data gaps), Candidate B
+     1,232 bytes (446 in bodies, 786 in data gaps) plus one 44-byte
+     insertion. Candidate A's total matches log 96 exactly because it did
+     not move.
+  7. The insertion site is a single data gap between two matched functions:
+     vendor 0x180047fc..0x180057d2 against installed 0x180047fc..0x180057fe.
+     It is not inside any function body.
+
+ASSUMPTIONS AND DELIBERATE LIMITS
+  * No function meaning is inferred. Confidence tiers describe evidence
+    strength, not correctness, and a tentative pairing is a lead for manual
+    review rather than an established correspondence.
+  * The decompressed RAM range 0x1801e380..0x1801ee84 is located and sized
+    from the region table but its contents are NOT reconstructed. The ARM
+    decompressor was not reimplemented, so those runtime bytes are mapped,
+    not known.
+  * The SN_FWIN record word at +0xc (0x18000000 in both slots) is never read
+    by FUN_0000511c in the recovered bootloader, so treating it as a RAM
+    destination is an assumption. Slice names therefore carry the runtime
+    base the loader evidence supports, which is 0 for Candidate A.
+  * The RAM image at flash 0x74000..0x7c000 (log 43) is referenced by no
+    SN_FWIN record and no scatter region on this path. How it is loaded is
+    not established here.
+  * Data-gap comparison is aligned by the matched functions bracketing each
+    gap. A gap whose sides differ in length is reported as unaligned and its
+    bytes are not compared, so nothing is diffed across an insertion.
+  * Ghidra's auto-analysis defines the function set. A function it failed to
+    discover cannot appear in either inventory, so the counts are 'functions
+    Ghidra found', not a proof of completeness.
+  * Phases 1 and 2 were corrected under independent review (logs 95 and 97).
+    Phase 2 had not been formally re-accepted when this phase was executed at
+    the owner's direction.
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  [exit 0]
+  NOTE no output means no whitespace errors
+
+$ git status --short
+   M ghidra/.gitignore
+   M tool/compare_firmware_images.py
+   M tool/falchion_image.py
+  ?? ghidra/scripts/FalchionFunctionInventory.java
+  ?? notes/installed-record-load-map.md
+  ?? notes/vendor-to-installed-functions.md
+  ?? tool/extract_installed_records.py
+  ?? tool/match_functions.py
+  ?? tool/test_extract_installed_records.py
+  ?? tool/test_match_functions.py
+  [exit 0]
+
+$ git status --short ghidra/
+   M ghidra/.gitignore
+  ?? ghidra/scripts/FalchionFunctionInventory.java
+  [exit 0]
+  NOTE the new project, inventories and slices are all ignored
+
+RESULT
+Phase 3 complete. Every extracted byte round-trips to a named source range,
+every runtime range cites the record or scatter descriptor that puts it
+there, and a second run of both report generators reproduces identical
+output. Both program pairs are fully matched with stated confidence and with
+addresses reported rather than assumed, the relocation is measured rather
+than presumed, and the single 44-byte insertion site is located. 280 offline
+tests pass under the pinned invocation, both evidence hashes are unchanged,
+the pre-existing Ghidra project was not touched, and no device was accessed.
+Phase 4 not started; everything left uncommitted for review.

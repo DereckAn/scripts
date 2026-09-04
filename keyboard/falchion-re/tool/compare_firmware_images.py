@@ -189,15 +189,8 @@ def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def classify_fill(data):
-    """Report an all-zero or all-0xff span, so padding is never read as code."""
-    if not data:
-        return "empty"
-    if data.count(0) == len(data):
-        return "zero"
-    if data.count(0xFF) == len(data):
-        return "ff"
-    return "data"
+# Re-exported so existing callers and tests keep one import site.
+classify_fill = fi.classify_fill
 
 
 def diff_ranges(left, right, base):

@@ -249,6 +249,17 @@ class Validation:
         return all(check.ok for check in self.checks)
 
 
+def classify_fill(data):
+    """Report an all-zero or all-0xff span, so padding is never read as code."""
+    if not data:
+        return "empty"
+    if data.count(0) == len(data):
+        return "zero"
+    if data.count(0xFF) == len(data):
+        return "ff"
+    return "data"
+
+
 def crc32(data, init=0):
     return binascii.crc32(data, init) & M
 

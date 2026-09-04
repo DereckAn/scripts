@@ -1,0 +1,236 @@
+{
+  "base": 65536,
+  "checks": [
+    {
+      "name": "entry pointer is record slot 0 \u2014 0x60011000",
+      "ok": true
+    },
+    {
+      "name": "region table lies inside the entry image \u2014 0x16750 in 0x11000..0x168ac",
+      "ok": true
+    },
+    {
+      "name": "region 0 source is record slot 1 \u2014 0x60021000",
+      "ok": true
+    },
+    {
+      "name": "region destinations are contiguous",
+      "ok": true
+    },
+    {
+      "name": "last region RAM end equals the entry initial stack pointer \u2014 0x18036168 vs 0x18036168",
+      "ok": true
+    },
+    {
+      "name": "every region handler is one identified in log 73 \u2014 0x1d8=__scatterload_copy, 0x17c=__scatterload_decompress, 0x1f4=__scatterload_zeroinit",
+      "ok": true
+    },
+    {
+      "name": "flash-backed region inputs tile record slot 1 exactly \u2014 0x21000..0x3f380 + 0x3f380..0x3f780 == 0x21000..0x3f780",
+      "ok": true
+    },
+    {
+      "name": "every active record byte is covered by an extracted slice \u2014 slot 0 0x11000..0x168ac; slot 1 0x21000..0x3f780",
+      "ok": true
+    },
+    {
+      "name": "every extracted byte round-trips to its source range",
+      "ok": true
+    }
+  ],
+  "coverage": [
+    {
+      "fill": "data",
+      "hi": 65572,
+      "length": 36,
+      "lo": 65536,
+      "role": "SN_FWIN header"
+    },
+    {
+      "fill": "data",
+      "hi": 65700,
+      "length": 128,
+      "lo": 65572,
+      "role": "SN_FWIN 8-slot record table"
+    },
+    {
+      "fill": "zero",
+      "hi": 69632,
+      "length": 3932,
+      "lo": 65700,
+      "role": "unclaimed by any parsed structure"
+    },
+    {
+      "fill": "data",
+      "hi": 92332,
+      "length": 22700,
+      "lo": 69632,
+      "role": "record slot 0 payload (entry image)"
+    },
+    {
+      "fill": "ff",
+      "hi": 135168,
+      "length": 42836,
+      "lo": 92332,
+      "role": "unclaimed by any parsed structure"
+    },
+    {
+      "fill": "data",
+      "hi": 258944,
+      "length": 123776,
+      "lo": 135168,
+      "role": "record slot 1 region 0 (__scatterload_copy source)"
+    },
+    {
+      "fill": "data",
+      "hi": 259968,
+      "length": 1024,
+      "lo": 258944,
+      "role": "record slot 1 region 1 (__scatterload_decompress source)"
+    },
+    {
+      "fill": "zero",
+      "hi": 393216,
+      "length": 133248,
+      "lo": 259968,
+      "role": "unclaimed by any parsed structure"
+    },
+    {
+      "fill": "data",
+      "hi": 393744,
+      "length": 528,
+      "lo": 393216,
+      "role": "backup container header"
+    },
+    {
+      "fill": "data",
+      "hi": 397312,
+      "length": 3568,
+      "lo": 393744,
+      "role": "unclaimed by any parsed structure"
+    },
+    {
+      "fill": "data",
+      "hi": 462848,
+      "length": 65536,
+      "lo": 397312,
+      "role": "mirrored bootloader copy"
+    },
+    {
+      "fill": "data",
+      "hi": 507904,
+      "length": 45056,
+      "lo": 462848,
+      "role": "unclaimed by any parsed structure"
+    }
+  ],
+  "entry": {
+    "initial_sp": 402874728,
+    "pointer": 1610682368,
+    "reset_vector": 5289
+  },
+  "image_sha256": "fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b",
+  "ok": true,
+  "region_table": 91984,
+  "regions": [
+    {
+      "dst": 402653184,
+      "dst_end": 402776960,
+      "handler": 472,
+      "handler_name": "__scatterload_copy",
+      "index": 0,
+      "size": 123776,
+      "src": 1610747904,
+      "src_flash": 135168
+    },
+    {
+      "dst": 402776960,
+      "dst_end": 402779780,
+      "handler": 380,
+      "handler_name": "__scatterload_decompress",
+      "index": 1,
+      "size": 2820,
+      "src": 1610871680,
+      "src_flash": 258944
+    },
+    {
+      "dst": 402779780,
+      "dst_end": 402874728,
+      "handler": 500,
+      "handler_name": "__scatterload_zeroinit",
+      "index": 2,
+      "size": 94948,
+      "src": 1610872704,
+      "src_flash": 259968
+    }
+  ],
+  "runtime": [
+    {
+      "basis": "Candidate A region 0 at 0x16750, source 0x60021000 inside SN_FWIN record slot 1",
+      "hi": 402776960,
+      "kind": "__scatterload_copy",
+      "length": 123776,
+      "lo": 402653184,
+      "materialized": true,
+      "source_hi": 258944,
+      "source_lo": 135168
+    },
+    {
+      "basis": "Candidate A region 1 at 0x16760, source 0x6003f380 inside SN_FWIN record slot 1",
+      "hi": 402779780,
+      "kind": "__scatterload_decompress",
+      "length": 2820,
+      "lo": 402776960,
+      "materialized": false,
+      "source_hi": 259968,
+      "source_lo": 258944
+    },
+    {
+      "basis": "Candidate A region 2 at 0x16770, zero-filled with no flash source",
+      "hi": 402874728,
+      "kind": "__scatterload_zeroinit",
+      "length": 94948,
+      "lo": 402779780,
+      "materialized": true,
+      "source_hi": null,
+      "source_lo": null
+    }
+  ],
+  "size": 442368,
+  "slices": [
+    {
+      "import_base": 0,
+      "import_base_basis": "linked at 0: the reset vector 0x000014a9, the region table at 0x5750 and its handler pointers are all base-0 offsets within this image",
+      "length": 22700,
+      "name": "installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin",
+      "role": "complete SN_FWIN record and the entry image, executed in place",
+      "sha256": "f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835",
+      "slot": 0,
+      "source_hi": 92332,
+      "source_lo": 69632
+    },
+    {
+      "import_base": null,
+      "import_base_basis": "kept whole so the round-trip gate covers every active record byte; the loadable part is extracted separately",
+      "length": 124800,
+      "name": "installed_rec1_slot1_flash21000_dstNA_len1e780_ccbd61f8.bin",
+      "role": "complete SN_FWIN record: scatter region sources __scatterload_copy 0x21000..0x3f380 + __scatterload_decompress 0x3f380..0x3f780 \u2014 not one runtime image, so it has no import base",
+      "sha256": "ccbd61f85dade3d2d7db2d3ccac89158f6fba2cf1b97c7997e19f5f47a289b81",
+      "slot": 1,
+      "source_hi": 259968,
+      "source_lo": 135168
+    },
+    {
+      "import_base": 402653184,
+      "import_base_basis": "Candidate A region 0 copies flash 0x21000..0x3f380 to RAM 0x18000000..0x1801e380",
+      "length": 123776,
+      "name": "installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin",
+      "role": "runtime image from scatter region 0, __scatterload_copy",
+      "sha256": "be463863b8cd6ca7dae56a1bba396ec7906f248389fd3e2a6656210ca20773be",
+      "slot": 1,
+      "source_hi": 258944,
+      "source_lo": 135168
+    }
+  ],
+  "source": "installed-1.59-application"
+}

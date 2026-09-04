@@ -6,3 +6,5 @@ project/
 
 # Headless runtime logs are preserved separately under ../logs/.
 runtime-logs/
+project-step6/
+inventories/
