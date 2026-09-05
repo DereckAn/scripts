@@ -1625,6 +1625,67 @@ unaccounted for are named and none is traced.
 459 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-04 — Phase 5B: USB ownership, endpoints and report routing (log 107)
+
+Phase 5B only. 5C–5G were not begun and nothing was committed. Every Ghidra run
+was read-only.
+
+Log 105 identified the decompressed region as the descriptor set from its
+content. This step made that account complete and checkable. All five HID report
+descriptors sit contiguously at `+0x008..+0x282` and appear in no other
+preserved image. Four of them are byte-identical to the raw bytes the host read
+back in log 09. The fifth, interface 4's, cannot be checked that way at all: the
+interface was unbound on the host, so this repository holds no raw bytes for it —
+log 09 captured `hidraw0`–`hidraw3` only. It was located structurally and
+verified a step more weakly, and that difference is now stated wherever the
+claim appears (log 108).
+
+The standard descriptors are a different story, and the interesting one. No
+device, configuration, interface, HID-class or endpoint descriptor byte sequence
+exists anywhere in the five images. Rather than rest on that search, the builder
+was recovered: `INIT_TASK` hands region+`0x284` to `FUN_18018b70`, which
+validates `bNumInterfaces` in 1..5 against its own error string and copies
+`0x8c` bytes to RAM, and `FUN_18018082` then accumulates `0x12` bytes per
+interface plus `7` per endpoint over a 9-byte header. Recomputing that from the
+table yields **141 = `0x008d`**, exactly the `wTotalLength` the host reported.
+Every other field — VID, PID, bcdDevice, 500 mA, all six packet sizes, all four
+IN intervals — matches too.
+
+**`0x40100000`, carried as unnamed since log 100, is the USB device
+controller.** It is named on the firmware's own strings rather than on
+correlation: `Vector_IRQ6` contains `send usbd_ep0_Queue error` and
+`send usbd_irq_Queue error`, its register base literal is `0x40100018` — which
+accounts for every census target attributed to IRQ6 with nothing left over — and
+the block's other accessors carry `USB_PM_*` and `usbd_wdt`. The handler ends by
+pending PendSV, so it hands off to the scheduler rather than working in interrupt
+context.
+
+A negative result turned out to be the architecture rather than a gap: no static
+call path exists between the USB core and the controller driver. They are joined
+by the function-pointer tables Phase 5A had to seed first.
+
+The vendor channel was recovered in both directions, not just the known parser.
+Inbound is a single-slot 64-byte mailbox at `0x180233a8` whose byte 0 is both the
+command and the busy flag — and **a packet arriving while the previous one is
+unprocessed is dropped silently**, with no error path or second slot. Outbound
+clamps the payload to 60 bytes in a 64-byte frame and is bounds-checked against
+the same table field that produces the endpoint's `wMaxPacketSize`; the transmit
+call returns three distinct errors and the caller ignores all three.
+
+For a future custom firmware the useful conclusion is narrow and concrete: the
+minimal USB-keyboard path is the control endpoint plus interface 0's 8-byte boot
+report. The vendor channel, media/NKRO and lighting are each one table record and
+one count byte — though the vendor channel is also where the bootloader-entry
+command of logs 82/87/88 lives, which is worth knowing before omitting it.
+
+Left open and stated: `bEndpointAddress` for all six endpoints appears in no
+image, the OUT `bInterval` is absent, `iSerial` was not located, the scan, media
+and lighting producers were not traced, and a mask ROM was not searched and
+cannot be.
+
+483 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

@@ -1692,6 +1692,94 @@ through primitives other than task creation, entry from the bootloader, and
 linker-retained dead code — are stated as open. None is traced, and none is
 asserted as a finding.
 
+### Phase 5B: USB ownership, endpoints and report routing (log 107)
+
+The reconstructed region is not just *a* descriptor set — it is the descriptor
+set, and it accounts for the enumeration the host observed.
+
+**All five HID report descriptors are stored verbatim**, contiguous at
+`+0x008..+0x282`. Four of the five are byte-identical to what the host read
+back; the fifth is checked a step more weakly, and the difference is stated
+rather than smoothed over:
+
+| iface | offset | length | host evidence | strength |
+|---|---|---|---|---|
+| 0 | `+0x008` | 68 | hidraw0 raw bytes (log 09) | byte-identical |
+| 1 | `+0x04c` | 34 | hidraw1 raw bytes (log 09) | byte-identical |
+| 2 | `+0x06e` | 182 | hidraw2 raw bytes (log 09) | byte-identical |
+| 3 | `+0x124` | 23 | hidraw3 raw bytes (log 09) | byte-identical |
+| 4 | `+0x13b` | 327 | lsusb's *parsed* items (`notes/usb-descriptors.txt`, log 15) | well-formed, 155 items matching item for item |
+
+Interface 4 was **unbound on the host**, so no raw report-descriptor bytes for
+it exist anywhere in this repository — log 09 captured `hidraw0`–`hidraw3` only,
+and log 15 preserves lsusb's decoded item listing, not bytes. Its descriptor was
+therefore located structurally; the HID item walk consumes exactly its declared
+327 bytes and yields 155 items that match the host's parsed listing one for one.
+That is strong, but it is an item comparison and not a byte comparison, and no
+claim of byte-identity is made for it (log 108).
+
+They appear in the region and in no other preserved image.
+
+**The standard descriptors are built, not stored.** No device, configuration,
+interface, HID-class or endpoint descriptor byte sequence exists in any of the
+five images. That is *not* the argument — the builder was recovered.
+`INIT_TASK` passes region+`0x284` to `FUN_18018b70`, which validates
+`bNumInterfaces` in 1..5 (its own error string is `"USBD_HID: error Invalid
+struct"`) and copies `0x8c` bytes to RAM `0x1803435c`. `FUN_18018082` then
+walks that table with a `0x18` stride and an endpoint-flag byte, accumulating
+`0x12` bytes per interface plus `7` per endpoint over a 9-byte header. Recomputed
+from the table that gives **141 = `0x008d`** — exactly the `wTotalLength` the
+host reported.
+
+The table's layout is read off the builder's field offsets: `idVendor` `+0x00`,
+`idProduct` `+0x02`, `bcdDevice` `+0x04`, attribute bits `+0x10`, `bMaxPower/2`
+`+0x11`, `bNumInterfaces` `+0x12`, then interface records at `+0x14`, stride
+`0x18`, each carrying endpoint-presence flags, IN and OUT `wMaxPacketSize`, the
+report descriptor's length and pointer, and the IN `bInterval`. Every one of
+those fields matches the host. Interface 4's record is the only one with the OUT
+bit set and no IN bit — the host's OUT-only interface 4.
+
+**`0x40100000` is the USB device controller.** It is named on the firmware's own
+strings, not on correlation: `Vector_IRQ6` contains `send usbd_ep0_Queue error`
+and `send usbd_irq_Queue error`, and the block's other accessors carry
+`USB_PM_Rs`/`USB_PM_Ct`/`Wake-up` and `usbd_wdt`. IRQ6's register base literal is
+`0x40100018`, which explains every `0x401xxxxx` target the Phase 5 census
+attributed to it with nothing left over, and the handler ends by pending PendSV
+through ICSR — it hands off to the scheduler rather than working in interrupt
+context. The USB core and the controller driver have **no static call path
+between them**; they are joined by the pointer tables `0x18018ce8`,
+`0x18016d44` and `0x18017d08` that Phase 5A had to seed first.
+
+**The vendor channel, both directions.** Exactly two functions touch the RX
+buffer `0x180233a8`. `FUN_18000aec` (reached from `FUN_18016104`, an entry in
+the driver ops table) copies at most 64 bytes in, rejects anything of 4 bytes or
+fewer, zero-pads short frames to 64, and writes **only when byte 0 is zero** — a
+single-slot mailbox where byte 0 is both the command and the busy flag, and where
+**a packet arriving while the previous one is unprocessed is dropped silently**,
+with no error path, counter or second slot. The dispatcher `0x18001fbe` opens by
+reading that same byte and returning if it is zero. Outbound,
+`FUN_18000a70` builds a 4-byte header plus a payload clamped to `0x3c` in a
+64-byte frame and calls `FUN_18018bd6(iface=1, …)`, which bounds the length
+against the very table field that produces endpoint `0x85`'s `wMaxPacketSize`.
+`FUN_18018bd6` returns three distinct errors — bad interface index, endpoint not
+open, endpoint busy — and **`FUN_18000a70` ignores all three**, so a dropped
+response is invisible to the command layer. No DMA is visible at this level; both
+directions are CPU copies.
+
+**The minimal USB-keyboard path is EP `0x00` and EP `0x81`** — the control
+endpoint and interface 0's 8-byte boot report. Interfaces 1–4 are compatibility:
+the vendor `0xFF00` channel (which also carries the bootloader-entry command of
+logs 82/87/88), consumer/system controls, NKRO, and the LampArray lighting page.
+Each is one table record and one `bNumInterfaces` byte. `notes/usb-routing.md`
+carries the full map with a confidence and an explicit basis per link.
+
+**Unresolved, and stated rather than closed.** `bEndpointAddress` for all six
+endpoints appears nowhere — not in the table, not in any image; the OUT
+endpoints' `bInterval` of 4 is likewise absent; `iSerial` names a string that was
+not located. The scan, media and lighting *producers* were not traced — those are
+5C's and 5D's subjects. And the searches cover the five preserved images: a mask
+ROM was not searched and cannot be, though nothing recovered here requires one.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

@@ -105,3 +105,5 @@ a8cff1d4ab013f0be0f5fccabfc36e48a7d0edf046ac62f959cc2cc14bd96286  logs/102-phase
 f86b7b6d3334941cb8189bcfe492534d3015c1ab7238d270b9b7d3bcb6153df2  logs/104-phase5a-pointer-tables-and-reachability.txt
 19e81e3722973d1818a411704a81cbb2fd76f364986f915fd15238261d552621  logs/105-decompressed-region-reconstruction.txt
 b36ea9e427bd5baa3e8683ccbd08b7987142fb8c36784924648723c1442d13b5  logs/106-phase5a-task-entries-and-new-baseline.txt
+5000e683237fe1d4e0d4bc15dce1c8abf69f5c826e595695bc7acda328b05d40  logs/107-phase5b-usb-routing.txt
+fcd97ca4a2175e10edf004e56faef3c151d00ff345fd259aef83433813d3d436  logs/108-phase5b-prose-correction.txt
