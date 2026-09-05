@@ -182,6 +182,48 @@ class RealImage(unittest.TestCase):
         cls.map = mh.build_map()
         cls.payload = mh.to_dict(cls.map)
 
+    def programs(self):
+        entry, = [item for item in self.map.programs if "entry" in item.name]
+        app, = [item for item in self.map.programs
+                if "application" in item.name]
+        return entry, app
+
+    def test_every_root_category_is_still_present(self):
+        """Regression pin: adding task roots must not displace the vector,
+        table, cross-image or decompressed-region roots 5A already had."""
+        entry, app = self.programs()
+        labels = [label for label, _entry in entry.roots + app.roots]
+        for prefix in ("table@", "task ", "decompressed region ",
+                       "called from entry image ", "Candidate B main"):
+            self.assertTrue(any(label.startswith(prefix) for label in labels),
+                            f"no root labelled {prefix!r} survives")
+
+    def test_the_absorbed_table_target_is_still_reported_not_dropped(self):
+        """0x4018 was absorbed into PtrTarget_00004004's body extent, so table
+        0x5680 contributes two roots and not three. Pinned so a later change
+        to the root set cannot quietly restore the double count."""
+        entry, _app = self.programs()
+        self.assertEqual(entry.unresolved_roots,
+                         (("0x00004018", "table@0x00005680"),))
+
+    def test_the_five_task_roots_are_split_across_both_images(self):
+        """Four tasks run application code; OEM_MAIN_SERVICE_TASK runs entry
+        image code, which is why the entry image needs a task root at all."""
+        entry, app = self.programs()
+        entry_tasks = [label for label, _e in entry.roots
+                       if label.startswith("task ")]
+        app_tasks = [label for label, _e in app.roots
+                     if label.startswith("task ")]
+        self.assertEqual(len(entry_tasks), 1)
+        self.assertIn("OEM_MAIN_SERVICE_TASK", entry_tasks[0])
+        self.assertEqual(len(app_tasks), 4)
+
+    def test_seeding_did_not_make_everything_reachable(self):
+        """5A's exit gate wants the remainder enumerated, not eliminated."""
+        _entry, app = self.programs()
+        self.assertLess(len(app.contexts), app.functions)
+        self.assertGreater(len(app.orphans), 0)
+
     def test_the_vector_table_runs_to_the_first_code_address(self):
         """An ARMv7-M table has no terminator, so nothing looks for one."""
         span = self.payload["vector_table_span"]

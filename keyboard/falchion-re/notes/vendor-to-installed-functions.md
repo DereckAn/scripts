@@ -21,8 +21,8 @@ ranges rather than `entry..entry+size`.
 
 | program | vendor | installed | identical | structural | tentative | unmatched | discontiguous bodies | shift |
 |---|---|---|---|---|---|---|---|---|
-| Candidate A | 101 | 101 | 94 | 0 | 7 | 0 | 16/16 | `0x0` |
-| Candidate B | 573 | 573 | 494 | 50 | 29 | 0 | 104/104 | `0x2c` |
+| Candidate A | 114 | 114 | 102 | 2 | 10 | 0 | 19/19 | `0x0` |
+| Candidate B | 616 | 616 | 531 | 56 | 29 | 0 | 110/110 | `0x2c` |
 
 Both programs have the same function count in both releases and nothing
 is left unmatched.
@@ -35,8 +35,8 @@ change is:
 
 | program | function-body bytes | data-span bytes | aligned total | spans compared | raw total (log 96) |
 |---|---|---|---|---|---|
-| Candidate A | 2 | 129 | **131** | 78/78 | 131 |
-| Candidate B | 335 | 738 | **1073** | 244/262 | 101,112 |
+| Candidate A | 5 | 126 | **131** | 85/85 | 131 |
+| Candidate B | 378 | 695 | **1073** | 256/274 | 101,112 |
 
 Candidate A did not move, every one of its spans compares cleanly, its
 aligned total matches log 96 exactly, and every changed byte turns out to
@@ -104,7 +104,7 @@ differ in bytes, or that one side has no counterpart. `ranges` is the
 number of address ranges in the body, so anything above 1 is a
 discontiguous body.
 
-### Candidate A — 101 pairings
+### Candidate A — 114 pairings
 
 | vendor | installed | confidence | moved | changed | size | ranges | differing bytes |
 |---|---|---|---|---|---|---|---|
@@ -117,10 +117,20 @@ discontiguous body.
 | `0x000002e8` | `0x000002e8` | identical | no | no | `0x20` | 1 | 0 |
 | `0x0000032c` | `0x0000032c` | identical | no | no | `0x46` | 1 | 0 |
 | `0x00000378` | `0x00000378` | identical | no | no | `0x6` | 1 | 0 |
+| `0x0000042c` | `0x0000042c` | identical | no | no | `0x88` | 4 | 0 |
+| `0x00000498` | `0x00000498` | identical | no | no | `0x22` | 1 | 0 |
+| `0x000004ba` | `0x000004ba` | identical | no | no | `0x5c` | 1 | 0 |
+| `0x00000516` | `0x00000516` | structural | no | yes | `0x6e` | 2 | 2 |
+| `0x0000057a` | `0x0000057a` | tentative | no | no | `0x2` | 1 | 0 |
+| `0x0000057e` | `0x0000057e` | tentative | no | no | `0x2` | 1 | 0 |
+| `0x00000580` | `0x00000580` | structural | no | yes | `0x1e` | 2 | 1 |
 | `0x000005d6` | `0x000005d6` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x00000600` | `0x00000600` | identical | no | no | `0x46` | 1 | 0 |
+| `0x00000654` | `0x00000654` | identical | no | no | `0x30` | 1 | 0 |
+| `0x00000684` | `0x00000684` | identical | no | no | `0x10` | 1 | 0 |
+| `0x00000694` | `0x00000694` | identical | no | no | `0x1c` | 1 | 0 |
 | `0x0000075c` | `0x0000075c` | identical | no | no | `0x3a` | 1 | 0 |
-| `0x00000796` | `0x00000796` | identical | no | no | `0x2` | 1 | 0 |
+| `0x00000796` | `0x00000796` | tentative | no | no | `0x2` | 1 | 0 |
 | `0x000007d4` | `0x000007d4` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x000007fe` | `0x000007fe` | identical | no | no | `0x118` | 2 | 0 |
 | `0x00000918` | `0x00000918` | identical | no | no | `0x3c` | 1 | 0 |
@@ -160,6 +170,8 @@ discontiguous body.
 | `0x000017e0` | `0x000017e0` | identical | no | no | `0x28` | 1 | 0 |
 | `0x00001808` | `0x00001808` | identical | no | no | `0x4c` | 1 | 0 |
 | `0x000020be` | `0x000020be` | identical | no | no | `0x2e` | 1 | 0 |
+| `0x00002148` | `0x00002148` | identical | no | no | `0x24` | 1 | 0 |
+| `0x0000216c` | `0x0000216c` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x000021b0` | `0x000021b0` | identical | no | no | `0x18` | 1 | 0 |
 | `0x000021c8` | `0x000021c8` | identical | no | no | `0x1a` | 1 | 0 |
 | `0x000021e2` | `0x000021e2` | identical | no | no | `0x18` | 1 | 0 |
@@ -195,6 +207,7 @@ discontiguous body.
 | `0x00003dae` | `0x00003dae` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x00003dd8` | `0x00003dd8` | identical | no | no | `0x22c` | 1 | 0 |
 | `0x00004004` | `0x00004004` | identical | no | no | `0x17` | 2 | 0 |
+| `0x000040b2` | `0x000040b2` | identical | no | no | `0x1` | 1 | 0 |
 | `0x000040b4` | `0x000040b4` | tentative | no | yes | `0x8` | 1 | 2 |
 | `0x00004264` | `0x00004264` | identical | no | no | `0x28` | 1 | 0 |
 | `0x0000428c` | `0x0000428c` | identical | no | no | `0xe` | 1 | 0 |
@@ -210,15 +223,20 @@ discontiguous body.
 | `0x00004b7a` | `0x00004b7a` | identical | no | no | `0x88` | 2 | 0 |
 | `0x00004c10` | `0x00004c10` | identical | no | no | `0xf0` | 2 | 0 |
 
-### Candidate B — 573 pairings
+### Candidate B — 616 pairings
 
 | vendor | installed | confidence | moved | changed | size | ranges | differing bytes |
 |---|---|---|---|---|---|---|---|
+| `0x1800004c` | `0x1800004c` | structural | no | yes | `0x42` | 1 | 7 |
+| `0x1800008e` | `0x1800008e` | structural | no | yes | `0x2a` | 1 | 1 |
+| `0x180000b8` | `0x180000b8` | structural | no | yes | `0x2c` | 1 | 2 |
 | `0x180000e4` | `0x180000e4` | structural | no | yes | `0x24` | 1 | 2 |
 | `0x18000108` | `0x18000108` | structural | no | yes | `0x80` | 2 | 4 |
 | `0x18000136` | `0x18000136` | structural | no | yes | `0x9c` | 1 | 2 |
 | `0x180001d2` | `0x180001d2` | structural | no | yes | `0x68` | 1 | 4 |
+| `0x1800023a` | `0x1800023a` | structural | no | yes | `0x122` | 1 | 30 |
 | `0x18000420` | `0x18000420` | identical | no | no | `0x1a` | 1 | 0 |
+| `0x1800043a` | `0x1800043a` | identical | no | no | `0x2c` | 1 | 0 |
 | `0x18000466` | `0x18000466` | structural | no | yes | `0x11e` | 1 | 1 |
 | `0x18000584` | `0x18000584` | structural | no | yes | `0x42` | 1 | 2 |
 | `0x180005c6` | `0x180005c6` | structural | no | yes | `0x34` | 1 | 1 |
@@ -252,6 +270,7 @@ discontiguous body.
 | `0x1800466e` | `0x1800466e` | identical | no | no | `0x32` | 1 | 0 |
 | `0x180046a0` | `0x180046a0` | structural | no | yes | `0x158` | 1 | 1 |
 | `0x180047f8` | `0x180047f8` | identical | no | no | `0x16c` | 2 | 0 |
+| `0x180049a8` | `0x180049a8` | structural | no | yes | `0x74` | 1 | 1 |
 | `0x18004a1c` | `0x18004a1c` | identical | no | no | `0x62` | 1 | 0 |
 | `0x18004a7e` | `0x18004a7e` | tentative | no | yes | `0xd10` | 4 | n/a |
 | `0x180057d2` | `0x180057fe` | identical | yes | no | `0x288` | 2 | 0 |
@@ -270,7 +289,7 @@ discontiguous body.
 | `0x18006ade` | `0x18006b0a` | identical | yes | no | `0x30` | 1 | 0 |
 | `0x18006b0e` | `0x18006b3a` | identical | yes | no | `0x90` | 1 | 0 |
 | `0x18006c9a` | `0x18006cc6` | identical | yes | no | `0x76` | 1 | 0 |
-| `0x18006d10` | `0x18006d3c` | identical | yes | no | `0x2be` | 6 | 0 |
+| `0x18006d10` | `0x18006d3c` | identical | yes | no | `0x1e0` | 3 | 0 |
 | `0x18006f4e` | `0x18006f7a` | identical | yes | no | `0x66` | 1 | 0 |
 | `0x18006fb4` | `0x18006fe0` | identical | yes | no | `0x50` | 1 | 0 |
 | `0x18007004` | `0x18007030` | structural | yes | yes | `0xce` | 1 | 2 |
@@ -292,6 +311,12 @@ discontiguous body.
 | `0x180089d6` | `0x18008a02` | structural | yes | yes | `0x74` | 1 | 1 |
 | `0x18008a4a` | `0x18008a76` | structural | yes | yes | `0xb0` | 1 | 1 |
 | `0x18008afa` | `0x18008b26` | identical | yes | no | `0x2c` | 1 | 0 |
+| `0x18008b2a` | `0x18008b56` | identical | yes | no | `0x4c` | 1 | 0 |
+| `0x18008b76` | `0x18008ba2` | identical | yes | no | `0x1a` | 1 | 0 |
+| `0x18008b90` | `0x18008bbc` | identical | yes | no | `0x5a` | 1 | 0 |
+| `0x18008bea` | `0x18008c16` | structural | yes | yes | `0x21a` | 4 | 2 |
+| `0x18008ea8` | `0x18008ed4` | identical | yes | no | `0x3e` | 1 | 0 |
+| `0x18008ee6` | `0x18008f12` | identical | yes | no | `0x38` | 1 | 0 |
 | `0x18008f1e` | `0x18008f4a` | identical | yes | no | `0xe` | 2 | 0 |
 | `0x18008f9c` | `0x18008fc8` | identical | yes | no | `0x50` | 1 | 0 |
 | `0x18008fec` | `0x18009018` | identical | yes | no | `0x5e` | 2 | 0 |
@@ -384,6 +409,8 @@ discontiguous body.
 | `0x1800d24a` | `0x1800d276` | identical | yes | no | `0x46` | 1 | 0 |
 | `0x1800d290` | `0x1800d2bc` | identical | yes | no | `0x7c` | 1 | 0 |
 | `0x1800d30c` | `0x1800d338` | identical | yes | no | `0x6c` | 1 | 0 |
+| `0x1800d378` | `0x1800d3a4` | identical | yes | no | `0x38` | 1 | 0 |
+| `0x1800d3b0` | `0x1800d3dc` | identical | yes | no | `0xde` | 3 | 0 |
 | `0x1800d614` | `0x1800d640` | identical | yes | no | `0xae` | 2 | 0 |
 | `0x1800d706` | `0x1800d732` | identical | yes | no | `0x10e` | 1 | 0 |
 | `0x1800d814` | `0x1800d840` | identical | yes | no | `0x68` | 2 | 0 |
@@ -491,6 +518,7 @@ discontiguous body.
 | `0x180109ec` | `0x18010a18` | identical | yes | no | `0x2c` | 1 | 0 |
 | `0x18010a18` | `0x18010a44` | identical | yes | no | `0x2c` | 1 | 0 |
 | `0x18010a90` | `0x18010abc` | identical | yes | no | `0x36` | 1 | 0 |
+| `0x18010cf2` | `0x18010d1e` | identical | yes | no | `0x52` | 1 | 0 |
 | `0x18010e08` | `0x18010e34` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x18011014` | `0x18011040` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x18011234` | `0x18011260` | identical | yes | no | `0x36` | 2 | 0 |
@@ -548,6 +576,8 @@ discontiguous body.
 | `0x18012d40` | `0x18012d6c` | identical | yes | no | `0x24` | 1 | 0 |
 | `0x18012da2` | `0x18012dce` | identical | yes | no | `0x26` | 1 | 0 |
 | `0x18012dc8` | `0x18012df4` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x18012e2c` | `0x18012e58` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x18012e70` | `0x18012e9c` | identical | yes | no | `0x44` | 1 | 0 |
 | `0x18012eb4` | `0x18012ee0` | identical | yes | no | `0x1c` | 1 | 0 |
 | `0x18012ed4` | `0x18012f00` | identical | yes | no | `0x14` | 1 | 0 |
 | `0x18012ee8` | `0x18012f14` | identical | yes | no | `0xbc` | 1 | 0 |
@@ -565,6 +595,8 @@ discontiguous body.
 | `0x180133ec` | `0x18013418` | identical | yes | no | `0xa6` | 1 | 0 |
 | `0x18013492` | `0x180134be` | identical | yes | no | `0x70` | 1 | 0 |
 | `0x18013502` | `0x1801352e` | identical | yes | no | `0x82` | 1 | 0 |
+| `0x1801369e` | `0x180136ca` | identical | yes | no | `0x20` | 1 | 0 |
+| `0x180136be` | `0x180136ea` | identical | yes | no | `0x68` | 3 | 0 |
 | `0x18013752` | `0x1801377e` | identical | yes | no | `0x6` | 1 | 0 |
 | `0x18013758` | `0x18013784` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x180137a0` | `0x180137cc` | identical | yes | no | `0x1c` | 1 | 0 |
@@ -590,6 +622,16 @@ discontiguous body.
 | `0x18013f5c` | `0x18013f88` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x18013f76` | `0x18013fa2` | identical | yes | no | `0x14` | 1 | 0 |
 | `0x18013f8a` | `0x18013fb6` | identical | yes | no | `0x46` | 2 | 0 |
+| `0x18013fdc` | `0x18014008` | identical | yes | no | `0x34` | 1 | 0 |
+| `0x18014010` | `0x1801403c` | identical | yes | no | `0x5c` | 1 | 0 |
+| `0x1801406c` | `0x18014098` | identical | yes | no | `0xaa` | 2 | 0 |
+| `0x18014120` | `0x1801414c` | identical | yes | no | `0x20` | 1 | 0 |
+| `0x18014140` | `0x1801416c` | identical | yes | no | `0x3e` | 1 | 0 |
+| `0x1801417e` | `0x180141aa` | identical | yes | no | `0x3a` | 1 | 0 |
+| `0x180141b8` | `0x180141e4` | identical | yes | no | `0x4e` | 1 | 0 |
+| `0x180142d8` | `0x18014304` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x180142fc` | `0x18014328` | identical | yes | no | `0xac` | 1 | 0 |
+| `0x180143a8` | `0x180143d4` | identical | yes | no | `0x66` | 2 | 0 |
 | `0x18014430` | `0x1801445c` | identical | yes | no | `0x48` | 1 | 0 |
 | `0x18014478` | `0x180144a4` | identical | yes | no | `0xdc` | 1 | 0 |
 | `0x18014554` | `0x18014580` | identical | yes | no | `0x5a` | 1 | 0 |
@@ -648,6 +690,7 @@ discontiguous body.
 | `0x18017156` | `0x18017182` | identical | yes | no | `0x10` | 1 | 0 |
 | `0x18017166` | `0x18017192` | identical | yes | no | `0x1e` | 1 | 0 |
 | `0x18017184` | `0x180171b0` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x1801719c` | `0x180171c8` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x180172b4` | `0x180172e0` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x180172c4` | `0x180172f0` | identical | yes | no | `0x6c` | 1 | 0 |
 | `0x180174f0` | `0x1801751c` | identical | yes | no | `0x6` | 1 | 0 |
@@ -699,6 +742,7 @@ discontiguous body.
 | `0x18018ac4` | `0x18018af0` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x18018ad0` | `0x18018afc` | identical | yes | no | `0x26` | 1 | 0 |
 | `0x18018af6` | `0x18018b22` | identical | yes | no | `0x74` | 2 | 0 |
+| `0x18018b44` | `0x18018b70` | identical | yes | no | `0x42` | 1 | 0 |
 | `0x18018b8c` | `0x18018bb8` | identical | yes | no | `0x1e` | 1 | 0 |
 | `0x18018baa` | `0x18018bd6` | identical | yes | no | `0xa0` | 1 | 0 |
 | `0x18018c4a` | `0x18018c76` | identical | yes | no | `0xfc` | 2 | 0 |
@@ -758,6 +802,12 @@ discontiguous body.
 | `0x1801a280` | `0x1801a2ac` | identical | yes | no | `0x4e` | 1 | 0 |
 | `0x1801a2ce` | `0x1801a2fa` | identical | yes | no | `0x2a` | 1 | 0 |
 | `0x1801a2f8` | `0x1801a324` | identical | yes | no | `0x2c` | 2 | 0 |
+| `0x1801a388` | `0x1801a3b4` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x1801a394` | `0x1801a3c0` | identical | yes | no | `0x74` | 1 | 0 |
+| `0x1801a408` | `0x1801a434` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x1801a42a` | `0x1801a456` | identical | yes | no | `0x2ce` | 1 | 0 |
+| `0x1801a6f8` | `0x1801a724` | identical | yes | no | `0x164` | 3 | 0 |
+| `0x1801a88e` | `0x1801a8ba` | identical | yes | no | `0x14a` | 1 | 0 |
 | `0x1801a9fc` | `0x1801aa28` | identical | yes | no | `0x18` | 1 | 0 |
 | `0x1801aa14` | `0x1801aa40` | identical | yes | no | `0x10` | 1 | 0 |
 | `0x1801aa26` | `0x1801aa52` | identical | yes | no | `0x1c` | 1 | 0 |
@@ -782,21 +832,30 @@ discontiguous body.
 | `0x1801b234` | `0x1801b260` | identical | yes | no | `0x4c` | 1 | 0 |
 | `0x1801b280` | `0x1801b2ac` | identical | yes | no | `0x4a` | 1 | 0 |
 | `0x1801b2ca` | `0x1801b2f6` | identical | yes | no | `0xaa` | 1 | 0 |
+| `0x1801b374` | `0x1801b3a0` | identical | yes | no | `0xc0` | 1 | 0 |
+| `0x1801b434` | `0x1801b460` | identical | yes | no | `0x10e` | 1 | 0 |
 | `0x1801b542` | `0x1801b56e` | identical | yes | no | `0xdc` | 1 | 0 |
-| `0x1801b61e` | `0x1801b64a` | identical | yes | no | `0x130` | 3 | 0 |
+| `0x1801b61e` | `0x1801b64a` | identical | yes | no | `0x12a` | 2 | 0 |
 | `0x1801b74e` | `0x1801b77a` | identical | yes | no | `0x40` | 1 | 0 |
 | `0x1801b792` | `0x1801b7be` | tentative | yes | no | `0x1a` | 1 | 0 |
 | `0x1801b7ac` | `0x1801b7d8` | tentative | yes | no | `0x1a` | 1 | 0 |
+| `0x1801bb80` | `0x1801bbac` | identical | yes | no | `0x14` | 1 | 0 |
+| `0x1801bb94` | `0x1801bbc0` | identical | yes | no | `0x1c` | 1 | 0 |
+| `0x1801bbda` | `0x1801bc06` | identical | yes | no | `0x2a` | 1 | 0 |
+| `0x1801bc04` | `0x1801bc30` | identical | yes | no | `0x18` | 1 | 0 |
 
 ## Addresses that must no longer be assumed equal
 
 Every relocated pairing, every tentative pairing, and every function
 without a counterpart.
 
-### Candidate A — 7 entries
+### Candidate A — 10 entries
 
 | vendor | installed | reason |
 |---|---|---|
+| `0x0000057a` | `0x0000057a` | tentative match only; the correspondence is not proven |
+| `0x0000057e` | `0x0000057e` | tentative match only; the correspondence is not proven |
+| `0x00000796` | `0x00000796` | tentative match only; the correspondence is not proven |
 | `0x00000fce` | `0x00000fce` | tentative match only; the correspondence is not proven |
 | `0x000014d2` | `0x000014d2` | tentative match only; the correspondence is not proven |
 | `0x000014d4` | `0x000014d4` | tentative match only; the correspondence is not proven |
@@ -805,7 +864,7 @@ without a counterpart.
 | `0x00003884` | `0x00003884` | tentative match only; the correspondence is not proven |
 | `0x000040b4` | `0x000040b4` | tentative match only; the correspondence is not proven |
 
-### Candidate B — 535 entries
+### Candidate B — 572 entries
 
 | vendor | installed | reason |
 |---|---|---|
@@ -849,6 +908,12 @@ without a counterpart.
 | `0x180089d6` | `0x18008a02` | structural match, relocated |
 | `0x18008a4a` | `0x18008a76` | structural match, relocated |
 | `0x18008afa` | `0x18008b26` | identical match, relocated |
+| `0x18008b2a` | `0x18008b56` | identical match, relocated |
+| `0x18008b76` | `0x18008ba2` | identical match, relocated |
+| `0x18008b90` | `0x18008bbc` | identical match, relocated |
+| `0x18008bea` | `0x18008c16` | structural match, relocated |
+| `0x18008ea8` | `0x18008ed4` | identical match, relocated |
+| `0x18008ee6` | `0x18008f12` | identical match, relocated |
 | `0x18008f1e` | `0x18008f4a` | identical match, relocated |
 | `0x18008f9c` | `0x18008fc8` | identical match, relocated |
 | `0x18008fec` | `0x18009018` | identical match, relocated |
@@ -941,6 +1006,8 @@ without a counterpart.
 | `0x1800d24a` | `0x1800d276` | identical match, relocated |
 | `0x1800d290` | `0x1800d2bc` | identical match, relocated |
 | `0x1800d30c` | `0x1800d338` | identical match, relocated |
+| `0x1800d378` | `0x1800d3a4` | identical match, relocated |
+| `0x1800d3b0` | `0x1800d3dc` | identical match, relocated |
 | `0x1800d614` | `0x1800d640` | identical match, relocated |
 | `0x1800d706` | `0x1800d732` | identical match, relocated |
 | `0x1800d814` | `0x1800d840` | identical match, relocated |
@@ -1048,6 +1115,7 @@ without a counterpart.
 | `0x180109ec` | `0x18010a18` | identical match, relocated |
 | `0x18010a18` | `0x18010a44` | identical match, relocated |
 | `0x18010a90` | `0x18010abc` | identical match, relocated |
+| `0x18010cf2` | `0x18010d1e` | identical match, relocated |
 | `0x18010e08` | `0x18010e34` | identical match, relocated |
 | `0x18011014` | `0x18011040` | identical match, relocated |
 | `0x18011234` | `0x18011260` | identical match, relocated |
@@ -1105,6 +1173,8 @@ without a counterpart.
 | `0x18012d40` | `0x18012d6c` | identical match, relocated |
 | `0x18012da2` | `0x18012dce` | identical match, relocated |
 | `0x18012dc8` | `0x18012df4` | identical match, relocated |
+| `0x18012e2c` | `0x18012e58` | identical match, relocated |
+| `0x18012e70` | `0x18012e9c` | identical match, relocated |
 | `0x18012eb4` | `0x18012ee0` | identical match, relocated |
 | `0x18012ed4` | `0x18012f00` | identical match, relocated |
 | `0x18012ee8` | `0x18012f14` | identical match, relocated |
@@ -1122,6 +1192,8 @@ without a counterpart.
 | `0x180133ec` | `0x18013418` | identical match, relocated |
 | `0x18013492` | `0x180134be` | identical match, relocated |
 | `0x18013502` | `0x1801352e` | identical match, relocated |
+| `0x1801369e` | `0x180136ca` | identical match, relocated |
+| `0x180136be` | `0x180136ea` | identical match, relocated |
 | `0x18013752` | `0x1801377e` | identical match, relocated |
 | `0x18013758` | `0x18013784` | identical match, relocated |
 | `0x180137a0` | `0x180137cc` | identical match, relocated |
@@ -1147,6 +1219,16 @@ without a counterpart.
 | `0x18013f5c` | `0x18013f88` | identical match, relocated |
 | `0x18013f76` | `0x18013fa2` | identical match, relocated |
 | `0x18013f8a` | `0x18013fb6` | identical match, relocated |
+| `0x18013fdc` | `0x18014008` | identical match, relocated |
+| `0x18014010` | `0x1801403c` | identical match, relocated |
+| `0x1801406c` | `0x18014098` | identical match, relocated |
+| `0x18014120` | `0x1801414c` | identical match, relocated |
+| `0x18014140` | `0x1801416c` | identical match, relocated |
+| `0x1801417e` | `0x180141aa` | identical match, relocated |
+| `0x180141b8` | `0x180141e4` | identical match, relocated |
+| `0x180142d8` | `0x18014304` | identical match, relocated |
+| `0x180142fc` | `0x18014328` | identical match, relocated |
+| `0x180143a8` | `0x180143d4` | identical match, relocated |
 | `0x18014430` | `0x1801445c` | identical match, relocated |
 | `0x18014478` | `0x180144a4` | identical match, relocated |
 | `0x18014554` | `0x18014580` | identical match, relocated |
@@ -1205,6 +1287,7 @@ without a counterpart.
 | `0x18017156` | `0x18017182` | identical match, relocated |
 | `0x18017166` | `0x18017192` | identical match, relocated |
 | `0x18017184` | `0x180171b0` | identical match, relocated |
+| `0x1801719c` | `0x180171c8` | identical match, relocated |
 | `0x180172b4` | `0x180172e0` | identical match, relocated |
 | `0x180172c4` | `0x180172f0` | identical match, relocated |
 | `0x180174f0` | `0x1801751c` | identical match, relocated |
@@ -1256,6 +1339,7 @@ without a counterpart.
 | `0x18018ac4` | `0x18018af0` | identical match, relocated |
 | `0x18018ad0` | `0x18018afc` | identical match, relocated |
 | `0x18018af6` | `0x18018b22` | identical match, relocated |
+| `0x18018b44` | `0x18018b70` | identical match, relocated |
 | `0x18018b8c` | `0x18018bb8` | identical match, relocated |
 | `0x18018baa` | `0x18018bd6` | identical match, relocated |
 | `0x18018c4a` | `0x18018c76` | identical match, relocated |
@@ -1315,6 +1399,12 @@ without a counterpart.
 | `0x1801a280` | `0x1801a2ac` | identical match, relocated |
 | `0x1801a2ce` | `0x1801a2fa` | identical match, relocated |
 | `0x1801a2f8` | `0x1801a324` | identical match, relocated |
+| `0x1801a388` | `0x1801a3b4` | identical match, relocated |
+| `0x1801a394` | `0x1801a3c0` | identical match, relocated |
+| `0x1801a408` | `0x1801a434` | identical match, relocated |
+| `0x1801a42a` | `0x1801a456` | identical match, relocated |
+| `0x1801a6f8` | `0x1801a724` | identical match, relocated |
+| `0x1801a88e` | `0x1801a8ba` | identical match, relocated |
 | `0x1801a9fc` | `0x1801aa28` | identical match, relocated |
 | `0x1801aa14` | `0x1801aa40` | identical match, relocated |
 | `0x1801aa26` | `0x1801aa52` | identical match, relocated |
@@ -1339,30 +1429,40 @@ without a counterpart.
 | `0x1801b234` | `0x1801b260` | identical match, relocated |
 | `0x1801b280` | `0x1801b2ac` | identical match, relocated |
 | `0x1801b2ca` | `0x1801b2f6` | identical match, relocated |
+| `0x1801b374` | `0x1801b3a0` | identical match, relocated |
+| `0x1801b434` | `0x1801b460` | identical match, relocated |
 | `0x1801b542` | `0x1801b56e` | identical match, relocated |
 | `0x1801b61e` | `0x1801b64a` | identical match, relocated |
 | `0x1801b74e` | `0x1801b77a` | identical match, relocated |
 | `0x1801b792` | `0x1801b7be` | tentative match, relocated |
 | `0x1801b7ac` | `0x1801b7d8` | tentative match, relocated |
+| `0x1801bb80` | `0x1801bbac` | identical match, relocated |
+| `0x1801bb94` | `0x1801bbc0` | identical match, relocated |
+| `0x1801bbda` | `0x1801bc06` | identical match, relocated |
+| `0x1801bc04` | `0x1801bc30` | identical match, relocated |
 
 ## Changed functions, ranked for review
 
-### Candidate A — 1 changed
+### Candidate A — 3 changed
 
 | vendor | installed | confidence | size | differing bytes |
 |---|---|---|---|---|
 | `0x000040b4` | `0x000040b4` | tentative | `0x8` | 2 |
+| `0x00000516` | `0x00000516` | structural | `0x6e` | 2 |
+| `0x00000580` | `0x00000580` | structural | `0x1e` | 1 |
 
-### Candidate B — 52 changed
+### Candidate B — 58 changed
 
 | vendor | installed | confidence | size | differing bytes |
 |---|---|---|---|---|
 | `0x18001fbe` | `0x18001fbe` | tentative | `0x1e7e` | n/a |
 | `0x18004a7e` | `0x18004a7e` | tentative | `0xd10` | n/a |
 | `0x18000d56` | `0x18000d56` | structural | `0xf46` | 204 |
+| `0x1800023a` | `0x1800023a` | structural | `0x122` | 30 |
 | `0x18006196` | `0x180061c2` | structural | `0x5f0` | 16 |
 | `0x18005a5c` | `0x18005a88` | structural | `0x412` | 10 |
 | `0x18000bb8` | `0x18000bb8` | structural | `0xda` | 9 |
+| `0x1800004c` | `0x1800004c` | structural | `0x42` | 7 |
 | `0x18000a1a` | `0x18000a1a` | structural | `0x56` | 6 |
 | `0x18000a70` | `0x18000a70` | structural | `0x68` | 5 |
 | `0x1800417e` | `0x1800417e` | structural | `0x1e4` | 4 |
@@ -1376,6 +1476,7 @@ without a counterpart.
 | `0x1800075a` | `0x1800075a` | structural | `0x28a` | 3 |
 | `0x18000aec` | `0x18000aec` | structural | `0x3c` | 3 |
 | `0x1800fb8c` | `0x1800fbb8` | structural | `0x20` | 3 |
+| `0x18008bea` | `0x18008c16` | structural | `0x21a` | 2 |
 | `0x1800ce1e` | `0x1800ce4a` | structural | `0x12e` | 2 |
 | `0x18007004` | `0x18007030` | structural | `0xce` | 2 |
 | `0x18000136` | `0x18000136` | structural | `0x9c` | 2 |
@@ -1386,6 +1487,7 @@ without a counterpart.
 | `0x18001f6e` | `0x18001f6e` | structural | `0x4e` | 2 |
 | `0x18000584` | `0x18000584` | structural | `0x42` | 2 |
 | `0x18006aa8` | `0x18006ad4` | structural | `0x36` | 2 |
+| `0x180000b8` | `0x180000b8` | structural | `0x2c` | 2 |
 | `0x180000e4` | `0x180000e4` | structural | `0x24` | 2 |
 | `0x1800464e` | `0x1800464e` | structural | `0x20` | 2 |
 | `0x180100d6` | `0x18010102` | structural | `0x24a` | 1 |
@@ -1397,6 +1499,7 @@ without a counterpart.
 | `0x18008a4a` | `0x18008a76` | structural | `0xb0` | 1 |
 | `0x1800eb4e` | `0x1800eb7a` | structural | `0x9a` | 1 |
 | `0x18006956` | `0x18006982` | structural | `0x8c` | 1 |
+| `0x180049a8` | `0x180049a8` | structural | `0x74` | 1 |
 | `0x180089d6` | `0x18008a02` | structural | `0x74` | 1 |
 | `0x18000c92` | `0x18000c92` | structural | `0x6e` | 1 |
 | `0x1800687e` | `0x180068aa` | structural | `0x6a` | 1 |
@@ -1406,6 +1509,7 @@ without a counterpart.
 | `0x180040dc` | `0x180040dc` | structural | `0x36` | 1 |
 | `0x180005c6` | `0x180005c6` | structural | `0x34` | 1 |
 | `0x1800f6ba` | `0x1800f6e6` | structural | `0x34` | 1 |
+| `0x1800008e` | `0x1800008e` | structural | `0x2a` | 1 |
 | `0x1800fbac` | `0x1800fbd8` | structural | `0x2a` | 1 |
 | `0x18004164` | `0x18004164` | structural | `0x1a` | 1 |
 | `0x1800463e` | `0x1800463e` | structural | `0x10` | 1 |
@@ -1420,18 +1524,23 @@ PAIR app_a
 VENDOR_PROGRAM vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
 INSTALLED_PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
 BASE 0x00000000 FLASH_BASE 0x11000
-COUNTS vendor=101 installed=101
-TIERS identical=94 structural=0 tentative=7 unmatched=0
-CHANGED 1 of 101 pairings
+COUNTS vendor=114 installed=114
+TIERS identical=102 structural=2 tentative=10 unmatched=0
+CHANGED 3 of 114 pairings
 MOVED 0
-DATA_REGIONS 105 bytes=129 unaligned_gaps=0
-DISCONTIGUOUS_BODIES vendor=16 installed=16 of 101/101 — body bytes and gaps come from the real ranges, not entry..entry+size
-UNCOVERED_SPANS vendor=78 installed=78 compared=78 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
+DATA_REGIONS 103 bytes=126 unaligned_gaps=0
+DISCONTIGUOUS_BODIES vendor=19 installed=19 of 114/114 — body bytes and gaps come from the real ranges, not entry..entry+size
+UNCOVERED_SPANS vendor=85 installed=85 compared=85 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
 DOMINANT_SHIFT 0x0 (+0 bytes), measured from the identical and structural matches only
-REVIEW_RANKING showing 1 of 1
+REVIEW_RANKING showing 3 of 3
   tentative  vendor=0x000040b4 installed=0x000040b4 size=0x8 differing_bytes=2 :: scored 0.905 with a 0.905 lead over the next candidate
-DATA_RANGES showing 105 of 105; the complete list is in the JSON
-MUST_NOT_ASSUME_EQUAL 7
+  structural vendor=0x00000516 installed=0x00000516 size=0x6e differing_bytes=2 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x00000580 installed=0x00000580 size=0x1e differing_bytes=1 :: same instruction shape with scalars and addresses masked
+DATA_RANGES showing 103 of 103; the complete list is in the JSON
+MUST_NOT_ASSUME_EQUAL 10
+  vendor 0x0000057a -> 0x0000057a: tentative match only; the correspondence is not proven
+  vendor 0x0000057e -> 0x0000057e: tentative match only; the correspondence is not proven
+  vendor 0x00000796 -> 0x00000796: tentative match only; the correspondence is not proven
   vendor 0x00000fce -> 0x00000fce: tentative match only; the correspondence is not proven
   vendor 0x000014d2 -> 0x000014d2: tentative match only; the correspondence is not proven
   vendor 0x000014d4 -> 0x000014d4: tentative match only; the correspondence is not proven
@@ -1439,7 +1548,7 @@ MUST_NOT_ASSUME_EQUAL 7
   vendor 0x00003704 -> 0x00003704: tentative match only; the correspondence is not proven
   vendor 0x00003884 -> 0x00003884: tentative match only; the correspondence is not proven
   vendor 0x000040b4 -> 0x000040b4: tentative match only; the correspondence is not proven
-RESULT matched=101 unmatched=0
+RESULT matched=114 unmatched=0
 LIMITATION Data regions are the spans no real body range covers, keyed by the matched function that precedes each span rather than by list index, so the pairing survives one side gaining or losing a span. A span with no counterpart key, or a paired span whose sides differ in length, is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary or against the wrong region.
 LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
 LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.
@@ -1458,21 +1567,23 @@ PAIR app_b
 VENDOR_PROGRAM vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
 INSTALLED_PROGRAM installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
 BASE 0x18000000 FLASH_BASE 0x21000
-COUNTS vendor=573 installed=573
-TIERS identical=494 structural=50 tentative=29 unmatched=0
-CHANGED 52 of 573 pairings
-MOVED 533
-DATA_REGIONS 632 bytes=738 unaligned_gaps=19
-DISCONTIGUOUS_BODIES vendor=104 installed=104 of 573/573 — body bytes and gaps come from the real ranges, not entry..entry+size
-UNCOVERED_SPANS vendor=262 installed=262 compared=244 unpaired_or_mismatched=19 fully_compared=False — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
+COUNTS vendor=616 installed=616
+TIERS identical=531 structural=56 tentative=29 unmatched=0
+CHANGED 58 of 616 pairings
+MOVED 570
+DATA_REGIONS 591 bytes=695 unaligned_gaps=19
+DISCONTIGUOUS_BODIES vendor=110 installed=110 of 616/616 — body bytes and gaps come from the real ranges, not entry..entry+size
+UNCOVERED_SPANS vendor=274 installed=274 compared=256 unpaired_or_mismatched=19 fully_compared=False — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
 DOMINANT_SHIFT 0x2c (+44 bytes), measured from the identical and structural matches only
-REVIEW_RANKING showing 52 of 52
+REVIEW_RANKING showing 58 of 58
   tentative  vendor=0x18001fbe installed=0x18001fbe size=0x1e7e differing_bytes=n/a :: scored 1.000 with a 0.650 lead over the next candidate
   tentative  vendor=0x18004a7e installed=0x18004a7e size=0xd10 differing_bytes=n/a :: scored 0.939 with a 0.595 lead over the next candidate
   structural vendor=0x18000d56 installed=0x18000d56 size=0xf46 differing_bytes=204 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800023a installed=0x1800023a size=0x122 differing_bytes=30 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18006196 installed=0x180061c2 size=0x5f0 differing_bytes=16 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18005a5c installed=0x18005a88 size=0x412 differing_bytes=10 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18000bb8 installed=0x18000bb8 size=0xda differing_bytes=9 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800004c installed=0x1800004c size=0x42 differing_bytes=7 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000a1a installed=0x18000a1a size=0x56 differing_bytes=6 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000a70 installed=0x18000a70 size=0x68 differing_bytes=5 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800417e installed=0x1800417e size=0x1e4 differing_bytes=4 :: same instruction shape with scalars and addresses masked
@@ -1486,6 +1597,7 @@ REVIEW_RANKING showing 52 of 52
   structural vendor=0x1800075a installed=0x1800075a size=0x28a differing_bytes=3 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000aec installed=0x18000aec size=0x3c differing_bytes=3 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800fb8c installed=0x1800fbb8 size=0x20 differing_bytes=3 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x18008bea installed=0x18008c16 size=0x21a differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800ce1e installed=0x1800ce4a size=0x12e differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18007004 installed=0x18007030 size=0xce differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18000136 installed=0x18000136 size=0x9c differing_bytes=2 :: same instruction shape with scalars and addresses masked
@@ -1496,6 +1608,7 @@ REVIEW_RANKING showing 52 of 52
   structural vendor=0x18001f6e installed=0x18001f6e size=0x4e differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000584 installed=0x18000584 size=0x42 differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18006aa8 installed=0x18006ad4 size=0x36 differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x180000b8 installed=0x180000b8 size=0x2c differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180000e4 installed=0x180000e4 size=0x24 differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800464e installed=0x1800464e size=0x20 differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180100d6 installed=0x18010102 size=0x24a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
@@ -1507,6 +1620,7 @@ REVIEW_RANKING showing 52 of 52
   structural vendor=0x18008a4a installed=0x18008a76 size=0xb0 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800eb4e installed=0x1800eb7a size=0x9a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18006956 installed=0x18006982 size=0x8c differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x180049a8 installed=0x180049a8 size=0x74 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180089d6 installed=0x18008a02 size=0x74 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18000c92 installed=0x18000c92 size=0x6e differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800687e installed=0x180068aa size=0x6a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
@@ -1516,10 +1630,11 @@ REVIEW_RANKING showing 52 of 52
   structural vendor=0x180040dc installed=0x180040dc size=0x36 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180005c6 installed=0x180005c6 size=0x34 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800f6ba installed=0x1800f6e6 size=0x34 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x1800008e installed=0x1800008e size=0x2a differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800fbac installed=0x1800fbd8 size=0x2a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18004164 installed=0x18004164 size=0x1a differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800463e installed=0x1800463e size=0x10 differing_bytes=1 :: same instruction shape with scalars and addresses masked
-DATA_RANGES showing 632 of 632; the complete list is in the JSON
+DATA_RANGES showing 591 of 591; the complete list is in the JSON
 UNALIGNED_GAP vendor 0x180029b2..0x180029d8 (0x26) vs installed 0x180025c0..0x180025c4 (0x4) — lengths differ, not compared
 UNALIGNED_GAP vendor 0x18002a52..0x18002a54 (0x2) vs installed 0x180029b2..0x180029d8 (0x26) — lengths differ, not compared
 UNALIGNED_GAP vendor 0x18002c24..0x18002c2a (0x6) vs installed 0x18002a52..0x18002a54 (0x2) — lengths differ, not compared
@@ -1539,7 +1654,7 @@ UNALIGNED_GAP vendor 0x18004da8..0x18004ddc (0x34) vs installed 0x18004da6..0x18
 UNALIGNED_GAP vendor 0x18005204..0x18005218 (0x14) vs installed 0x180051f6..0x18005210 (0x1a) — lengths differ, not compared
 UNALIGNED_GAP vendor 0x18005670..0x18005694 (0x24) vs installed 0x18005690..0x180056b4 (0x24) — lengths differ, not compared
 UNALIGNED_GAP vendor 0x180056fa..0x180056fc (0x2) vs installed 0x180056fa..0x180056fc (0x2) — lengths differ, not compared
-MUST_NOT_ASSUME_EQUAL 535
+MUST_NOT_ASSUME_EQUAL 572
   vendor 0x18001fbe -> 0x18001fbe: tentative match only; the correspondence is not proven
   vendor 0x18004a7e -> 0x18004a7e: tentative match only; the correspondence is not proven
   vendor 0x180057d2 -> 0x180057fe: identical match, relocated
@@ -1580,6 +1695,12 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x180089d6 -> 0x18008a02: structural match, relocated
   vendor 0x18008a4a -> 0x18008a76: structural match, relocated
   vendor 0x18008afa -> 0x18008b26: identical match, relocated
+  vendor 0x18008b2a -> 0x18008b56: identical match, relocated
+  vendor 0x18008b76 -> 0x18008ba2: identical match, relocated
+  vendor 0x18008b90 -> 0x18008bbc: identical match, relocated
+  vendor 0x18008bea -> 0x18008c16: structural match, relocated
+  vendor 0x18008ea8 -> 0x18008ed4: identical match, relocated
+  vendor 0x18008ee6 -> 0x18008f12: identical match, relocated
   vendor 0x18008f1e -> 0x18008f4a: identical match, relocated
   vendor 0x18008f9c -> 0x18008fc8: identical match, relocated
   vendor 0x18008fec -> 0x18009018: identical match, relocated
@@ -1672,6 +1793,8 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x1800d24a -> 0x1800d276: identical match, relocated
   vendor 0x1800d290 -> 0x1800d2bc: identical match, relocated
   vendor 0x1800d30c -> 0x1800d338: identical match, relocated
+  vendor 0x1800d378 -> 0x1800d3a4: identical match, relocated
+  vendor 0x1800d3b0 -> 0x1800d3dc: identical match, relocated
   vendor 0x1800d614 -> 0x1800d640: identical match, relocated
   vendor 0x1800d706 -> 0x1800d732: identical match, relocated
   vendor 0x1800d814 -> 0x1800d840: identical match, relocated
@@ -1779,6 +1902,7 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x180109ec -> 0x18010a18: identical match, relocated
   vendor 0x18010a18 -> 0x18010a44: identical match, relocated
   vendor 0x18010a90 -> 0x18010abc: identical match, relocated
+  vendor 0x18010cf2 -> 0x18010d1e: identical match, relocated
   vendor 0x18010e08 -> 0x18010e34: identical match, relocated
   vendor 0x18011014 -> 0x18011040: identical match, relocated
   vendor 0x18011234 -> 0x18011260: identical match, relocated
@@ -1836,6 +1960,8 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x18012d40 -> 0x18012d6c: identical match, relocated
   vendor 0x18012da2 -> 0x18012dce: identical match, relocated
   vendor 0x18012dc8 -> 0x18012df4: identical match, relocated
+  vendor 0x18012e2c -> 0x18012e58: identical match, relocated
+  vendor 0x18012e70 -> 0x18012e9c: identical match, relocated
   vendor 0x18012eb4 -> 0x18012ee0: identical match, relocated
   vendor 0x18012ed4 -> 0x18012f00: identical match, relocated
   vendor 0x18012ee8 -> 0x18012f14: identical match, relocated
@@ -1853,6 +1979,8 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x180133ec -> 0x18013418: identical match, relocated
   vendor 0x18013492 -> 0x180134be: identical match, relocated
   vendor 0x18013502 -> 0x1801352e: identical match, relocated
+  vendor 0x1801369e -> 0x180136ca: identical match, relocated
+  vendor 0x180136be -> 0x180136ea: identical match, relocated
   vendor 0x18013752 -> 0x1801377e: identical match, relocated
   vendor 0x18013758 -> 0x18013784: identical match, relocated
   vendor 0x180137a0 -> 0x180137cc: identical match, relocated
@@ -1878,6 +2006,16 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x18013f5c -> 0x18013f88: identical match, relocated
   vendor 0x18013f76 -> 0x18013fa2: identical match, relocated
   vendor 0x18013f8a -> 0x18013fb6: identical match, relocated
+  vendor 0x18013fdc -> 0x18014008: identical match, relocated
+  vendor 0x18014010 -> 0x1801403c: identical match, relocated
+  vendor 0x1801406c -> 0x18014098: identical match, relocated
+  vendor 0x18014120 -> 0x1801414c: identical match, relocated
+  vendor 0x18014140 -> 0x1801416c: identical match, relocated
+  vendor 0x1801417e -> 0x180141aa: identical match, relocated
+  vendor 0x180141b8 -> 0x180141e4: identical match, relocated
+  vendor 0x180142d8 -> 0x18014304: identical match, relocated
+  vendor 0x180142fc -> 0x18014328: identical match, relocated
+  vendor 0x180143a8 -> 0x180143d4: identical match, relocated
   vendor 0x18014430 -> 0x1801445c: identical match, relocated
   vendor 0x18014478 -> 0x180144a4: identical match, relocated
   vendor 0x18014554 -> 0x18014580: identical match, relocated
@@ -1936,6 +2074,7 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x18017156 -> 0x18017182: identical match, relocated
   vendor 0x18017166 -> 0x18017192: identical match, relocated
   vendor 0x18017184 -> 0x180171b0: identical match, relocated
+  vendor 0x1801719c -> 0x180171c8: identical match, relocated
   vendor 0x180172b4 -> 0x180172e0: identical match, relocated
   vendor 0x180172c4 -> 0x180172f0: identical match, relocated
   vendor 0x180174f0 -> 0x1801751c: identical match, relocated
@@ -1987,6 +2126,7 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x18018ac4 -> 0x18018af0: identical match, relocated
   vendor 0x18018ad0 -> 0x18018afc: identical match, relocated
   vendor 0x18018af6 -> 0x18018b22: identical match, relocated
+  vendor 0x18018b44 -> 0x18018b70: identical match, relocated
   vendor 0x18018b8c -> 0x18018bb8: identical match, relocated
   vendor 0x18018baa -> 0x18018bd6: identical match, relocated
   vendor 0x18018c4a -> 0x18018c76: identical match, relocated
@@ -2046,6 +2186,12 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x1801a280 -> 0x1801a2ac: identical match, relocated
   vendor 0x1801a2ce -> 0x1801a2fa: identical match, relocated
   vendor 0x1801a2f8 -> 0x1801a324: identical match, relocated
+  vendor 0x1801a388 -> 0x1801a3b4: identical match, relocated
+  vendor 0x1801a394 -> 0x1801a3c0: identical match, relocated
+  vendor 0x1801a408 -> 0x1801a434: identical match, relocated
+  vendor 0x1801a42a -> 0x1801a456: identical match, relocated
+  vendor 0x1801a6f8 -> 0x1801a724: identical match, relocated
+  vendor 0x1801a88e -> 0x1801a8ba: identical match, relocated
   vendor 0x1801a9fc -> 0x1801aa28: identical match, relocated
   vendor 0x1801aa14 -> 0x1801aa40: identical match, relocated
   vendor 0x1801aa26 -> 0x1801aa52: identical match, relocated
@@ -2070,12 +2216,18 @@ MUST_NOT_ASSUME_EQUAL 535
   vendor 0x1801b234 -> 0x1801b260: identical match, relocated
   vendor 0x1801b280 -> 0x1801b2ac: identical match, relocated
   vendor 0x1801b2ca -> 0x1801b2f6: identical match, relocated
+  vendor 0x1801b374 -> 0x1801b3a0: identical match, relocated
+  vendor 0x1801b434 -> 0x1801b460: identical match, relocated
   vendor 0x1801b542 -> 0x1801b56e: identical match, relocated
   vendor 0x1801b61e -> 0x1801b64a: identical match, relocated
   vendor 0x1801b74e -> 0x1801b77a: identical match, relocated
   vendor 0x1801b792 -> 0x1801b7be: tentative match, relocated
   vendor 0x1801b7ac -> 0x1801b7d8: tentative match, relocated
-RESULT matched=573 unmatched=0
+  vendor 0x1801bb80 -> 0x1801bbac: identical match, relocated
+  vendor 0x1801bb94 -> 0x1801bbc0: identical match, relocated
+  vendor 0x1801bbda -> 0x1801bc06: identical match, relocated
+  vendor 0x1801bc04 -> 0x1801bc30: identical match, relocated
+RESULT matched=616 unmatched=0
 LIMITATION Data regions are the spans no real body range covers, keyed by the matched function that precedes each span rather than by list index, so the pairing survives one side gaining or losing a span. A span with no counterpart key, or a paired span whose sides differ in length, is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary or against the wrong region.
 LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
 LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.

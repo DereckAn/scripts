@@ -1,10 +1,10 @@
 {
   "counts": {
-    "identical": 494,
-    "structural": 50,
+    "identical": 531,
+    "structural": 56,
     "tentative": 29
   },
-  "data_region_bytes": 738,
+  "data_region_bytes": 695,
   "data_regions": [
     {
       "flash_hi": 135229,
@@ -15,386 +15,6 @@
       "shift": 0,
       "vendor_hi": 402653245,
       "vendor_lo": 402653244
-    },
-    {
-      "flash_hi": 135249,
-      "flash_lo": 135248,
-      "installed_hi": 402653265,
-      "installed_lo": 402653264,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653265,
-      "vendor_lo": 402653264
-    },
-    {
-      "flash_hi": 135255,
-      "flash_lo": 135254,
-      "installed_hi": 402653271,
-      "installed_lo": 402653270,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653271,
-      "vendor_lo": 402653270
-    },
-    {
-      "flash_hi": 135263,
-      "flash_lo": 135262,
-      "installed_hi": 402653279,
-      "installed_lo": 402653278,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653279,
-      "vendor_lo": 402653278
-    },
-    {
-      "flash_hi": 135267,
-      "flash_lo": 135266,
-      "installed_hi": 402653283,
-      "installed_lo": 402653282,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653283,
-      "vendor_lo": 402653282
-    },
-    {
-      "flash_hi": 135275,
-      "flash_lo": 135274,
-      "installed_hi": 402653291,
-      "installed_lo": 402653290,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653291,
-      "vendor_lo": 402653290
-    },
-    {
-      "flash_hi": 135297,
-      "flash_lo": 135296,
-      "installed_hi": 402653313,
-      "installed_lo": 402653312,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653313,
-      "vendor_lo": 402653312
-    },
-    {
-      "flash_hi": 135307,
-      "flash_lo": 135306,
-      "installed_hi": 402653323,
-      "installed_lo": 402653322,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653323,
-      "vendor_lo": 402653322
-    },
-    {
-      "flash_hi": 135349,
-      "flash_lo": 135348,
-      "installed_hi": 402653365,
-      "installed_lo": 402653364,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653365,
-      "vendor_lo": 402653364
-    },
-    {
-      "flash_hi": 135377,
-      "flash_lo": 135376,
-      "installed_hi": 402653393,
-      "installed_lo": 402653392,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653393,
-      "vendor_lo": 402653392
-    },
-    {
-      "flash_hi": 135385,
-      "flash_lo": 135384,
-      "installed_hi": 402653401,
-      "installed_lo": 402653400,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653401,
-      "vendor_lo": 402653400
-    },
-    {
-      "flash_hi": 135753,
-      "flash_lo": 135752,
-      "installed_hi": 402653769,
-      "installed_lo": 402653768,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653769,
-      "vendor_lo": 402653768
-    },
-    {
-      "flash_hi": 135767,
-      "flash_lo": 135766,
-      "installed_hi": 402653783,
-      "installed_lo": 402653782,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653783,
-      "vendor_lo": 402653782
-    },
-    {
-      "flash_hi": 135771,
-      "flash_lo": 135770,
-      "installed_hi": 402653787,
-      "installed_lo": 402653786,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653787,
-      "vendor_lo": 402653786
-    },
-    {
-      "flash_hi": 135775,
-      "flash_lo": 135774,
-      "installed_hi": 402653791,
-      "installed_lo": 402653790,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653791,
-      "vendor_lo": 402653790
-    },
-    {
-      "flash_hi": 135782,
-      "flash_lo": 135780,
-      "installed_hi": 402653798,
-      "installed_lo": 402653796,
-      "length": 2,
-      "shift": 0,
-      "vendor_hi": 402653798,
-      "vendor_lo": 402653796
-    },
-    {
-      "flash_hi": 135807,
-      "flash_lo": 135806,
-      "installed_hi": 402653823,
-      "installed_lo": 402653822,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653823,
-      "vendor_lo": 402653822
-    },
-    {
-      "flash_hi": 135815,
-      "flash_lo": 135814,
-      "installed_hi": 402653831,
-      "installed_lo": 402653830,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653831,
-      "vendor_lo": 402653830
-    },
-    {
-      "flash_hi": 135823,
-      "flash_lo": 135822,
-      "installed_hi": 402653839,
-      "installed_lo": 402653838,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653839,
-      "vendor_lo": 402653838
-    },
-    {
-      "flash_hi": 135831,
-      "flash_lo": 135830,
-      "installed_hi": 402653847,
-      "installed_lo": 402653846,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653847,
-      "vendor_lo": 402653846
-    },
-    {
-      "flash_hi": 135839,
-      "flash_lo": 135838,
-      "installed_hi": 402653855,
-      "installed_lo": 402653854,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653855,
-      "vendor_lo": 402653854
-    },
-    {
-      "flash_hi": 135847,
-      "flash_lo": 135846,
-      "installed_hi": 402653863,
-      "installed_lo": 402653862,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653863,
-      "vendor_lo": 402653862
-    },
-    {
-      "flash_hi": 135855,
-      "flash_lo": 135854,
-      "installed_hi": 402653871,
-      "installed_lo": 402653870,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653871,
-      "vendor_lo": 402653870
-    },
-    {
-      "flash_hi": 135867,
-      "flash_lo": 135866,
-      "installed_hi": 402653883,
-      "installed_lo": 402653882,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653883,
-      "vendor_lo": 402653882
-    },
-    {
-      "flash_hi": 135879,
-      "flash_lo": 135878,
-      "installed_hi": 402653895,
-      "installed_lo": 402653894,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653895,
-      "vendor_lo": 402653894
-    },
-    {
-      "flash_hi": 135885,
-      "flash_lo": 135884,
-      "installed_hi": 402653901,
-      "installed_lo": 402653900,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653901,
-      "vendor_lo": 402653900
-    },
-    {
-      "flash_hi": 135911,
-      "flash_lo": 135910,
-      "installed_hi": 402653927,
-      "installed_lo": 402653926,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653927,
-      "vendor_lo": 402653926
-    },
-    {
-      "flash_hi": 135917,
-      "flash_lo": 135916,
-      "installed_hi": 402653933,
-      "installed_lo": 402653932,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653933,
-      "vendor_lo": 402653932
-    },
-    {
-      "flash_hi": 135926,
-      "flash_lo": 135924,
-      "installed_hi": 402653942,
-      "installed_lo": 402653940,
-      "length": 2,
-      "shift": 0,
-      "vendor_hi": 402653942,
-      "vendor_lo": 402653940
-    },
-    {
-      "flash_hi": 135929,
-      "flash_lo": 135928,
-      "installed_hi": 402653945,
-      "installed_lo": 402653944,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653945,
-      "vendor_lo": 402653944
-    },
-    {
-      "flash_hi": 135941,
-      "flash_lo": 135940,
-      "installed_hi": 402653957,
-      "installed_lo": 402653956,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653957,
-      "vendor_lo": 402653956
-    },
-    {
-      "flash_hi": 135945,
-      "flash_lo": 135944,
-      "installed_hi": 402653961,
-      "installed_lo": 402653960,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653961,
-      "vendor_lo": 402653960
-    },
-    {
-      "flash_hi": 135953,
-      "flash_lo": 135952,
-      "installed_hi": 402653969,
-      "installed_lo": 402653968,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653969,
-      "vendor_lo": 402653968
-    },
-    {
-      "flash_hi": 135981,
-      "flash_lo": 135980,
-      "installed_hi": 402653997,
-      "installed_lo": 402653996,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402653997,
-      "vendor_lo": 402653996
-    },
-    {
-      "flash_hi": 135985,
-      "flash_lo": 135984,
-      "installed_hi": 402654001,
-      "installed_lo": 402654000,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402654001,
-      "vendor_lo": 402654000
-    },
-    {
-      "flash_hi": 135989,
-      "flash_lo": 135988,
-      "installed_hi": 402654005,
-      "installed_lo": 402654004,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402654005,
-      "vendor_lo": 402654004
-    },
-    {
-      "flash_hi": 136011,
-      "flash_lo": 136010,
-      "installed_hi": 402654027,
-      "installed_lo": 402654026,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402654027,
-      "vendor_lo": 402654026
-    },
-    {
-      "flash_hi": 136015,
-      "flash_lo": 136014,
-      "installed_hi": 402654031,
-      "installed_lo": 402654030,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402654031,
-      "vendor_lo": 402654030
-    },
-    {
-      "flash_hi": 136025,
-      "flash_lo": 136024,
-      "installed_hi": 402654041,
-      "installed_lo": 402654040,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402654041,
-      "vendor_lo": 402654040
     },
     {
       "flash_hi": 136086,
@@ -1405,16 +1025,6 @@
       "shift": 0,
       "vendor_hi": 402672039,
       "vendor_lo": 402672038
-    },
-    {
-      "flash_hi": 154039,
-      "flash_lo": 154038,
-      "installed_hi": 402672055,
-      "installed_lo": 402672054,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 402672055,
-      "vendor_lo": 402672054
     },
     {
       "flash_hi": 158357,
@@ -3165,26 +2775,6 @@
       "shift": 44,
       "vendor_hi": 402689405,
       "vendor_lo": 402689404
-    },
-    {
-      "flash_hi": 171557,
-      "flash_lo": 171556,
-      "installed_hi": 402689617,
-      "installed_lo": 402689616,
-      "length": 1,
-      "shift": 44,
-      "vendor_hi": 402689573,
-      "vendor_lo": 402689572
-    },
-    {
-      "flash_hi": 171571,
-      "flash_lo": 171570,
-      "installed_hi": 402689631,
-      "installed_lo": 402689630,
-      "length": 1,
-      "shift": 44,
-      "vendor_hi": 402689587,
-      "vendor_lo": 402689586
     },
     {
       "flash_hi": 171821,
@@ -6328,8 +5918,8 @@
     }
   ],
   "discontiguous_bodies": {
-    "installed": 104,
-    "vendor": 104
+    "installed": 110,
+    "vendor": 110
   },
   "dominant_shift": 44,
   "header": {
@@ -6338,8 +5928,83 @@
     "installed_program": "installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin",
     "vendor_program": "vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin"
   },
-  "installed_count": 573,
+  "installed_count": 616,
   "matches": [
+    {
+      "confidence": "structural",
+      "differing_bytes": 7,
+      "installed": {
+        "blocks": 2,
+        "bytes_sha": "f43b10aa0776256036ae95d2085475710a6766dadc723ec615c690e7f3fa4644",
+        "entry": 402653260,
+        "insns": 22,
+        "name": "Task_INIT_TASK",
+        "shape_sha": "450a1b04981d9e8d61d010ee8fd72fe97f77ef09257cb2d83558dcae66a5f627",
+        "size": 66
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 2,
+        "bytes_sha": "459b04fad7353ebe87c16cbda78550c11f2a4cfddd51b550d2331f05eddba6b0",
+        "entry": 402653260,
+        "insns": 22,
+        "name": "Task_INIT_TASK",
+        "shape_sha": "450a1b04981d9e8d61d010ee8fd72fe97f77ef09257cb2d83558dcae66a5f627",
+        "size": 66
+      }
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 1,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "675c153e541c9a2bb481d22907961cbf85197c297d07f45dec8875af4609f0cd",
+        "entry": 402653326,
+        "insns": 15,
+        "name": "FUN_1800008e",
+        "shape_sha": "4a996701c7c8daa0381b2e16ace8d7d371468dd90a4e0e5112ba29719c0f8c42",
+        "size": 42
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "a830b058931d0706d8cb9276702d1770d00429c531e3cd43b793374323d98dd7",
+        "entry": 402653326,
+        "insns": 15,
+        "name": "FUN_1800008e",
+        "shape_sha": "4a996701c7c8daa0381b2e16ace8d7d371468dd90a4e0e5112ba29719c0f8c42",
+        "size": 42
+      }
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 2,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "0b2db060b54313e27322a53f8cce54d50e0c7e1c93d4d42369a039d2b157e1a3",
+        "entry": 402653368,
+        "insns": 17,
+        "name": "FUN_180000b8",
+        "shape_sha": "34efeafef430f6bf5f9efcfb68525ce23a816bc5b09705af91008f94b4dbe676",
+        "size": 44
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "f5f659913a833955a6aea0d33827658d174e53f5a657c366fd2273576a11551d",
+        "entry": 402653368,
+        "insns": 17,
+        "name": "FUN_180000b8",
+        "shape_sha": "34efeafef430f6bf5f9efcfb68525ce23a816bc5b09705af91008f94b4dbe676",
+        "size": 44
+      }
+    },
     {
       "confidence": "structural",
       "differing_bytes": 2,
@@ -6441,6 +6106,31 @@
       }
     },
     {
+      "confidence": "structural",
+      "differing_bytes": 30,
+      "installed": {
+        "blocks": 4,
+        "bytes_sha": "74530abcf7721ffa1a497f615406dbadd402ce5e2376796d264f3f7d59994294",
+        "entry": 402653754,
+        "insns": 101,
+        "name": "CandidateB_Main",
+        "shape_sha": "134bf7e12bf4dbccab06941dbd7a611544daaff9202fe78a79cb17428438ece1",
+        "size": 290
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 4,
+        "bytes_sha": "927005f42a23955553f3727d9f6480a635d9195212e0355daf5c45cdd93a3017",
+        "entry": 402653754,
+        "insns": 101,
+        "name": "CandidateB_Main",
+        "shape_sha": "134bf7e12bf4dbccab06941dbd7a611544daaff9202fe78a79cb17428438ece1",
+        "size": 290
+      }
+    },
+    {
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
@@ -6463,6 +6153,31 @@
         "name": "FUN_18000420",
         "shape_sha": "2f6c23151b603353ffe7dbb1fdd9d601ff110979cb37954e50a9c7fc76d5e60f",
         "size": 26
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 6,
+        "bytes_sha": "15a168a2c6d44fc2e3c253c639815bf239ccad83679d9b6e65cb58b772415339",
+        "entry": 402654266,
+        "insns": 16,
+        "name": "FUN_1800043a",
+        "shape_sha": "47bfa100267c666d3952426b98333279f646d31e9a21397fff414a3afcc66c5d",
+        "size": 44
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 6,
+        "bytes_sha": "15a168a2c6d44fc2e3c253c639815bf239ccad83679d9b6e65cb58b772415339",
+        "entry": 402654266,
+        "insns": 16,
+        "name": "FUN_1800043a",
+        "shape_sha": "47bfa100267c666d3952426b98333279f646d31e9a21397fff414a3afcc66c5d",
+        "size": 44
       }
     },
     {
@@ -7291,6 +7006,31 @@
       }
     },
     {
+      "confidence": "structural",
+      "differing_bytes": 1,
+      "installed": {
+        "blocks": 11,
+        "bytes_sha": "1c37aa0f55eaf0d7e2deafc9e9790485e84fe9e53d0993b14396a0a12104b8a4",
+        "entry": 402672040,
+        "insns": 45,
+        "name": "FUN_180049a8",
+        "shape_sha": "dd03bc4e000cd86978bc7e1a3790f5f2fbc63354fa15fcdbe386549e3294608b",
+        "size": 116
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 11,
+        "bytes_sha": "aa889073accabe7f47846208762b0779cfc926d752bc9163057501610147bea2",
+        "entry": 402672040,
+        "insns": 45,
+        "name": "FUN_180049a8",
+        "shape_sha": "dd03bc4e000cd86978bc7e1a3790f5f2fbc63354fa15fcdbe386549e3294608b",
+        "size": 116
+      }
+    },
+    {
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
@@ -7744,25 +7484,25 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
-        "blocks": 64,
-        "bytes_sha": "f0783d5b44bca6fd10fff03c3f9cdf97395fee72047193062aa1592de6ae8a2a",
+        "blocks": 47,
+        "bytes_sha": "b0a63a920050c1cca825fb5c830f693f353c2343ae5b7e00a12e1102f868dc5e",
         "entry": 402681148,
-        "insns": 268,
+        "insns": 177,
         "name": "FUN_18006d3c",
-        "shape_sha": "e91ce875d886f09f2022df065bf266dd112518be995a6966910396e163488e42",
-        "size": 702
+        "shape_sha": "7ad8258b6a1ee9f3dde5a5de2d67c95a6a46af7a741e464a6de61e4565947281",
+        "size": 480
       },
       "moved": true,
       "reason": "same body bytes, relocated",
       "score": 1.0,
       "vendor": {
-        "blocks": 64,
-        "bytes_sha": "f0783d5b44bca6fd10fff03c3f9cdf97395fee72047193062aa1592de6ae8a2a",
+        "blocks": 47,
+        "bytes_sha": "b0a63a920050c1cca825fb5c830f693f353c2343ae5b7e00a12e1102f868dc5e",
         "entry": 402681104,
-        "insns": 268,
+        "insns": 177,
         "name": "FUN_18006d10",
-        "shape_sha": "e91ce875d886f09f2022df065bf266dd112518be995a6966910396e163488e42",
-        "size": 702
+        "shape_sha": "7ad8258b6a1ee9f3dde5a5de2d67c95a6a46af7a741e464a6de61e4565947281",
+        "size": 480
       }
     },
     {
@@ -8288,6 +8028,156 @@
         "name": "FUN_18008afa",
         "shape_sha": "1a9b54794a6ab023cd52cf8155f7b58485724c316a08029fc594909db58d651c",
         "size": 44
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 10,
+        "bytes_sha": "dc658956de3bbbba0d0f1bc795a75f212dfb1b1c9f83cec8e33046db3cf8bfab",
+        "entry": 402688854,
+        "insns": 31,
+        "name": "FUN_18008b56",
+        "shape_sha": "327f2b316aa6647aea818b7d354d879af11644122415e28d50b41b0b03d7faf8",
+        "size": 76
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 10,
+        "bytes_sha": "dc658956de3bbbba0d0f1bc795a75f212dfb1b1c9f83cec8e33046db3cf8bfab",
+        "entry": 402688810,
+        "insns": 31,
+        "name": "FUN_18008b2a",
+        "shape_sha": "327f2b316aa6647aea818b7d354d879af11644122415e28d50b41b0b03d7faf8",
+        "size": 76
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "c1d9b7de5fe7f25e48db0e837ee538cb2192295cfcf7dd0482e94cedf6ac9c96",
+        "entry": 402688930,
+        "insns": 12,
+        "name": "FUN_18008ba2",
+        "shape_sha": "2110ed88de319e78c8c6af00a425780be83c87712cfaa3acc54bca0b3b19ff43",
+        "size": 26
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "c1d9b7de5fe7f25e48db0e837ee538cb2192295cfcf7dd0482e94cedf6ac9c96",
+        "entry": 402688886,
+        "insns": 12,
+        "name": "FUN_18008b76",
+        "shape_sha": "2110ed88de319e78c8c6af00a425780be83c87712cfaa3acc54bca0b3b19ff43",
+        "size": 26
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 15,
+        "bytes_sha": "6a20a83d58b17b58a45eaccb29da3ceb63db99a7baa9dd8f41becb6938fea9b5",
+        "entry": 402688956,
+        "insns": 39,
+        "name": "FUN_18008bbc",
+        "shape_sha": "eb23a683d3cec532457c2a26cf16a3b313c5ac95bbf63da93f22f08be8ed8931",
+        "size": 90
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 15,
+        "bytes_sha": "6a20a83d58b17b58a45eaccb29da3ceb63db99a7baa9dd8f41becb6938fea9b5",
+        "entry": 402688912,
+        "insns": 39,
+        "name": "FUN_18008b90",
+        "shape_sha": "eb23a683d3cec532457c2a26cf16a3b313c5ac95bbf63da93f22f08be8ed8931",
+        "size": 90
+      }
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 2,
+      "installed": {
+        "blocks": 44,
+        "bytes_sha": "d7436267b506ad6b5144b40957c85e0519cc84fc27821f7d89169bbd8a57f668",
+        "entry": 402689046,
+        "insns": 197,
+        "name": "FUN_18008c16",
+        "shape_sha": "b361d17d4dd966516c867524b6b5061d9346fa3179c98aa085ec47ff268ffe0b",
+        "size": 538
+      },
+      "moved": true,
+      "reason": "same instruction shape with scalars and addresses masked, relocated",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 44,
+        "bytes_sha": "a68a55aae3c7b776911eb6a9eed3e0b8606abe9997d82302a0acdb7de4d9de0a",
+        "entry": 402689002,
+        "insns": 197,
+        "name": "FUN_18008bea",
+        "shape_sha": "b361d17d4dd966516c867524b6b5061d9346fa3179c98aa085ec47ff268ffe0b",
+        "size": 538
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 7,
+        "bytes_sha": "1e29d65c8e11e0259e1483c5b86449767541ef1426b720710be51541f2ab2514",
+        "entry": 402689748,
+        "insns": 24,
+        "name": "FUN_18008ed4",
+        "shape_sha": "11429a3db0f5257dc9f311fdd1f9e57f80036c87a0f161401d145bbc096db6f6",
+        "size": 62
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 7,
+        "bytes_sha": "1e29d65c8e11e0259e1483c5b86449767541ef1426b720710be51541f2ab2514",
+        "entry": 402689704,
+        "insns": 24,
+        "name": "FUN_18008ea8",
+        "shape_sha": "11429a3db0f5257dc9f311fdd1f9e57f80036c87a0f161401d145bbc096db6f6",
+        "size": 62
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 8,
+        "bytes_sha": "d5709c1928e0f8c12625a59acd7080c67007df5a35166b4e519d1f9eea7c14cc",
+        "entry": 402689810,
+        "insns": 23,
+        "name": "FUN_18008f12",
+        "shape_sha": "60b2bae63f57fc0196ebe8a66c7c5d97396bad138535a5be3f7269ccbc38c7d4",
+        "size": 56
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 8,
+        "bytes_sha": "d5709c1928e0f8c12625a59acd7080c67007df5a35166b4e519d1f9eea7c14cc",
+        "entry": 402689766,
+        "insns": 23,
+        "name": "FUN_18008ee6",
+        "shape_sha": "60b2bae63f57fc0196ebe8a66c7c5d97396bad138535a5be3f7269ccbc38c7d4",
+        "size": 56
       }
     },
     {
@@ -10588,6 +10478,56 @@
         "name": "FUN_1800d30c",
         "shape_sha": "7ae76418d7333e0830bd9021c516047720ebf030f98d88aec7cc4691b0943a8b",
         "size": 108
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 3,
+        "bytes_sha": "983e2a52f93b17023f85913b44dee21c6da925697b943e073d5bf588f28e7917",
+        "entry": 402707364,
+        "insns": 22,
+        "name": "FUN_1800d3a4",
+        "shape_sha": "6ab0ca1519737561eb1eb602a3f11b00e8e3047d64b84a805902664b77feec3d",
+        "size": 56
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 3,
+        "bytes_sha": "983e2a52f93b17023f85913b44dee21c6da925697b943e073d5bf588f28e7917",
+        "entry": 402707320,
+        "insns": 22,
+        "name": "FUN_1800d378",
+        "shape_sha": "6ab0ca1519737561eb1eb602a3f11b00e8e3047d64b84a805902664b77feec3d",
+        "size": 56
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 17,
+        "bytes_sha": "2e4caa3deafbacdce634c0a7ada639c14263bdafbfa9c7985fceb9311ef82e92",
+        "entry": 402707420,
+        "insns": 91,
+        "name": "FUN_1800d3dc",
+        "shape_sha": "a14965bade3ce045e75568949a7b55c70ba9390ec428e23c739474dfab1f81b1",
+        "size": 222
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 17,
+        "bytes_sha": "2e4caa3deafbacdce634c0a7ada639c14263bdafbfa9c7985fceb9311ef82e92",
+        "entry": 402707376,
+        "insns": 91,
+        "name": "FUN_1800d3b0",
+        "shape_sha": "a14965bade3ce045e75568949a7b55c70ba9390ec428e23c739474dfab1f81b1",
+        "size": 222
       }
     },
     {
@@ -13269,6 +13209,31 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 7,
+        "bytes_sha": "cb2c8eba0028cfbfc3f04e176d9354be528587dbe29785b459814a46ee3c3c87",
+        "entry": 402722078,
+        "insns": 35,
+        "name": "FUN_18010d1e",
+        "shape_sha": "3088d61784adc9c49726e79b29715542944edb4c929ef7dafdbb439c33f7cea6",
+        "size": 82
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 7,
+        "bytes_sha": "cb2c8eba0028cfbfc3f04e176d9354be528587dbe29785b459814a46ee3c3c87",
+        "entry": 402722034,
+        "insns": 35,
+        "name": "FUN_18010cf2",
+        "shape_sha": "3088d61784adc9c49726e79b29715542944edb4c929ef7dafdbb439c33f7cea6",
+        "size": 82
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 9,
         "bytes_sha": "d1c6d41990eabe06170c73ba39ff97a1e644278236646affe09a4ebb994c53ab",
         "entry": 402722356,
@@ -14694,6 +14659,56 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 5,
+        "bytes_sha": "14c2610cb4b469d5428e2270c98f7730a1d21c96698dc4d5608748194b6fa67c",
+        "entry": 402730584,
+        "insns": 14,
+        "name": "FUN_18012e58",
+        "shape_sha": "2acf16269d20846c9fd83d3c90d36e52ad1d88f1a027622697f4c4ae6193ce08",
+        "size": 34
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "14c2610cb4b469d5428e2270c98f7730a1d21c96698dc4d5608748194b6fa67c",
+        "entry": 402730540,
+        "insns": 14,
+        "name": "FUN_18012e2c",
+        "shape_sha": "2acf16269d20846c9fd83d3c90d36e52ad1d88f1a027622697f4c4ae6193ce08",
+        "size": 34
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 7,
+        "bytes_sha": "bbf4b1b7d6ebbe291dce491e19ace0bab7c334a8e122dec897c6aacf449a99a2",
+        "entry": 402730652,
+        "insns": 24,
+        "name": "FUN_18012e9c",
+        "shape_sha": "70d57d22d4d828d159dfa3385b88ff0e83f320ecb99cb99b246ffed4c0070a6c",
+        "size": 68
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 7,
+        "bytes_sha": "bbf4b1b7d6ebbe291dce491e19ace0bab7c334a8e122dec897c6aacf449a99a2",
+        "entry": 402730608,
+        "insns": 24,
+        "name": "FUN_18012e70",
+        "shape_sha": "70d57d22d4d828d159dfa3385b88ff0e83f320ecb99cb99b246ffed4c0070a6c",
+        "size": 68
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 4,
         "bytes_sha": "cc1139e1344bd21c8895b09cb9f4184f54e5736cbb8de8518a0d06a3db420d91",
         "entry": 402730720,
@@ -15113,6 +15128,56 @@
         "name": "FUN_18013502",
         "shape_sha": "feb6bdb6d3e5bbcd14d3c582629870cdf353160c120bf78b5676c31dbb9c02b3",
         "size": 130
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 3,
+        "bytes_sha": "1ddafaaaa65933f8c180d8de806bf6f37b6d18b6db5fbceda9fdf54f80f24217",
+        "entry": 402732746,
+        "insns": 12,
+        "name": "Task_IDLE",
+        "shape_sha": "f496fa67c7d3d82cd51d00283ccf80e2bd5e0db2da985504363981e7131a95b8",
+        "size": 32
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 3,
+        "bytes_sha": "1ddafaaaa65933f8c180d8de806bf6f37b6d18b6db5fbceda9fdf54f80f24217",
+        "entry": 402732702,
+        "insns": 12,
+        "name": "Task_IDLE",
+        "shape_sha": "f496fa67c7d3d82cd51d00283ccf80e2bd5e0db2da985504363981e7131a95b8",
+        "size": 32
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 8,
+        "bytes_sha": "cc7ad815c9d1735c29f84e469d82f1177ba517d793bd62f5dd40e308c7e3f4c8",
+        "entry": 402732778,
+        "insns": 38,
+        "name": "FUN_180136ea",
+        "shape_sha": "a7e2958c3a32deff6b04ce7edb1d6a04fa942316d4261bf36ac940a16bdb42c5",
+        "size": 104
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 8,
+        "bytes_sha": "cc7ad815c9d1735c29f84e469d82f1177ba517d793bd62f5dd40e308c7e3f4c8",
+        "entry": 402732734,
+        "insns": 38,
+        "name": "FUN_180136be",
+        "shape_sha": "a7e2958c3a32deff6b04ce7edb1d6a04fa942316d4261bf36ac940a16bdb42c5",
+        "size": 104
       }
     },
     {
@@ -15738,6 +15803,256 @@
         "name": "FUN_18013f8a",
         "shape_sha": "c6a90c952e509ee9aed24f40228b020cf4ea09043fd139b7a5795585177f6570",
         "size": 70
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 9,
+        "bytes_sha": "cd99c5fc58bfd9fea0376047019896704fce51aaa40d0a16958752bb7a4565ad",
+        "entry": 402735112,
+        "insns": 25,
+        "name": "FUN_18014008",
+        "shape_sha": "de11114d8a358f817974757de7b6d2fd3c9c03e150c65660f0c1efda3d79707d",
+        "size": 52
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 9,
+        "bytes_sha": "cd99c5fc58bfd9fea0376047019896704fce51aaa40d0a16958752bb7a4565ad",
+        "entry": 402735068,
+        "insns": 25,
+        "name": "FUN_18013fdc",
+        "shape_sha": "de11114d8a358f817974757de7b6d2fd3c9c03e150c65660f0c1efda3d79707d",
+        "size": 52
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 11,
+        "bytes_sha": "f1ea53b27fdff8dcfbe72ab14e7d1da840c887eb0df30a0b7b85d281d7db554d",
+        "entry": 402735164,
+        "insns": 37,
+        "name": "FUN_1801403c",
+        "shape_sha": "0e4d86d097fc93ff5f2a9c2a9168dc198d7e3e61008b991b181ba4bd192acefc",
+        "size": 92
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 11,
+        "bytes_sha": "f1ea53b27fdff8dcfbe72ab14e7d1da840c887eb0df30a0b7b85d281d7db554d",
+        "entry": 402735120,
+        "insns": 37,
+        "name": "FUN_18014010",
+        "shape_sha": "0e4d86d097fc93ff5f2a9c2a9168dc198d7e3e61008b991b181ba4bd192acefc",
+        "size": 92
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 19,
+        "bytes_sha": "5b3ec4d1c9cd17dc4e8bd07d5eaab350c519bc6e9e95ccd4120638ab3a6befde",
+        "entry": 402735256,
+        "insns": 71,
+        "name": "FUN_18014098",
+        "shape_sha": "ae1595701255eeb8231b4fb84d2280d5222bdbe47fbcc7f730083c6466501f74",
+        "size": 170
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 19,
+        "bytes_sha": "5b3ec4d1c9cd17dc4e8bd07d5eaab350c519bc6e9e95ccd4120638ab3a6befde",
+        "entry": 402735212,
+        "insns": 71,
+        "name": "FUN_1801406c",
+        "shape_sha": "ae1595701255eeb8231b4fb84d2280d5222bdbe47fbcc7f730083c6466501f74",
+        "size": 170
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 5,
+        "bytes_sha": "ea0dbfb668697684a0a36683f68980aa5288be968d4c086cddb1a69ffd99b2c8",
+        "entry": 402735436,
+        "insns": 13,
+        "name": "Task_Tmr_Svc",
+        "shape_sha": "0d38510c90bdde678696d1c6acad464e97902739d9737d871d6d06f66deca8a0",
+        "size": 32
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "ea0dbfb668697684a0a36683f68980aa5288be968d4c086cddb1a69ffd99b2c8",
+        "entry": 402735392,
+        "insns": 13,
+        "name": "Task_Tmr_Svc",
+        "shape_sha": "0d38510c90bdde678696d1c6acad464e97902739d9737d871d6d06f66deca8a0",
+        "size": 32
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 4,
+        "bytes_sha": "fcbb3d73915c3fa05662176660263e7b2d59d19c925b500d977ea98782e7a068",
+        "entry": 402735468,
+        "insns": 24,
+        "name": "FUN_1801416c",
+        "shape_sha": "fc4ae74f471118434e1a7f709266aba8116f83a88428f57d3f36e899b46b81e2",
+        "size": 62
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 4,
+        "bytes_sha": "fcbb3d73915c3fa05662176660263e7b2d59d19c925b500d977ea98782e7a068",
+        "entry": 402735424,
+        "insns": 24,
+        "name": "FUN_18014140",
+        "shape_sha": "fc4ae74f471118434e1a7f709266aba8116f83a88428f57d3f36e899b46b81e2",
+        "size": 62
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 5,
+        "bytes_sha": "b0f4645dd33039f3a40a06040db82510d7d485811510a07a2e798244c5c0bc02",
+        "entry": 402735530,
+        "insns": 22,
+        "name": "FUN_180141aa",
+        "shape_sha": "cc54679acdeff9c95d6ec3f68a5f27bdec0b5f9496fc42cca09ac3740274c76f",
+        "size": 58
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "b0f4645dd33039f3a40a06040db82510d7d485811510a07a2e798244c5c0bc02",
+        "entry": 402735486,
+        "insns": 22,
+        "name": "FUN_1801417e",
+        "shape_sha": "cc54679acdeff9c95d6ec3f68a5f27bdec0b5f9496fc42cca09ac3740274c76f",
+        "size": 58
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 6,
+        "bytes_sha": "01fa11dd6382df4e96b24ac15b05857d515a8a12f370f20551d26fadde33298e",
+        "entry": 402735588,
+        "insns": 27,
+        "name": "FUN_180141e4",
+        "shape_sha": "9be4dfcaa0aa1ea67c46cb11f824a03913bb4b50022d33cb424899262b5928fd",
+        "size": 78
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 6,
+        "bytes_sha": "01fa11dd6382df4e96b24ac15b05857d515a8a12f370f20551d26fadde33298e",
+        "entry": 402735544,
+        "insns": 27,
+        "name": "FUN_180141b8",
+        "shape_sha": "9be4dfcaa0aa1ea67c46cb11f824a03913bb4b50022d33cb424899262b5928fd",
+        "size": 78
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 4,
+        "bytes_sha": "743d4fe867fd1ebddfac56c888910d3bd5bb2ecfdec2ae967bafefbc9d8a437f",
+        "entry": 402735876,
+        "insns": 16,
+        "name": "FUN_18014304",
+        "shape_sha": "56467cf450486570a800386af61e325baad80c139fa59e62202bd548fc46874b",
+        "size": 36
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 4,
+        "bytes_sha": "743d4fe867fd1ebddfac56c888910d3bd5bb2ecfdec2ae967bafefbc9d8a437f",
+        "entry": 402735832,
+        "insns": 16,
+        "name": "FUN_180142d8",
+        "shape_sha": "56467cf450486570a800386af61e325baad80c139fa59e62202bd548fc46874b",
+        "size": 36
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 17,
+        "bytes_sha": "620730613396f345c3aef8df0d601652dc2d5eef49f7b808f570c5c97bfb26ad",
+        "entry": 402735912,
+        "insns": 69,
+        "name": "FUN_18014328",
+        "shape_sha": "8d386a22fa87e0b37ca963fe93d4cf262e914bb42a8549d430d0cad9bd431df5",
+        "size": 172
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 17,
+        "bytes_sha": "620730613396f345c3aef8df0d601652dc2d5eef49f7b808f570c5c97bfb26ad",
+        "entry": 402735868,
+        "insns": 69,
+        "name": "FUN_180142fc",
+        "shape_sha": "8d386a22fa87e0b37ca963fe93d4cf262e914bb42a8549d430d0cad9bd431df5",
+        "size": 172
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 9,
+        "bytes_sha": "84d802f68871780edca5bb606f5a24443318991354e91d41c0740a617d4c844b",
+        "entry": 402736084,
+        "insns": 44,
+        "name": "FUN_180143d4",
+        "shape_sha": "95c529f246a32df86dcf1f52a082bfeb09f4d015f21811e5ff0d48d0f572b91e",
+        "size": 102
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 9,
+        "bytes_sha": "84d802f68871780edca5bb606f5a24443318991354e91d41c0740a617d4c844b",
+        "entry": 402736040,
+        "insns": 44,
+        "name": "FUN_180143a8",
+        "shape_sha": "95c529f246a32df86dcf1f52a082bfeb09f4d015f21811e5ff0d48d0f572b91e",
+        "size": 102
       }
     },
     {
@@ -17195,6 +17510,31 @@
       "differing_bytes": 0,
       "installed": {
         "blocks": 1,
+        "bytes_sha": "2d8f63fdebc539bb29c5b56d12d3a33bf4112d7d2e60321a1642de409ebf828f",
+        "entry": 402747848,
+        "insns": 5,
+        "name": "FUN_180171c8",
+        "shape_sha": "434d481237f658080fe9e29efe29a82da59fa7f06a6ff1fd9011edda9ffc733b",
+        "size": 12
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "2d8f63fdebc539bb29c5b56d12d3a33bf4112d7d2e60321a1642de409ebf828f",
+        "entry": 402747804,
+        "insns": 5,
+        "name": "FUN_1801719c",
+        "shape_sha": "434d481237f658080fe9e29efe29a82da59fa7f06a6ff1fd9011edda9ffc733b",
+        "size": 12
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
         "bytes_sha": "13c53d280dc1270dab2a51ad67cbc1590d18c6dd5534644898d4e173c5a02d3f",
         "entry": 402748128,
         "insns": 6,
@@ -18463,6 +18803,31 @@
         "name": "FUN_18018af6",
         "shape_sha": "7905d769d819abbf4fb535c8c312a32087139548c5cb8a226f4534629b504e12",
         "size": 116
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 5,
+        "bytes_sha": "46d4208925871b949b3d19e48248aa66ab08febbd2879abd18c04e98c7aa166c",
+        "entry": 402754416,
+        "insns": 30,
+        "name": "FUN_18018b70",
+        "shape_sha": "1006251173d8896ebb96a178e6489ff87a3bc8e1e816244d1536d91599eb9e3b",
+        "size": 66
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "46d4208925871b949b3d19e48248aa66ab08febbd2879abd18c04e98c7aa166c",
+        "entry": 402754372,
+        "insns": 30,
+        "name": "FUN_18018b44",
+        "shape_sha": "1006251173d8896ebb96a178e6489ff87a3bc8e1e816244d1536d91599eb9e3b",
+        "size": 66
       }
     },
     {
@@ -19945,6 +20310,156 @@
       "differing_bytes": 0,
       "installed": {
         "blocks": 1,
+        "bytes_sha": "0c1d7369ee49efa04b5fa0ed8887d70f7219b4b10c0c504db7132208ad4fc56b",
+        "entry": 402760628,
+        "insns": 6,
+        "name": "FUN_1801a3b4",
+        "shape_sha": "c94047f0d9da6c4d8850687cca4e82407a7632470165874088e25c573f8cab7f",
+        "size": 12
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "0c1d7369ee49efa04b5fa0ed8887d70f7219b4b10c0c504db7132208ad4fc56b",
+        "entry": 402760584,
+        "insns": 6,
+        "name": "FUN_1801a388",
+        "shape_sha": "c94047f0d9da6c4d8850687cca4e82407a7632470165874088e25c573f8cab7f",
+        "size": 12
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 21,
+        "bytes_sha": "6513b950cc294b865beefb9cdee11d5faef071f19478644a47c50c48f6a814b5",
+        "entry": 402760640,
+        "insns": 49,
+        "name": "FUN_1801a3c0",
+        "shape_sha": "98ac52b8d16f92d7e5eaf551281195f4dd007b66fd971923dfc57cab74dbfedc",
+        "size": 116
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 21,
+        "bytes_sha": "6513b950cc294b865beefb9cdee11d5faef071f19478644a47c50c48f6a814b5",
+        "entry": 402760596,
+        "insns": 49,
+        "name": "FUN_1801a394",
+        "shape_sha": "98ac52b8d16f92d7e5eaf551281195f4dd007b66fd971923dfc57cab74dbfedc",
+        "size": 116
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "2141b30929ed10c1228306157fad0c49982158ed68286260933fc4246d44e542",
+        "entry": 402760756,
+        "insns": 15,
+        "name": "FUN_1801a434",
+        "shape_sha": "7ef4a51b608f5b67b47e1871b61f1951a3eb61eb0562fe69a8bd302d19d49f8f",
+        "size": 34
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "2141b30929ed10c1228306157fad0c49982158ed68286260933fc4246d44e542",
+        "entry": 402760712,
+        "insns": 15,
+        "name": "FUN_1801a408",
+        "shape_sha": "7ef4a51b608f5b67b47e1871b61f1951a3eb61eb0562fe69a8bd302d19d49f8f",
+        "size": 34
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "abd9493711f9d1b9538bb444e4596f6213423bcff5159576617c5e4a5846465a",
+        "entry": 402760790,
+        "insns": 308,
+        "name": "FUN_1801a456",
+        "shape_sha": "79ab18fd5a55f8317a3ae200cc9f844eb9dace8fd7e4f2a0a57970ee9bad2db2",
+        "size": 718
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "abd9493711f9d1b9538bb444e4596f6213423bcff5159576617c5e4a5846465a",
+        "entry": 402760746,
+        "insns": 308,
+        "name": "FUN_1801a42a",
+        "shape_sha": "79ab18fd5a55f8317a3ae200cc9f844eb9dace8fd7e4f2a0a57970ee9bad2db2",
+        "size": 718
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 45,
+        "bytes_sha": "2f49f49a8b0774b8fdb19fe1f12932eef0fd8d8d7f86a7831f0e269436f3bd7e",
+        "entry": 402761508,
+        "insns": 156,
+        "name": "FUN_1801a724",
+        "shape_sha": "11494cd2aafc32c8eed96747fa670eb9916650a42ba5c56cfc59559a2fb473d1",
+        "size": 356
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 45,
+        "bytes_sha": "2f49f49a8b0774b8fdb19fe1f12932eef0fd8d8d7f86a7831f0e269436f3bd7e",
+        "entry": 402761464,
+        "insns": 156,
+        "name": "FUN_1801a6f8",
+        "shape_sha": "11494cd2aafc32c8eed96747fa670eb9916650a42ba5c56cfc59559a2fb473d1",
+        "size": 356
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 42,
+        "bytes_sha": "d1c6e5c10885efe5fe91f2d8b0b97359495f171c8c55913c7556462c9afa6ea2",
+        "entry": 402761914,
+        "insns": 138,
+        "name": "FUN_1801a8ba",
+        "shape_sha": "65892cd4df4f5a7117c3e816f5d3d0b30e96ae3566d79bec9e17fd8e29cef2c1",
+        "size": 330
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 42,
+        "bytes_sha": "d1c6e5c10885efe5fe91f2d8b0b97359495f171c8c55913c7556462c9afa6ea2",
+        "entry": 402761870,
+        "insns": 138,
+        "name": "FUN_1801a88e",
+        "shape_sha": "65892cd4df4f5a7117c3e816f5d3d0b30e96ae3566d79bec9e17fd8e29cef2c1",
+        "size": 330
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
         "bytes_sha": "8b49868987d61fc51f89def3b51e0a78b0bc1bf3a1096ced54431ed304a6afd5",
         "entry": 402762280,
         "insns": 9,
@@ -20544,6 +21059,56 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 18,
+        "bytes_sha": "dd7551cd79744c3168f9ca9103c4905b45377db77a6a3e8e38940483f86c146b",
+        "entry": 402764704,
+        "insns": 74,
+        "name": "FUN_1801b3a0",
+        "shape_sha": "e5f7743eacf887f85ae8014308fc53aa7935b5ae48f9ef16f43a3b0da1a33d15",
+        "size": 192
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 18,
+        "bytes_sha": "dd7551cd79744c3168f9ca9103c4905b45377db77a6a3e8e38940483f86c146b",
+        "entry": 402764660,
+        "insns": 74,
+        "name": "FUN_1801b374",
+        "shape_sha": "e5f7743eacf887f85ae8014308fc53aa7935b5ae48f9ef16f43a3b0da1a33d15",
+        "size": 192
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 23,
+        "bytes_sha": "fe492cc2a96f8b0e09e403d656315486cdd14527b54ec301a15640b2cad38b98",
+        "entry": 402764896,
+        "insns": 98,
+        "name": "FUN_1801b460",
+        "shape_sha": "2005a7c8bc8debe3b9dc2cd34f09c2d2efeaa925ad0e32803ba915ab70bcec2c",
+        "size": 270
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 23,
+        "bytes_sha": "fe492cc2a96f8b0e09e403d656315486cdd14527b54ec301a15640b2cad38b98",
+        "entry": 402764852,
+        "insns": 98,
+        "name": "FUN_1801b434",
+        "shape_sha": "2005a7c8bc8debe3b9dc2cd34f09c2d2efeaa925ad0e32803ba915ab70bcec2c",
+        "size": 270
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 21,
         "bytes_sha": "76cf6370125e4de9f229461b7157965a97237f03ec8012895cf6849a20abee27",
         "entry": 402765166,
@@ -20569,25 +21134,25 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
-        "blocks": 27,
-        "bytes_sha": "5d9934d0f8d0b0b850f71c61316948145bb2a29b448dfd1f66f916b06996fe9f",
+        "blocks": 26,
+        "bytes_sha": "eb2c11588f3dcb62da0eb46456b6e7875f0c05af6406faf0113ef5a15e561066",
         "entry": 402765386,
-        "insns": 112,
+        "insns": 110,
         "name": "FUN_1801b64a",
-        "shape_sha": "9beacc1e0ffca8125c07a40fc459c54ef05bd18a5caa105a2078bb8b4fd5f681",
-        "size": 304
+        "shape_sha": "99f016f231da306b208526afbcb84c97b2a7ac8d17328d1ca35c282a5bc998f8",
+        "size": 298
       },
       "moved": true,
       "reason": "same body bytes, relocated",
       "score": 1.0,
       "vendor": {
-        "blocks": 27,
-        "bytes_sha": "5d9934d0f8d0b0b850f71c61316948145bb2a29b448dfd1f66f916b06996fe9f",
+        "blocks": 26,
+        "bytes_sha": "eb2c11588f3dcb62da0eb46456b6e7875f0c05af6406faf0113ef5a15e561066",
         "entry": 402765342,
-        "insns": 112,
+        "insns": 110,
         "name": "FUN_1801b61e",
-        "shape_sha": "9beacc1e0ffca8125c07a40fc459c54ef05bd18a5caa105a2078bb8b4fd5f681",
-        "size": 304
+        "shape_sha": "99f016f231da306b208526afbcb84c97b2a7ac8d17328d1ca35c282a5bc998f8",
+        "size": 298
       }
     },
     {
@@ -20663,6 +21228,106 @@
         "name": "FUN_1801b7ac",
         "shape_sha": "920f6c778af816ef55dc3dd53a852ae1c879d8e0e34aaec64075574851983860",
         "size": 26
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "be27917ab98f45d2890deb35750ec63bb6291c38ff1c3e55e2b7b418f8223830",
+        "entry": 402766764,
+        "insns": 9,
+        "name": "FUN_1801bbac",
+        "shape_sha": "d2de8e1cc7a7ff2fdffc290663ede6c3d35e86fd7713c5a38bca5f70b8dfcf7c",
+        "size": 20
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "be27917ab98f45d2890deb35750ec63bb6291c38ff1c3e55e2b7b418f8223830",
+        "entry": 402766720,
+        "insns": 9,
+        "name": "FUN_1801bb80",
+        "shape_sha": "d2de8e1cc7a7ff2fdffc290663ede6c3d35e86fd7713c5a38bca5f70b8dfcf7c",
+        "size": 20
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "2555e239fd2583cd8c89e40e8483982229ea5c52dbbba972ab664f6a18bb0627",
+        "entry": 402766784,
+        "insns": 11,
+        "name": "FUN_1801bbc0",
+        "shape_sha": "09e1c2bc86b37e57ff8e919359deab033cdcd88f8cbff0e8511c4721c7792559",
+        "size": 28
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "2555e239fd2583cd8c89e40e8483982229ea5c52dbbba972ab664f6a18bb0627",
+        "entry": 402766740,
+        "insns": 11,
+        "name": "FUN_1801bb94",
+        "shape_sha": "09e1c2bc86b37e57ff8e919359deab033cdcd88f8cbff0e8511c4721c7792559",
+        "size": 28
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 3,
+        "bytes_sha": "3b3ec0d4cec2d934deb21fc03325e2ecb8063f6194ce2c29ad6f3fb29f1b6523",
+        "entry": 402766854,
+        "insns": 16,
+        "name": "FUN_1801bc06",
+        "shape_sha": "9b9660939cb2b102577ed8367fb9cc1b0a2d2f407fe3640feff1452309ea5b78",
+        "size": 42
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 3,
+        "bytes_sha": "3b3ec0d4cec2d934deb21fc03325e2ecb8063f6194ce2c29ad6f3fb29f1b6523",
+        "entry": 402766810,
+        "insns": 16,
+        "name": "FUN_1801bbda",
+        "shape_sha": "9b9660939cb2b102577ed8367fb9cc1b0a2d2f407fe3640feff1452309ea5b78",
+        "size": 42
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 3,
+        "bytes_sha": "c1411bc376064bf94f0f3500073c5d78ed6a7ed04e2efb1b69143471cda07c38",
+        "entry": 402766896,
+        "insns": 10,
+        "name": "FUN_1801bc30",
+        "shape_sha": "01432ed2e8ade124e516b6f535b3afc9ed80da5b0d1e99e2720c8193162e9622",
+        "size": 24
+      },
+      "moved": true,
+      "reason": "same body bytes, relocated",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 3,
+        "bytes_sha": "c1411bc376064bf94f0f3500073c5d78ed6a7ed04e2efb1b69143471cda07c38",
+        "entry": 402766852,
+        "insns": 10,
+        "name": "FUN_1801bc04",
+        "shape_sha": "01432ed2e8ade124e516b6f535b3afc9ed80da5b0d1e99e2720c8193162e9622",
+        "size": 24
       }
     }
   ],
@@ -20866,6 +21531,36 @@
       "installed": 402688806,
       "reason": "identical match, relocated",
       "vendor": 402688762
+    },
+    {
+      "installed": 402688854,
+      "reason": "identical match, relocated",
+      "vendor": 402688810
+    },
+    {
+      "installed": 402688930,
+      "reason": "identical match, relocated",
+      "vendor": 402688886
+    },
+    {
+      "installed": 402688956,
+      "reason": "identical match, relocated",
+      "vendor": 402688912
+    },
+    {
+      "installed": 402689046,
+      "reason": "structural match, relocated",
+      "vendor": 402689002
+    },
+    {
+      "installed": 402689748,
+      "reason": "identical match, relocated",
+      "vendor": 402689704
+    },
+    {
+      "installed": 402689810,
+      "reason": "identical match, relocated",
+      "vendor": 402689766
     },
     {
       "installed": 402689866,
@@ -21326,6 +22021,16 @@
       "installed": 402707256,
       "reason": "identical match, relocated",
       "vendor": 402707212
+    },
+    {
+      "installed": 402707364,
+      "reason": "identical match, relocated",
+      "vendor": 402707320
+    },
+    {
+      "installed": 402707420,
+      "reason": "identical match, relocated",
+      "vendor": 402707376
     },
     {
       "installed": 402708032,
@@ -21863,6 +22568,11 @@
       "vendor": 402721424
     },
     {
+      "installed": 402722078,
+      "reason": "identical match, relocated",
+      "vendor": 402722034
+    },
+    {
       "installed": 402722356,
       "reason": "identical match, relocated",
       "vendor": 402722312
@@ -22148,6 +22858,16 @@
       "vendor": 402730440
     },
     {
+      "installed": 402730584,
+      "reason": "identical match, relocated",
+      "vendor": 402730540
+    },
+    {
+      "installed": 402730652,
+      "reason": "identical match, relocated",
+      "vendor": 402730608
+    },
+    {
       "installed": 402730720,
       "reason": "identical match, relocated",
       "vendor": 402730676
@@ -22231,6 +22951,16 @@
       "installed": 402732334,
       "reason": "identical match, relocated",
       "vendor": 402732290
+    },
+    {
+      "installed": 402732746,
+      "reason": "identical match, relocated",
+      "vendor": 402732702
+    },
+    {
+      "installed": 402732778,
+      "reason": "identical match, relocated",
+      "vendor": 402732734
     },
     {
       "installed": 402732926,
@@ -22356,6 +23086,56 @@
       "installed": 402735030,
       "reason": "identical match, relocated",
       "vendor": 402734986
+    },
+    {
+      "installed": 402735112,
+      "reason": "identical match, relocated",
+      "vendor": 402735068
+    },
+    {
+      "installed": 402735164,
+      "reason": "identical match, relocated",
+      "vendor": 402735120
+    },
+    {
+      "installed": 402735256,
+      "reason": "identical match, relocated",
+      "vendor": 402735212
+    },
+    {
+      "installed": 402735436,
+      "reason": "identical match, relocated",
+      "vendor": 402735392
+    },
+    {
+      "installed": 402735468,
+      "reason": "identical match, relocated",
+      "vendor": 402735424
+    },
+    {
+      "installed": 402735530,
+      "reason": "identical match, relocated",
+      "vendor": 402735486
+    },
+    {
+      "installed": 402735588,
+      "reason": "identical match, relocated",
+      "vendor": 402735544
+    },
+    {
+      "installed": 402735876,
+      "reason": "identical match, relocated",
+      "vendor": 402735832
+    },
+    {
+      "installed": 402735912,
+      "reason": "identical match, relocated",
+      "vendor": 402735868
+    },
+    {
+      "installed": 402736084,
+      "reason": "identical match, relocated",
+      "vendor": 402736040
     },
     {
       "installed": 402736220,
@@ -22648,6 +23428,11 @@
       "vendor": 402747780
     },
     {
+      "installed": 402747848,
+      "reason": "identical match, relocated",
+      "vendor": 402747804
+    },
+    {
       "installed": 402748128,
       "reason": "identical match, relocated",
       "vendor": 402748084
@@ -22901,6 +23686,11 @@
       "installed": 402754338,
       "reason": "identical match, relocated",
       "vendor": 402754294
+    },
+    {
+      "installed": 402754416,
+      "reason": "identical match, relocated",
+      "vendor": 402754372
     },
     {
       "installed": 402754488,
@@ -23198,6 +23988,36 @@
       "vendor": 402760440
     },
     {
+      "installed": 402760628,
+      "reason": "identical match, relocated",
+      "vendor": 402760584
+    },
+    {
+      "installed": 402760640,
+      "reason": "identical match, relocated",
+      "vendor": 402760596
+    },
+    {
+      "installed": 402760756,
+      "reason": "identical match, relocated",
+      "vendor": 402760712
+    },
+    {
+      "installed": 402760790,
+      "reason": "identical match, relocated",
+      "vendor": 402760746
+    },
+    {
+      "installed": 402761508,
+      "reason": "identical match, relocated",
+      "vendor": 402761464
+    },
+    {
+      "installed": 402761914,
+      "reason": "identical match, relocated",
+      "vendor": 402761870
+    },
+    {
       "installed": 402762280,
       "reason": "identical match, relocated",
       "vendor": 402762236
@@ -23318,6 +24138,16 @@
       "vendor": 402764490
     },
     {
+      "installed": 402764704,
+      "reason": "identical match, relocated",
+      "vendor": 402764660
+    },
+    {
+      "installed": 402764896,
+      "reason": "identical match, relocated",
+      "vendor": 402764852
+    },
+    {
       "installed": 402765166,
       "reason": "identical match, relocated",
       "vendor": 402765122
@@ -23341,6 +24171,26 @@
       "installed": 402765784,
       "reason": "tentative match, relocated",
       "vendor": 402765740
+    },
+    {
+      "installed": 402766764,
+      "reason": "identical match, relocated",
+      "vendor": 402766720
+    },
+    {
+      "installed": 402766784,
+      "reason": "identical match, relocated",
+      "vendor": 402766740
+    },
+    {
+      "installed": 402766854,
+      "reason": "identical match, relocated",
+      "vendor": 402766810
+    },
+    {
+      "installed": 402766896,
+      "reason": "identical match, relocated",
+      "vendor": 402766852
     }
   ],
   "program": "app_b",
@@ -23365,6 +24215,12 @@
     },
     {
       "confidence": "structural",
+      "differing_bytes": 30,
+      "installed_entry": 402653754,
+      "vendor_entry": 402653754
+    },
+    {
+      "confidence": "structural",
       "differing_bytes": 16,
       "installed_entry": 402678210,
       "vendor_entry": 402678166
@@ -23380,6 +24236,12 @@
       "differing_bytes": 9,
       "installed_entry": 402656184,
       "vendor_entry": 402656184
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 7,
+      "installed_entry": 402653260,
+      "vendor_entry": 402653260
     },
     {
       "confidence": "structural",
@@ -23462,6 +24324,12 @@
     {
       "confidence": "structural",
       "differing_bytes": 2,
+      "installed_entry": 402689046,
+      "vendor_entry": 402689002
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 2,
       "installed_entry": 402705994,
       "vendor_entry": 402705950
     },
@@ -23518,6 +24386,12 @@
       "differing_bytes": 2,
       "installed_entry": 402680532,
       "vendor_entry": 402680488
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 2,
+      "installed_entry": 402653368,
+      "vendor_entry": 402653368
     },
     {
       "confidence": "structural",
@@ -23588,6 +24462,12 @@
     {
       "confidence": "structural",
       "differing_bytes": 1,
+      "installed_entry": 402672040,
+      "vendor_entry": 402672040
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 1,
       "installed_entry": 402688514,
       "vendor_entry": 402688470
     },
@@ -23638,6 +24518,12 @@
       "differing_bytes": 1,
       "installed_entry": 402716390,
       "vendor_entry": 402716346
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 1,
+      "installed_entry": 402653326,
+      "vendor_entry": 402653326
     },
     {
       "confidence": "structural",
@@ -23813,11 +24699,11 @@
     }
   ],
   "uncovered_span_counts": {
-    "compared": 244,
-    "installed": 262,
-    "vendor": 262
+    "compared": 256,
+    "installed": 274,
+    "vendor": 274
   },
   "uncovered_span_counts_equal": true,
   "uncovered_spans_fully_compared": false,
-  "vendor_count": 573
+  "vendor_count": 616
 }

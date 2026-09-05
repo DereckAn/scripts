@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import extract_installed_records as ex
 import falchion_image as fi
 import find_pointer_tables as fpt
+import harvest_task_entries as ht
 import match_functions as mf
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -96,6 +97,14 @@ ARM_REGISTERS = {
     0xE000ED3C: ("AFSR", "Auxiliary fault status"),
     0xE000ED88: ("CPACR", "Coprocessor access control"),
 }
+
+
+# Entry points established by decompilation rather than by any pointer: each
+# carries the log that established it, so a context always cites its evidence.
+DOCUMENTED_ENTRIES = (
+    (0x1800023A, "Candidate B main (logs 79-80, via "
+                 "thunk_EXT_FUN_1800023a; no literal word points here)"),
+)
 
 
 def arm_register_name(address):
@@ -756,6 +765,26 @@ def build_map(installed_view=None):
     # already recognises a function at the address it names: that is external
     # validation the word is a callback, not a decision to trust lone words.
     # Words in the region that name no known function stay out.
+    # Candidate B's runtime entry, seeded on logs 79-80: Candidate A's
+    # post-scatter runtime FUN_000002c8 calls it through the veneer
+    # thunk_EXT_FUN_1800023a. RECORDED AND NOT RESOLVED: no literal word in
+    # either release's Candidate A points at this address, so the call reaches
+    # it through code rather than through data. That is exactly why no pointer
+    # survey found it, and it is reported as a contradiction below rather than
+    # explained away here.
+    for address, citation in DOCUMENTED_ENTRIES:
+        app_roots.append((citation, address))
+
+    # Phase 5A: an RTOS task entry is handed to the creation primitive in a
+    # register, so it appears in no table and no initialised data. Each
+    # accepted task entry is a root, labelled with the call site that creates
+    # it. A task whose entry lives in the other image routes to that image's
+    # root list, which is how the application's own scheduler reaches code the
+    # bootloader copies to address 0.
+    for program, label, address in ht.roots():
+        (entry_roots if program == "entry" else app_roots).append(
+            (label, address))
+
     region = by_program.get("ram")
     if region is not None:
         known = {record.entry for record in inventories["app"]}
@@ -929,6 +958,12 @@ def report_lines(hardware, max_registers=12):
             "  table roots: " + (", ".join(sorted({
                 label for label, _entry in program.roots
                 if label.startswith("table@")})) or "none"),
+            "  documented entry roots: " + (", ".join(
+                f"{label}->0x{entry:08x}" for label, entry in program.roots
+                if label.startswith("Candidate B main")) or "none"),
+            "  task roots: " + (", ".join(
+                f"{label}->0x{entry:08x}" for label, entry in program.roots
+                if label.startswith("task ")) or "none"),
             "  region roots: " + (", ".join(
                 f"{label}->0x{entry:08x}" for label, entry in program.roots
                 if label.startswith("decompressed region")) or "none"),
@@ -938,6 +973,19 @@ def report_lines(hardware, max_registers=12):
             "  roots naming no function: " + (", ".join(
                 f"{address} ({label})"
                 for address, label in program.unresolved_roots) or "none"),
+            "  ROOT_BLOCKS which hardware each newly seeded root can reach:",
+        ]
+        seeded = [label for label, _entry in sorted(set(program.roots))
+                  if label.startswith(("task ", "decompressed region ",
+                                       "Candidate B main"))]
+        for label in seeded:
+            touched = [f"0x{block.base:08x}({block.kind})"
+                       for block in program.blocks if label in block.contexts]
+            out.append(f"    {label} -> "
+                       + (", ".join(touched) or "no mapped block"))
+        if not seeded:
+            out.append("    none in this image")
+        out += [
             f"  unreached_with_no_caller={len(program.orphans)} "
             "(each needs an entry mechanism; the rest of the unreached set is "
             "downstream of these)",

@@ -417,7 +417,7 @@
       "verdict": "must-reproduce-or-disprove"
     },
     {
-      "accesses": 61,
+      "accesses": 88,
       "block": 402653184,
       "contexts": [
         "HardFault",
@@ -426,12 +426,13 @@
         "PendSV",
         "Reset",
         "SVCall",
-        "table@0x00001404"
+        "table@0x00001404",
+        "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
       ],
       "kind": "runtime-ram",
       "program": "Candidate A (entry image)",
       "reason": "RAM inside the proven scatter runtime range",
-      "registers": 28,
+      "registers": 39,
       "verdict": "not-a-service"
     },
     {
@@ -516,9 +517,10 @@
       "verdict": "see-registers"
     },
     {
-      "accesses": 3701,
+      "accesses": 4072,
       "block": 402653184,
       "contexts": [
+        "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
         "IRQ36",
         "IRQ37",
         "IRQ38",
@@ -531,18 +533,23 @@
         "decompressed region 0x1801ecc0",
         "table@0x18016d44",
         "table@0x18017d08",
-        "table@0x18018ce8"
+        "table@0x18018ce8",
+        "task IDLE created at 0x180136fe",
+        "task INIT_TASK created at 0x18000348",
+        "task Tmr Svc created at 0x180141ca",
+        "task usbd_wdt created at 0x18015e8a"
       ],
       "kind": "mixed",
       "program": "Candidate B (application)",
       "reason": "the block holds addresses of more than one kind; read the per-register rows rather than the block",
-      "registers": 838,
+      "registers": 902,
       "verdict": "see-registers"
     },
     {
-      "accesses": 8,
+      "accesses": 18,
       "block": 536870912,
       "contexts": [
+        "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
         "table@0x18016d44"
       ],
       "kind": "unknown",
@@ -552,21 +559,23 @@
       "verdict": "unknown-service"
     },
     {
-      "accesses": 49,
+      "accesses": 69,
       "block": 1073741824,
       "contexts": [
+        "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
         "table@0x18016d44"
       ],
       "kind": "unknown",
       "program": "Candidate B (application)",
       "reason": "the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission",
-      "registers": 13,
+      "registers": 17,
       "verdict": "unknown-service"
     },
     {
-      "accesses": 126,
+      "accesses": 139,
       "block": 1074790400,
       "contexts": [
+        "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
         "IRQ6",
         "called from entry image 0x1994",
         "table@0x18016d44"
@@ -574,25 +583,26 @@
       "kind": "unknown",
       "program": "Candidate B (application)",
       "reason": "the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission",
-      "registers": 19,
-      "verdict": "unknown-service"
-    },
-    {
-      "accesses": 9,
-      "block": 1157627904,
-      "contexts": [
-        "unreached"
-      ],
-      "kind": "unknown",
-      "program": "Candidate B (application)",
-      "reason": "the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission",
-      "registers": 4,
+      "registers": 20,
       "verdict": "unknown-service"
     },
     {
       "accesses": 21,
+      "block": 1157627904,
+      "contexts": [
+        "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+      ],
+      "kind": "unknown",
+      "program": "Candidate B (application)",
+      "reason": "the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission",
+      "registers": 5,
+      "verdict": "unknown-service"
+    },
+    {
+      "accesses": 23,
       "block": 3758096384,
       "contexts": [
+        "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
         "IRQ6",
         "called from entry image 0x1994",
         "called from entry image 0x19cc",
@@ -601,7 +611,11 @@
         "decompressed region 0x1801ecc0",
         "table@0x18016d44",
         "table@0x18017d08",
-        "table@0x18018ce8"
+        "table@0x18018ce8",
+        "task IDLE created at 0x180136fe",
+        "task INIT_TASK created at 0x18000348",
+        "task Tmr Svc created at 0x180141ca",
+        "task usbd_wdt created at 0x18015e8a"
       ],
       "kind": "arm-core",
       "program": "Candidate B (application)",
@@ -759,7 +773,7 @@
       "statement": "The timebase pends a software interrupt, which is the shape of a preemptive scheduler."
     },
     {
-      "basis": "ICSR is written 16 times in the application image, including from an interrupt context.",
+      "basis": "ICSR is written 18 times in the application image, including from an interrupt context.",
       "confidence": "high for the mechanism",
       "statement": "The application also pends that software interrupt, from several sites."
     },
@@ -784,7 +798,7 @@
       "statement": "A reset-path register is programmed with the flash address of SN_FWIN record slot 1."
     },
     {
-      "basis": "19 registers, 126 accesses, touched from IRQ6,called from entry image 0x1994,table@0x18016d44 \u2014 that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.",
+      "basis": "20 registers, 139 accesses, touched from Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,table@0x18016d44 \u2014 that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.",
       "confidence": "high for the association, none for the identity",
       "statement": "The unnamed block at 0x40100000 is the one the live interrupt serves."
     }
@@ -795,7 +809,7 @@
   },
   "programs": [
     {
-      "accesses": 179,
+      "accesses": 206,
       "base": 0,
       "blocks": [
         {
@@ -869,7 +883,7 @@
           ]
         },
         {
-          "accesses": 61,
+          "accesses": 88,
           "base": 402653184,
           "contexts": [
             "HardFault",
@@ -878,7 +892,8 @@
             "PendSV",
             "Reset",
             "SVCall",
-            "table@0x00001404"
+            "table@0x00001404",
+            "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
           ],
           "description": "inside the proven scatter runtime range 0x18000000..0x1801e380; inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168",
           "kind": "runtime-ram",
@@ -904,6 +919,174 @@
               ],
               "write_sites": [
                 494
+              ]
+            },
+            {
+              "address": 402777744,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1068
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1076
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1080,
+                1088
+              ]
+            },
+            {
+              "address": 402777748,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1068
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1094
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1098,
+                1104
+              ]
+            },
+            {
+              "address": 402777752,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1068
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1110
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1114,
+                1128
+              ]
+            },
+            {
+              "address": 402777756,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1068
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1134
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1138,
+                1144
+              ]
+            },
+            {
+              "address": 402777760,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1068
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1150
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1154,
+                1160
+              ]
+            },
+            {
+              "address": 402777764,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1210
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1252
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                1258,
+                1278
               ]
             },
             {
@@ -939,7 +1122,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
               ],
               "functions": [
                 1494,
@@ -991,6 +1174,79 @@
                 1592,
                 1600
               ]
+            },
+            {
+              "address": 402778040,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1068
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1436
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1442
+              ]
+            },
+            {
+              "address": 402778128,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1210,
+                1302
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1230,
+                1322
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": []
+            },
+            {
+              "address": 402778312,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1302
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                1378
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": []
             },
             {
               "address": 402778748,
@@ -1235,6 +1491,57 @@
               "write_sites": [
                 8410
               ]
+            },
+            {
+              "address": 402779780,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1176
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                1186,
+                1202
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                1190
+              ]
+            },
+            {
+              "address": 402793176,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
+              ],
+              "functions": [
+                1210
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                1238
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                1
+              ],
+              "write_sites": []
             },
             {
               "address": 402812840,
@@ -2735,9 +3042,9 @@
           ]
         }
       ],
-      "functions": 101,
+      "functions": 114,
       "name": "Candidate A (entry image)",
-      "reached_functions": 91,
+      "reached_functions": 101,
       "roots": [
         {
           "entry": 5330,
@@ -2830,34 +3137,43 @@
         {
           "entry": 16564,
           "label": "table@0x00005680"
+        },
+        {
+          "entry": 1176,
+          "label": "task OEM_MAIN_SERVICE_TASK created at 0x1800007e"
         }
       ],
       "slice": "installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin",
       "unreached_functions": [
         888,
-        1494,
         1536,
+        1620,
+        1668,
+        1684,
         2670,
         5408,
         5440,
         5724,
         6152,
+        8556,
         17164,
         18100
       ],
       "unreached_with_no_caller": [
-        1494,
         1536,
+        1668,
+        1684,
         2670,
         5408,
         5440,
         5724,
         6152,
+        8556,
         17164
       ],
       "unresolved_accesses": {
         "base_lr_unknown": 3,
-        "base_r0_unknown": 68,
+        "base_r0_unknown": 72,
         "base_r1_unknown": 41,
         "base_r2_unknown": 17,
         "base_r3_unknown": 7,
@@ -2868,7 +3184,7 @@
         "base_r8_unknown": 6,
         "base_r9_unknown": 3,
         "register_offset": 43,
-        "stack_relative": 44
+        "stack_relative": 46
       },
       "unresolved_roots": [
         {
@@ -2878,7 +3194,7 @@
       ]
     },
     {
-      "accesses": 3926,
+      "accesses": 4354,
       "base": 402653184,
       "blocks": [
         {
@@ -3128,9 +3444,10 @@
           ]
         },
         {
-          "accesses": 3701,
+          "accesses": 4072,
           "base": 402653184,
           "contexts": [
+            "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
             "IRQ36",
             "IRQ37",
             "IRQ38",
@@ -3143,7 +3460,11 @@
             "decompressed region 0x1801ecc0",
             "table@0x18016d44",
             "table@0x18017d08",
-            "table@0x18018ce8"
+            "table@0x18018ce8",
+            "task IDLE created at 0x180136fe",
+            "task INIT_TASK created at 0x18000348",
+            "task Tmr Svc created at 0x180141ca",
+            "task usbd_wdt created at 0x18015e8a"
           ],
           "description": "inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
           "kind": "mixed",
@@ -3181,7 +3502,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653494
@@ -3298,7 +3619,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656040,
@@ -3750,7 +4071,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402654714,
@@ -3776,7 +4097,8 @@
                 402696924,
                 402705994,
                 402716670,
-                402717000
+                402717000,
+                402761914
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
@@ -3875,7 +4197,9 @@
                 402716766,
                 402716976,
                 402716988,
-                402717026
+                402717026,
+                402761980,
+                402762152
               ],
               "reset_reachable_write_values": [],
               "stored_values": [
@@ -5365,7 +5689,8 @@
                 402681148,
                 402681722,
                 402687824,
-                402688630
+                402688630,
+                402761914
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
@@ -5379,7 +5704,8 @@
                 402681474,
                 402681708,
                 402687932,
-                402688674
+                402688674,
+                402761974
               ],
               "reset_reachable_write_values": [],
               "stored_values": [
@@ -5600,6 +5926,34 @@
               ]
             },
             {
+              "address": 402778120,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402688956
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402688966,
+                402689012
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                1
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402689030
+              ]
+            },
+            {
               "address": 402778121,
               "arm_description": null,
               "arm_name": null,
@@ -5636,14 +5990,18 @@
                 402681148,
                 402681722,
                 402681904,
-                402688630
+                402688630,
+                402761914
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
-              "read_sites": [],
+              "read_sites": [
+                402762120
+              ],
               "reset_reachable_write_values": [],
               "stored_values": [
                 0,
+                1,
                 2
               ],
               "widths": [
@@ -5653,7 +6011,8 @@
                 402681684,
                 402681738,
                 402682046,
-                402688662
+                402688662,
+                402762124
               ]
             },
             {
@@ -5662,26 +6021,133 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656598,
                 402669924,
-                402676360
+                402676360,
+                402688854,
+                402688930,
+                402688956,
+                402689046,
+                402761914
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
               "read_sites": [
                 402657034,
                 402669928,
-                402676374
+                402676374,
+                402688860,
+                402688982,
+                402689112,
+                402689178,
+                402689586,
+                402761986,
+                402762140
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "widths": [
+                4,
+                8
+              ],
+              "write_sites": [
+                402688898,
+                402688912,
+                402688924,
+                402688940,
+                402689000,
+                402689036,
+                402689118,
+                402689162,
+                402689202,
+                402689258,
+                402689708,
+                402689726
+              ]
+            },
+            {
+              "address": 402778132,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402688854,
+                402688930,
+                402688956,
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402689132,
+                402689172
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                1,
+                50,
+                1000,
+                5000
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402688910,
+                402688952,
+                402689042,
+                402689122,
+                402689140,
+                402689208,
+                402689714
+              ]
+            },
+            {
+              "address": 402778136,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402688854,
+                402688930,
+                402688956,
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402688892,
+                402689100,
+                402689156,
+                402689700
               ],
               "reset_reachable_write_values": [],
               "stored_values": [],
               "widths": [
                 4
               ],
-              "write_sites": []
+              "write_sites": [
+                402688946,
+                402689008,
+                402689718,
+                402689732
+              ]
             },
             {
               "address": 402778140,
@@ -5801,7 +6267,8 @@
                 402699120,
                 402705184,
                 402707062,
-                402707256
+                402707256,
+                402707364
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
@@ -5838,7 +6305,8 @@
                 402705538,
                 402707092,
                 402707128,
-                402707354
+                402707354,
+                402707416
               ]
             },
             {
@@ -5847,7 +6315,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124,
@@ -5878,7 +6346,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124,
@@ -5938,7 +6406,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402706328
@@ -6032,12 +6500,37 @@
               ]
             },
             {
-              "address": 402778182,
+              "address": 402778181,
               "arm_description": null,
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
                 "unreached"
+              ],
+              "functions": [
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402689502
+              ]
+            },
+            {
+              "address": 402778182,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -6062,7 +6555,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -6087,7 +6580,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -6112,7 +6605,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -6815,7 +7308,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -6847,7 +7340,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656040,
@@ -7109,7 +7602,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653494,
@@ -7117,6 +7610,7 @@
                 402654596,
                 402654714,
                 402669856,
+                402672040,
                 402672254,
                 402675710,
                 402676360,
@@ -7147,6 +7641,7 @@
                 402654816,
                 402654860,
                 402669864,
+                402672066,
                 402672548,
                 402675590,
                 402675818,
@@ -7445,6 +7940,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "IRQ48"
               ],
               "functions": [
@@ -7715,7 +8211,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402711786
@@ -7739,7 +8235,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402711786
@@ -7764,7 +8260,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402711786
@@ -7794,7 +8290,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402711786
@@ -7818,7 +8314,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402711786
@@ -7844,7 +8340,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402711786
@@ -8081,7 +8577,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402717308,
@@ -8528,7 +9024,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402661310,
@@ -8558,7 +9054,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402661310,
@@ -8594,7 +9090,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402661310,
@@ -8622,7 +9118,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402661310,
@@ -8643,6 +9139,33 @@
                 4
               ],
               "write_sites": []
+            },
+            {
+              "address": 402778748,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                12000000,
+                162000000
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402689560,
+                402689660
+              ]
             },
             {
               "address": 402778772,
@@ -8698,7 +9221,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402727422
@@ -8723,6 +9246,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
@@ -8731,7 +9255,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
@@ -8841,7 +9369,8 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "task IDLE created at 0x180136fe",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731046,
@@ -8870,6 +9399,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -8877,7 +9407,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
@@ -8913,6 +9447,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -8920,11 +9455,16 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731178,
                 402731550,
+                402732778,
                 402732926,
                 402732932,
                 402733448,
@@ -8941,12 +9481,15 @@
                 402733494
               ],
               "reset_reachable_write_values": [],
-              "stored_values": [],
+              "stored_values": [
+                0
+              ],
               "widths": [
                 4
               ],
               "write_sites": [
-                402731210
+                402731210,
+                402732890
               ]
             },
             {
@@ -8955,6 +9498,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
@@ -8963,7 +9507,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
@@ -9020,15 +9568,20 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "table@0x18016d44",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
                 402731046,
                 402732334,
+                402732778,
                 402733662
               ],
               "kind": "runtime-ram",
@@ -9042,11 +9595,15 @@
                 402733664
               ],
               "reset_reachable_write_values": [],
-              "stored_values": [],
+              "stored_values": [
+                1
+              ],
               "widths": [
                 4
               ],
-              "write_sites": []
+              "write_sites": [
+                402732888
+              ]
             },
             {
               "address": 402778820,
@@ -9054,6 +9611,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -9061,7 +9619,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731178,
@@ -9091,6 +9653,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
@@ -9099,7 +9662,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731178,
@@ -9143,6 +9710,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -9150,7 +9718,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731178,
@@ -9179,7 +9751,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "task INIT_TASK created at 0x18000348",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
@@ -9207,6 +9781,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -9214,11 +9789,16 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731178,
                 402731550,
+                402732778,
                 402734984
               ],
               "kind": "runtime-ram",
@@ -9237,6 +9817,7 @@
               "write_sites": [
                 402731282,
                 402731630,
+                402732884,
                 402735000
               ]
             },
@@ -9246,6 +9827,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
@@ -9254,7 +9836,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731046,
@@ -9308,6 +9894,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -9315,7 +9902,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
@@ -9354,6 +9945,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -9361,7 +9953,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402730772,
@@ -9389,17 +9985,153 @@
               ]
             },
             {
+              "address": 402778856,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "task Tmr Svc created at 0x180141ca"
+              ],
+              "functions": [
+                402735164,
+                402735256,
+                402735468,
+                402735530,
+                402735912
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402735182,
+                402735214,
+                402735422,
+                402735476,
+                402735538,
+                402735960
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402735512
+              ]
+            },
+            {
+              "address": 402778864,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task Tmr Svc created at 0x180141ca"
+              ],
+              "functions": [
+                402735876
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402735888
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402735908
+              ]
+            },
+            {
+              "address": 402778868,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "task Tmr Svc created at 0x180141ca"
+              ],
+              "functions": [
+                402735112,
+                402735436,
+                402735468,
+                402735912,
+                402736084
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402735154,
+                402735438,
+                402736000,
+                402736128,
+                402736186
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                402814156
+              ],
+              "widths": [
+                4,
+                8
+              ],
+              "write_sites": [
+                402735496,
+                402736196
+              ]
+            },
+            {
+              "address": 402778872,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "task Tmr Svc created at 0x180141ca"
+              ],
+              "functions": [
+                402735112,
+                402735468,
+                402735912,
+                402736084
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402735136,
+                402735948,
+                402736194
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                402814176
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402735500
+              ]
+            },
+            {
               "address": 402778888,
               "arm_description": null,
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "decompressed region 0x1801ecac",
                 "decompressed region 0x1801ecb0",
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402736220,
@@ -9430,12 +10162,17 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "decompressed region 0x1801ecac",
                 "decompressed region 0x1801ecb0",
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402736292,
@@ -9468,7 +10205,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "table@0x18018ce8"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "table@0x18018ce8",
+                "task INIT_TASK created at 0x18000348"
               ],
               "functions": [
                 402736292,
@@ -9497,12 +10236,17 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "decompressed region 0x1801ecac",
                 "decompressed region 0x1801ecb0",
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402736292,
@@ -9533,12 +10277,17 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "decompressed region 0x1801ecac",
                 "decompressed region 0x1801ecb0",
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402736220,
@@ -9705,11 +10454,13 @@
                 "table@0x18016d44"
               ],
               "functions": [
+                402688854,
                 402741724
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
               "read_sites": [
+                402688868,
                 402742150
               ],
               "reset_reachable_write_values": [],
@@ -10532,7 +11283,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402742404,
@@ -10693,7 +11444,8 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "called from entry image 0x1994"
+                "called from entry image 0x1994",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402742404,
@@ -10724,7 +11476,8 @@
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
                 "called from entry image 0x1994",
-                "table@0x18016d44"
+                "table@0x18016d44",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402741724,
@@ -10757,7 +11510,8 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "called from entry image 0x1994"
+                "called from entry image 0x1994",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402742404,
@@ -10847,7 +11601,8 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task INIT_TASK created at 0x18000348"
               ],
               "functions": [
                 402689866,
@@ -10954,6 +11709,75 @@
               "write_sites": [
                 402753934,
                 402754114
+              ]
+            },
+            {
+              "address": 402779196,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task INIT_TASK created at 0x18000348"
+              ],
+              "functions": [
+                402754416
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                2
+              ],
+              "write_sites": [
+                402754458
+              ]
+            },
+            {
+              "address": 402779198,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task INIT_TASK created at 0x18000348"
+              ],
+              "functions": [
+                402754416
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                2
+              ],
+              "write_sites": [
+                402754462
+              ]
+            },
+            {
+              "address": 402779200,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task INIT_TASK created at 0x18000348"
+              ],
+              "functions": [
+                402754416
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                2
+              ],
+              "write_sites": [
+                402754466
               ]
             },
             {
@@ -11384,7 +12208,53 @@
               ]
             },
             {
-              "address": 402779500,
+              "address": 402779334,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task INIT_TASK created at 0x18000348"
+              ],
+              "functions": [
+                402754416
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402754472
+              ]
+            },
+            {
+              "address": 402779335,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task INIT_TASK created at 0x18000348"
+              ],
+              "functions": [
+                402754416
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402754476
+              ]
+            },
+            {
+              "address": 402779498,
               "arm_description": null,
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
@@ -11392,10 +12262,38 @@
                 "unreached"
               ],
               "functions": [
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402689606
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402689612
+              ]
+            },
+            {
+              "address": 402779500,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
                 402653494,
+                402672040,
                 402672254,
                 402676360,
                 402680084,
+                402689046,
+                402689748,
                 402714016,
                 402714028,
                 402714136,
@@ -11408,9 +12306,15 @@
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
               "read_sites": [
                 402653544,
+                402672046,
                 402672264,
                 402677374,
                 402680092,
+                402689274,
+                402689672,
+                402689752,
+                402689778,
+                402689796,
                 402714020,
                 402714064,
                 402714152,
@@ -11438,10 +12342,11 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402653494
+                402653494,
+                402689046
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
@@ -11456,7 +12361,8 @@
                 4
               ],
               "write_sites": [
-                402653536
+                402653536,
+                402689464
               ]
             },
             {
@@ -11465,7 +12371,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402757994,
@@ -11498,13 +12404,14 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402760190,
                 402760212,
                 402760256,
-                402760318
+                402760318,
+                402760790
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
@@ -11517,11 +12424,15 @@
                 402760346
               ],
               "reset_reachable_write_values": [],
-              "stored_values": [],
+              "stored_values": [
+                68
+              ],
               "widths": [
                 1
               ],
-              "write_sites": []
+              "write_sites": [
+                402760798
+              ]
             },
             {
               "address": 402779517,
@@ -11529,15 +12440,18 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402760442,
-                402760484
+                402760484,
+                402761508
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
-              "read_sites": [],
+              "read_sites": [
+                402761622
+              ],
               "reset_reachable_write_values": [],
               "stored_values": [
                 0,
@@ -11557,14 +12471,17 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402760364
+                402760364,
+                402761508
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
-              "read_sites": [],
+              "read_sites": [
+                402761906
+              ],
               "reset_reachable_write_values": [],
               "stored_values": [],
               "widths": [
@@ -11684,6 +12601,765 @@
               ]
             },
             {
+              "address": 402779524,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761996
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                65535
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761964,
+                402762004,
+                402762058
+              ]
+            },
+            {
+              "address": 402779528,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761550
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761562,
+                402761702
+              ]
+            },
+            {
+              "address": 402779532,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761516,
+                402761692
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                2,
+                3
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761586,
+                402761698,
+                402761712,
+                402761838,
+                402761888
+              ]
+            },
+            {
+              "address": 402779536,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761518
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761842,
+                402761856,
+                402761866,
+                402761874,
+                402761892,
+                402761900
+              ]
+            },
+            {
+              "address": 402779540,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761570
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761574,
+                402761582,
+                402761694
+              ]
+            },
+            {
+              "address": 402779544,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761706
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                1,
+                4
+              ],
+              "write_sites": [
+                402761610
+              ]
+            },
+            {
+              "address": 402779548,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761734
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761618
+              ]
+            },
+            {
+              "address": 402779552,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761744
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761614
+              ]
+            },
+            {
+              "address": 402779556,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402760640,
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402760642,
+                402761740
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761728
+              ]
+            },
+            {
+              "address": 402779560,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761824
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761742
+              ]
+            },
+            {
+              "address": 402779564,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402760640,
+                402761508,
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761756,
+                402761778,
+                402762094,
+                402762132,
+                402762238
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                255
+              ],
+              "widths": [
+                1,
+                4,
+                8
+              ],
+              "write_sites": [
+                402760662,
+                402761946
+              ]
+            },
+            {
+              "address": 402779568,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508,
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                255
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761806,
+                402762240
+              ]
+            },
+            {
+              "address": 402779572,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761752
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761776,
+                402761810
+              ]
+            },
+            {
+              "address": 402779576,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761758
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4,
+                8
+              ],
+              "write_sites": [
+                402761784
+              ]
+            },
+            {
+              "address": 402779584,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508,
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761770,
+                402762072
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761800,
+                402761812,
+                402761932
+              ]
+            },
+            {
+              "address": 402779588,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761820
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761768,
+                402761782,
+                402761804
+              ]
+            },
+            {
+              "address": 402779592,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761790
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761780,
+                402761794
+              ]
+            },
+            {
+              "address": 402779596,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508,
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402762192,
+                402762210
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                1,
+                2
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761814,
+                402762198,
+                402762218
+              ]
+            },
+            {
+              "address": 402779600,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761508,
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761972
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4,
+                8
+              ],
+              "write_sites": [
+                402761834,
+                402761930,
+                402761984
+              ]
+            },
+            {
+              "address": 402779604,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761998
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": []
+            },
+            {
+              "address": 402779608,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761922
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4,
+                8
+              ],
+              "write_sites": [
+                402761940
+              ]
+            },
+            {
+              "address": 402779612,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402762066
+              ]
+            },
+            {
+              "address": 402779616,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761938,
+                402762064
+              ]
+            },
+            {
+              "address": 402779620,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761934,
+                402762062
+              ]
+            },
+            {
+              "address": 402779624,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402761950
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                300
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402761960,
+                402762010,
+                402762060
+              ]
+            },
+            {
+              "address": 402779628,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402762046
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402762050
+              ]
+            },
+            {
+              "address": 402779632,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402761914
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
+              "read_sites": [
+                402762174,
+                402762180,
+                402762200,
+                402762220
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402762204
+              ]
+            },
+            {
               "address": 402779652,
               "arm_description": null,
               "arm_name": null,
@@ -11695,6 +13371,8 @@
                 402764384,
                 402764460,
                 402764534,
+                402764704,
+                402764896,
                 402765166,
                 402765386
               ],
@@ -11702,6 +13380,9 @@
               "kind_basis": "inside the proven scatter runtime range 0x1801e380..0x1801ee84",
               "read_sites": [
                 402764584,
+                402764760,
+                402764936,
+                402765074,
                 402765262,
                 402765464,
                 402765602
@@ -11745,19 +13426,54 @@
               ]
             },
             {
+              "address": 402779796,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402688854,
+                402688930,
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                402688880,
+                402689062
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                1
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402688934,
+                402689108,
+                402689198
+              ]
+            },
+            {
               "address": 402779800,
               "arm_description": null,
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653494,
+                402653754,
                 402654310,
                 402654900,
                 402661310,
                 402669856,
+                402672040,
                 402672254,
                 402675710,
                 402676360,
@@ -11818,6 +13534,7 @@
               "read_sites": [
                 402653614,
                 402653630,
+                402653948,
                 402654494,
                 402654520,
                 402654544,
@@ -11841,6 +13558,7 @@
                 402668894,
                 402669872,
                 402669898,
+                402672084,
                 402672332,
                 402675604,
                 402675976,
@@ -12057,7 +13775,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402661310,
@@ -12172,6 +13890,33 @@
               "write_sites": []
             },
             {
+              "address": 402779880,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402689046
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                1
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402689214,
+                402689248
+              ]
+            },
+            {
               "address": 402779888,
               "arm_description": null,
               "arm_name": null,
@@ -12200,10 +13945,11 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402661310
+                402661310,
+                402760790
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -12211,11 +13957,15 @@
                 402668700
               ],
               "reset_reachable_write_values": [],
-              "stored_values": [],
+              "stored_values": [
+                1
+              ],
               "widths": [
                 4
               ],
-              "write_sites": []
+              "write_sites": [
+                402761496
+              ]
             },
             {
               "address": 402783992,
@@ -17318,7 +19068,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656152,
@@ -17379,7 +19129,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656166,
@@ -17415,7 +19165,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656152,
@@ -17491,7 +19241,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656152,
@@ -18501,7 +20251,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402675710,
@@ -18527,7 +20277,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402675710,
@@ -18552,7 +20302,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402675710,
@@ -18577,7 +20327,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402675710,
@@ -18602,7 +20352,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402675710,
@@ -20849,11 +22599,13 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402656598,
                 402661310,
+                402688956,
+                402689046,
                 402717308,
                 402717656,
                 402717698,
@@ -20867,6 +22619,9 @@
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
               "read_sites": [
                 402661862,
+                402688988,
+                402689080,
+                402689232,
                 402717356,
                 402717432,
                 402717508,
@@ -21025,7 +22780,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -21048,7 +22803,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -21071,7 +22826,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -21094,7 +22849,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402697124
@@ -21366,7 +23121,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21391,7 +23146,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21416,7 +23171,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21441,7 +23196,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21466,7 +23221,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21491,7 +23246,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21592,7 +23347,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21617,7 +23372,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21645,8 +23400,8 @@
                 "unreached"
               ],
               "functions": [
-                402681148,
-                402690114
+                402690114,
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -21673,7 +23428,7 @@
                 "unreached"
               ],
               "functions": [
-                402681148
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -21695,7 +23450,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21720,11 +23475,11 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402681148,
-                402690072
+                402690072,
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -21749,11 +23504,11 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402681148,
-                402690072
+                402690072,
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -21778,11 +23533,11 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402681148,
-                402690072
+                402690072,
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -21807,7 +23562,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21832,11 +23587,11 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402681148,
-                402690072
+                402690072,
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -21860,7 +23615,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21885,7 +23640,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21910,7 +23665,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402690072
@@ -21988,7 +23743,7 @@
                 "unreached"
               ],
               "functions": [
-                402681148
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -22011,7 +23766,7 @@
                 "unreached"
               ],
               "functions": [
-                402681148
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -22034,7 +23789,7 @@
                 "unreached"
               ],
               "functions": [
-                402681148
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -22057,7 +23812,7 @@
                 "unreached"
               ],
               "functions": [
-                402681148
+                402707420
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -22514,7 +24269,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402709650,
@@ -22614,7 +24369,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402712278,
@@ -22649,7 +24404,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402712278,
@@ -22740,7 +24495,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402688278,
@@ -22769,7 +24524,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402688278
@@ -23111,7 +24866,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402717624,
@@ -23141,7 +24896,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402717624,
@@ -23171,7 +24926,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402717624
@@ -23196,7 +24951,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402717614,
@@ -23227,7 +24982,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402717624,
@@ -23374,7 +25129,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402720848
@@ -23397,7 +25152,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402720848
@@ -23420,7 +25175,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402720848
@@ -23443,7 +25198,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402720848
@@ -23466,7 +25221,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402720848
@@ -23489,13 +25244,15 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "decompressed region 0x1801ecac",
                 "decompressed region 0x1801ecb0",
                 "decompressed region 0x1801ecc0",
                 "table@0x18018ce8"
               ],
               "functions": [
-                402730446
+                402730446,
+                402730584
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
@@ -23510,8 +25267,32 @@
                 4
               ],
               "write_sites": [
-                402730472
+                402730472,
+                402730614
               ]
+            },
+            {
+              "address": 402813756,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "task IDLE created at 0x180136fe"
+              ],
+              "functions": [
+                402732746
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                402732760
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": []
             },
             {
               "address": 402814096,
@@ -23519,6 +25300,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -23526,7 +25308,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731366
@@ -23549,6 +25335,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
                 "decompressed region 0x1801ecac",
@@ -23556,7 +25343,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402731366
@@ -23579,7 +25370,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "task IDLE created at 0x180136fe"
               ],
               "functions": [
                 402735030
@@ -23602,7 +25393,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "task IDLE created at 0x180136fe"
               ],
               "functions": [
                 402735030
@@ -23648,7 +25439,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "table@0x18018ce8"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "table@0x18018ce8",
+                "task INIT_TASK created at 0x18000348"
               ],
               "functions": [
                 402736696
@@ -23673,7 +25466,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "table@0x18018ce8"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "table@0x18018ce8",
+                "task INIT_TASK created at 0x18000348"
               ],
               "functions": [
                 402736696
@@ -23698,7 +25493,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "table@0x18018ce8"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
+                "table@0x18018ce8",
+                "task INIT_TASK created at 0x18000348"
               ],
               "functions": [
                 402736696
@@ -25517,7 +27314,8 @@
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
                 "called from entry image 0x1994",
-                "table@0x18016d44"
+                "table@0x18016d44",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402741724,
@@ -27492,7 +29290,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653650
@@ -27515,7 +29313,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653650
@@ -27538,7 +29336,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653650
@@ -27561,7 +29359,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653650
@@ -27680,19 +29478,37 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402760364,
                 402760442,
-                402760484
+                402760484,
+                402760628,
+                402760756,
+                402760790,
+                402761508
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
-              "read_sites": [],
+              "read_sites": [
+                402761608
+              ],
               "reset_reachable_write_values": [],
               "stored_values": [
-                192
+                48,
+                64,
+                80,
+                96,
+                112,
+                128,
+                144,
+                160,
+                176,
+                192,
+                208,
+                224,
+                255
               ],
               "widths": [
                 1
@@ -27700,7 +29516,24 @@
               "write_sites": [
                 402760390,
                 402760464,
-                402760506
+                402760506,
+                402760632,
+                402760764,
+                402760774,
+                402760812,
+                402760826,
+                402760842,
+                402760944,
+                402761022,
+                402761104,
+                402761142,
+                402761176,
+                402761208,
+                402761292,
+                402761344,
+                402761386,
+                402761436,
+                402761474
               ]
             },
             {
@@ -27709,20 +29542,32 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402760364,
                 402760442,
-                402760484
+                402760484,
+                402760756,
+                402760790,
+                402761508
               ],
               "kind": "runtime-ram",
               "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
-              "read_sites": [],
+              "read_sites": [
+                402761612
+              ],
               "reset_reachable_write_values": [],
               "stored_values": [
+                0,
+                1,
+                2,
+                11,
+                15,
                 80,
                 85,
+                128,
+                176,
                 208
               ],
               "widths": [
@@ -27731,7 +29576,682 @@
               "write_sites": [
                 402760394,
                 402760468,
-                402760510
+                402760510,
+                402760778,
+                402760830,
+                402760846,
+                402760946,
+                402761024,
+                402761106,
+                402761144,
+                402761178,
+                402761214,
+                402761294,
+                402761348,
+                402761390,
+                402761440,
+                402761476
+              ]
+            },
+            {
+              "address": 402870275,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790,
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                402761616
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                2,
+                7,
+                15
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760852,
+                402760948,
+                402761026,
+                402761108,
+                402761146,
+                402761180,
+                402761220,
+                402761298,
+                402761350,
+                402761392,
+                402761442
+              ]
+            },
+            {
+              "address": 402870276,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                5,
+                10,
+                16,
+                25,
+                127,
+                200
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760860,
+                402760952,
+                402761030,
+                402761110,
+                402761148,
+                402761182,
+                402761226,
+                402761300,
+                402761352,
+                402761396,
+                402761446
+              ]
+            },
+            {
+              "address": 402870277,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790,
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                402761720
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                5,
+                12,
+                20,
+                68
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760868,
+                402760956,
+                402761036,
+                402761114,
+                402761152,
+                402761186,
+                402761230,
+                402761302,
+                402761356,
+                402761398,
+                402761448
+              ]
+            },
+            {
+              "address": 402870278,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790,
+                402761508
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [
+                402761722
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                3,
+                16,
+                18,
+                23,
+                60,
+                144,
+                200,
+                232
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760876,
+                402760960,
+                402761038,
+                402761118,
+                402761156,
+                402761190,
+                402761234,
+                402761306,
+                402761362,
+                402761402,
+                402761450
+              ]
+            },
+            {
+              "address": 402870279,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                3,
+                26,
+                50
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760882,
+                402760966,
+                402761044,
+                402761124,
+                402761158,
+                402761192,
+                402761236,
+                402761310,
+                402761364,
+                402761404,
+                402761452
+              ]
+            },
+            {
+              "address": 402870280,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                7,
+                203,
+                207,
+                244
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760886,
+                402760970,
+                402761048,
+                402761128,
+                402761162,
+                402761196,
+                402761238,
+                402761314,
+                402761366,
+                402761406,
+                402761454
+              ]
+            },
+            {
+              "address": 402870281,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                1,
+                2,
+                4
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760890,
+                402760972,
+                402761052,
+                402761130,
+                402761164,
+                402761198,
+                402761242,
+                402761316,
+                402761368,
+                402761408,
+                402761458
+              ]
+            },
+            {
+              "address": 402870282,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                7,
+                10,
+                15,
+                50,
+                184
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760894,
+                402760974,
+                402761054,
+                402761244,
+                402761318,
+                402761370,
+                402761412,
+                402761460
+              ]
+            },
+            {
+              "address": 402870283,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                3,
+                11
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760898,
+                402760978,
+                402761058,
+                402761248,
+                402761322,
+                402761374,
+                402761416,
+                402761462
+              ]
+            },
+            {
+              "address": 402870284,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                82,
+                152
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760900,
+                402760980,
+                402761060,
+                402761252,
+                402761324,
+                402761420
+              ]
+            },
+            {
+              "address": 402870285,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                4,
+                5,
+                58
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760902,
+                402760982,
+                402761062,
+                402761254,
+                402761328,
+                402761424
+              ]
+            },
+            {
+              "address": 402870286,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                12,
+                76,
+                124,
+                180,
+                244
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760906,
+                402760986,
+                402761066,
+                402761260,
+                402761330
+              ]
+            },
+            {
+              "address": 402870287,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                1,
+                4,
+                6,
+                8,
+                10
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760910,
+                402760988,
+                402761070,
+                402761264,
+                402761332
+              ]
+            },
+            {
+              "address": 402870288,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                100,
+                114
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760914,
+                402760992,
+                402761074,
+                402761268
+              ]
+            },
+            {
+              "address": 402870289,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                4
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760916,
+                402760994,
+                402761076,
+                402761272
+              ]
+            },
+            {
+              "address": 402870290,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                48,
+                66,
+                68
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760920,
+                402760998,
+                402761080,
+                402761276
+              ]
+            },
+            {
+              "address": 402870291,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                4,
+                86,
+                90
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760924,
+                402761002,
+                402761084,
+                402761280
+              ]
+            },
+            {
+              "address": 402870292,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                172,
+                225,
+                245
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760928,
+                402761006,
+                402761088
+              ]
+            },
+            {
+              "address": 402870293,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access, and the address space is established by earlier phases",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402760790
+              ],
+              "kind": "runtime-ram",
+              "kind_basis": "inside the proven scatter runtime range 0x1801ee84..0x18036168",
+              "read_sites": [],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                75,
+                91
+              ],
+              "widths": [
+                1
+              ],
+              "write_sites": [
+                402760932,
+                402761010,
+                402761092
               ]
             },
             {
@@ -27762,9 +30282,10 @@
           ]
         },
         {
-          "accesses": 8,
+          "accesses": 18,
           "base": 536870912,
           "contexts": [
+            "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
             "table@0x18016d44"
           ],
           "description": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
@@ -27776,10 +30297,12 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402653494
+                402653494,
+                402653754,
+                402689046
               ],
               "kind": "unknown",
               "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
@@ -27787,15 +30310,26 @@
                 402653516,
                 402653572,
                 402653588,
-                402653596
+                402653596,
+                402653772,
+                402689286,
+                402689470,
+                402689482,
+                402689490
               ],
               "reset_reachable_write_values": [],
-              "stored_values": [],
+              "stored_values": [
+                0
+              ],
               "widths": [
                 4
               ],
               "write_sites": [
-                402653592
+                402653592,
+                402653764,
+                402653778,
+                402689478,
+                402689486
               ]
             },
             {
@@ -27804,15 +30338,17 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
-                402653494
+                402653494,
+                402689046
               ],
               "kind": "unknown",
               "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
               "read_sites": [
-                402653594
+                402653594,
+                402689488
               ],
               "reset_reachable_write_values": [],
               "stored_values": [],
@@ -27851,9 +30387,10 @@
           ]
         },
         {
-          "accesses": 49,
+          "accesses": 69,
           "base": 1073741824,
           "contexts": [
+            "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
             "table@0x18016d44"
           ],
           "description": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
@@ -27865,7 +30402,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402760084
@@ -27883,12 +30420,131 @@
               "write_sites": []
             },
             {
+              "address": 1073844228,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402653754
+              ],
+              "kind": "unknown",
+              "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
+              "read_sites": [
+                402653812
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402653814
+              ]
+            },
+            {
+              "address": 1073844232,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402653754
+              ],
+              "kind": "unknown",
+              "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
+              "read_sites": [
+                402653800,
+                402653808
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402653806,
+                402653810
+              ]
+            },
+            {
+              "address": 1073852416,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402653368,
+                402653754,
+                402766764,
+                402766784
+              ],
+              "kind": "unknown",
+              "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
+              "read_sites": [
+                402653380,
+                402653402,
+                402653916
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [
+                0,
+                124
+              ],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402653386,
+                402653408,
+                402653922,
+                402766770,
+                402766780,
+                402766790,
+                402766800
+              ]
+            },
+            {
+              "address": 1073852420,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402653368,
+                402653754
+              ],
+              "kind": "unknown",
+              "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
+              "read_sites": [
+                402653372,
+                402653908
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402653378,
+                402653914
+              ]
+            },
+            {
               "address": 1073872904,
               "arm_description": null,
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352
@@ -27911,7 +30567,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352
@@ -27935,7 +30591,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352
@@ -27959,7 +30615,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352
@@ -27988,7 +30644,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352
@@ -28134,7 +30790,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402725120,
@@ -28194,7 +30850,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402725268,
@@ -28221,9 +30877,10 @@
           ]
         },
         {
-          "accesses": 126,
+          "accesses": 139,
           "base": 1074790400,
           "contexts": [
+            "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
             "IRQ6",
             "called from entry image 0x1994",
             "table@0x18016d44"
@@ -28244,7 +30901,8 @@
                 402741068,
                 402742498,
                 402746254,
-                402747794
+                402747794,
+                402747848
               ],
               "kind": "unknown",
               "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
@@ -28262,7 +30920,8 @@
                 32768,
                 32896,
                 131072,
-                262144
+                262144,
+                1048576
               ],
               "widths": [
                 4
@@ -28277,7 +30936,8 @@
                 402746264,
                 402746278,
                 402747806,
-                402747820
+                402747820,
+                402747856
               ]
             },
             {
@@ -28330,6 +30990,43 @@
               "write_sites": [
                 402741892
               ]
+            },
+            {
+              "address": 1074790412,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
+              "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+              ],
+              "functions": [
+                402688854,
+                402688930,
+                402688956,
+                402689046
+              ],
+              "kind": "unknown",
+              "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
+              "read_sites": [
+                402688886,
+                402688890,
+                402688944,
+                402689006,
+                402689090,
+                402689098,
+                402689142,
+                402689152,
+                402689690,
+                402689698,
+                402689716,
+                402689730
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": []
             },
             {
               "address": 1074790420,
@@ -28890,10 +31587,10 @@
           ]
         },
         {
-          "accesses": 9,
+          "accesses": 21,
           "base": 1157627904,
           "contexts": [
-            "unreached"
+            "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
           ],
           "description": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
           "kind": "unknown",
@@ -28904,17 +31601,52 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352,
-                402726960
+                402726960,
+                402766854,
+                402766896
               ],
               "kind": "unknown",
               "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
               "read_sites": [
                 402726420,
-                402727068
+                402727068,
+                402766858,
+                402766866,
+                402766874,
+                402766886,
+                402766904
+              ],
+              "reset_reachable_write_values": [],
+              "stored_values": [],
+              "widths": [
+                4
+              ],
+              "write_sites": [
+                402766864,
+                402766872,
+                402766880,
+                402766910
+              ]
+            },
+            {
+              "address": 1157627912,
+              "arm_description": null,
+              "arm_name": null,
+              "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
+              "contexts": [
+                "unreached"
+              ],
+              "functions": [
+                402766896
+              ],
+              "kind": "unknown",
+              "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
+              "read_sites": [
+                402766912
               ],
               "reset_reachable_write_values": [],
               "stored_values": [],
@@ -28929,11 +31661,13 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352,
-                402726960
+                402726960,
+                402766854,
+                402766896
               ],
               "kind": "unknown",
               "kind_basis": "no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual",
@@ -28942,11 +31676,17 @@
                 402727072
               ],
               "reset_reachable_write_values": [],
-              "stored_values": [],
+              "stored_values": [
+                4,
+                16
+              ],
               "widths": [
                 4
               ],
-              "write_sites": []
+              "write_sites": [
+                402766884,
+                402766902
+              ]
             },
             {
               "address": 1157627988,
@@ -28954,7 +31694,7 @@
               "arm_name": null,
               "confidence": "high for the access itself; the address space is unidentified, so no claim is made about what the register does",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402726352,
@@ -29005,9 +31745,10 @@
           ]
         },
         {
-          "accesses": 21,
+          "accesses": 23,
           "base": 3758096384,
           "contexts": [
+            "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
             "IRQ6",
             "called from entry image 0x1994",
             "called from entry image 0x19cc",
@@ -29016,7 +31757,11 @@
             "decompressed region 0x1801ecc0",
             "table@0x18016d44",
             "table@0x18017d08",
-            "table@0x18018ce8"
+            "table@0x18018ce8",
+            "task IDLE created at 0x180136fe",
+            "task INIT_TASK created at 0x18000348",
+            "task Tmr Svc created at 0x180141ca",
+            "task usbd_wdt created at 0x18015e8a"
           ],
           "description": "ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document",
           "kind": "arm-core",
@@ -29052,7 +31797,7 @@
               "arm_name": "NVIC_ISER1",
               "confidence": "high \u2014 architectural register, named from the ARM reference",
               "contexts": [
-                "unreached"
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
               ],
               "functions": [
                 402653448
@@ -29102,6 +31847,7 @@
               "arm_name": "ICSR",
               "confidence": "high \u2014 architectural register, named from the ARM reference",
               "contexts": [
+                "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)",
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
@@ -29110,7 +31856,11 @@
                 "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
-                "table@0x18018ce8"
+                "table@0x18018ce8",
+                "task IDLE created at 0x180136fe",
+                "task INIT_TASK created at 0x18000348",
+                "task Tmr Svc created at 0x180141ca",
+                "task usbd_wdt created at 0x18015e8a"
               ],
               "functions": [
                 402728348,
@@ -29123,9 +31873,11 @@
                 402731832,
                 402732056,
                 402732334,
+                402732746,
                 402733950,
                 402734046,
                 402734174,
+                402735912,
                 402747246
               ],
               "kind": "arm-core",
@@ -29151,9 +31903,11 @@
                 402731886,
                 402732204,
                 402732430,
+                402732766,
                 402733992,
                 402734106,
                 402734342,
+                402735980,
                 402747662
               ]
             },
@@ -29185,10 +31939,14 @@
           ]
         }
       ],
-      "functions": 573,
+      "functions": 616,
       "name": "Candidate B (application)",
-      "reached_functions": 146,
+      "reached_functions": 281,
       "roots": [
+        {
+          "entry": 402653754,
+          "label": "Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)"
+        },
         {
           "entry": 402759468,
           "label": "IRQ31"
@@ -29412,15 +32170,28 @@
         {
           "entry": 402753942,
           "label": "table@0x18018ce8"
+        },
+        {
+          "entry": 402732746,
+          "label": "task IDLE created at 0x180136fe"
+        },
+        {
+          "entry": 402653260,
+          "label": "task INIT_TASK created at 0x18000348"
+        },
+        {
+          "entry": 402735436,
+          "label": "task Tmr Svc created at 0x180141ca"
+        },
+        {
+          "entry": 402742404,
+          "label": "task usbd_wdt created at 0x18015e8a"
         }
       ],
       "slice": "installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin",
       "unreached_functions": [
-        402653448,
-        402653494,
-        402653650,
+        402653368,
         402654240,
-        402654310,
         402654596,
         402654662,
         402654714,
@@ -29431,16 +32202,12 @@
         402655856,
         402655960,
         402656040,
-        402656152,
-        402656166,
         402656184,
         402656402,
         402656598,
         402661230,
         402661310,
         402669788,
-        402669856,
-        402669920,
         402669924,
         402669950,
         402670490,
@@ -29452,6 +32219,7 @@
         402671214,
         402671264,
         402671608,
+        402672040,
         402672156,
         402672254,
         402675710,
@@ -29462,7 +32230,6 @@
         402678210,
         402679852,
         402679978,
-        402680084,
         402680194,
         402680334,
         402680508,
@@ -29484,17 +32251,15 @@
         402687824,
         402687988,
         402688116,
-        402688244,
-        402688254,
-        402688278,
-        402688424,
         402688490,
         402688514,
         402688630,
         402688806,
-        402689866,
-        402689992,
-        402690072,
+        402688854,
+        402688956,
+        402689046,
+        402689748,
+        402689810,
         402690114,
         402690138,
         402690156,
@@ -29534,7 +32299,6 @@
         402696710,
         402696880,
         402696924,
-        402697124,
         402698108,
         402698410,
         402698886,
@@ -29574,7 +32338,6 @@
         402705994,
         402706296,
         402706326,
-        402706328,
         402706474,
         402706508,
         402706522,
@@ -29584,21 +32347,14 @@
         402707062,
         402707132,
         402707256,
+        402707364,
+        402707420,
         402708032,
         402708274,
         402708544,
         402708638,
-        402708688,
-        402708756,
         402708840,
         402708880,
-        402708936,
-        402708938,
-        402708940,
-        402708942,
-        402709064,
-        402709118,
-        402709150,
         402709188,
         402709226,
         402709264,
@@ -29609,11 +32365,8 @@
         402709390,
         402709428,
         402709476,
-        402709514,
         402709568,
-        402709612,
         402709650,
-        402711154,
         402711166,
         402711208,
         402711236,
@@ -29622,28 +32375,14 @@
         402711328,
         402711364,
         402711400,
-        402711464,
-        402711496,
-        402711680,
-        402711734,
-        402711760,
-        402711786,
-        402712142,
-        402712278,
         402712438,
         402712558,
         402712630,
-        402713142,
-        402713322,
         402713370,
         402713466,
-        402713640,
         402713708,
-        402713826,
         402713870,
         402714016,
-        402714028,
-        402714136,
         402714184,
         402714206,
         402714216,
@@ -29659,11 +32398,7 @@
         402716442,
         402716670,
         402717000,
-        402717308,
         402717614,
-        402717624,
-        402717656,
-        402717698,
         402717730,
         402717762,
         402717802,
@@ -29671,7 +32406,6 @@
         402718028,
         402718634,
         402718978,
-        402719048,
         402719246,
         402719958,
         402720268,
@@ -29681,8 +32415,6 @@
         402720620,
         402720668,
         402720688,
-        402720848,
-        402720928,
         402721252,
         402721304,
         402721348,
@@ -29692,27 +32424,12 @@
         402723424,
         402723948,
         402724496,
-        402724914,
-        402724948,
         402724998,
         402725084,
         402725120,
         402725268,
-        402725420,
         402725622,
         402725822,
-        402726134,
-        402726146,
-        402726158,
-        402726234,
-        402726324,
-        402726352,
-        402726606,
-        402726936,
-        402726960,
-        402727232,
-        402727370,
-        402727422,
         402727502,
         402727540,
         402727722,
@@ -29720,17 +32437,12 @@
         402727820,
         402727848,
         402728016,
-        402728270,
-        402728304,
         402729112,
         402729148,
         402729614,
         402730082,
         402730234,
         402730752,
-        402730772,
-        402730960,
-        402731046,
         402731644,
         402731898,
         402731992,
@@ -29741,7 +32453,6 @@
         402732932,
         402733004,
         402733120,
-        402733194,
         402733342,
         402733656,
         402733950,
@@ -29749,11 +32460,8 @@
         402734174,
         402734360,
         402734586,
-        402734796,
-        402735010,
-        402735030,
+        402735588,
         402740778,
-        402742404,
         402742498,
         402745652,
         402746236,
@@ -29761,6 +32469,7 @@
         402747680,
         402747778,
         402747794,
+        402747848,
         402749608,
         402751058,
         402751360,
@@ -29774,32 +32483,11 @@
         402756718,
         402756854,
         402756862,
-        402757016,
-        402757046,
-        402757154,
         402757194,
         402757210,
-        402757226,
-        402757236,
-        402757248,
-        402757264,
-        402757276,
-        402757292,
-        402757308,
-        402757324,
-        402757340,
-        402757376,
-        402757400,
-        402757418,
         402757814,
         402757918,
-        402757994,
         402758184,
-        402758384,
-        402759150,
-        402759176,
-        402759230,
-        402759276,
         402759316,
         402759352,
         402759410,
@@ -29809,27 +32497,15 @@
         402759764,
         402759856,
         402759916,
-        402760084,
-        402760094,
-        402760142,
-        402760190,
         402760212,
-        402760256,
-        402760318,
-        402760364,
-        402760442,
-        402760484,
-        402762280,
+        402760628,
+        402760640,
+        402760756,
+        402761508,
+        402761914,
         402762304,
-        402762322,
-        402762350,
-        402762526,
-        402762832,
-        402763082,
-        402763268,
         402763480,
         402763656,
-        402763832,
         402764114,
         402764154,
         402764194,
@@ -29838,34 +32514,37 @@
         402764384,
         402764460,
         402764534,
+        402764704,
+        402764896,
         402765166,
         402765386,
         402765690,
         402765758,
-        402765784
+        402765784,
+        402766764,
+        402766784,
+        402766854,
+        402766896
       ],
       "unreached_with_no_caller": [
-        402653448,
-        402653650,
+        402653368,
         402655770,
         402656598,
         402661310,
-        402669950,
         402672254,
         402675710,
-        402678210,
         402679852,
         402679978,
         402685496,
         402688806,
-        402690072,
+        402689046,
+        402689748,
+        402689810,
         402690138,
         402696474,
         402699120,
         402700424,
         402701998,
-        402706474,
-        402706508,
         402706522,
         402706836,
         402706858,
@@ -29873,6 +32552,7 @@
         402707062,
         402707132,
         402707256,
+        402707364,
         402708274,
         402708544,
         402708638,
@@ -29884,21 +32564,14 @@
         402712438,
         402712630,
         402713870,
-        402714136,
         402716442,
-        402717308,
-        402717656,
         402717830,
-        402718634,
-        402718978,
-        402719048,
         402719958,
         402720268,
         402720302,
         402720344,
         402720380,
         402720620,
-        402720928,
         402721252,
         402721348,
         402721468,
@@ -29931,16 +32604,14 @@
         402732932,
         402733004,
         402733120,
-        402733194,
         402733342,
         402733950,
         402734046,
         402734174,
         402734360,
         402734586,
-        402735030,
+        402735588,
         402740778,
-        402742404,
         402745652,
         402746254,
         402747778,
@@ -29954,10 +32625,8 @@
         402756718,
         402757194,
         402757210,
-        402757814,
         402757918,
         402758184,
-        402759276,
         402759316,
         402759352,
         402759410,
@@ -29967,37 +32636,36 @@
         402759764,
         402759856,
         402759916,
-        402760190,
         402760212,
-        402760364,
-        402760442,
-        402760484,
+        402760756,
+        402761508,
+        402761914,
         402762304,
-        402763832,
         402764154,
         402764306,
         402764384,
         402764460,
         402764534,
-        402765690
+        402764704,
+        402764896
       ],
       "unresolved_accesses": {
         "base_lr_unknown": 17,
-        "base_r0_unknown": 1114,
+        "base_r0_unknown": 1133,
         "base_r10_unknown": 3,
         "base_r11_unknown": 9,
         "base_r12_unknown": 31,
-        "base_r1_unknown": 523,
+        "base_r1_unknown": 528,
         "base_r2_unknown": 258,
-        "base_r3_unknown": 154,
-        "base_r4_unknown": 771,
-        "base_r5_unknown": 208,
+        "base_r3_unknown": 155,
+        "base_r4_unknown": 797,
+        "base_r5_unknown": 209,
         "base_r6_unknown": 153,
         "base_r7_unknown": 82,
         "base_r8_unknown": 42,
         "base_r9_unknown": 37,
-        "register_offset": 851,
-        "stack_relative": 1072
+        "register_offset": 862,
+        "stack_relative": 1146
       },
       "unresolved_roots": []
     }

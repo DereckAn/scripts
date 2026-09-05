@@ -1567,7 +1567,12 @@ no function rather than dropping it silently, so that table can no longer be
 counted as three distinct indirect roots by accident.
 
 **What is still unreached, without any claim of closure.** 427 of 573 application
-functions. Of those, **135 are called by nothing in the image** and reach the
+functions. *(Superseded by log 106: main and the task entries are now seeded, so
+both the numerator and the denominator changed. See "Phase 5A: task entries"
+below. One wording here is also corrected there: `0x1800023a` is not "absent
+from installed_b.txt" — the address appears once, as the exclusive end of
+`FUN_180001d2`'s range. No FUNC entry exists at it, which is the claim that
+matters and which stands.)* Of those, **135 are called by nothing in the image** and reach the
 other 292 between them, so the gap is 135 missing entry points, not 427 mysteries;
 zero unreached functions are called by a reached one. The largest unaccounted
 mechanism is named precisely: **`0x1800023a`, recorded here and in logs 79–80 as
@@ -1598,6 +1603,94 @@ reset vector yet is reachable from no record and no scatter region — exactly w
 a second core's payload would look like. Neither analysed image accesses
 `0x18038000`, so nothing that would start it has been found. Recorded as a
 hypothesis with a named blocker.
+
+### Phase 5A: task entries and the new baseline (log 106)
+
+An RTOS task entry is handed to the creation primitive **in a register**. It is
+stored in no pointer table and no initialised data, so every byte survey in 5A
+was blind to it. Recovering it needed data-flow, and that is what finally moved
+the application's reachability.
+
+**A premise had to be corrected first.** Log 80's decompile — the source of
+`FUN_18012fa4(0x1800004d,"INIT_TASK",…)` — was taken from
+`ghidra/imports/app_candidate_b_18000000.bin`, whose sha256 `8fe68a13…` is the
+**vendor** record slice. Every address in log 80 is a vendor address. The
+installed primitive was therefore *derived* — vendor `0x18012fa4` → installed
+`0x18012fd0`, identical body, the measured `+0x2c` — not assumed equal.
+
+**The call shape was read off the primitive's own code**, not inferred from the
+name string. The initialiser `FUN_18013ea0` allocates `stack << 2` bytes, copies
+at most `0x10` name bytes to TCB+`0x34`, clamps the priority to `0xe`, derives
+the ready-list index as `0xf − priority`, and hands `(stack_top, entry,
+argument)` to the frame builder:
+
+    create(entry, name, stack_words, argument, priority, out_handle)
+
+**Five tasks, identical in both releases.** Constant propagation over each
+*calling* function resolved every argument at all five call sites:
+
+| # | name | entry (installed) | stack | priority | created at | by |
+|---|---|---|---|---|---|---|
+| 0 | `INIT_TASK` | `0x1800004d` | 256 w / 1024 B | 20 → 14 (clamped) | `0x18000348` | main |
+| 1 | `OEM_MAIN_SERVICE_TASK` | `0x00000499` | 4096 w / 16384 B | 10 | `0x1800007e` | `INIT_TASK` |
+| 2 | `IDLE` | `0x180136cb` | 60 w / 240 B | 0 | `0x180136fe` | — |
+| 3 | `Tmr Svc` | `0x1801414d` | 380 w / 1520 B | 2 | `0x180141ca` | — |
+| 4 | `usbd_wdt` | `0x18015c85` | 256 w / 1024 B | 1 | `0x18015e8a` | — |
+
+Names, stacks, priorities and arguments are identical across releases and the
+app-space entries differ by exactly the `+0x2c` Phase 3 measured — a cross-check,
+since the two harvests ran independently against two different images.
+
+**One task runs code in the other image.** `OEM_MAIN_SERVICE_TASK`'s entry is
+`0x499`, loaded from the literal-pool word at `0x180003b0` (the same value in
+both releases). `0x498` lies in Candidate A's `0x0..0x58ac` — the image the
+bootloader copies to address 0. The application's RTOS creates a task whose code
+lives in the entry image, the mirror of log 79's finding that Candidate A calls
+into Candidate B. Accepted on the pointer's data-flow provenance, a standard
+Thumb prologue byte-identical in both releases, eight instructions decoding
+cleanly, and Ghidra creating a function there — *not* on
+`isValidSubroutine`, which returns false for every span still stored as
+undefined data and is reported alongside so the disagreement is visible.
+
+**Incidental corroboration of log 105.** `INIT_TASK`'s second instruction loads
+`*(0x18000394)` = `0x1801e604` installed / `0x1801e5d8` vendor, and passes it to
+`FUN_18018b70`. Both are the decompressed region's base + `0x284` — the exact
+offset at which log 105 found idVendor `0x0b05`, idProduct `0x1b7e` and
+bcdDevice. Log 105 identified that region from its content; this reaches the
+same offset from the instruction stream, independently.
+
+**A new baseline, not an improvement.** Seeding changed the function counts, so
+these numbers share no denominator with log 105's and 281 is *not* "135 more
+than 146":
+
+| | before (log 105) | after (log 106) |
+|---|---|---|
+| entry image | 91 of 101 | **101 of 114** |
+| application | 146 of 573 | **281 of 616** |
+
+Both releases moved symmetrically, Phase 3 was regenerated and still reports
+114/114 and 616/616 matched with nothing unmatched. Every root category from
+logs 104 and 105 survives, and table `0x5680`'s absorbed middle entry is still
+reported as `roots naming no function: 0x00004018` — both now pinned by tests
+against the real images.
+
+**No task reaches a vendor peripheral.** Every vendor block (`0x20000000`,
+`0x40000000`, `0x40100000`, `0x45000000`) is reached only from main's
+initialisation path, from IRQ6, or from the entry image. The five tasks reach
+RAM and the ARM core block. That is what the call graph shows.
+
+**The residue is enumerated, not eliminated** — which is what 5A's exit gate
+asks for. 121 callerless application functions remain (12,313 instructions).
+The four largest, including log 80's dispatcher `0x18001fbe` at 3,146
+instructions, have **zero** references of any kind, and an exhaustive
+aligned-word search of the entry slice, the application slice and the
+reconstructed region finds none of their addresses stored anywhere. Separately,
+**81 register-target branches are unresolved** (entry 28 of 35, application 53
+of 54, identical in both releases), each listed by address. The mechanisms still
+unaccounted for — the destinations of those branches, callback registration
+through primitives other than task creation, entry from the bootloader, and
+linker-retained dead code — are stated as open. None is traced, and none is
+asserted as a finding.
 
 ### Firmware modification roadmap (offline-first)
 

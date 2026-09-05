@@ -1,0 +1,481 @@
+LOG 106 — PHASE 5A COMPLETION: ARGUMENT-PASSED TASK ENTRY ROOTS
+Date: 2026-09-04
+Scope: ONE step. Recover the RTOS task entry points that are handed to the
+creation primitive in a register and therefore appear in no pointer table and
+no initialised data. Phases 5B-5G were NOT begun. Nothing was committed.
+
+SAFETY: no /dev/hidraw, no USB or sysfs access, no sudo, no package install, no
+network, no probe/backup/bootloader tool, no unlock/erase/program/reset/SPI
+command construction. Neither evidence binary, no historical log, and not
+opencode.json at the repository root were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened. Only the git-ignored
+ghidra/project-step6 (and the ignored ghidra/{inventories,peripherals,tasks})
+were written. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+ERRATUM TO LOG 105, STEP 10
+================================================================================
+Log 105 is immutable and is NOT edited. The erratum is recorded here.
+
+ORIGINAL WORDING (logs/105-decompressed-region-reconstruction.txt, STEP 10):
+  "0x1800023a, recorded in FINDINGS.md and logs 79-80 as Candidate B's runtime
+   entry ("welcome to main"), IS NOT A FUNCTION IN THE INVENTORY AT ALL. It is
+   absent from installed_b.txt, so it is neither reached nor unreached — the
+   traversal cannot start there."
+
+CORRECTION: "absent from installed_b.txt" is wrong as written. The address
+string `1800023a` DOES appear in that file, once, as the exclusive end of the
+preceding function's range.
+
+EVIDENCE, as the file stood before this step's seeding:
+  $ grep -n '1800023a' ghidra/inventories/installed_b.txt
+    8:FUNC entry=180001d2 name=FUN_180001d2 size=0x68 ranges=180001d2-1800023a
+      insns=45 blocks=8 bytes_sha=d50994d2... callers=0
+      callees=180088fe,1800ece2,1801bd82,1801bd8c ...
+  $ grep -c '^FUNC entry=1800023a ' ghidra/inventories/installed_b.txt
+    0
+  Range ends in this inventory are EXCLUSIVE — match_functions.py slices
+  `data[lo - base : hi - base]` — so `180001d2-1800023a` means the body ends
+  at, and does not include, 0x1800023a. The address is the first byte after
+  FUN_180001d2, which is exactly where main begins.
+
+THE SUBSTANTIVELY CORRECT CLAIM, verified by the reviewer and re-verified here:
+  No FUNC entry exists at 0x1800023a, so the reachability traversal cannot
+  start there. Everything log 105 concluded from that stands.
+
+The reviewer is credited with catching the wording. After this step's seeding
+the same grep now returns
+  FUNC entry=1800023a name=CandidateB_Main size=0x122 ... insns=101 blocks=4
+which is the change this step made, not a contradiction of the erratum.
+
+
+================================================================================
+STEP 1 — A PREMISE THE PROMPT AND FINDINGS.md BOTH LEFT UNDERSPECIFIED
+================================================================================
+Log 80's decompile — the source of `FUN_18012fa4(0x1800004d,"INIT_TASK",...)` —
+was taken from ghidra/imports/app_candidate_b_18000000.bin. That file is
+
+  $ sha256sum ghidra/imports/app_candidate_b_18000000.bin
+    8fe68a13d7a0cd3bf8b4fd0dbe0575c0b7e67c1d4373e8d63970cf248684e668
+
+which is byte-for-byte `vendor_rec1_slot1_flash21000_dstNA_len1e754_8fe68a13.bin`
+(124,756 = 0x1e754 bytes). So EVERY ADDRESS IN LOG 80 IS A VENDOR 1.00.58
+ADDRESS. The installed counterparts were derived, not assumed:
+
+  $ grep -c '^FUNC entry=18012fa4 ' ghidra/inventories/{installed_b,vendor_b}.txt
+    installed_b: 0        vendor_b: 1
+
+  vendor 0x18012fa4 -> installed 0x18012fd0   identical, moved=True  (+0x2c)
+  vendor 0x18013ea0 -> installed 0x18013ecc   identical, moved=True  (+0x2c)
+  vendor 0x180001d2 -> installed 0x180001d2   structural, moved=False
+
+The +0x2c relocation applies only above the insertion site log 98 located at
+vendor 0x180047fc / installed 0x180047fc, so 0x1800023a and 0x1800004d do NOT
+move and 0x18012fa4 does. Confirmed at byte level: main and INIT_TASK have the
+same prologue `1c b5` (push {r2,r3,r4,lr}) at the same address in both releases
+and differ only in BL displacements, and the primitive's first 0x40 bytes are
+byte-identical between vendor 0x18012fa4 and installed 0x18012fd0.
+
+
+================================================================================
+STEP 2 — THE CALL SHAPE, READ OFF THE PRIMITIVE'S OWN CODE
+================================================================================
+Not inferred from the name string, and not taken from the decompiler's
+parameter guess. Decompiled read-only (FalchionDecompileTargets.java):
+
+  undefined4 FUN_18012fa4(param_1,param_2,param_3,param_4,param_5,param_6)
+  {
+    iVar1 = FUN_18014478(param_3 << 2);          <- stack allocation
+    if (iVar1 != 0) {
+      iVar2 = FUN_18014478(100);                 <- 0x64-byte control block
+      if (iVar2 != 0) {
+        *(int *)(iVar2 + 0x30) = iVar1;
+        FUN_18013ea0(param_1,param_2,param_3,param_4,param_5,param_6,iVar2,0);
+        FUN_18012ee8(iVar2);
+        return 1;
+      }
+      FUN_18014554(iVar1);
+    }
+    return 0xffffffff;
+  }
+
+and the initialiser it hands everything to:
+
+  void FUN_18013ea0(param_1,param_2,param_3,param_4,param_5,param_6,param_7)
+  {
+    thunk_EXT_FUN_00002718(param_7[0xc],param_3 << 2,0xa5);   <- fill stack
+    ...
+    do {                                                       <- copy the name
+      *(undefined1 *)((int)param_7 + uVar2 + 0x34) = *(undefined1 *)(param_2 + uVar2);
+      if (*(char *)(param_2 + uVar2) == '\0') break;
+      uVar2 = uVar2 + 1;
+    } while (uVar2 < 0x10);
+    if (0xe < param_5) { param_5 = 0xe; }                      <- clamp priority
+    param_7[0xb] = param_5;  param_7[0x11] = param_5;
+    param_7[6] = 0xf - param_5;                                <- ready index
+    ...
+    uVar4 = thunk_EXT_FUN_000016d4(iVar1 + param_3 * 4 + -4 & 0xfffffff8,
+                                   param_1, param_4);          <- build frame
+    *param_7 = uVar4;
+    if (param_6 != (undefined4 *)0x0) { *param_6 = param_7; }  <- out handle
+  }
+
+RECOVERED SHAPE
+  create(entry, name, stack_words, argument, priority, out_handle)
+    a0  entry        task PC; handed straight to the frame builder
+    a1  name         NUL-terminated; at most 0x10 bytes copied to TCB+0x34
+    a2  stack_words  size in 32-BIT WORDS — the primitive allocates a2 << 2
+    a3  argument     passed through to the entry point
+    a4  priority     clamped to 0..0xe; ready-list index is 0xf - priority
+    a5  out_handle   receives the control block, or 0
+
+Every role above is a store or an arithmetic operation in the listing. None is
+inferred from a name.
+
+
+================================================================================
+STEP 3 — HARVESTING CALL SITES BY DATA-FLOW
+================================================================================
+Added ghidra/scripts/FalchionTaskCreation.java. It resolves arguments with
+Ghidra constant propagation over the CALLING function — not by reading bytes
+near the call. r0-r3 are read at the call instruction. Arguments five and six
+live on the stack under AAPCS, so the script scans backwards inside the caller
+for the last `str <reg>,[sp,#off]` at that offset and resolves <reg> there.
+
+TWO THINGS THE FIRST VERSION GOT WRONG, both fixed and both worth recording:
+  - It missed `strd Ra,Rb,[sp,#0]`, which writes Ra at 0 and Rb at 4. INIT_TASK
+    is created with exactly that instruction (`18000070 strd r0,r1,[sp,#0x0]`),
+    so a5 came back `unknown` on every site. A slot reached only by the second
+    half of a strd is now resolved from operand 1. Before: resolved=0 of 5.
+    After: resolved=5 of 5.
+  - It reported `valid_subroutine` alone. PseudoDisassembler.isValidSubroutine
+    returns FALSE for every one of these targets, because the span is still
+    stored as undefined data before it is seeded — which is true of every
+    target worth seeding. Requiring it would have rejected all five real
+    tasks. The script now also decodes forward from the address and reports
+    how many instructions decode and what the first one is, and acceptance
+    uses that. `valid_subroutine` is still printed so the disagreement is
+    visible rather than hidden.
+
+FIRST HARVEST — before main existed as a function, only one call site was
+visible, because a call from an undisassembled region produces no reference:
+  PRIMITIVE entry=18012fa4 name=FUN_18012fa4 body=18012fa4..18012ff9 callers=1
+  CALLSITE ... instr=18015e5e func=18015cb6 ... str=usbd_wdt
+
+
+================================================================================
+STEP 4 — SEEDING THE TWO EVIDENCE-BACKED ENTRY ROOTS
+================================================================================
+Validated read-only first, in BOTH releases:
+  TARGET addr=0x1800023a thumb=true mapped=true valid_subroutine=false decoded=8 prologue=push_{r2,r3,r4,lr} defined=false at=none
+  TARGET addr=0x1800004c thumb=true mapped=true valid_subroutine=false decoded=8 prologue=push_{r2,r3,r4,lr} defined=false at=none
+
+  0x1800023a — Candidate B main. CITATION: logs 79-80 — Candidate A's
+    post-scatter runtime FUN_000002c8 calls it through the veneer
+    thunk_EXT_FUN_1800023a.
+    RECORDED, NOT RESOLVED: no literal word in either release's Candidate A
+    points at this address. map_hardware_interfaces.py already reports that
+    contradiction and still does; the only cross-image code pointers are
+    0x18016e69 and 0x18016f2d. The call therefore reaches main through code,
+    not through data, which is exactly why no pointer survey ever found it.
+    This step does not explain it away.
+  0x1800004d — INIT_TASK entry. CITATION: log 80 — passed as the first register
+    argument to FUN_18012fa4 with the name string "INIT_TASK", stack 0x100,
+    priority 0x14.
+
+$ ghidra-analyzeHeadless ... -postScript FalchionSeedVectors.java \
+    'CandidateB_Main=0x1800023a' 'Task_INIT_TASK=0x1800004c'
+  installed app: CREATED CandidateB_Main@1800023a
+                 CREATED Task_INIT_TASK@1800004c   RESULT created=2 existing=0 skipped=0
+  vendor   app: CREATED CandidateB_Main@1800023a
+                 CREATED Task_INIT_TASK@1800004c   RESULT created=2 existing=0 skipped=0
+Both releases seeded identically so the two sides stay comparable.
+
+
+================================================================================
+STEP 5 — THE FULL HARVEST, BOTH RELEASES
+================================================================================
+$ ... -postScript FalchionTaskCreation.java 'primitive=0x18012fd0'   (installed)
+PRIMITIVE entry=18012fd0 name=FUN_18012fd0 params=0 body=18012fd0..18013025 callers=5
+CALLSITE primitive=18012fd0 instr=1800007e func=1800004c order=0 a0=0x499 a1=0x18000398 a2=0x1000 a3=0x0 a4=0xa a5=0x0 str=OEM_MAIN_SERVICE_TASK
+CALLSITE primitive=18012fd0 instr=18000348 func=1800023a order=1 a0=0x1800004d a1=0x18000414 a2=0x100 a3=0x0 a4=0x14 a5=0x0 str=INIT_TASK
+CALLSITE primitive=18012fd0 instr=180136fe func=180136ea order=2 a0=0x180136cb a1=0x18013734 a2=0x3c a3=0x0 a4=0x0 a5=0x1801ead8 str=IDLE
+CALLSITE primitive=18012fd0 instr=180141ca func=180141aa order=3 a0=0x1801414d a1=0x18014418 a2=0x17c a3=0x0 a4=0x2 a5=0x1801eaec str=Tmr Svc
+CALLSITE primitive=18012fd0 instr=18015e8a func=18015ce2 order=4 a0=0x18015c85 a1=0x18016024 a2=0x100 a3=0x0 a4=0x1 a5=0x1801eb28 str=usbd_wdt
+RESULT callsites=5 resolved=5 partial=0 validated=5
+
+$ ... -postScript FalchionTaskCreation.java 'primitive=0x18012fa4'   (vendor)
+PRIMITIVE entry=18012fa4 name=FUN_18012fa4 params=0 body=18012fa4..18012ff9 callers=5
+CALLSITE primitive=18012fa4 instr=1800007e func=1800004c order=0 a0=0x499 a1=0x18000398 a2=0x1000 a3=0x0 a4=0xa a5=0x0 str=OEM_MAIN_SERVICE_TASK
+CALLSITE primitive=18012fa4 instr=18000348 func=1800023a order=1 a0=0x1800004d a1=0x18000414 a2=0x100 a3=0x0 a4=0x14 a5=0x0 str=INIT_TASK
+CALLSITE primitive=18012fa4 instr=180136d2 func=180136be order=2 a0=0x1801369f a1=0x18013708 a2=0x3c a3=0x0 a4=0x0 a5=0x1801eaac str=IDLE
+CALLSITE primitive=18012fa4 instr=1801419e func=1801417e order=3 a0=0x18014121 a1=0x180143ec a2=0x17c a3=0x0 a4=0x2 a5=0x1801eac0 str=Tmr Svc
+CALLSITE primitive=18012fa4 instr=18015e5e func=18015cb6 order=4 a0=0x18015c59 a1=0x18015ff8 a2=0x100 a3=0x0 a4=0x1 a5=0x1801eafc str=usbd_wdt
+RESULT callsites=5 resolved=5 partial=0 validated=5
+
+Every app-space entry differs by exactly the +0x2c Phase 3 measured; the two
+entries below the insertion site do not move. Names, stacks, priorities and
+arguments are identical across releases. That symmetry is a cross-check: the
+two harvests were run independently against two different images.
+
+
+================================================================================
+STEP 6 — ONE TASK RUNS CODE IN THE OTHER IMAGE
+================================================================================
+OEM_MAIN_SERVICE_TASK's entry resolved to a0=0x499, which is not in the
+application's address space at all. It is NOT a mis-resolution:
+
+  $ 1800007c  ldr r0,[0x180003b0]      <- entry comes from a literal pool word
+    1800007e  bl  0x18012fd0
+  $ *(0x180003b0) = 0x00000499         in BOTH releases
+
+0x499 & ~1 = 0x498, which lies in Candidate A's 0x0..0x58ac — the image the
+bootloader copies to address 0 before the reset (log 101). So the application's
+RTOS creates a task whose code lives in the entry image. That is the mirror of
+log 79's finding that Candidate A calls INTO Candidate B; the two images call
+each other in both directions.
+
+VALIDATION of 0x498, both releases:
+  TARGET addr=0x498 thumb=true mapped=true valid_subroutine=false decoded=8 prologue=push_{r1,r2,r3,lr} defined=false at=none
+  bytes at 0x498: 0e b5 45 4c 00 25 08 e0 ...   IDENTICAL in both releases
+  no FUNC entry existed at 0x498 in either entry inventory
+  the address falls in an unclaimed HOLE between FUN_00000210's body ranges
+
+ACCEPTED on: the pointer's data-flow provenance, a standard Thumb prologue
+identical in both releases, eight instructions decoding cleanly, and Ghidra
+creating a function there. NOT accepted on isValidSubroutine, which says false
+for every undefined span. Both facts are printed; the disagreement is not
+hidden.
+
+$ ... -postScript FalchionSeedVectors.java 'Task_OEM_MAIN_SERVICE_TASK=0x498'
+  installed entry: CREATED Task_OEM_MAIN_SERVICE_TASK@00000498
+  vendor   entry: CREATED Task_OEM_MAIN_SERVICE_TASK@00000498
+
+INCIDENTAL CORROBORATION OF LOG 105. INIT_TASK's second instruction is
+`ldr r0,[0x18000394]`, and *(0x18000394) is 0x1801e604 installed / 0x1801e5d8
+vendor. Both are the decompressed region's base + 0x284 — the exact offset at
+which log 105 found idVendor 0x0b05, idProduct 0x1b7e, bcdDevice. INIT_TASK
+hands the USB device descriptor to FUN_18018b70. Log 105 identified that region
+from its content; this step reaches the same offset from the instruction
+stream, independently.
+
+
+================================================================================
+STEP 7 — SEEDING THE REMAINING TASK ENTRIES
+================================================================================
+$ ... -postScript FalchionSeedVectors.java 'Task_IDLE=...' 'Task_Tmr_Svc=...' 'Task_usbd_wdt=...'
+  installed app: CREATED Task_IDLE@180136ca CREATED Task_Tmr_Svc@1801414c
+                 EXISTING Task_usbd_wdt@18015c84 as FUN_18015c84
+                 RESULT created=2 existing=1 skipped=0
+  vendor   app: CREATED Task_IDLE@1801369e CREATED Task_Tmr_Svc@18014120
+                 EXISTING Task_usbd_wdt@18015c58 as FUN_18015c58
+                 RESULT created=2 existing=1 skipped=0
+usbd_wdt was already a function and keeps its FUN_ name; nothing was renamed.
+
+All four programs re-analysed, then all four inventories and peripheral maps
+regenerated read-only.
+
+$ grep -c '^FUNC' ghidra/inventories/*.txt
+  installed_a.txt:114   vendor_a.txt:114     (was 101)
+  installed_b.txt:616   vendor_b.txt:616     (was 573)
+Symmetric across releases, so Phase 3 stays valid. It was regenerated and still
+reports RESULT matched=114 unmatched=0 and RESULT matched=616 unmatched=0.
+
+
+================================================================================
+STEP 8 — THE TASK GRAPH
+================================================================================
+$ python3 tool/harvest_task_entries.py         (installed; vendor identical
+                                                except for the +0x2c addresses)
+CALL_SHAPE create(entry, name, stack_words, argument, priority, out_handle)
+
+  # name                   entry        stack        prio  ready  created at   by
+  0 INIT_TASK              0x1800004d   256w/1024B   20->14   1   0x18000348   0x1800023a  main
+  1 OEM_MAIN_SERVICE_TASK  0x00000499   4096w/16384B 10       5   0x1800007e   0x1800004c  INIT_TASK
+  2 IDLE                   0x180136cb   60w/240B      0      15   0x180136fe   0x180136ea
+  3 Tmr Svc                0x1801414d   380w/1520B    2      13   0x180141ca   0x180141aa
+  4 usbd_wdt               0x18015c85   256w/1024B    1      14   0x18015e8a   0x18015ce2
+  RESULT tasks=5 accepted=5 rejected=0
+
+CREATION ORDER is the chain of who creates whom, not call-site address order:
+  main -> INIT_TASK -> OEM_MAIN_SERVICE_TASK
+  IDLE, Tmr Svc and usbd_wdt are created by functions that are not themselves
+  task entries, so they have no task predecessor.
+It is a static chain. Nothing here observed a runtime schedule.
+
+INIT_TASK is created with priority 0x14, above the initialiser's 0xe ceiling,
+so it runs clamped at 14 — the highest priority in the system. IDLE is priority
+0, ready index 15, and is allocated 240 bytes of stack. OEM_MAIN_SERVICE_TASK
+gets 16 KiB, sixteen times any other task.
+
+WHICH TASKS REACH WHICH MAPPED HARDWARE (from map_hardware_interfaces.py
+contexts, so every line is citable):
+  Candidate B main  -> 0x18000000(mixed), 0x20000000(unknown), 0x40000000(unknown),
+                       0x40100000(unknown), 0x45000000(unknown), 0xe0000000(arm-core)
+  task INIT_TASK    -> 0x18000000(mixed), 0xe0000000(arm-core)
+  task IDLE         -> 0x18000000(mixed), 0xe0000000(arm-core)
+  task Tmr Svc      -> 0x18000000(mixed), 0xe0000000(arm-core)
+  task usbd_wdt     -> 0x18000000(mixed), 0xe0000000(arm-core)
+  task OEM_MAIN_SERVICE_TASK (entry image) -> 0x18000000(runtime-ram)
+
+STATED PLAINLY: NO TASK REACHES A VENDOR PERIPHERAL BLOCK. Every vendor block
+(0x20000000, 0x40000000, 0x40100000, 0x45000000) is reached only from main's
+initialisation path, from IRQ6, or from the entry image. The tasks reach RAM
+and the ARM core block. That is what the call graph shows and it is not
+dressed up: the peripheral work these tasks do is presumably behind the
+unresolved indirect calls enumerated in step 10.
+
+
+================================================================================
+STEP 9 — NEW REACHABILITY BASELINE (a NEW BASELINE, not an improvement)
+================================================================================
+Seeding changed the FUNCTION COUNTS, so these numbers share no denominator with
+log 105's. 146 of 573 and 281 of 616 are not comparable and 281 is NOT "135
+more than 146". The correct statement is that the measurement was re-based.
+
+  BEFORE (log 105)   entry  91 of 101      application 146 of 573
+  AFTER  (this step) entry 101 of 114      application 281 of 616
+
+$ python3 tool/map_hardware_interfaces.py
+IMAGE Candidate A (entry image)
+  base=0x00000000 functions=114 reached=101 unreached=13
+  table roots: table@0x00001404, table@0x00005680
+  documented entry roots: none
+  task roots: task OEM_MAIN_SERVICE_TASK created at 0x1800007e->0x00000498
+  region roots: none
+  roots naming no function: 0x00004018 (table@0x00005680)
+  unreached_with_no_caller=10
+IMAGE Candidate B (application)
+  base=0x18000000 functions=616 reached=281 unreached=335
+  table roots: table@0x18016d44, table@0x18017d08, table@0x18018ce8
+  documented entry roots: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)->0x1800023a
+  task roots: task IDLE created at 0x180136fe->0x180136ca, task INIT_TASK created at 0x18000348->0x1800004c, task Tmr Svc created at 0x180141ca->0x1801414c, task usbd_wdt created at 0x18015e8a->0x18015c84
+  region roots: decompressed region 0x1801ecac->0x18018afc, decompressed region 0x1801ecb0->0x18018af0, decompressed region 0x1801ecc0->0x18018a28
+  roots naming no function: none
+  unreached_with_no_caller=121
+  [exit 0]
+
+NO REGRESSION. Every root category log 104 and log 105 established is still
+present, and the pinned provenance is intact: table 0x5680's absorbed middle
+entry is still reported as
+    roots naming no function: 0x00004018 (table@0x00005680)
+so that table still contributes two roots and not three. Both facts are now
+unit-tested against the real images rather than left to inspection.
+
+
+================================================================================
+STEP 10 — WHAT IS STILL UNACCOUNTED (5A's exit gate: enumerate, not eliminate)
+================================================================================
+CALLERLESS FUNCTIONS — nothing in the image calls them, so each needs an entry
+mechanism; the rest of the unreached set is downstream of these.
+  entry image  10 callerless of 13 unreached, 340 instructions
+               largest: 0x430c(159), 0xa6e(37), 0x600(30), 0x1808(28)
+  application 121 callerless of 335 unreached, 12,313 instructions
+               largest: 0x18001fbe(3146), 0x18000d56(1426), 0x18004a7e(1214),
+                        0x18007e38(748), 0x1800dc92(579), 0x1800b370(352)
+
+THE FOUR LARGEST APPLICATION ORPHANS HAVE NO REFERENCE OF ANY KIND:
+  $ ... FalchionTaskCreation.java 'primitive=0x18001fbe,0x18000d56,0x18004a7e,0x18007e38'
+    PRIMITIVE entry=18001fbe name=FUN_18001fbe body=18001fbe..180040db callers=0
+    PRIMITIVE entry=18000d56 name=FUN_18000d56 body=18000d56..18001f59 callers=0
+    PRIMITIVE entry=18004a7e name=FUN_18004a7e body=18004a7e..180057fd callers=0
+    PRIMITIVE entry=18007e38 name=FUN_18007e38 body=18007e38..1800874f callers=0
+  and an exhaustive aligned-word search of the entry slice, the application
+  slice and the reconstructed decompressed region finds none of their addresses
+  stored anywhere, with or without the Thumb bit.
+
+  0x18001fbe is log 80's dispatcher and is the single largest unreached
+  function at 3,146 instructions. It is entered by neither a direct call nor a
+  stored pointer in any analysed slice.
+
+UNRESOLVED INDIRECT CALLS — enumerated, as the exit gate requires. Every
+register-target branch, excluding `bx lr` returns, with whether constant
+propagation resolves the destination register at that instruction:
+  entry image  sites=35 resolved=7  unresolved=28
+  application  sites=54 resolved=1  unresolved=53
+  identical in both releases. Every site is listed by address in
+  ghidra/tasks/<release>_<image>.txt.
+  81 unresolved indirect branches is the size of the residue.
+
+ENTRY MECHANISMS STILL UNACCOUNTED, stated as open, none traced:
+  - the destination of those 81 indirect branches, which is where a dispatcher
+    reached through a computed value would show up;
+  - callback registration through a primitive OTHER than task creation — a
+    timer callback, a queue handler, a USB class registration. Only the one
+    creation primitive was recovered here, and no claim is made about others;
+  - anything entered from the bootloader rather than from either analysed
+    image;
+  - linker-retained dead code, which would explain a zero-reference function
+    and cannot be distinguished from the above by static analysis alone.
+No hypothesis above is asserted as a finding.
+
+
+================================================================================
+STEP 11 — DETERMINISM AND FAIL-CLOSED TESTS
+================================================================================
+Added tool/harvest_task_entries.py and tool/test_harvest_task_entries.py
+(22 tests). Acceptance is conservative: a call site becomes a root only when
+EVERY argument resolved, the entry carries the Thumb bit, it lies inside one of
+the two images, and its bytes decoded as Thumb. Everything else is recorded
+unresolved and reported, never guessed and never dropped.
+
+Each of these is asserted to REJECT:
+  - an unresolvable argument rejects the call site (`stack_words` unresolved)
+  - an unresolvable entry rejects it and assigns no program
+  - an entry without the Thumb bit is rejected — the frame builder takes it
+    straight as the task PC, so an even value would fault immediately
+  - an entry outside every image is rejected
+  - an entry with no TARGET line is rejected: nothing checked that it decodes
+  - a target that decoded only 2 instructions is rejected
+  - an unmapped target is rejected
+  - a call site in no function yields six unresolved arguments and no root
+  - a CALLSITE line with the WRONG ARITY is not parsed as a call site at all,
+    so a primitive with a different shape cannot be read as if it had this one's
+  - an INDIRECT_RESULT total that disagrees with the listed sites raises
+    rather than reporting the smaller number as complete
+And on the real captures: both releases find the same five tasks in the same
+order, agree on every stack, priority, argument and program, differ only by 0
+or 0x2c, and the roots are deterministic across two builds.
+
+Four tests were added to the real-image hardware map: every root category
+survives, the 0x4018 absorbed-target behaviour is pinned, the five task roots
+split 1/4 across the two images, and seeding did NOT make everything reachable.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/harvest_task_entries.py tool/test_harvest_task_entries.py tool/map_hardware_interfaces.py tool/test_map_hardware_interfaces.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 459 tests   OK                                                 [exit 0]
+  (433 before this step: +22 harvest tests, +4 hardware-map tests)
+$ python3 tool/report_phase3.py --check   RESULT reports_current=True stale=0
+$ python3 tool/report_phase4.py --check   RESULT reports_current=True stale=0
+$ python3 tool/report_phase5.py --check   RESULT reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS            all OK                     [exit 0]
+$ git diff --check                        clean                      [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phases 5B, 5C, 5D, 5E, 5F and 5G were not begun.
+  - Nothing was committed.
+  - The 0x1800023a contradiction was RECORDED, not resolved. No literal word
+    points at main; the call reaches it through code.
+  - No vendor peripheral was named. No task reaches one.
+  - Only the task-creation primitive was recovered. Timer, queue, semaphore and
+    callback-registration primitives were not, and nothing is claimed about them.
+  - 335 of 616 application functions remain unreached and 81 indirect branches
+    remain unresolved. Both are enumerated above, neither is closed.
+  - NO DEVICE WAS ACCESSED.

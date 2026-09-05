@@ -1554,6 +1554,77 @@ hypothesis, not a trace. The next mechanism needs data-flow analysis.
 Phase 5 remains **not complete**. 433 offline tests pass, both evidence hashes are
 unchanged, and no device was accessed.
 
+## 2026-09-04 — Phase 5A completion: argument-passed task entries (log 106)
+
+One step, at the owner's direction: finish 5A by recovering the entry roots that
+are passed to the RTOS creation call in a register. 5B–5G were not begun and
+nothing was committed.
+
+The step opens with an **erratum to log 105**, recorded here rather than by
+editing that log. Log 105's STEP 10 said `0x1800023a` "is absent from
+installed_b.txt". It is not: the address string appears once, as the *exclusive*
+end of `FUN_180001d2`'s range. The substantively correct claim — verified by the
+reviewer and re-verified here — is that no `FUNC` entry exists at that address,
+so the traversal cannot start there, and everything log 105 concluded from it
+stands. The reviewer caught the wording.
+
+A second premise needed correcting before any work could rest on it. Log 80's
+decompile came from `app_candidate_b_18000000.bin`, whose hash is the **vendor**
+record slice, so every address in log 80 is a vendor address. The installed
+task-creation primitive was therefore *derived* — vendor `0x18012fa4` → installed
+`0x18012fd0`, identical body, the `+0x2c` Phase 3 measured — rather than assumed
+to be at the same address.
+
+**The call shape was read off the primitive's own code**, not from the name
+string: the initialiser allocates `stack << 2` bytes, copies at most `0x10` name
+bytes into the control block, clamps the priority to `0xe`, derives the
+ready-list index as `0xf − priority`, and hands `(stack_top, entry, argument)` to
+the frame builder. Constant propagation over each *calling* function then
+resolved all five call sites in both releases — after fixing a real blind spot:
+the first version missed `strd Ra,Rb,[sp,#0]`, which is exactly how `INIT_TASK`
+is created, so every sixth argument had come back `unknown`.
+
+Five tasks, with names, stacks, priorities and arguments identical across the two
+releases and entries differing by exactly 0 or `+0x2c`: `INIT_TASK` (priority 20,
+clamped to the ceiling of 14), `OEM_MAIN_SERVICE_TASK` (16 KiB of stack, sixteen
+times any other), `IDLE` (240 bytes, priority 0), `Tmr Svc`, and `usbd_wdt`.
+Creation order is the static chain main → `INIT_TASK` → `OEM_MAIN_SERVICE_TASK`;
+it is not a runtime schedule and nothing here observed execution.
+
+**One task runs code in the other image.** `OEM_MAIN_SERVICE_TASK`'s entry
+`0x499` comes from a literal-pool word and lands in Candidate A, the image the
+bootloader copies to address 0 — the mirror of log 79's finding that Candidate A
+calls into Candidate B. It was accepted on data-flow provenance, a Thumb prologue
+byte-identical in both releases and eight instructions decoding cleanly, *not* on
+`isValidSubroutine`, which says false for every unseeded span and is reported
+alongside so the disagreement stays visible.
+
+An unplanned cross-check fell out: `INIT_TASK` passes the decompressed region's
+base + `0x284` to a USB init function — the exact offset at which log 105 found
+the device's idVendor, idProduct and bcdDevice. Two independent routes to the
+same address.
+
+**A new baseline, not an improvement.** Seeding changed the function counts, so
+the numbers share no denominator with log 105's: entry image 91 of 101 →
+**101 of 114**, application 146 of 573 → **281 of 616**. Both releases moved
+symmetrically and Phase 3 still matches 114/114 and 616/616 with nothing
+unmatched. Every earlier root category survives and table `0x5680`'s absorbed
+middle entry is still reported rather than dropped, both now pinned by tests.
+
+**No task reaches a vendor peripheral.** Every vendor block is reached only from
+main's initialisation path, from IRQ6, or from the entry image. Stated as the
+call graph shows it.
+
+**The residue is enumerated, not eliminated**, which is what 5A's exit gate asks
+for: 121 callerless application functions totalling 12,313 instructions, whose
+four largest — including log 80's dispatcher `0x18001fbe` — have zero references
+of any kind and appear in no aligned word of any slice; and 81 unresolved
+register-target branches, each listed by address. The mechanisms still
+unaccounted for are named and none is traced.
+
+459 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1563,6 +1634,9 @@ The investigation deliberately records mistakes and superseded interpretations:
 | Decompressed region "mapped, not known" | Reconstructed from the firmware's own handler; it is the USB/HID descriptor set, and its content carries the device's own VID/PID/bcdDevice (log 105) |
 | "The decoder consumed the compressed source exactly" | Failed at `0x3fd` of `0x400`. The premise was wrong, not the decoder: the compressed length is derived and word-aligned, so an all-zero tail is expected. Replaced by two checks that state the real invariant (log 105) |
 | Table `0x5680` read as three indirect roots | Its middle entry `0x4018` was absorbed into `PtrTarget_00004004`'s body extent, so it contributes two. Roots naming no function are now reported, not dropped (log 105) |
+| Log 105's "`0x1800023a` is absent from installed_b.txt" | The address appears once, as the *exclusive* end of `FUN_180001d2`'s range. No `FUNC` entry exists at it, which is the claim that matters and which stands (log 106) |
+| Log 80's addresses read as installed addresses | Its decompile was of `app_candidate_b_18000000.bin` = the **vendor** record slice, so they are vendor addresses. The installed primitive was derived as `0x18012fd0`, not assumed equal (log 106) |
+| Task entries counted as an improvement on 146/573 | Seeding changed the denominators; 281 of 616 is a **new baseline**, not 135 more functions (log 106) |
 | Sandboxed `lsusb` failure | Not a device result; direct read-only retry succeeded |
 | Sandboxed `dfu-util` failure | Not a DFU result; direct enumeration succeeded with no target |
 | Port comparison in log 25 | Parser included `xxd` ASCII; log 26 proved equality |

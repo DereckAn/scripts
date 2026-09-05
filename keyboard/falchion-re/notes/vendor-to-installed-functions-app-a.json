@@ -1,9 +1,10 @@
 {
   "counts": {
-    "identical": 94,
-    "tentative": 7
+    "identical": 102,
+    "structural": 2,
+    "tentative": 10
   },
-  "data_region_bytes": 129,
+  "data_region_bytes": 126,
   "data_regions": [
     {
       "flash_hi": 69633,
@@ -666,16 +667,6 @@
       "vendor_lo": 16654
     },
     {
-      "flash_hi": 86298,
-      "flash_lo": 86296,
-      "installed_hi": 16666,
-      "installed_lo": 16664,
-      "length": 2,
-      "shift": 0,
-      "vendor_hi": 16666,
-      "vendor_lo": 16664
-    },
-    {
       "flash_hi": 86307,
       "flash_lo": 86306,
       "installed_hi": 16675,
@@ -694,16 +685,6 @@
       "shift": 0,
       "vendor_hi": 16686,
       "vendor_lo": 16684
-    },
-    {
-      "flash_hi": 86327,
-      "flash_lo": 86326,
-      "installed_hi": 16695,
-      "installed_lo": 16694,
-      "length": 1,
-      "shift": 0,
-      "vendor_hi": 16695,
-      "vendor_lo": 16694
     },
     {
       "flash_hi": 86337,
@@ -1057,8 +1038,8 @@
     }
   ],
   "discontiguous_bodies": {
-    "installed": 16,
-    "vendor": 16
+    "installed": 19,
+    "vendor": 19
   },
   "dominant_shift": 0,
   "header": {
@@ -1067,7 +1048,7 @@
     "installed_program": "installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin",
     "vendor_program": "vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin"
   },
-  "installed_count": 101,
+  "installed_count": 114,
   "matches": [
     {
       "confidence": "identical",
@@ -1298,6 +1279,181 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 13,
+        "bytes_sha": "64f77be9d69e6215bc183e39685ee9b314692c23c7b74c3da4eaee25b31d147c",
+        "entry": 1068,
+        "insns": 55,
+        "name": "FUN_0000042c",
+        "shape_sha": "6129d8c3e2014171950892046ed10afbee7e8f60a3789acea30fa6cd74dccf28",
+        "size": 136
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 13,
+        "bytes_sha": "64f77be9d69e6215bc183e39685ee9b314692c23c7b74c3da4eaee25b31d147c",
+        "entry": 1068,
+        "insns": 55,
+        "name": "FUN_0000042c",
+        "shape_sha": "6129d8c3e2014171950892046ed10afbee7e8f60a3789acea30fa6cd74dccf28",
+        "size": 136
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 5,
+        "bytes_sha": "da3888fad16cad0a600963bb5ae77d069581dc4cd43bdac90e197ccba5135fe2",
+        "entry": 1176,
+        "insns": 16,
+        "name": "Task_OEM_MAIN_SERVICE_TASK",
+        "shape_sha": "e59c74f199277fbc9a533c0d2c57606ddc85fd699eda4bf578cab2574d243749",
+        "size": 34
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "da3888fad16cad0a600963bb5ae77d069581dc4cd43bdac90e197ccba5135fe2",
+        "entry": 1176,
+        "insns": 16,
+        "name": "Task_OEM_MAIN_SERVICE_TASK",
+        "shape_sha": "e59c74f199277fbc9a533c0d2c57606ddc85fd699eda4bf578cab2574d243749",
+        "size": 34
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 6,
+        "bytes_sha": "47258fab850bf6e71ba47e014bba7d9d22dee48871f6b1f19cf47c4cfaaf73b0",
+        "entry": 1210,
+        "insns": 34,
+        "name": "FUN_000004ba",
+        "shape_sha": "76b2ea5711f078cbf9f991941810ee4477dce8edb28f94bc2d7373a7f00bc6b7",
+        "size": 92
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 6,
+        "bytes_sha": "47258fab850bf6e71ba47e014bba7d9d22dee48871f6b1f19cf47c4cfaaf73b0",
+        "entry": 1210,
+        "insns": 34,
+        "name": "FUN_000004ba",
+        "shape_sha": "76b2ea5711f078cbf9f991941810ee4477dce8edb28f94bc2d7373a7f00bc6b7",
+        "size": 92
+      }
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 2,
+      "installed": {
+        "blocks": 4,
+        "bytes_sha": "a14e1051f5ec827ac6654ffed02560a91182322c4a62f2c867cab924c05a5aea",
+        "entry": 1302,
+        "insns": 34,
+        "name": "FUN_00000516",
+        "shape_sha": "2f77644753e0cf9d16899e6f99150c18dfdf32a313e06e74c29d53c26d77f14f",
+        "size": 110
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 4,
+        "bytes_sha": "bca75a75dd09f61bd07d3d45f5ed29d8e6bc872a04341361769e0fd166d3988e",
+        "entry": 1302,
+        "insns": 34,
+        "name": "FUN_00000516",
+        "shape_sha": "2f77644753e0cf9d16899e6f99150c18dfdf32a313e06e74c29d53c26d77f14f",
+        "size": 110
+      }
+    },
+    {
+      "confidence": "tentative",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "c7dfbb7d02759eacb64dbc916c1bb6f21eabaff1c1032ea5c9176abf7fd28df8",
+        "entry": 1402,
+        "insns": 1,
+        "name": "FUN_0000057a",
+        "shape_sha": "39de2ebe50d84f375c2418e57e25d94e6cce434ba4c39a144d3da115aeedd3dd",
+        "size": 2
+      },
+      "moved": false,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "c7dfbb7d02759eacb64dbc916c1bb6f21eabaff1c1032ea5c9176abf7fd28df8",
+        "entry": 1402,
+        "insns": 1,
+        "name": "FUN_0000057a",
+        "shape_sha": "39de2ebe50d84f375c2418e57e25d94e6cce434ba4c39a144d3da115aeedd3dd",
+        "size": 2
+      }
+    },
+    {
+      "confidence": "tentative",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "c7dfbb7d02759eacb64dbc916c1bb6f21eabaff1c1032ea5c9176abf7fd28df8",
+        "entry": 1406,
+        "insns": 1,
+        "name": "FUN_0000057e",
+        "shape_sha": "39de2ebe50d84f375c2418e57e25d94e6cce434ba4c39a144d3da115aeedd3dd",
+        "size": 2
+      },
+      "moved": false,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "c7dfbb7d02759eacb64dbc916c1bb6f21eabaff1c1032ea5c9176abf7fd28df8",
+        "entry": 1406,
+        "insns": 1,
+        "name": "FUN_0000057e",
+        "shape_sha": "39de2ebe50d84f375c2418e57e25d94e6cce434ba4c39a144d3da115aeedd3dd",
+        "size": 2
+      }
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 1,
+      "installed": {
+        "blocks": 2,
+        "bytes_sha": "22dc8c8a987e9a4add2b4b045ce2461cfba2815c9a5992029b07471ea34777f2",
+        "entry": 1408,
+        "insns": 9,
+        "name": "FUN_00000580",
+        "shape_sha": "ddf05ec335a9a9a334d71c068968bef35a2967a3b726f2136e3913afeb23fde2",
+        "size": 30
+      },
+      "moved": false,
+      "reason": "same instruction shape with scalars and addresses masked",
+      "score": 0.99,
+      "vendor": {
+        "blocks": 2,
+        "bytes_sha": "6c92d3233a20a34b357c47c98e3c6507dba6c00d63f923b2b4091ca52a883ec6",
+        "entry": 1408,
+        "insns": 9,
+        "name": "FUN_00000580",
+        "shape_sha": "ddf05ec335a9a9a334d71c068968bef35a2967a3b726f2136e3913afeb23fde2",
+        "size": 30
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 5,
         "bytes_sha": "ba85091022f1977db117f50eb92ed44997dd224e0191d773325297a2a87b4cc8",
         "entry": 1494,
@@ -1348,6 +1504,81 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 7,
+        "bytes_sha": "494dc4929a8ab8a9536bbb0c4dfa624ab22bd20c7880903e7cad4a6d8e31390a",
+        "entry": 1620,
+        "insns": 16,
+        "name": "FUN_00000654",
+        "shape_sha": "b753bd6779d9713f15ab8161e9b13ef1389a4ae6191ba0abe0bc55641b2db7c4",
+        "size": 48
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 7,
+        "bytes_sha": "494dc4929a8ab8a9536bbb0c4dfa624ab22bd20c7880903e7cad4a6d8e31390a",
+        "entry": 1620,
+        "insns": 16,
+        "name": "FUN_00000654",
+        "shape_sha": "b753bd6779d9713f15ab8161e9b13ef1389a4ae6191ba0abe0bc55641b2db7c4",
+        "size": 48
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "94131ed2c65ccacf9ddab29fa89d6a6083e0da7d76620d96ad9f9aeee422cd1d",
+        "entry": 1668,
+        "insns": 5,
+        "name": "FUN_00000684",
+        "shape_sha": "742398f44dd32cc0fceb97abb1ce9f563821dd2468db8d2d8e180119879ea4fb",
+        "size": 16
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "94131ed2c65ccacf9ddab29fa89d6a6083e0da7d76620d96ad9f9aeee422cd1d",
+        "entry": 1668,
+        "insns": 5,
+        "name": "FUN_00000684",
+        "shape_sha": "742398f44dd32cc0fceb97abb1ce9f563821dd2468db8d2d8e180119879ea4fb",
+        "size": 16
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "8238ee2878df36d3c5117d7590535887534f4738cf2a003afae15f775e5be063",
+        "entry": 1684,
+        "insns": 9,
+        "name": "FUN_00000694",
+        "shape_sha": "240a11381c41c6653ea416fcd499ef9e7d4f68161f60a6d3a466479e9bbd91b1",
+        "size": 28
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "8238ee2878df36d3c5117d7590535887534f4738cf2a003afae15f775e5be063",
+        "entry": 1684,
+        "insns": 9,
+        "name": "FUN_00000694",
+        "shape_sha": "240a11381c41c6653ea416fcd499ef9e7d4f68161f60a6d3a466479e9bbd91b1",
+        "size": 28
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 8,
         "bytes_sha": "8fd9dc7f2dc57989832d5557bc7361f603c18830eba9850f3d7dfcf97838ad06",
         "entry": 1884,
@@ -1370,7 +1601,7 @@
       }
     },
     {
-      "confidence": "identical",
+      "confidence": "tentative",
       "differing_bytes": 0,
       "installed": {
         "blocks": 1,
@@ -1382,8 +1613,8 @@
         "size": 2
       },
       "moved": false,
-      "reason": "same body bytes",
-      "score": 1.0,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
       "vendor": {
         "blocks": 1,
         "bytes_sha": "c7dfbb7d02759eacb64dbc916c1bb6f21eabaff1c1032ea5c9176abf7fd28df8",
@@ -2374,6 +2605,56 @@
       "differing_bytes": 0,
       "installed": {
         "blocks": 4,
+        "bytes_sha": "fd28ff123cfffe0b0c8f58770619b55740a410a6f853a6e3448b15c337690f80",
+        "entry": 8520,
+        "insns": 16,
+        "name": "FUN_00002148",
+        "shape_sha": "7d0dc2be4097d7dbd60465f78d64ce2d915533fed140f28b5f5b8ae7da53c0dc",
+        "size": 36
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 4,
+        "bytes_sha": "fd28ff123cfffe0b0c8f58770619b55740a410a6f853a6e3448b15c337690f80",
+        "entry": 8520,
+        "insns": 16,
+        "name": "FUN_00002148",
+        "shape_sha": "7d0dc2be4097d7dbd60465f78d64ce2d915533fed140f28b5f5b8ae7da53c0dc",
+        "size": 36
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 7,
+        "bytes_sha": "3286f3217e8d24e6026c2f2d38aad14652d8d891ec3d44790f13e6c4203bcaed",
+        "entry": 8556,
+        "insns": 19,
+        "name": "FUN_0000216c",
+        "shape_sha": "f436f3fb24560625ebcd52cc981ed119591f8466db48da238f1776dceb93f177",
+        "size": 42
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 7,
+        "bytes_sha": "3286f3217e8d24e6026c2f2d38aad14652d8d891ec3d44790f13e6c4203bcaed",
+        "entry": 8556,
+        "insns": 19,
+        "name": "FUN_0000216c",
+        "shape_sha": "f436f3fb24560625ebcd52cc981ed119591f8466db48da238f1776dceb93f177",
+        "size": 42
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 4,
         "bytes_sha": "cb3c63dc4d2c317bf641a225a8fabcca10b32a5a53dc7cb856f2913a281dd3c4",
         "entry": 8624,
         "insns": 10,
@@ -3242,6 +3523,31 @@
         "name": "PtrTarget_00004004",
         "shape_sha": "3c9ef10c76bafd99a7384af6349638bf4ec82e728902174c30a788d51187dada",
         "size": 23
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 0,
+        "bytes_sha": "333e0a1e27815d0ceee55c473fe3dc93d56c63e3bee2b3b4aee8eed6d70191a3",
+        "entry": 16562,
+        "insns": 0,
+        "name": "FUN_000040b2",
+        "shape_sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size": 1
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 0,
+        "bytes_sha": "333e0a1e27815d0ceee55c473fe3dc93d56c63e3bee2b3b4aee8eed6d70191a3",
+        "entry": 16562,
+        "insns": 0,
+        "name": "FUN_000040b2",
+        "shape_sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size": 1
       }
     },
     {
@@ -3597,6 +3903,21 @@
   ],
   "must_not_assume_equal": [
     {
+      "installed": 1402,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 1402
+    },
+    {
+      "installed": 1406,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 1406
+    },
+    {
+      "installed": 1942,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 1942
+    },
+    {
       "installed": 4046,
       "reason": "tentative match only; the correspondence is not proven",
       "vendor": 4046
@@ -3639,15 +3960,27 @@
       "differing_bytes": 2,
       "installed_entry": 16564,
       "vendor_entry": 16564
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 2,
+      "installed_entry": 1302,
+      "vendor_entry": 1302
+    },
+    {
+      "confidence": "structural",
+      "differing_bytes": 1,
+      "installed_entry": 1408,
+      "vendor_entry": 1408
     }
   ],
   "unaligned_gaps": [],
   "uncovered_span_counts": {
-    "compared": 78,
-    "installed": 78,
-    "vendor": 78
+    "compared": 85,
+    "installed": 85,
+    "vendor": 85
   },
   "uncovered_span_counts_equal": true,
   "uncovered_spans_fully_compared": true,
-  "vendor_count": 101
+  "vendor_count": 114
 }
