@@ -1995,6 +1995,73 @@ both callerless in the application call graph, so the context that runs them is
 not established, and a second writer of the command byte outside the traced set
 is not excluded. The proof is conditional, and the condition is not proven.
 
+### Phase 5F: RGB / LampArray routing (log 112)
+
+Phase 5B routed endpoint `0x0f` as "USB controller → class ops; lighting
+consumer not traced". The consumer is traced now — and it is **not on that
+endpoint**.
+
+**Interface 4 declares no Output report.** All thirteen Main items in its
+327-byte descriptor are Feature items, so the LampArray protocol runs over
+**control transfers** and the 64-byte OUT endpoint carries none of it. Phase 5B's
+framing pointed at the wrong endpoint; the route is real, just elsewhere.
+
+**The route, end to end:**
+
+```
+FUN_180184b6   0xa101 GET_REPORT / 0x2109 SET_REPORT, type 3, capped at 64 bytes
+  -> indirect call through *(0x1801ebb8)
+FUN_18008f12   installed by FUN_18008f4a during INIT_TASK
+  -> bRequest 1 -> FUN_1800ffaa   report IDs 1, 3
+  -> bRequest 9 -> FUN_18010102   report IDs 2, 4, 5, 6
+FUN_1800c132(row, column, channels) -> the frame buffer
+```
+
+All six reports are handled. The GET handler returns `0x17` = 23 bytes for
+report 1 — **exactly** the descriptor item walk's 22 payload + 1 ID, derived
+twice from independent evidence.
+
+**Lamps are addressed by LampId**, translated to a `(row, column)` pair through
+a 2-byte-per-lamp coordinate table, each ID bounds-checked against the active
+configuration's lamp count before it is applied.
+
+**The frame buffer**, read off `FUN_1800c132`'s listing:
+
+| property | value | evidence |
+|---|---|---|
+| address | `0x1802505e` (zeroinit) | `ldr r0,[0x1800c428]` |
+| geometry | **6 × 17 × 3 = 306 bytes**, 102 cells | `cmp r0,#0x6` / `cmp r1,#0x11`, `row*17` then `*3` |
+| channel order | **red, green, blue** at offsets 0,1,2 | three `strb` in that order |
+| width | 8 bits per channel | `ldrb`/`strb` |
+| intensity | `(channel × intensity) >> 8` | `muls` then `lsrs #0x8` |
+| out of range | **dropped silently** | both `bcs` jump to the return |
+
+**LED count from evidence, not marketing.** The lamp count comes from a table in
+the **entry image** at `0x500c`: eight configuration variants of 23, 37, 51, 65,
+79, 84, 85 and 89 lamps — every one ≤ the frame's 102 cells, a consistency the
+tool asserts. The 6 × 17 grid is a *software* layout; the physical wiring
+topology is **not** established.
+
+**The final hardware interface is unresolved.** Both functions that consume the
+frame reach **zero** resolved MMIO (79 and 91 unresolved-base accesses). SPI,
+PWM, GPIO and DMA all remain open; there is no link to the DMA setup log 111
+traced; and `0x40022000` is **not named** despite a per-channel shape that would
+suit PWM. Frame timing, double buffering and any scan-tick interaction are
+likewise unrecovered.
+
+**Classification: implemented, with a stated ceiling.** The host-facing protocol
+is fully reproducible — enough to satisfy a LampArray host — but without the
+driver a replacement firmware could do all of that and light nothing.
+
+**Safe omission has two halves and only one is provable.** The buffer's idle
+state *is* provable: it sits in the zeroinit region and `FUN_1800c132` is its
+only writer, so omitting RGB leaves an all-zero frame by construction. Whether
+all-zero means *LEDs off* is **not** provable — that depends on the unidentified
+driver's polarity, and a common-anode part behind an inverting stage would read
+all-zero as full brightness. Nor could any shared clock, pin or controller
+initialisation be inspected, because it lives in the unreached consumers. A
+first custom firmware that omits RGB must treat this as an open risk.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

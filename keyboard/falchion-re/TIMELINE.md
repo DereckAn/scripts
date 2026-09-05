@@ -1831,6 +1831,53 @@ set, and both the state machine and the drainer are callerless, so a second
 writer outside that set is not excluded. 587 offline tests pass, both evidence
 hashes are unchanged, and no device was accessed.
 
+## 2026-09-05 — Phase 5F: RGB / LampArray routing (log 112)
+
+Phase 5F only. 5G was not begun, nothing was committed or staged, every Ghidra
+run was read-only, and no seeding was needed.
+
+The phase opened by correcting its own starting assumption. Phase 5B had routed
+endpoint `0x0f` as the lighting path, but walking interface 4's descriptor shows
+all thirteen of its Main items are **Feature** items — there is no Output report
+at all. The LampArray therefore runs over control transfers, and the 64-byte OUT
+endpoint carries none of it.
+
+From there the route came out cleanly: the class control handler dispatches
+GET/SET report type 3 through one registered callback, installed during
+INIT_TASK, which dispatches on bRequest and handles all six LampArray reports.
+A pleasing cross-check fell out — the GET handler returns 23 bytes for report 1,
+which is exactly what the descriptor's own item walk computes as 22 payload plus
+the ID prefix, derived from two independent sources.
+
+I misread the callback's first argument as an interface number on the first
+pass, which briefly made it look as though interface 4 was unhandled. Reading
+the call site instead of the callee's decompiled signature settled it: the
+argument is the report ID. That correction is recorded in the log rather than
+quietly fixed.
+
+The frame buffer is the concrete prize: 6 rows × 17 columns × 3 bytes at
+`0x1802505e`, red-green-blue order, eight bits per channel, intensity applied as
+`(channel × intensity) >> 8`, and out-of-range cells dropped silently — all read
+off one small function's listing. Lamps reach it by LampId through a coordinate
+table, bounds-checked first. The LED count came from a table in the *entry*
+image giving eight configurations of 23 to 89 lamps, every one fitting the 102
+available cells.
+
+What stayed out of reach is the driver. Both functions that consume the frame
+reach zero resolved MMIO, so SPI, PWM, GPIO and DMA are all still open, and
+`0x40022000` — which has a per-channel shape that would suit PWM — is left
+unnamed on principle.
+
+So RGB is classified **implemented, with a ceiling**: the host-facing protocol
+is fully reproducible, but a replacement built on this evidence could satisfy a
+LampArray host and light nothing. The safe-omission question splits in two, and
+only one half is provable: the buffer powers up all-zero and has a single
+writer, so omitting RGB provably leaves it blank — but whether blank means dark
+depends on a driver polarity nobody here can establish.
+
+617 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
