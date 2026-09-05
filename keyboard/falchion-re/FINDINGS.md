@@ -1169,9 +1169,11 @@ and destination match the SN_FWIN record it loads — and lands at flash `0x1675
   0x1e754` vendor. So the +44 growth is entirely in the copy region; the
   compressed input and decompressed output sizes are unchanged, and zeroinit
   shrank by 4, moving the RAM top by `+0x28`.
-- **The decompressed range is mapped, not known.** Its location and size come
-  from the region table, but the ARM decompressor was not reimplemented, so
-  `0x1801e380..0x1801ee84` has no reconstructed contents.
+- **The decompressed range is now reconstructed** (log 105, superseding this
+  section's earlier "mapped, not known"). The decompress handler was translated
+  from the firmware's own `0x5c` bytes at Candidate A program `0x17c`, and both
+  releases decode to exactly the descriptor's `0xb04`. The region is the **USB /
+  HID descriptor set**, not code. See "Phase 5A: the decompressed region" below.
 - **Every byte of the installed dump is accounted for** with no gaps or overlap.
   Each active SN_FWIN record is extracted **whole** — slot 1 as
   `0x21000..0x3f780`, not just the loadable `0x21000..0x3f380` — every slice is
@@ -1504,6 +1506,77 @@ remaining entry mechanisms are therefore one of: a callback installed into RAM a
 runtime; a table inside the decompressed region `0x1801e380..0x1801ee84`, which
 Phase 3 mapped but did not reconstruct; or dispatch through a computed value.
 The second is testable offline and is the concrete next step.
+
+### Phase 5A: the decompressed region (log 105)
+
+That next step was taken. `tool/reconstruct_decompress.py` decodes scatter region
+1 offline. The decoder is a **translation of the firmware's own handler** — the
+`0x5c` bytes at Candidate A program `0x17c..0x1d8`, sha256 `582c4804…6ae0`, which
+are **byte-identical in both releases** — not of a generic ARM library routine,
+and it refuses to decode against a handler that does not hash to those bytes.
+Three rules were read off instructions rather than guessed: a literal field of N
+emits N−1 bytes, a back-reference emits field+2 bytes one at a time so an
+overlapping reference repeats what it just wrote, and a cleared bit 3 makes the
+copy field a zero-fill count.
+
+Both releases produce exactly the descriptor's `0xb04`. The compressed length is
+stored nowhere and is derived as "region 1's source to the end of record 1", which
+is word-aligned, so the decoder consumes `0x3fd`/`0x3fe` of `0x400` and the
+remainder is all zero padding. An earlier "consumed exactly" check failed against
+that and was replaced by the two checks that state the real invariant.
+
+**The region is the USB / HID descriptor set** — initialised read-write data, not
+code. This was read out of the decoded bytes:
+
+| offset | content |
+|---|---|
+| `+0x0008` | HID report descriptor (`05 01 09 06 a1 01 …`: Generic Desktop, Keyboard, LED page) |
+| `+0x0284` | idVendor `0x0b05`, idProduct `0x1b7e`, bcdDevice `0x0159` — adjacent, in device-descriptor order |
+| `+0x0850` | `ASUSTeK` |
+| `+0x0882` | `ROG FALCHION ACE HFX` |
+| `+0x08ec` | `hid driver` |
+| `+0x09a4` | `Sonix HID` |
+
+`notes/findings.md` recorded `0b05:1b7e` bcdDevice 1.59 from sysfs in log 04, long
+before this region was decoded, and the vendor image decodes to `0x0158` at the
+same offset, matching its own filename. **The decoder was given no vendor ID, no
+product ID and no version.** That is external corroboration, not internal
+consistency. The two independently decoded regions differ in 45 of 2,820 bytes,
+35 of the 39 differing words by exactly the `0x2c` shift Phase 3 measured.
+
+**The Thumb-2 disassembly rate supports nothing, and is reported with the control
+that shows why.** Seeded pseudorandom noise decodes at 95.53%, known code at
+97.13–97.93%, the reconstructed region at 98.44–98.72% — *above* known code.
+Thumb-2 is too dense for that rate to distinguish code from data at this size.
+
+**The region holds no pointer table.** Under 5A's stated rule — three or more
+Thumb pointers at a constant stride — nothing qualifies, and the rule was not
+weakened to manufacture one. Five isolated pointers exist; three of them
+(`0x18018afc`, `0x18018af0`, `0x18018a28`, beside the `hid driver` and `Sonix HID`
+strings) name addresses at which Ghidra already has a function, and are admitted
+as reachability roots on that external agreement alone. **Application reachability
+138 → 146 of 573**; the entry image is unchanged at 91/101; function counts are
+unchanged, so Phase 3 needed no regeneration.
+
+**Provenance — table `0x5680` contributes two roots, not three.** Its entries name
+`0x4004`, `0x4018` and `0x40b4`. Seeding created `PtrTarget_00004004` first;
+Ghidra gave it the body extent `0x4004..0x401c`, so `createFunction(0x4018)`
+returned null (log 104's `skipped=1`). `0x4018` is **not** a function entry — it is
+absorbed into `PtrTarget_00004004`. `reachability()` now *reports* a root naming
+no function rather than dropping it silently, so that table can no longer be
+counted as three distinct indirect roots by accident.
+
+**What is still unreached, without any claim of closure.** 427 of 573 application
+functions. Of those, **135 are called by nothing in the image** and reach the
+other 292 between them, so the gap is 135 missing entry points, not 427 mysteries;
+zero unreached functions are called by a reached one. The largest unaccounted
+mechanism is named precisely: **`0x1800023a`, recorded here and in logs 79–80 as
+Candidate B's runtime entry, is not a function in the inventory at all**, so the
+traversal cannot start there. `0x18001fbe`, log 80's dispatcher, is the largest
+callerless function at 3,146 instructions. Log 80's RTOS `INIT_TASK`/scheduler
+suggests task entry points passed as register arguments, which are stored in no
+table and no initialised data and are invisible to a byte survey — stated as a
+hypothesis, not traced. The next mechanism needs data-flow, not another survey.
 
 **Series-level reference.** The SONiX SNC7320-series product brief is recorded in
 `notes/references.md` at the owner's direction. It was **not fetched** — the URL

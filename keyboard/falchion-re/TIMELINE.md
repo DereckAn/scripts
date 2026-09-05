@@ -1488,12 +1488,81 @@ Phase 5 is **not complete** and is not declared so. 5B through 5G are not
 started. 406 offline tests pass, both evidence hashes are unchanged, and no
 device was accessed.
 
+## 2026-09-04 — Phase 5A continuation: the decompressed region reconstructed (log 105)
+
+One step, at the owner's direction: reconstruct Candidate A's decompressed
+scatter region offline, then re-run 5A's reachability measurement over it.
+5B–5G were not begun and nothing was committed.
+
+Log 104 had named this exactly: a callback "held in the decompressed region that
+is mapped but not reconstructed, cannot appear". `tool/reconstruct_decompress.py`
+removes that blind spot. Its decoder is a **translation of the firmware's own
+handler** — the `0x5c` bytes at Candidate A program `0x17c..0x1d8`, which are
+**byte-identical in both releases** (sha256 `582c4804…6ae0`) — and it refuses to
+decode against a handler that does not hash to them. Both releases decode to
+exactly the descriptor's `0xb04`.
+
+One check failed on the first run and the failure was informative. "The decoder
+consumed the compressed source exactly" reported `0x3fd` of `0x400`. The premise
+was wrong, not the decoder: the compressed length is stored nowhere and is
+*derived* as "region 1's source to the end of record 1", which is word-aligned,
+so a short all-zero tail is expected. The check was replaced by two that state
+the real invariant — consumption rounds up to the derived length, and every
+unconsumed byte is zero — rather than relaxed into a tolerance.
+
+**The region turned out to be the USB / HID descriptor set**, initialised
+read-write data rather than code. That was read out of the decoded bytes: a HID
+report descriptor at `+0x8`, the strings `ASUSTeK`, `ROG FALCHION ACE HFX`,
+`hid driver` and `Sonix HID`, and at `+0x284` the adjacent halfwords idVendor
+`0x0b05`, idProduct `0x1b7e`, bcdDevice `0x0159`. That identity was recorded from
+sysfs in log 04, months of work before this region was decoded, and the vendor
+image decodes to `0x0158` at the same offset, matching its own filename. The
+decoder was given no vendor ID, no product ID and no version, so this is external
+corroboration rather than internal consistency. The two independently decoded
+regions differ in 45 of 2,820 bytes, 35 of 39 differing words by exactly the
+`0x2c` shift Phase 3 measured from flash alone.
+
+**A measurement that supports nothing, reported anyway.** The Thumb-2 disassembly
+rate was measured in `ghidra/project-step6` with a control: seeded pseudorandom
+noise decodes at 95.53%, known code at 97.13–97.93%, and the reconstructed region
+at 98.44–98.72% — *above* known code. Thumb-2 is too dense an encoding for that
+rate to distinguish code from data here, so "98.7% disassembly success" is not
+offered as evidence of anything. What the region is was settled by its content.
+
+**The region holds no pointer table**, and the rule was not weakened to produce
+one. Five isolated pointers exist; three name addresses at which Ghidra already
+has a function and are admitted as roots on that external agreement alone.
+Application reachability moved **138 → 146 of 573** — three roots, eight
+functions, reported as the small gain it is. Function counts are unchanged, so
+Phase 3 needed no regeneration.
+
+Recorded as required: table `0x5680`'s middle entry `0x4018` was absorbed into
+`PtrTarget_00004004`'s body extent, so log 104's `skipped=1` means that table
+contributes **two** indirect roots, not three. `reachability()` now reports a
+root that names no function instead of dropping it silently.
+
+**No claim of full reachability.** 427 application functions remain unreached,
+but only **135 are called by nothing at all** — the other 292 are downstream of
+those, so the gap is 135 missing entry points. The largest unaccounted mechanism
+is named: `0x1800023a`, recorded in FINDINGS.md and logs 79–80 as Candidate B's
+runtime entry, **is not a function in the inventory at all**, so the traversal
+cannot start there. Log 80's dispatcher `0x18001fbe` is the largest callerless
+function at 3,146 instructions. Task entry points handed to an RTOS creation call
+as register arguments would be invisible to every byte survey run so far — a
+hypothesis, not a trace. The next mechanism needs data-flow analysis.
+
+Phase 5 remains **not complete**. 433 offline tests pass, both evidence hashes are
+unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| Decompressed region "mapped, not known" | Reconstructed from the firmware's own handler; it is the USB/HID descriptor set, and its content carries the device's own VID/PID/bcdDevice (log 105) |
+| "The decoder consumed the compressed source exactly" | Failed at `0x3fd` of `0x400`. The premise was wrong, not the decoder: the compressed length is derived and word-aligned, so an all-zero tail is expected. Replaced by two checks that state the real invariant (log 105) |
+| Table `0x5680` read as three indirect roots | Its middle entry `0x4018` was absorbed into `PtrTarget_00004004`'s body extent, so it contributes two. Roots naming no function are now reported, not dropped (log 105) |
 | Sandboxed `lsusb` failure | Not a device result; direct read-only retry succeeded |
 | Sandboxed `dfu-util` failure | Not a DFU result; direct enumeration succeeded with no target |
 | Port comparison in log 25 | Parser included `xxd` ASCII; log 26 proved equality |

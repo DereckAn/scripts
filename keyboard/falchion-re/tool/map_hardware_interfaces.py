@@ -194,6 +194,8 @@ class ProgramMap:
     roots: tuple
     contexts: dict
     unreached: tuple
+    unresolved_roots: tuple
+    orphans: tuple
     accesses: tuple
     unresolved: dict
     blocks: tuple
@@ -359,9 +361,19 @@ def cross_image_pointers(data, base, code_range, runtime_ranges, vector_span):
 
 
 def reachability(records, roots):
-    """Breadth-first contexts for every function, from evidence-backed roots."""
+    """Breadth-first contexts for every function, from evidence-backed roots.
+
+    A root naming an address that is not a function entry is *reported*, not
+    silently dropped. Table 0x5680's middle entry 0x4018 is one: seeding could
+    not create a function there because 0x4004, created moments earlier from
+    the same table, had already claimed the address into its body. Counting
+    that table as three indirect roots would count one function twice.
+    """
     by_entry = {record.entry: record for record in records}
     contexts = {}
+    unresolved_roots = tuple(sorted(
+        (f"0x{entry:08x}", label) for label, entry in roots
+        if entry not in by_entry))
     for label, entry in roots:
         if entry not in by_entry:
             continue
@@ -376,7 +388,14 @@ def reachability(records, roots):
                     queue.append(callee)
     unreached = tuple(sorted(record.entry for record in records
                              if record.entry not in contexts))
-    return contexts, unreached
+    # An unreached function that some other function calls is not a separate
+    # mystery: it is downstream of one that nothing calls. Splitting the
+    # unreached set this way turns "427 functions we cannot reach" into the
+    # much smaller number of entry points actually missing.
+    called = {callee for record in records for callee in record.callees
+              if callee in by_entry}
+    orphans = tuple(entry for entry in unreached if entry not in called)
+    return contexts, unreached, unresolved_roots, orphans
 
 
 def build_blocks(accesses, contexts, program_base, program_size, runtime_ranges):
@@ -725,11 +744,25 @@ def build_map(installed_view=None):
     # mechanism the call graph cannot see, so the table entry is itself a root.
     # The label names the table, so a context always says how the function is
     # entered rather than merely that it is.
-    entry_survey, app_survey = fpt.build()
-    for survey, roots in ((entry_survey, entry_roots), (app_survey, app_roots)):
-        for table in survey.tables:
+    surveys = fpt.build()
+    by_program = {survey.program: survey for survey in surveys}
+    for program, roots in (("entry", entry_roots), ("app", app_roots)):
+        for table in by_program[program].tables:
             for _address, target in table.entries:
                 roots.append((f"table@0x{table.location:08x}", target))
+
+    # The decompressed scatter region holds no table under that rule, but it
+    # does hold isolated pointers. One is admitted as a root only when Ghidra
+    # already recognises a function at the address it names: that is external
+    # validation the word is a callback, not a decision to trust lone words.
+    # Words in the region that name no known function stay out.
+    region = by_program.get("ram")
+    if region is not None:
+        known = {record.entry for record in inventories["app"]}
+        for address, target in region.loose_candidates:
+            if target in known:
+                app_roots.append(
+                    (f"decompressed region 0x{address:08x}", target))
 
     programs = []
     for tag, name, slice_item, roots in (
@@ -739,11 +772,13 @@ def build_map(installed_view=None):
             (PERIPHERALS / f"installed_{'a' if tag == 'entry' else 'b'}.txt")
             .read_text())
         records = inventories[tag]
-        contexts, unreached = reachability(records, roots)
+        contexts, unreached, unresolved_roots, orphans = reachability(
+            records, roots)
         programs.append(ProgramMap(
             name=name, slice_name=slice_item.name,
             base=slice_item.import_base, functions=len(records),
             roots=tuple(sorted(roots)), contexts=contexts, unreached=unreached,
+            unresolved_roots=unresolved_roots, orphans=orphans,
             accesses=accesses, unresolved=unresolved,
             blocks=build_blocks(accesses, contexts, slice_item.import_base,
                                 slice_item.length, runtime_ranges)))
@@ -813,6 +848,10 @@ def to_dict(hardware):
                           for label, entry in program.roots],
                 "slice": program.slice_name,
                 "unreached_functions": list(program.unreached),
+                "unreached_with_no_caller": list(program.orphans),
+                "unresolved_roots": [{"address": address, "label": label}
+                                     for address, label in
+                                     program.unresolved_roots],
                 "unresolved_accesses": program.unresolved,
             }
             for program in hardware.programs
@@ -890,6 +929,18 @@ def report_lines(hardware, max_registers=12):
             "  table roots: " + (", ".join(sorted({
                 label for label, _entry in program.roots
                 if label.startswith("table@")})) or "none"),
+            "  region roots: " + (", ".join(
+                f"{label}->0x{entry:08x}" for label, entry in program.roots
+                if label.startswith("decompressed region")) or "none"),
+            # A root that names no function is shown, not dropped: it is the
+            # difference between "this table has three entries" and "this
+            # table contributes three distinct functions".
+            "  roots naming no function: " + (", ".join(
+                f"{address} ({label})"
+                for address, label in program.unresolved_roots) or "none"),
+            f"  unreached_with_no_caller={len(program.orphans)} "
+            "(each needs an entry mechanism; the rest of the unreached set is "
+            "downstream of these)",
             f"  resolved_accesses={len(program.accesses)}",
             "  unresolved_accesses=" + ", ".join(
                 f"{reason}={count}"

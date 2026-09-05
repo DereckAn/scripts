@@ -137,24 +137,41 @@ class Reachability(unittest.TestCase):
             self.func(0x200, "00000300"),
             self.func(0x300),
             self.func(0x900))
-        contexts, unreached = mh.reachability(records, [("Reset", 0x100)])
+        contexts, unreached, _unresolved, orphans = mh.reachability(
+            records, [("Reset", 0x100)])
         self.assertEqual(contexts[0x300], {"Reset"})
         self.assertEqual(unreached, (0x900,))
+        self.assertEqual(orphans, (0x900,))
 
     def test_a_function_can_carry_two_contexts(self):
         records = self.records(
             self.func(0x100, "00000300"),
             self.func(0x200, "00000300"),
             self.func(0x300))
-        contexts, _unreached = mh.reachability(
+        contexts, _unreached, _unresolved, _orphans = mh.reachability(
             records, [("Reset", 0x100), ("IRQ6", 0x200)])
         self.assertEqual(contexts[0x300], {"Reset", "IRQ6"})
 
-    def test_a_root_that_is_not_a_function_is_skipped(self):
+    def test_a_root_that_is_not_a_function_is_reported_not_dropped(self):
+        """The real case is table 0x5680's 0x4018, absorbed into the function
+        seeded from the entry before it. A silently dropped root would let a
+        three-entry table be described as three distinct indirect roots."""
         records = self.records(self.func(0x100))
-        contexts, unreached = mh.reachability(records, [("Reset", 0x999)])
+        contexts, unreached, unresolved, orphans = mh.reachability(
+            records, [("Reset", 0x999)])
         self.assertEqual(contexts, {})
         self.assertEqual(unreached, (0x100,))
+        self.assertEqual(unresolved, (("0x00000999", "Reset"),))
+        self.assertEqual(orphans, (0x100,))
+
+    def test_an_unreached_function_with_a_caller_is_not_an_orphan(self):
+        """It is downstream of a missing entry point, not a missing entry
+        point of its own, and counting it as one would overstate the gap."""
+        records = self.records(self.func(0x800, "00000900"), self.func(0x900))
+        _contexts, unreached, _unresolved, orphans = mh.reachability(
+            records, [])
+        self.assertEqual(unreached, (0x800, 0x900))
+        self.assertEqual(orphans, (0x800,))
 
 
 @unittest.skipUnless(READY, "run the Ghidra inventory and peripheral steps first")

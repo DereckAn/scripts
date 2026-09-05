@@ -526,6 +526,9 @@
         "IRQ6",
         "called from entry image 0x1994",
         "called from entry image 0x19cc",
+        "decompressed region 0x1801ecac",
+        "decompressed region 0x1801ecb0",
+        "decompressed region 0x1801ecc0",
         "table@0x18016d44",
         "table@0x18017d08",
         "table@0x18018ce8"
@@ -593,6 +596,9 @@
         "IRQ6",
         "called from entry image 0x1994",
         "called from entry image 0x19cc",
+        "decompressed region 0x1801ecac",
+        "decompressed region 0x1801ecb0",
+        "decompressed region 0x1801ecc0",
         "table@0x18016d44",
         "table@0x18017d08",
         "table@0x18018ce8"
@@ -2839,6 +2845,16 @@
         17164,
         18100
       ],
+      "unreached_with_no_caller": [
+        1494,
+        1536,
+        2670,
+        5408,
+        5440,
+        5724,
+        6152,
+        17164
+      ],
       "unresolved_accesses": {
         "base_lr_unknown": 3,
         "base_r0_unknown": 68,
@@ -2853,7 +2869,13 @@
         "base_r9_unknown": 3,
         "register_offset": 43,
         "stack_relative": 44
-      }
+      },
+      "unresolved_roots": [
+        {
+          "address": "0x00004018",
+          "label": "table@0x00005680"
+        }
+      ]
     },
     {
       "accesses": 3926,
@@ -3116,6 +3138,9 @@
             "IRQ6",
             "called from entry image 0x1994",
             "called from entry image 0x19cc",
+            "decompressed region 0x1801ecac",
+            "decompressed region 0x1801ecb0",
+            "decompressed region 0x1801ecc0",
             "table@0x18016d44",
             "table@0x18017d08",
             "table@0x18018ce8"
@@ -8701,6 +8726,9 @@
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -8844,6 +8872,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -8884,6 +8915,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -8924,6 +8958,9 @@
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9019,6 +9056,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9054,6 +9094,9 @@
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9102,6 +9145,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9163,6 +9209,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9200,6 +9249,9 @@
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9258,6 +9310,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9301,6 +9356,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9336,6 +9394,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9369,6 +9430,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9433,6 +9497,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -9466,6 +9533,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -10807,6 +10877,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18018ce8"
               ],
@@ -10889,7 +10962,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "decompressed region 0x1801ecac"
               ],
               "functions": [
                 402754218
@@ -10912,7 +10985,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "decompressed region 0x1801ecac"
               ],
               "functions": [
                 402754218
@@ -10935,7 +11008,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "decompressed region 0x1801ecac"
               ],
               "functions": [
                 402754218
@@ -23416,6 +23489,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18018ce8"
               ],
               "functions": [
@@ -23445,6 +23521,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -23472,6 +23551,9 @@
               "contexts": [
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -27167,6 +27249,9 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18018ce8"
               ],
@@ -27501,7 +27586,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "decompressed region 0x1801ecac"
               ],
               "functions": [
                 402754218
@@ -27524,7 +27609,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "decompressed region 0x1801ecac"
               ],
               "functions": [
                 402754218
@@ -27547,7 +27632,7 @@
               "arm_name": null,
               "confidence": "high for the access, and the address space is established by earlier phases",
               "contexts": [
-                "unreached"
+                "decompressed region 0x1801ecac"
               ],
               "functions": [
                 402754218
@@ -28926,6 +29011,9 @@
             "IRQ6",
             "called from entry image 0x1994",
             "called from entry image 0x19cc",
+            "decompressed region 0x1801ecac",
+            "decompressed region 0x1801ecb0",
+            "decompressed region 0x1801ecc0",
             "table@0x18016d44",
             "table@0x18017d08",
             "table@0x18018ce8"
@@ -29017,6 +29105,9 @@
                 "IRQ6",
                 "called from entry image 0x1994",
                 "called from entry image 0x19cc",
+                "decompressed region 0x1801ecac",
+                "decompressed region 0x1801ecb0",
+                "decompressed region 0x1801ecc0",
                 "table@0x18016d44",
                 "table@0x18017d08",
                 "table@0x18018ce8"
@@ -29096,7 +29187,7 @@
       ],
       "functions": 573,
       "name": "Candidate B (application)",
-      "reached_functions": 138,
+      "reached_functions": 146,
       "roots": [
         {
           "entry": 402759468,
@@ -29133,6 +29224,18 @@
         {
           "entry": 402747180,
           "label": "called from entry image 0x19cc"
+        },
+        {
+          "entry": 402754300,
+          "label": "decompressed region 0x1801ecac"
+        },
+        {
+          "entry": 402754288,
+          "label": "decompressed region 0x1801ecb0"
+        },
+        {
+          "entry": 402754088,
+          "label": "decompressed region 0x1801ecc0"
         },
         {
           "entry": 402740028,
@@ -29659,16 +29762,8 @@
         402747778,
         402747794,
         402749608,
-        402750028,
-        402750154,
         402751058,
-        402751146,
         402751360,
-        402753912,
-        402754088,
-        402754218,
-        402754288,
-        402754300,
         402754338,
         402754488,
         402754518,
@@ -29749,6 +29844,143 @@
         402765758,
         402765784
       ],
+      "unreached_with_no_caller": [
+        402653448,
+        402653650,
+        402655770,
+        402656598,
+        402661310,
+        402669950,
+        402672254,
+        402675710,
+        402678210,
+        402679852,
+        402679978,
+        402685496,
+        402688806,
+        402690072,
+        402690138,
+        402696474,
+        402699120,
+        402700424,
+        402701998,
+        402706474,
+        402706508,
+        402706522,
+        402706836,
+        402706858,
+        402706934,
+        402707062,
+        402707132,
+        402707256,
+        402708274,
+        402708544,
+        402708638,
+        402709286,
+        402709308,
+        402709330,
+        402709650,
+        402711328,
+        402712438,
+        402712630,
+        402713870,
+        402714136,
+        402716442,
+        402717308,
+        402717656,
+        402717830,
+        402718634,
+        402718978,
+        402719048,
+        402719958,
+        402720268,
+        402720302,
+        402720344,
+        402720380,
+        402720620,
+        402720928,
+        402721252,
+        402721348,
+        402721468,
+        402722356,
+        402722880,
+        402723424,
+        402723948,
+        402724496,
+        402724998,
+        402725084,
+        402725120,
+        402725268,
+        402727502,
+        402727540,
+        402727722,
+        402727786,
+        402727820,
+        402727848,
+        402728016,
+        402729148,
+        402729614,
+        402730082,
+        402730234,
+        402731644,
+        402731898,
+        402731992,
+        402732016,
+        402732056,
+        402732334,
+        402732932,
+        402733004,
+        402733120,
+        402733194,
+        402733342,
+        402733950,
+        402734046,
+        402734174,
+        402734360,
+        402734586,
+        402735030,
+        402740778,
+        402742404,
+        402745652,
+        402746254,
+        402747778,
+        402747794,
+        402749608,
+        402751058,
+        402751360,
+        402754338,
+        402754488,
+        402756552,
+        402756718,
+        402757194,
+        402757210,
+        402757814,
+        402757918,
+        402758184,
+        402759276,
+        402759316,
+        402759352,
+        402759410,
+        402759480,
+        402759572,
+        402759684,
+        402759764,
+        402759856,
+        402759916,
+        402760190,
+        402760212,
+        402760364,
+        402760442,
+        402760484,
+        402762304,
+        402763832,
+        402764154,
+        402764306,
+        402764384,
+        402764460,
+        402764534,
+        402765690
+      ],
       "unresolved_accesses": {
         "base_lr_unknown": 17,
         "base_r0_unknown": 1114,
@@ -29766,7 +29998,8 @@
         "base_r9_unknown": 37,
         "register_offset": 851,
         "stack_relative": 1072
-      }
+      },
+      "unresolved_roots": []
     }
   ],
   "vector_table": [

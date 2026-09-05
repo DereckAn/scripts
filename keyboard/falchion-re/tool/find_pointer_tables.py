@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import extract_installed_records as ex
 import falchion_image as fi
 import match_functions as mf
+import reconstruct_decompress as rd
 
 ROOT = Path(__file__).resolve().parent.parent
 IMPORTS = ROOT / "ghidra/imports"
@@ -54,8 +55,13 @@ STRIDES = (4, 8, 12, 16, 20, 24, 32)
 # CODE_FLOOR is the first address in each image where code actually begins, and
 # a target below it is rejected. Without that floor, structures whose words
 # happen to carry the low bit produce targets like 0x00000004.
-EXCLUDE = {"entry": ((0x0, 0x140),), "app": ()}
-CODE_FLOOR = {"entry": 0x140, "app": 0x18000000}
+EXCLUDE = {"entry": ((0x0, 0x140),), "app": (), "ram": ()}
+CODE_FLOOR = {"entry": 0x140, "app": 0x18000000, "ram": 0x18000000}
+# The reconstructed decompress region sits *above* the code it points into, so
+# for it the acceptance window cannot be "inside this slice". CODE_CEIL names
+# the end of the runtime code the slice may legitimately point at; where it is
+# absent the window ends at the slice itself, which is the original behaviour.
+CODE_CEIL = {"ram": 0x1801EE84}
 
 
 @dataclass(frozen=True)
@@ -87,8 +93,10 @@ class Survey:
     loose_candidates: tuple
 
 
-def candidates(data, base, excluded, code_floor):
+def candidates(data, base, excluded, code_floor, code_ceil=None):
     """Offsets holding a plausible Thumb pointer into this image's code."""
+    if code_ceil is None:
+        code_ceil = base + len(data)
     found = {}
     for offset in range(0, len(data) - 3, 4):
         address = base + offset
@@ -100,7 +108,7 @@ def candidates(data, base, excluded, code_floor):
             continue
         # No alignment test here: clearing bit 0 always yields an even address,
         # so a "reject odd targets" branch would be dead code.
-        if not code_floor <= target < base + len(data):
+        if not code_floor <= target < code_ceil:
             continue
         found[address] = target
     return found
@@ -128,7 +136,8 @@ def find_tables(found):
 
 def survey(program, slice_name, base, data, known):
     excluded = EXCLUDE.get(program, ())
-    found = candidates(data, base, excluded, CODE_FLOOR[program])
+    found = candidates(data, base, excluded, CODE_FLOOR[program],
+                       CODE_CEIL.get(program))
     tables, claimed = find_tables(found)
     targets = {target for table in tables for _address, target in table.entries}
     return Survey(
@@ -152,10 +161,34 @@ def load(view, inventory_name, program, import_base):
     return survey(program, item.name, import_base, data, known)
 
 
+def reconstructed(view, inventory_name):
+    """Survey the decompressed scatter region, if it has been reconstructed.
+
+    Ghidra cannot see this region at all: it exists only after the boot-time
+    decompress, so a callback stored in it is invisible to every flash-only
+    survey. Returns None when the region has not been written, so the two
+    flash surveys behave exactly as they did before this was added.
+    """
+    result, payload = rd.reconstruct(view, "installed"
+                                     if view.base == 0x10000 else "vendor")
+    path = IMPORTS / result.name
+    if not path.exists():
+        return None
+    records, _header = mf.parse_inventory(
+        (INVENTORIES / inventory_name).read_text())
+    known = {record.entry for record in records}
+    return survey("ram", result.name, result.destination, path.read_bytes(),
+                  known)
+
+
 def build(image=INSTALLED, base=0x10000, tag="installed"):
     view = fi.ImageView(Path(image).read_bytes(), base)
-    return (load(view, f"{tag}_a.txt", "entry", 0x0),
-            load(view, f"{tag}_b.txt", "app", 0x18000000))
+    surveys = [load(view, f"{tag}_a.txt", "entry", 0x0),
+               load(view, f"{tag}_b.txt", "app", 0x18000000)]
+    region = reconstructed(view, f"{tag}_b.txt")
+    if region is not None:
+        surveys.append(region)
+    return tuple(surveys)
 
 
 def seed_arguments(survey_result):
@@ -166,6 +199,7 @@ def seed_arguments(survey_result):
 
 def to_dict(surveys):
     return {
+        "code_ceilings": {name: value for name, value in CODE_CEIL.items()},
         "code_floors": {name: value for name, value in CODE_FLOOR.items()},
         "min_entries": MIN_ENTRIES,
         "strides": list(STRIDES),
@@ -238,9 +272,10 @@ def report_lines(surveys):
         f"new_targets={sum(len(item.new_targets) for item in surveys)}",
         "LIMITATION A target here is a candidate, not a proven function. Whether "
         "it is code is settled by whether Ghidra disassembles a function at it.",
-        "LIMITATION Only flash-resident tables are visible. A callback installed "
-        "into RAM at runtime, or held in the decompressed region that is mapped "
-        "but not reconstructed, cannot appear.",
+        "LIMITATION Only tables present in the surveyed slices are visible. The "
+        "decompressed region is now surveyed as well, but a callback written "
+        "into RAM at runtime, by code rather than by an initialiser, still "
+        "cannot appear here.",
     ]
     return out
 
@@ -248,7 +283,7 @@ def report_lines(surveys):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--seed-args", choices=("entry", "app"),
+    parser.add_argument("--seed-args", choices=("entry", "app", "ram"),
                         help="print only the seed arguments for one image")
     parser.add_argument("--vendor", action="store_true",
                         help="survey the vendor image instead")

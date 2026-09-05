@@ -268,7 +268,7 @@ Contexts: HardFault, IRQ63, NMI, Reset, SysTick, table@0x00001404.
 ### Candidate B (application)
 
 - slice `installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin` at base `0x18000000`
-- 573 functions, 138 reached from a vector root, 435 unreached
+- 573 functions, 146 reached from a vector root, 427 unreached
 - 3926 accesses with a resolved base; 5325 unresolved
 
 Unresolved reasons: `base_lr_unknown` 17, `base_r0_unknown` 1114, `base_r10_unknown` 3, `base_r11_unknown` 9, `base_r12_unknown` 31, `base_r1_unknown` 523, `base_r2_unknown` 258, `base_r3_unknown` 154, `base_r4_unknown` 771, `base_r5_unknown` 208, `base_r6_unknown` 153, `base_r7_unknown` 82, `base_r8_unknown` 42, `base_r9_unknown` 37, `register_offset` 851, `stack_relative` 1072.
@@ -299,7 +299,7 @@ Contexts: unreached.
 
 inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
-Contexts: IRQ36, IRQ37, IRQ38, IRQ48, IRQ6, called from entry image 0x1994, called from entry image 0x19cc, table@0x18016d44, table@0x18017d08, table@0x18018ce8.
+Contexts: IRQ36, IRQ37, IRQ38, IRQ48, IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, table@0x18016d44, table@0x18017d08, table@0x18018ce8.
 
 837 of these addresses are RAM, own-image or propagation artifacts and are omitted here; the complete list is in the JSON.
 
@@ -396,14 +396,14 @@ Contexts: unreached.
 
 ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
 
-Contexts: IRQ6, called from entry image 0x1994, called from entry image 0x19cc, table@0x18016d44, table@0x18017d08, table@0x18018ce8.
+Contexts: IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, table@0x18016d44, table@0x18017d08, table@0x18018ce8.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
 | `0xe000e100` | arm-core | NVIC_ISER0 | 4 | 0 | 1 | `0x40` | — | called from entry image 0x1994 | high — architectural register, named from the ARM reference |
 | `0xe000e104` | arm-core | NVIC_ISER1 | 4 | 0 | 1 | `0x40` | — | unreached | high — architectural register, named from the ARM reference |
 | `0xe000e180` | arm-core | NVIC_ICER0 | 4 | 0 | 1 | `0x40` | — | called from entry image 0x1994 | high — architectural register, named from the ARM reference |
-| `0xe000ed04` | arm-core | ICSR | 4 | 0 | 16 | `0x10000000` | — | IRQ6, called from entry image 0x1994, called from entry image 0x19cc, table@0x18016d44, table@0x18017d08, table@0x18018ce8 | high — architectural register, named from the ARM reference |
+| `0xe000ed04` | arm-core | ICSR | 4 | 0 | 16 | `0x10000000` | — | IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, table@0x18016d44, table@0x18017d08, table@0x18018ce8 | high — architectural register, named from the ARM reference |
 | `0xe000ed0c` | arm-core | AIRCR | 4 | 1 | 1 | — | — | unreached | high — architectural register, named from the ARM reference |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
@@ -540,6 +540,9 @@ IMAGE Candidate A (entry image)
   base=0x00000000 functions=101 reached=91 unreached=10
   roots=23 vector/entry: BusFault@0x000014d2, DebugMonitor@0x000014d8, HardFault@0x000010ae, IRQ3@0x000014be, IRQ63@0x00000ad0, MemManage@0x00000fce, NMI@0x000020be, PendSV@0x0000032c, Reset@0x000014a8, SVCall@0x000002e8, SysTick@0x000017e0, UsageFault@0x000014d4
   table roots: table@0x00001404, table@0x00005680
+  region roots: none
+  roots naming no function: 0x00004018 (table@0x00005680)
+  unreached_with_no_caller=8 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
   resolved_accesses=179
   unresolved_accesses=base_lr_unknown=3, base_r0_unknown=68, base_r1_unknown=41, base_r2_unknown=17, base_r3_unknown=7, base_r4_unknown=105, base_r5_unknown=16, base_r6_unknown=3, base_r7_unknown=1, base_r8_unknown=6, base_r9_unknown=3, register_offset=43, stack_relative=44
   BLOCK 0x08000000 unknown registers=1 accesses=1 contexts=IRQ63,Reset
@@ -601,9 +604,12 @@ IMAGE Candidate A (entry image)
 
 IMAGE Candidate B (application)
   slice=installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
-  base=0x18000000 functions=573 reached=138 unreached=435
-  roots=53 vector/entry: IRQ31@0x18019f2c, IRQ32@0x18019f36, IRQ36@0x180106be, IRQ37@0x180106ca, IRQ38@0x180000e4, IRQ48@0x1801ac26, IRQ6@0x18016f6e, called from entry image 0x1994@0x18016e68, called from entry image 0x19cc@0x18016f2c
+  base=0x18000000 functions=573 reached=146 unreached=427
+  roots=56 vector/entry: IRQ31@0x18019f2c, IRQ32@0x18019f36, IRQ36@0x180106be, IRQ37@0x180106ca, IRQ38@0x180000e4, IRQ48@0x1801ac26, IRQ6@0x18016f6e, called from entry image 0x1994@0x18016e68, called from entry image 0x19cc@0x18016f2c, decompressed region 0x1801ecac@0x18018afc, decompressed region 0x1801ecb0@0x18018af0, decompressed region 0x1801ecc0@0x18018a28
   table roots: table@0x18016d44, table@0x18017d08, table@0x18018ce8
+  region roots: decompressed region 0x1801ecac->0x18018afc, decompressed region 0x1801ecb0->0x18018af0, decompressed region 0x1801ecc0->0x18018a28
+  roots naming no function: none
+  unreached_with_no_caller=135 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
   resolved_accesses=3926
   unresolved_accesses=base_lr_unknown=17, base_r0_unknown=1114, base_r10_unknown=3, base_r11_unknown=9, base_r12_unknown=31, base_r1_unknown=523, base_r2_unknown=258, base_r3_unknown=154, base_r4_unknown=771, base_r5_unknown=208, base_r6_unknown=153, base_r7_unknown=82, base_r8_unknown=42, base_r9_unknown=37, register_offset=851, stack_relative=1072
   BLOCK 0x00000000 mixed registers=10 accesses=12 contexts=unreached
@@ -618,7 +624,7 @@ IMAGE Candidate B (application)
     0x00004e69 unnamed    unknown      widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x0000a9b9 unnamed    unknown      widths=[1] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=unreached
     0x0000a9c1 unnamed    unknown      widths=[1] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-  BLOCK 0x18000000 mixed registers=838 accesses=3701 contexts=IRQ36,IRQ37,IRQ38,IRQ48,IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+  BLOCK 0x18000000 mixed registers=838 accesses=3701 contexts=IRQ36,IRQ37,IRQ38,IRQ48,IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
     0x1801e380 unnamed    runtime-ram  widths=[2] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ38
     0x1801e384 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=unreached
@@ -799,25 +805,25 @@ IMAGE Candidate B (application)
     0x1801ea94 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ36,IRQ37
     0x1801ea98 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ36,IRQ37
     0x1801eaa8 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=unreached
-    0x1801eaac unnamed    runtime-ram  widths=[4] reads=57 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eaac unnamed    runtime-ram  widths=[4] reads=57 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0x1801eab0 unnamed    runtime-ram  widths=[4] reads=3 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1801eab4 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eab8 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eabc unnamed    runtime-ram  widths=[4] reads=12 writes=11 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eab4 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eab8 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eabc unnamed    runtime-ram  widths=[4] reads=12 writes=11 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0x1801eac0 unnamed    runtime-ram  widths=[4] reads=6 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18018ce8
-    0x1801eac4 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eac8 unnamed    runtime-ram  widths=[4] reads=2 writes=9 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eacc unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eac4 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eac8 unnamed    runtime-ram  widths=[4] reads=2 writes=9 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eacc unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0x1801ead0 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1801ead4 unnamed    runtime-ram  widths=[4] reads=2 writes=3 stored=0xffffffff reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eadc unnamed    runtime-ram  widths=[4] reads=16 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eae0 unnamed    runtime-ram  widths=[4] reads=8 writes=2 stored=0x18027468 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eae4 unnamed    runtime-ram  widths=[4] reads=3 writes=2 stored=0x1802747c reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eb08 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18033ce8 reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eb0c unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801ead4 unnamed    runtime-ram  widths=[4] reads=2 writes=3 stored=0xffffffff reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eadc unnamed    runtime-ram  widths=[4] reads=16 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eae0 unnamed    runtime-ram  widths=[4] reads=8 writes=2 stored=0x18027468 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eae4 unnamed    runtime-ram  widths=[4] reads=3 writes=2 stored=0x1802747c reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eb08 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18033ce8 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eb0c unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0x1801eb10 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801eb14 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x80000000 reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1801eb18 unnamed    runtime-ram  widths=[4, 8] reads=2 writes=3 stored=0x1801eb18, 0x180274f4 reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eb14 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x80000000 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1801eb18 unnamed    runtime-ram  widths=[4, 8] reads=2 writes=3 stored=0x1801eb18, 0x180274f4 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0x1801eb20 unnamed    runtime-ram  widths=[1] reads=4 writes=4 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
     0x1801eb21 unnamed    runtime-ram  widths=[1] reads=1 writes=4 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
     0x1801eb22 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
@@ -858,10 +864,10 @@ IMAGE Candidate B (application)
     0x1801ebb0 unnamed    runtime-ram  widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18017d08
     0x1801ebb4 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=0x1801ec6c reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18017d08
     0x1801ebb8 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18008f13 reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ebbc unnamed    runtime-ram  widths=[4] reads=39 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18018ce8
-    0x1801ec42 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1801ec43 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1801ec44 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ebbc unnamed    runtime-ram  widths=[4] reads=39 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18018ce8
+    0x1801ec42 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
+    0x1801ec43 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
+    0x1801ec44 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
     0x1801ec46 unnamed    runtime-ram  widths=[1] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
     0x1801ec48 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
     0x1801ec4a unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
@@ -1296,9 +1302,9 @@ IMAGE Candidate B (application)
     0x180272f0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180272f4 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180272f8 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x18027308 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18027490 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
-    0x1802749c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x18027308 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18018ce8
+    0x18027490 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0x1802749c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0x180274a4 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180274b0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180274b8 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
@@ -1438,7 +1444,7 @@ IMAGE Candidate B (application)
     0x18034324 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017501 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
     0x18034364 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18034368 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1803436e unnamed    runtime-ram  widths=[1] reads=8 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18018ce8
+    0x1803436e unnamed    runtime-ram  widths=[1] reads=8 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18018ce8
     0x18034370 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
     0x18034371 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
     0x18034372 unnamed    runtime-ram  widths=[1] reads=6 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
@@ -1451,9 +1457,9 @@ IMAGE Candidate B (application)
     0x180343ec unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180343f0 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180343f4 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
-    0x180343f5 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x18034428 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1803445b unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x180343f5 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
+    0x18034428 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
+    0x1803445b unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
     0x180344c2 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
     0x18035001 unnamed    runtime-ram  widths=[1] reads=0 writes=3 stored=0xc0 reset_writes=none from a reset-reachable function contexts=unreached
     0x18035002 unnamed    runtime-ram  widths=[1] reads=0 writes=3 stored=0x50, 0x55, 0xd0 reset_writes=none from a reset-reachable function contexts=unreached
@@ -1505,12 +1511,12 @@ IMAGE Candidate B (application)
     0x4500000c unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x45000054 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x45000110 unnamed    unknown      widths=[4] reads=1 writes=2 stored=0x8 reset_writes=none from a reset-reachable function contexts=unreached
-  BLOCK 0xe0000000 arm-core registers=5 accesses=21 contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+  BLOCK 0xe0000000 arm-core registers=5 accesses=21 contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
     0xe000e100 NVIC_ISER0 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
     0xe000e104 NVIC_ISER1 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=unreached
     0xe000e180 NVIC_ICER0 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
-    0xe000ed04 ICSR       arm-core     widths=[4] reads=0 writes=16 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18017d08,table@0x18018ce8
+    0xe000ed04 ICSR       arm-core     widths=[4] reads=0 writes=16 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8
     0xe000ed0c AIRCR      arm-core     widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
 
 DEPENDENCY_MAP

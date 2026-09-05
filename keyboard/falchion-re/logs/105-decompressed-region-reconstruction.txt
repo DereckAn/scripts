@@ -1,0 +1,365 @@
+LOG 105 — PHASE 5A CONTINUATION: RECONSTRUCTING THE DECOMPRESSED SCATTER REGION
+Date: 2026-09-04
+Scope: ONE step. Reconstruct Candidate A's decompressed scatter region offline
+from the firmware's own decompress handler, then re-run the 5A reachability
+measurement over it. Phases 5B-5G were NOT begun. Nothing was committed.
+
+SAFETY: no /dev/hidraw, no USB or sysfs access, no sudo, no package install, no
+network, no probe/backup/bootloader tool, no unlock/erase/program/reset/SPI
+command construction. Neither evidence binary and no historical log was
+modified. The pre-existing ghidra/project/falchion-hfx was not opened. Only the
+git-ignored ghidra/project-step6 was written. Pre-existing uncommitted changes
+preserved. NO DEVICE WAS ACCESSED.
+
+WHY THIS STEP EXISTS
+Phase 3 recovered Candidate A's __scatterload region table and found one region
+whose handler is __scatterload_decompress: flash 0x3f380 (0x400 compressed
+bytes) -> RAM 0x1801e380 (0xb04 bytes). Those 0xb04 bytes exist in no dump. Log
+104 named this as 5A's blind spot in as many words: "a callback ... held in the
+decompressed region that is mapped but not reconstructed, cannot appear". This
+step removes the blind spot.
+
+
+STEP 1 — THE DECODER IS A TRANSLATION OF THE FIRMWARE'S OWN HANDLER
+Added tool/reconstruct_decompress.py. The decoder is a direct translation of
+the 0x5c bytes at Candidate A program offset 0x17c..0x1d8 that the scatter
+descriptor names — the instruction sequence recovered in log 73 — not of a
+generic ARM library routine. The module carries the sha256 of those exact bytes
+and refuses to decode against a handler that does not hash to them.
+
+  handler span   Candidate A program 0x17c..0x1d8 (0x5c bytes)
+  handler sha256 582c480472872687b56e13f46ba6bbfb754d0449964344206bb23def06f56ae0
+
+STATED EXPLICITLY: those handler bytes are BYTE-IDENTICAL in the preserved
+vendor 1.00.58 image and the installed 1.59 readback. Both releases report the
+same handler_sha256 above. That is why one implementation covers both, and it
+is a measured fact in this run's output rather than an assumption.
+
+Three decoding rules are worth naming because each was read off an instruction
+and each would be wrong under a generic guess:
+  - `subs r4,r4,#1` runs before the literal loop, so a literal field of N emits
+    N-1 bytes, not N.
+  - the back-reference loop is `add r5,#2` then a byte-at-a-time `strb`, so it
+    emits field+2 bytes and an OVERLAPPING reference repeats what it just wrote.
+  - with bit 3 clear the copy field is a count of zero bytes, not a copy.
+
+
+STEP 2 — RECONSTRUCTION, BOTH RELEASES
+$ python3 tool/reconstruct_decompress.py
+PROGRAM reconstruct_decompress
+PURPOSE reconstruct Candidate A's decompressed scatter region offline
+HANDLER Candidate A program 0x17c..0x1d8 sha256=582c480472872687b56e13f46ba6bbfb754d0449964344206bb23def06f56ae0
+HANDLER_SOURCE the decoder is a translation of these bytes, not of a generic ARM library routine. It refuses to run against a handler that does not hash to them.
+
+RELEASE installed
+  image_sha256=fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  handler_sha256=582c480472872687b56e13f46ba6bbfb754d0449964344206bb23def06f56ae0 matches=True
+  source=flash 0x3f380..0x3f780 (0x400 bytes)
+  destination=0x1801e380 declared_length=0xb04
+  produced=0xb04 consumed=0x3fd zero_padding=3
+  tokens=254 literal_bytes=569 copy_bytes=968 zero_bytes=1283
+  output_sha256=501f818f584da7927c5568eb2618b4f965a31dcec5d739d3ef19e2e11d9d308d
+  usb_identity_at=+0x284
+  name=installed_decompressed_region1_flash3f380_dst1801e380_len00b04_501f818f.bin
+  PASS the handler is the one this decoder was translated from
+  PASS output length equals the scatter descriptor — 0xb04 vs 0xb04
+  PASS the decoder consumed the compressed stream to a word boundary — consumed 0x3fd, rounds up to 0x400, source is 0x400
+  PASS every unconsumed byte is zero padding — 3 byte(s): 00 00 00
+  PASS no output byte was produced past the declared length
+  PASS the decoded bytes carry this device's USB identity — idVendor=0x0b05 idProduct=0x1b7e bcdDevice=0x0159 at +0x284
+
+RELEASE vendor
+  image_sha256=6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+  handler_sha256=582c480472872687b56e13f46ba6bbfb754d0449964344206bb23def06f56ae0 matches=True
+  source=flash 0x3f354..0x3f754 (0x400 bytes)
+  destination=0x1801e354 declared_length=0xb04
+  produced=0xb04 consumed=0x3fe zero_padding=2
+  tokens=253 literal_bytes=573 copy_bytes=962 zero_bytes=1285
+  output_sha256=7a6dea8ea524d532b72379340aec044e3ebd24532e108478764f7c7291b17343
+  usb_identity_at=+0x284
+  name=vendor_decompressed_region1_flash3f354_dst1801e354_len00b04_7a6dea8e.bin
+  PASS the handler is the one this decoder was translated from
+  PASS output length equals the scatter descriptor — 0xb04 vs 0xb04
+  PASS the decoder consumed the compressed stream to a word boundary — consumed 0x3fe, rounds up to 0x400, source is 0x400
+  PASS every unconsumed byte is zero padding — 2 byte(s): 00 00
+  PASS no output byte was produced past the declared length
+  PASS the decoded bytes carry this device's USB identity — idVendor=0x0b05 idProduct=0x1b7e bcdDevice=0x0158 at +0x284
+
+CORRESPONDENCE installed vs vendor, decoded independently
+  length=0xb04 differing_bytes=45 differing_words=39
+  DELTA 0x00000001 (+1) words=2 at +0x288, +0x350
+  DELTA 0x0000002c (+44) words=35 at +0x2a8, +0x2c0, +0x2d8, +0x2f0, +0x308, +0x360, +0x364, +0x368 ...
+  DELTA 0x0000002e (+46) words=2 at +0x5c8, +0x5f8
+  PASS both releases decode to the same length — 0xb04 vs 0xb04
+  PASS the two releases differ in only a small minority of bytes — 45 of 2820 bytes (1.60%)
+  PASS most differing words are the Phase 3 relocation shift apart — 35 of 39 words shift by exactly 0x2c
+  PASS a decoded word carries each release's own bcdDevice — +0x288
+
+RESULT reconstruction_ok=True releases=2
+  [exit 0]
+
+ON THE ONE CHECK THAT WAS RESTATED
+An earlier draft of this tool asserted "the decoder consumed the compressed
+source EXACTLY" and that check FAILED: 0x3fd of 0x400 installed, 0x3fe of 0x400
+vendor. The premise was wrong, not the decoder. The compressed length is stored
+nowhere; it is DERIVED here as "region 1's source address to the end of SN_FWIN
+record 1", and a record length is a multiple of four, so the stream is padded up
+to a word boundary. The check now asserts what is actually true and is strictly
+stronger than a loosened tolerance would be: the consumed length rounds up to
+the derived length, AND every unconsumed byte is zero. Both hold in both
+releases. The failing check was not deleted or relaxed; it was replaced with two
+checks that test the real invariant.
+
+
+STEP 3 — WRITING (ignored import area only)
+$ python3 tool/reconstruct_decompress.py --write
+WROTE installed_decompressed_region1_flash3f380_dst1801e380_len00b04_501f818f.bin
+WROTE vendor_decompressed_region1_flash3f354_dst1801e354_len00b04_7a6dea8e.bin
+  [exit 0]
+Both went into ghidra/imports/. write_outputs() refuses any destination under
+dumps/, uses exclusive create (open(path,"xb")), and refuses to overwrite an
+existing file whose content differs. Re-running writes nothing. The output name
+encodes source, destination, length and content hash, so it is self-describing
+and deterministic: a second build produces byte-identical files.
+
+
+STEP 4 — WHAT THE REGION ACTUALLY IS
+This was not assumed from the region's role; it was read out of the decoded
+bytes and cross-checked against evidence recorded long before this decode.
+
+  +0x0008  05 01 09 06 a1 01 05 08 15 00 25 01 19 01 29 05 ...
+           a HID REPORT DESCRIPTOR: Usage Page (Generic Desktop), Usage
+           (Keyboard), Collection (Application), LED output page, and so on.
+  +0x0284  05 0b 7e 1b 59 01
+           consecutive little-endian halfwords idVendor=0x0b05,
+           idProduct=0x1b7e, bcdDevice=0x0159 — the USB DEVICE DESCRIPTOR tail.
+  +0x0850  "ASUSTeK"
+  +0x0882  "ROG FALCHION ACE HFX"
+  +0x08ec  "hid driver"
+  +0x09a4  "Sonix HID"
+
+notes/findings.md recorded `0b05:1b7e`, bcdDevice 1.59 from sysfs and lsusb in
+the very first logs of this project, before any of this region was decoded. The
+vendor image decodes to bcdDevice 0x0158 at the same offset, matching its own
+filename M605_V01_00_58.bin. The decoder was never given a vendor ID, a product
+ID or a version. Finding all three, adjacent and in device-descriptor order, in
+the decoded output of both releases is EXTERNAL corroboration that the decode is
+correct — not merely internally consistent.
+
+So the region is the USB / HID DESCRIPTOR SET: initialised read-write data that
+the scatter loader decompresses into RAM at boot, which is exactly what an ARM
+__scatterload_decompress region is normally used for.
+
+
+STEP 5 — THUMB-2 DISASSEMBLY RATE, WITH A CONTROL
+Added ghidra/scripts/FalchionRegionDisassembly.java. It forces the TMode context
+register over the block, then asks the Thumb-2 decoder for an instruction at
+every 2-byte boundary and reports the fraction that decode. Run -readOnly; it
+creates no functions and its changes are discarded.
+
+Both regions were imported into the ignored ghidra/project-step6 at their
+scatter destinations (ARM:LE:32:Cortex, Raw Binary loader, -noanalysis).
+
+$ ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 -process <program> \
+    -readOnly -noanalysis -scriptPath "$PWD/ghidra/scripts" \
+    -postScript FalchionRegionDisassembly.java
+  installed_decompressed_region1 1801e380..1801ee83 boundaries=1410 decoded=1392 rate=98.72%
+  vendor_decompressed_region1    1801e354..1801ee57 boundaries=1410 decoded=1388 rate=98.44%
+  control_random_0xb04           1801e380..1801ee83 boundaries=1410 decoded=1347 rate=95.53%
+  installed_app_a  (known code)  00000000..000058ab boundaries=11350 decoded=11115 rate=97.93%
+  installed_app_b  (known code)  18000000..1801e37f boundaries=61888 decoded=60113 rate=97.13%
+  [exit 0 each]
+
+THE MEASUREMENT IS REPORTED AND IT DOES NOT SUPPORT ANY CONCLUSION. Thumb-2 is
+a dense encoding: 0xb04 bytes of seeded pseudorandom noise decode at 95.53%,
+known code decodes at 97.1-97.9%, and the reconstructed region decodes at
+98.4-98.7% — ABOVE known code. A "98.7% Thumb-2 disassembly success rate" is
+therefore not evidence that the region is code, and is not offered as such. The
+control is why that is stated instead of the rate being quoted bare. What the
+region is was settled in step 4, by its content.
+
+The random control was imported as control_random_0xb04.bin and left in the
+ignored project so the measurement can be reproduced. It is synthetic, is not
+evidence, and no tool reads it.
+
+
+STEP 6 — POINTER-TABLE SURVEY EXTENDED OVER THE REGION
+tool/find_pointer_tables.py gained a third survey, "ram", over the reconstructed
+region. Two changes were needed and both are narrow:
+  - CODE_CEIL: the region sits ABOVE the code it points into, so the old
+    acceptance window "inside this slice" would have rejected every real
+    candidate. The window for "ram" is 0x18000000..0x1801ee84.
+  - the survey is added only when the region file exists, so with it absent the
+    two flash surveys behave exactly as before.
+
+REGRESSION: the two flash surveys are unchanged in every number — entry 2
+tables at 0x1404/0x5680 (3 known, 1 new, 15 loose), app 3 tables at
+0x18016d44/0x18017d08/0x18018ce8 (44 known, 0 new, 9 loose). A test now pins
+those tuples so a future change to the region survey cannot perturb them
+unnoticed.
+
+$ python3 tool/find_pointer_tables.py
+IMAGE ram base=0x1801e380 size=0xb04 code_floor=0x18000000
+  slice=installed_decompressed_region1_flash3f380_dst1801e380_len00b04_501f818f.bin
+  sha256=501f818f584da7927c5568eb2618b4f965a31dcec5d739d3ef19e2e11d9d308d
+  tables=0 entries=0 known_targets=0 new_targets=0 loose_candidates=5
+  LOOSE 0x1801e688 -> 0x1801e4ba (not part of any run; not reported as a table entry)
+  LOOSE 0x1801e9cc -> 0x1801e9d8 (not part of any run; not reported as a table entry)
+  LOOSE 0x1801ecac -> 0x18018afc (not part of any run; not reported as a table entry)
+  LOOSE 0x1801ecb0 -> 0x18018af0 (not part of any run; not reported as a table entry)
+  LOOSE 0x1801ecc0 -> 0x18018a28 (not part of any run; not reported as a table entry)
+  [exit 0]
+
+THE REGION CONTAINS NO POINTER TABLE. Under 5A's stated rule — three or more
+Thumb pointers at a constant stride — nothing in it qualifies, and the rule was
+not weakened to manufacture one. Five isolated candidates were found.
+
+
+STEP 7 — SEEDING: THREE ROOTS, ZERO NEW FUNCTIONS
+Of the five loose candidates, three name addresses at which Ghidra ALREADY has
+a function: 0x18018afc, 0x18018af0, 0x18018a28. They sit next to the "hid
+driver" and "Sonix HID" strings, consistent with a driver structure holding
+callbacks. The other two (0x1801e4ba, 0x1801e9d8) point inside the region
+itself and are not functions; they are left alone.
+
+That external agreement is the admission rule now written into
+map_hardware_interfaces.py: a lone pointer from the region becomes a
+reachability root ONLY when Ghidra independently recognises a function at the
+address it names. No new function was created and no seeding run was needed —
+the three targets were already in the inventory, so function counts are
+unchanged at 101 (entry) and 573 (application) per release, and Phase 3 stays
+valid without regeneration.
+
+
+STEP 8 — REACHABILITY RECOMPUTED
+$ python3 tool/map_hardware_interfaces.py
+IMAGE Candidate A (entry image)
+  base=0x00000000 functions=101 reached=91 unreached=10
+  table roots: table@0x00001404, table@0x00005680
+  region roots: none
+  roots naming no function: 0x00004018 (table@0x00005680)
+  unreached_with_no_caller=8
+IMAGE Candidate B (application)
+  base=0x18000000 functions=573 reached=146 unreached=427
+  table roots: table@0x18016d44, table@0x18017d08, table@0x18018ce8
+  region roots: decompressed region 0x1801ecac->0x18018afc, decompressed region 0x1801ecb0->0x18018af0, decompressed region 0x1801ecc0->0x18018a28
+  roots naming no function: none
+  unreached_with_no_caller=135
+  [exit 0]
+
+Application reachability 138 -> 146 of 573. Three roots, eight functions. That
+is a small gain and is reported as one. The entry image is unchanged at 91/101.
+
+
+STEP 9 — PROVENANCE: TABLE 0x5680's MIDDLE ENTRY IS NOT A THIRD ROOT
+Required record, so that one indirect root is not double-counted.
+
+Table 0x5680 in the entry image has three entries at stride 24:
+    0x00005680 -> 0x00004004
+    0x00005698 -> 0x00004018
+    0x000056b0 -> 0x000040b4
+Log 104's seeding run reported `installed entry: created=3 existing=0 skipped=1`
+and described the skip only as "already covered". The specific mechanism, read
+out of the inventory for this log:
+
+  - FalchionSeedVectors.java processes its arguments in the order given, which
+    is ascending by address. It created PtrTarget_00004004 first.
+  - Ghidra gave that function the body ranges 0x4004..0x4018 and 0x4019..0x401c
+    (`hi` exclusive), i.e. an extent of 0x4004..0x401c with a one-byte hole.
+  - createFunction(0x4018) then returned null, because 0x4018 lies inside the
+    extent already claimed. That is the skipped=1.
+  - 0x4018 is therefore NOT a function entry in installed_a.txt. It is absorbed
+    into PtrTarget_00004004.
+
+CONSEQUENCE: table 0x5680's three entries contribute TWO functions, not three.
+reachability() previously dropped a root naming no function silently. It now
+reports it, and the report line reads:
+    roots naming no function: 0x00004018 (table@0x00005680)
+so the arithmetic "3 entries -> 3 indirect roots" can no longer be written down
+by accident. A unit test pins the behaviour, naming this case.
+
+
+STEP 10 — WHAT IS STILL UNREACHED, AND WHY
+No claim of full reachability is made. 427 of the application's 573 functions
+are unreached. Split by whether anything in the image calls them:
+
+  unreached                                427
+    called by NOTHING in the image         135   <- each needs an entry mechanism
+    called only by other unreached fns     292   <- downstream of those 135
+    called by a REACHED function             0   <- would have been a traversal bug
+
+The 135 callerless functions reach all 427 between them, so the gap is 135
+missing entry points, not 427 separate mysteries. They total 13,457
+instructions.
+
+THE LARGEST UNACCOUNTED ENTRY MECHANISM, named precisely:
+  - 0x1800023a, recorded in FINDINGS.md and logs 79-80 as Candidate B's runtime
+    entry ("welcome to main"), IS NOT A FUNCTION IN THE INVENTORY AT ALL. It is
+    absent from installed_b.txt, so it is neither reached nor unreached — the
+    traversal cannot start there. This is the same contradiction
+    map_hardware_interfaces.py already reports: no word in either release's
+    Candidate A points at 0x1800023a, and the only cross-image code pointers are
+    0x18016e69 and 0x18016f2d. Until that entry exists as a function, everything
+    downstream of main is structurally unreachable.
+  - 0x18001fbe, characterised in log 80 as the application's dispatcher, is the
+    single largest callerless function at 3,146 instructions. Nothing in flash
+    or in the reconstructed region points at it.
+  - Log 80 also identified an RTOS with INIT_TASK and a scheduler. A task entry
+    point handed to a task-creation call as a register argument is stored in no
+    flash table and in no initialised data, so it is invisible to every survey
+    run so far. This is a HYPOTHESIS about the remaining mechanism, stated as
+    one; it has not been traced.
+
+Flash-resident tables were already exhausted in log 104. The reconstructed
+region is now exhausted too: it holds no table and its three usable pointers are
+spent. The next mechanism to attack is argument-passed callbacks, which needs
+data-flow, not a byte survey.
+
+
+GATES
+$ python3 -m py_compile tool/*.py                                    [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 433 tests   OK                                                 [exit 0]
+  (406 before this step; +23 in the new tool/test_reconstruct_decompress.py,
+   +4 net in the pointer-table and reachability suites)
+$ python3 tool/report_phase3.py --check   RESULT reports_current=True stale=0
+$ python3 tool/report_phase4.py --check   RESULT reports_current=True stale=0
+$ python3 tool/report_phase5.py --check   RESULT reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS            all OK                     [exit 0]
+$ git diff --check                        clean                      [exit 0]
+
+EVIDENCE HASHES, UNCHANGED
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+FAIL-CLOSED TESTS ADDED (tool/test_reconstruct_decompress.py, 23 tests)
+Every failure path is asserted to FAIL. A decompressor that quietly returns
+plausible bytes from a truncated or corrupted stream is worse than one that
+refuses, because the wrong bytes would then be disassembled as if they were real.
+  - a truncated stream raises; a stream ending mid-token raises
+  - a back-reference before the start of output raises; one at the very first
+    byte raises
+  - a modified handler makes the tool refuse to decode at all
+  - a one-byte flip in the real compressed stream must raise or produce
+    different bytes; it may not be ignored
+  - asking for the wrong length can overshoot it, which is why the produced
+    length is checked against the descriptor rather than trusted
+  - write_outputs refuses any path under dumps/, is exclusive-create, is
+    idempotent for identical content, and refuses to overwrite different content
+  - the format rules themselves: N-1 literals, zero-field indirection on both
+    fields, field+2 back-reference length, overlapping repeat, zero fill
+Two of these fixtures were hand-written wrong on the first run and corrected
+against the decoder's behaviour after re-reading the handler; the decoder was
+not changed.
+
+
+WHAT THIS STEP DID NOT DO
+  - Phases 5B, 5C, 5D, 5E, 5F and 5G were not begun.
+  - Nothing was committed.
+  - 0x1800023a was NOT seeded. It is the obvious next action and it is named
+    above, but creating a new entry point changes the reachability baseline and
+    is a separate step.
+  - No vendor peripheral was named. Phase 5's exit gate still wants service
+    names, and this step did not supply any.
+  - The reconstruction is STRUCTURAL. Nothing observed the device; no dump of
+    that RAM exists to compare against.
