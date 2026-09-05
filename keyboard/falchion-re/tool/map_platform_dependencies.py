@@ -80,6 +80,13 @@ HANDSHAKE_TOKEN_IN_IMAGE = 0x3214   # offset inside the 0x18038000 image
 START_ROUTINE = 0x1F50              # entry image
 START_REGISTER = 0x45000100
 NMI_HANDLER = 0x20BE                # entry image
+# Log 114: the cluster the census could not attribute.
+WATCHDOG_SELECTOR = 0x21FE          # returns a block base from a selector
+WATCHDOG_FEED = 0x516               # the prescaler's /8 job
+WATCHDOG_FEED_VALUE = 0x5AFA00FF    # (0x5afa0002 - 2) | 0xff, to base+8
+WATCHDOG_ACK_VALUE = 0x5AFA0003     # 0x5afa0002 + 1, to base+0
+WATCHDOG_ESCALATION_LIMIT = 1       # region+0xa85 byte 0, power-on value
+WATCHDOG_COUNTER_PAIR = 0x1801EE05  # byte 0 = limit, byte 1 = counter
 VECTOR_TABLE_SLOTS = 80
 
 
@@ -95,21 +102,74 @@ class Finding:
 
 FINDINGS = (
     Finding("watchdog_disabled", "watchdogs",
-            "both magic-key blocks are DISABLED on the reset path, not fed",
+            "both magic-key blocks are written a cleared control word on the "
+            "reset path",
             "strongly-inferred",
             "FUN_00001216 writes 0x5afa55aa to +0xc then 0x5afa0000 to +0 of "
             "both 0x40008000 and 0x40009000; the literals are at entry 0x1494, "
             "0x1498, 0x149c and 0x14a0 and were read from raw bytes. The "
             "control value's low half is ZERO, which is what a disable looks "
             "like — but no register map confirms the bit meanings, so this is "
-            "inference from the write pattern, not identification",
+            "inference from the write pattern, not identification. NOTE (log "
+            "114): this is the reset-path behaviour only; it does NOT mean the "
+            "blocks stay disabled, because two later paths write them",
             "bytes"),
-    Finding("watchdog_sole_user", "watchdogs",
-            "exactly one function in either image touches those blocks",
+    Finding("watchdog_census_blind_spot", "watchdogs",
+            "the MMIO census sees ONE writer, and the census is wrong — a "
+            "second cluster reaches the same blocks through a call-through "
+            "base selector it cannot attribute",
             "observed",
-            "a per-function MMIO census over both peripheral maps returns "
-            "FUN_00001216 in the entry image and NOTHING in the application; "
-            "so nothing re-enables or feeds them after reset",
+            "log 114's correction. FUN_000021fe returns 0x40008000 for "
+            "selector 0 and 0x40009000 for selector 1 from its own pool at "
+            "0x2220/0x2224, so every caller's access has an unresolved base "
+            "and is invisible to a per-function census. Five functions call "
+            "it: 0x2148, 0x216c, 0x21b0, 0x21c8 and 0x21e2. The earlier claim "
+            "that exactly one function touches these blocks is WITHDRAWN",
+            "listing"),
+    Finding("watchdog_periodic_feed", "watchdogs",
+            "block 0x40008000 IS fed periodically, on the tick chain",
+            "observed",
+            "FUN_00000516 — the prescaler's divide-by-8 job from log 109 — "
+            "calls FUN_00002148(0, 0xff) at 0x51c, resolved by constant "
+            "propagation. That writes (0x5afa0002 - 2) | 0xff = 0x5afa00ff to "
+            "base+8 and re-arms the key 0x5afa55aa at base+0xc. The claim "
+            "\"nothing feeds them anywhere\" is WITHDRAWN: this is a periodic "
+            "reload every eight ticks of IRQ38",
+            "listing"),
+    Finding("watchdog_nmi_acknowledge", "watchdogs",
+            "the NMI handler conditionally acknowledges and re-arms block "
+            "0x40008000, then escalates to a system reset",
+            "strongly-inferred",
+            "Vector_NMI's listing: FUN_000021b0(0) returns bit 2 of "
+            "*(0x40008000) via `ubfx r0,r0,#0x2,#0x1`; when set it calls "
+            "FUN_000021c8(0) (writes 0x5afa0003 to base+0) and "
+            "FUN_000021e2(0) (re-arms the key at base+0xc), then increments a "
+            "counter. It is an ACKNOWLEDGE-AND-RE-ARM rather than a feed — it "
+            "is gated on a status bit and counted — and it is not itself the "
+            "reset; the reset is a separate AIRCR write. The register bit "
+            "meanings are still unmapped, so the role is inferred from "
+            "control flow, not identified",
+            "listing"),
+    Finding("watchdog_escalation_limit", "watchdogs",
+            "the escalation limit is ONE: the first acknowledged NMI also "
+            "triggers SYSRESETREQ",
+            "strongly-inferred",
+            "Vector_NMI compares the incremented counter at *(0x1801ee05)+1 "
+            "against the limit at +0 with `bcc`, and writes 0x05fa0004 to "
+            "*(0x212c) = 0xe000ed0c (AIRCR) when the branch is not taken. The "
+            "region's initialised bytes at that address are `01 00`, so the "
+            "power-on limit is 1 and the counter 0. Nothing observed changes "
+            "the limit at runtime, but nothing rules it out either",
+            "bytes"),
+    Finding("watchdog_second_block_untouched", "watchdogs",
+            "selector 1, and therefore block 0x40009000, is never passed by "
+            "any live path",
+            "observed",
+            "constant propagation resolves the selector at every call site: "
+            "FUN_00002148 is called with 0, and all three NMI accessors with "
+            "0. FUN_0000216c, the only function that could pass something "
+            "else, has zero callers. So 0x40009000 is touched exactly once, "
+            "by the reset-path disable",
             "xref"),
     Finding("usbd_wdt_is_not_a_watchdog_feeder", "watchdogs",
             "the usbd_wdt task does NOT service any hardware watchdog",
@@ -253,13 +313,23 @@ SERVICES = (
             "observed"),
     Service("watchdogs", "the two magic-key watchdog blocks",
             "must-neutralize",
-            "the vendor firmware disables both on the reset path and never "
-            "feeds them. A replacement that simply ignores them inherits "
-            "whatever their reset default is, which is not established — so "
-            "the safe policy is to perform the same disable, not to omit it.",
-            ("log 113 step 2: FUN_00001216 writes the key then a zero control "
-             "word to both blocks",
-             "log 113 step 2: no other function in either image touches them"),
+            "CORRECTED BY LOG 114, and the correction STRENGTHENS this "
+            "classification. There are THREE access paths, not one: the reset "
+            "path writes a cleared control word to both blocks; the "
+            "prescaler's divide-by-8 job feeds 0x40008000 every eight ticks; "
+            "and the NMI handler acknowledges and re-arms it, escalating to "
+            "SYSRESETREQ after one strike. A replacement therefore cannot "
+            "ignore these blocks in either direction — omitting the periodic "
+            "feed risks a reset if the block is live, and inheriting the NMI "
+            "vector without the acknowledge means the first NMI resets the "
+            "device. Both the feed and the NMI policy are deliberate choices "
+            "a replacement must make.",
+            ("log 114 step 1: FUN_000021fe is a call-through base selector, "
+             "so the census cannot attribute the NMI cluster's accesses",
+             "log 114 step 2: FUN_00000516 -> FUN_00002148(0, 0xff) feeds "
+             "0x40008000 every eight ticks",
+             "log 114 step 3: Vector_NMI acknowledges, counts, and writes "
+             "AIRCR 0x05fa0004 once the limit of 1 is reached"),
             "strongly-inferred"),
     Service("tick", "the periodic tick that drives everything",
             "must-implement",
@@ -469,7 +539,10 @@ def to_dict():
             ],
             "status": {
                 "reset/clock/RAM": "sequence preserved; FREQUENCY UNRESOLVED",
-                "watchdog policy": "known: disable both, as the vendor does",
+                "watchdog policy": "known, and it is NOT just a disable: "
+                                   "reset clears both, the /8 tick feeds "
+                                   "0x40008000, and NMI acknowledges it and "
+                                   "resets after one strike (log 114)",
                 "Hall acquisition": "BLOCKED — the producer is not recovered",
                 "key-state generation": "recovered and executable",
                 "USB keyboard-IN": "recovered end to end",
@@ -491,12 +564,41 @@ def to_dict():
         "summary": by_classification(),
         "upstream_models": sorted(upstream),
         "watchdog": {
+            "access_paths": [
+                {"kind": "reset-path disable", "function": RESET_INIT,
+                 "blocks": list(WATCHDOG_BLOCKS), "trigger": "once, at reset",
+                 "writes": [f"key 0x{WATCHDOG_UNLOCK_KEY:08x} -> +0xc",
+                            f"0x{WATCHDOG_CONTROL_VALUE:08x} -> +0"],
+                 "census_visible": True},
+                {"kind": "periodic feed", "function": WATCHDOG_FEED,
+                 "blocks": [WATCHDOG_BLOCKS[0]],
+                 "trigger": "every 8 ticks, from the prescaler's /8 job "
+                            "FUN_00000516",
+                 "writes": [f"0x{WATCHDOG_FEED_VALUE:08x} -> +8",
+                            f"key 0x{WATCHDOG_UNLOCK_KEY:08x} -> +0xc"],
+                 "census_visible": False},
+                {"kind": "NMI acknowledge and escalate",
+                 "function": NMI_HANDLER,
+                 "blocks": [WATCHDOG_BLOCKS[0]],
+                 "trigger": "on NMI, only when bit 2 of +0 reads set",
+                 "writes": [f"0x{WATCHDOG_ACK_VALUE:08x} -> +0",
+                            f"key 0x{WATCHDOG_UNLOCK_KEY:08x} -> +0xc",
+                            "counter++, then AIRCR 0x05fa0004 once the limit "
+                            "is reached"],
+                 "census_visible": False},
+            ],
+            "base_selector": WATCHDOG_SELECTOR,
             "blocks": list(WATCHDOG_BLOCKS),
             "control_value": WATCHDOG_CONTROL_VALUE,
-            "fed_anywhere": False,
+            "escalation_limit_default": WATCHDOG_ESCALATION_LIMIT,
+            "fed_anywhere": True,
             "key_offset": WATCHDOG_KEY_OFFSET,
-            "sole_user": RESET_INIT,
+            "second_block_touched_after_reset": False,
             "unlock_key": WATCHDOG_UNLOCK_KEY,
+            "withdrawn_claims": [
+                "exactly one function in either image touches these blocks",
+                "nothing feeds them anywhere",
+            ],
         },
     }
 
@@ -551,6 +653,28 @@ def verify():
           "does not pan out" in next(
               item for item in FINDINGS
               if item.key == "usbd_wdt_is_not_a_watchdog_feeder").kind_basis)
+    # Log 114's correction, pinned. The model must name every access path,
+    # because the whole error was believing a single-writer census.
+    watchdog = payload["watchdog"]
+    check("the model names all THREE watchdog access paths",
+          len(watchdog["access_paths"]) == 3
+          and {item["kind"] for item in watchdog["access_paths"]}
+          == {"reset-path disable", "periodic feed",
+              "NMI acknowledge and escalate"},
+          ", ".join(item["kind"] for item in watchdog["access_paths"]))
+    check("the model records that two of the three are census-invisible",
+          sum(1 for item in watchdog["access_paths"]
+              if not item["census_visible"]) == 2,
+          "the base arrives from a call-through selector, so a per-function "
+          "census cannot attribute them")
+    check("the withdrawn claims are recorded, not silently dropped",
+          len(watchdog["withdrawn_claims"]) == 2
+          and any("nothing feeds them" in claim
+                  for claim in watchdog["withdrawn_claims"]))
+    check("the model states the blocks ARE fed",
+          watchdog["fed_anywhere"] is True)
+    check("the model records that only the first block is touched after reset",
+          watchdog["second_block_touched_after_reset"] is False)
     check("the watchdog conclusion is inference, not identification",
           next(item for item in FINDINGS
                if item.key == "watchdog_disabled").confidence

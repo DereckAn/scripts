@@ -2064,13 +2064,39 @@ first custom firmware that omits RGB must treat this as an open risk.
 
 ### Phase 5G and the Phase 5 final dependency gate (log 113)
 
-**Watchdogs.** Exactly **one** function in either image touches the two
-magic-key blocks `0x40008000` and `0x40009000`: `FUN_00001216`, on the reset
-path. It writes the key `0x5afa55aa` to `+0xc` and then `0x5afa0000` to `+0` of
-both. **Nothing anywhere re-enables or feeds them.** The control value's low
-half is zero, which is what a disable looks like — but no register map confirms
-the bit meanings, so this is *inference from the write pattern, not
-identification*.
+**Watchdogs — corrected by log 114.** Log 113 claimed "exactly one function in
+either image touches these blocks" and "nothing feeds them anywhere". **Both are
+false.** `FUN_000021fe` is a *call-through base selector* — selector 0 returns
+`0x40008000`, selector 1 returns `0x40009000` — so every caller's store has an
+unresolved base and is **invisible to a per-function MMIO census**. That is the
+same blind spot logs 109, 110 and 112 each documented, applied to a claim that
+assumed the census was complete.
+
+There are **three** access paths:
+
+| path | blocks | trigger | writes | census-visible |
+|---|---|---|---|---|
+| reset disable `FUN_00001216` | **both** | once, at reset | key `0x5afa55aa`→`+0xc`; `0x5afa0000`→`+0` | yes |
+| **periodic feed** `FUN_00000516`→`FUN_00002148(0,0xff)` | `0x40008000` | **every 8 ticks** of IRQ38 | `0x5afa00ff`→`+8`; key→`+0xc` | **no** |
+| **NMI acknowledge** `Vector_NMI` | `0x40008000` | on NMI, when bit 2 of `+0` is set | `0x5afa0003`→`+0`; key→`+0xc`; counter++ | **no** |
+
+`FUN_00000516` is not an arbitrary caller — log 109 recovered it as the
+prescaler's **÷8 job**, so the feed rides the tick chain. When the NMI counter
+reaches its limit, `Vector_NMI` writes AIRCR `0x05fa0004` (SYSRESETREQ). The
+limit's power-on value at region+`0xa85` is **1**, so the first acknowledged NMI
+also resets.
+
+The `0x5afa0003` write is an **acknowledge-and-re-arm**, not a feed and not
+itself a reset: it is gated on a status bit, targets a different register from
+the periodic path, and is counted toward a bounded retry. Read off control flow;
+the register bit meanings remain unmapped.
+
+**Nothing ever passes selector 1**, so `0x40009000` is touched exactly once, by
+the reset disable. The cluster is **byte-identical in the vendor release** except
+the counter pointer, which shifts by exactly the measured `0x2c`.
+
+The census was **not** re-audited for the same blind spot elsewhere; that is a
+demonstrated gap, recorded rather than closed.
 
 **The `usbd_wdt` lead does not pan out.** Its body is 37 instructions and its
 whole twelve-function closure reaches only `0xe000ed04` (ICSR) — no watchdog
@@ -2124,7 +2150,7 @@ that fails without it.
 | requirement | status |
 |---|---|
 | reset/clock/RAM | sequence preserved; **frequency unresolved** |
-| watchdog policy | known — disable both, as the vendor does |
+| watchdog policy | known, and **not just a disable** — see log 114 |
 | Hall acquisition | **BLOCKED** |
 | key-state generation | recovered and executable |
 | USB keyboard-IN | recovered end to end |

@@ -1929,6 +1929,47 @@ imported.
 650 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-05 — Phase 5G watchdog correction (log 114)
+
+An independent review found one material error in Phase 5G, and it was the kind
+worth finding. Log 113 stated that exactly one function in either image touches
+the two magic-key blocks, and that nothing feeds them. Both were false.
+
+The cause is the more instructive part. `FUN_000021fe` hands back a block base
+from a selector argument, so every accessor stores through a register rather
+than a literal — and a per-function MMIO census, which asks what each
+instruction's *resolved* target is, sees nothing at all. This project had
+already documented that exact blind spot three times, in logs 109, 110 and 112,
+and then made an absolute claim that depended on the census being complete. A
+census reporting one writer is evidence of one *visible* writer.
+
+Re-running the analysis through the selector turns up five callers, two more
+than the review had listed, and three distinct access paths rather than one. The
+reset path clears both blocks. The prescaler's divide-by-8 job — the same
+`FUN_00000516` log 109 recovered on the tick chain — feeds `0x40008000` every
+eight ticks. And the NMI handler, when it finds a status bit set, acknowledges
+the block, re-arms its key, counts the event, and writes SYSRESETREQ once the
+counter reaches its limit. That limit's power-on value is 1, so the first
+acknowledged NMI also resets the device.
+
+Constant propagation over every call site shows nothing ever passes selector 1,
+so the second block really is touched exactly once — that much of the original
+claim survives, for the second block only. The whole cluster is byte-identical
+between releases apart from one data pointer that shifts by the measured `0x2c`.
+
+The must-neutralize classification survived, but its justification was replaced
+rather than patched: a replacement cannot ignore these blocks in either
+direction, because omitting the feed risks a reset and inheriting the NMI vector
+without the acknowledge guarantees one. The withdrawn claims are kept in the
+model rather than deleted, and nine new tests pin the correction — including one
+that allows the falsified phrases to appear only beside the word WITHDRAWN, with
+a companion so it cannot pass vacuously.
+
+What was *not* done is worth stating: the census has not been re-audited for the
+same blind spot anywhere else. Logs 109, 110 and 112 all record large unresolved
+access counts, and none has been re-examined this way. 659 offline tests pass,
+both evidence hashes are unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1941,6 +1982,7 @@ The investigation deliberately records mistakes and superseded interpretations:
 | Log 105's "`0x1800023a` is absent from installed_b.txt" | The address appears once, as the *exclusive* end of `FUN_180001d2`'s range. No `FUNC` entry exists at it, which is the claim that matters and which stands (log 106) |
 | Log 80's addresses read as installed addresses | Its decompile was of `app_candidate_b_18000000.bin` = the **vendor** record slice, so they are vendor addresses. The installed primitive was derived as `0x18012fd0`, not assumed equal (log 106) |
 | Task entries counted as an improvement on 146/573 | Seeding changed the denominators; 281 of 616 is a **new baseline**, not 135 more functions (log 106) |
+| Log 113's "exactly one function touches the watchdog blocks" and "nothing feeds them" | Both false. `FUN_000021fe` is a call-through base selector, so the NMI cluster and the ÷8 tick feed are invisible to a per-function census. Three access paths, not one (log 114) |
 | Sandboxed `lsusb` failure | Not a device result; direct read-only retry succeeded |
 | Sandboxed `dfu-util` failure | Not a DFU result; direct enumeration succeeded with no target |
 | Port comparison in log 25 | Parser included `xxd` ASCII; log 26 proved equality |

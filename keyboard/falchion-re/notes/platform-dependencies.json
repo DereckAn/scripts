@@ -10,16 +10,48 @@
       "area": "watchdogs",
       "confidence": "strongly-inferred",
       "key": "watchdog_disabled",
-      "kind_basis": "FUN_00001216 writes 0x5afa55aa to +0xc then 0x5afa0000 to +0 of both 0x40008000 and 0x40009000; the literals are at entry 0x1494, 0x1498, 0x149c and 0x14a0 and were read from raw bytes. The control value's low half is ZERO, which is what a disable looks like \u2014 but no register map confirms the bit meanings, so this is inference from the write pattern, not identification",
-      "statement": "both magic-key blocks are DISABLED on the reset path, not fed",
+      "kind_basis": "FUN_00001216 writes 0x5afa55aa to +0xc then 0x5afa0000 to +0 of both 0x40008000 and 0x40009000; the literals are at entry 0x1494, 0x1498, 0x149c and 0x14a0 and were read from raw bytes. The control value's low half is ZERO, which is what a disable looks like \u2014 but no register map confirms the bit meanings, so this is inference from the write pattern, not identification. NOTE (log 114): this is the reset-path behaviour only; it does NOT mean the blocks stay disabled, because two later paths write them",
+      "statement": "both magic-key blocks are written a cleared control word on the reset path",
       "verified_against": "bytes"
     },
     {
       "area": "watchdogs",
       "confidence": "observed",
-      "key": "watchdog_sole_user",
-      "kind_basis": "a per-function MMIO census over both peripheral maps returns FUN_00001216 in the entry image and NOTHING in the application; so nothing re-enables or feeds them after reset",
-      "statement": "exactly one function in either image touches those blocks",
+      "key": "watchdog_census_blind_spot",
+      "kind_basis": "log 114's correction. FUN_000021fe returns 0x40008000 for selector 0 and 0x40009000 for selector 1 from its own pool at 0x2220/0x2224, so every caller's access has an unresolved base and is invisible to a per-function census. Five functions call it: 0x2148, 0x216c, 0x21b0, 0x21c8 and 0x21e2. The earlier claim that exactly one function touches these blocks is WITHDRAWN",
+      "statement": "the MMIO census sees ONE writer, and the census is wrong \u2014 a second cluster reaches the same blocks through a call-through base selector it cannot attribute",
+      "verified_against": "listing"
+    },
+    {
+      "area": "watchdogs",
+      "confidence": "observed",
+      "key": "watchdog_periodic_feed",
+      "kind_basis": "FUN_00000516 \u2014 the prescaler's divide-by-8 job from log 109 \u2014 calls FUN_00002148(0, 0xff) at 0x51c, resolved by constant propagation. That writes (0x5afa0002 - 2) | 0xff = 0x5afa00ff to base+8 and re-arms the key 0x5afa55aa at base+0xc. The claim \"nothing feeds them anywhere\" is WITHDRAWN: this is a periodic reload every eight ticks of IRQ38",
+      "statement": "block 0x40008000 IS fed periodically, on the tick chain",
+      "verified_against": "listing"
+    },
+    {
+      "area": "watchdogs",
+      "confidence": "strongly-inferred",
+      "key": "watchdog_nmi_acknowledge",
+      "kind_basis": "Vector_NMI's listing: FUN_000021b0(0) returns bit 2 of *(0x40008000) via `ubfx r0,r0,#0x2,#0x1`; when set it calls FUN_000021c8(0) (writes 0x5afa0003 to base+0) and FUN_000021e2(0) (re-arms the key at base+0xc), then increments a counter. It is an ACKNOWLEDGE-AND-RE-ARM rather than a feed \u2014 it is gated on a status bit and counted \u2014 and it is not itself the reset; the reset is a separate AIRCR write. The register bit meanings are still unmapped, so the role is inferred from control flow, not identified",
+      "statement": "the NMI handler conditionally acknowledges and re-arms block 0x40008000, then escalates to a system reset",
+      "verified_against": "listing"
+    },
+    {
+      "area": "watchdogs",
+      "confidence": "strongly-inferred",
+      "key": "watchdog_escalation_limit",
+      "kind_basis": "Vector_NMI compares the incremented counter at *(0x1801ee05)+1 against the limit at +0 with `bcc`, and writes 0x05fa0004 to *(0x212c) = 0xe000ed0c (AIRCR) when the branch is not taken. The region's initialised bytes at that address are `01 00`, so the power-on limit is 1 and the counter 0. Nothing observed changes the limit at runtime, but nothing rules it out either",
+      "statement": "the escalation limit is ONE: the first acknowledged NMI also triggers SYSRESETREQ",
+      "verified_against": "bytes"
+    },
+    {
+      "area": "watchdogs",
+      "confidence": "observed",
+      "key": "watchdog_second_block_untouched",
+      "kind_basis": "constant propagation resolves the selector at every call site: FUN_00002148 is called with 0, and all three NMI accessors with 0. FUN_0000216c, the only function that could pass something else, has zero callers. So 0x40009000 is touched exactly once, by the reset-path disable",
+      "statement": "selector 1, and therefore block 0x40009000, is never passed by any live path",
       "verified_against": "xref"
     },
     {
@@ -175,7 +207,7 @@
       "USB keyboard-IN": "recovered end to end",
       "key-state generation": "recovered and executable",
       "reset/clock/RAM": "sequence preserved; FREQUENCY UNRESOLVED",
-      "watchdog policy": "known: disable both, as the vendor does"
+      "watchdog policy": "known, and it is NOT just a disable: reset clears both, the /8 tick feeds 0x40008000, and NMI acknowledges it and resets after one strike (log 114)"
     }
   },
   "relocation": {
@@ -200,13 +232,14 @@
       "classification": "must-neutralize",
       "confidence": "strongly-inferred",
       "evidence": [
-        "log 113 step 2: FUN_00001216 writes the key then a zero control word to both blocks",
-        "log 113 step 2: no other function in either image touches them"
+        "log 114 step 1: FUN_000021fe is a call-through base selector, so the census cannot attribute the NMI cluster's accesses",
+        "log 114 step 2: FUN_00000516 -> FUN_00002148(0, 0xff) feeds 0x40008000 every eight ticks",
+        "log 114 step 3: Vector_NMI acknowledges, counts, and writes AIRCR 0x05fa0004 once the limit of 1 is reached"
       ],
       "evidence_boundary": "",
       "key": "watchdogs",
       "name": "the two magic-key watchdog blocks",
-      "rationale": "the vendor firmware disables both on the reset path and never feeds them. A replacement that simply ignores them inherits whatever their reset default is, which is not established \u2014 so the safe policy is to perform the same disable, not to omit it.",
+      "rationale": "CORRECTED BY LOG 114, and the correction STRENGTHENS this classification. There are THREE access paths, not one: the reset path writes a cleared control word to both blocks; the prescaler's divide-by-8 job feeds 0x40008000 every eight ticks; and the NMI handler acknowledges and re-arms it, escalating to SYSRESETREQ after one strike. A replacement therefore cannot ignore these blocks in either direction \u2014 omitting the periodic feed risks a reset if the block is live, and inheriting the NMI vector without the acknowledge means the first NMI resets the device. Both the feed and the NMI policy are deliberate choices a replacement must make.",
       "safe_idle_proven": false
     },
     {
@@ -438,14 +471,63 @@
     "usb-routing.json"
   ],
   "watchdog": {
+    "access_paths": [
+      {
+        "blocks": [
+          1073774592,
+          1073778688
+        ],
+        "census_visible": true,
+        "function": 4630,
+        "kind": "reset-path disable",
+        "trigger": "once, at reset",
+        "writes": [
+          "key 0x5afa55aa -> +0xc",
+          "0x5afa0000 -> +0"
+        ]
+      },
+      {
+        "blocks": [
+          1073774592
+        ],
+        "census_visible": false,
+        "function": 1302,
+        "kind": "periodic feed",
+        "trigger": "every 8 ticks, from the prescaler's /8 job FUN_00000516",
+        "writes": [
+          "0x5afa00ff -> +8",
+          "key 0x5afa55aa -> +0xc"
+        ]
+      },
+      {
+        "blocks": [
+          1073774592
+        ],
+        "census_visible": false,
+        "function": 8382,
+        "kind": "NMI acknowledge and escalate",
+        "trigger": "on NMI, only when bit 2 of +0 reads set",
+        "writes": [
+          "0x5afa0003 -> +0",
+          "key 0x5afa55aa -> +0xc",
+          "counter++, then AIRCR 0x05fa0004 once the limit is reached"
+        ]
+      }
+    ],
+    "base_selector": 8702,
     "blocks": [
       1073774592,
       1073778688
     ],
     "control_value": 1526333440,
-    "fed_anywhere": false,
+    "escalation_limit_default": 1,
+    "fed_anywhere": true,
     "key_offset": 12,
-    "sole_user": 4630,
-    "unlock_key": 1526355370
+    "second_block_touched_after_reset": false,
+    "unlock_key": 1526355370,
+    "withdrawn_claims": [
+      "exactly one function in either image touches these blocks",
+      "nothing feeds them anywhere"
+    ]
   }
 }

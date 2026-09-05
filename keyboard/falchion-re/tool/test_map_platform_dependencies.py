@@ -103,6 +103,71 @@ class FiveGFindings(unittest.TestCase):
         self.assertEqual(finding.confidence, "strongly-inferred")
         self.assertIn("not identification", finding.kind_basis)
 
+    def test_the_model_names_all_three_watchdog_access_paths(self):
+        """Log 114's correction. The original error was trusting a
+        single-writer census, so the model must name every path — including
+        the two the census cannot see."""
+        paths = pd.to_dict()["watchdog"]["access_paths"]
+        self.assertEqual(len(paths), 3)
+        self.assertEqual({item["kind"] for item in paths},
+                         {"reset-path disable", "periodic feed",
+                          "NMI acknowledge and escalate"})
+
+    def test_two_access_paths_are_recorded_census_invisible(self):
+        paths = pd.to_dict()["watchdog"]["access_paths"]
+        invisible = [item for item in paths if not item["census_visible"]]
+        self.assertEqual(len(invisible), 2)
+        for item in invisible:
+            self.assertIn(item["kind"],
+                          ("periodic feed", "NMI acknowledge and escalate"))
+
+    def test_the_blocks_are_recorded_as_fed(self):
+        """`nothing feeds them anywhere` was the falsified claim."""
+        self.assertTrue(pd.to_dict()["watchdog"]["fed_anywhere"])
+
+    def test_the_withdrawn_claims_are_kept_on_the_record(self):
+        withdrawn = pd.to_dict()["watchdog"]["withdrawn_claims"]
+        self.assertEqual(len(withdrawn), 2)
+        joined = " ".join(withdrawn)
+        self.assertIn("nothing feeds them", joined)
+        self.assertIn("exactly one function", joined)
+
+    def test_the_falsified_phrases_survive_only_as_withdrawals(self):
+        """The phrases stay on the record — that is the immutable-log habit —
+        but only next to the word WITHDRAWN. A bare restatement is the
+        regression this catches."""
+        for item in pd.FINDINGS:
+            for phrase in ("nothing feeds them",
+                           "exactly one function in either image touches"):
+                if phrase in item.kind_basis.lower():
+                    self.assertIn("WITHDRAWN", item.kind_basis,
+                                  f"{item.key} restates {phrase!r} without "
+                                  "marking it withdrawn")
+                self.assertNotIn(phrase, item.statement.lower(), item.key)
+
+    def test_both_falsified_phrases_are_actually_withdrawn_somewhere(self):
+        """And the withdrawal must exist, or the test above passes vacuously."""
+        basis = " ".join(item.kind_basis for item in pd.FINDINGS)
+        self.assertIn("WITHDRAWN", basis)
+        self.assertEqual(basis.count("WITHDRAWN"), 2)
+
+    def test_the_second_block_is_recorded_untouched_after_reset(self):
+        self.assertFalse(
+            pd.to_dict()["watchdog"]["second_block_touched_after_reset"])
+        finding, = [f for f in pd.FINDINGS
+                    if f.key == "watchdog_second_block_untouched"]
+        self.assertEqual(finding.confidence, "observed")
+
+    def test_the_watchdog_service_cites_the_correction(self):
+        service, = [s for s in pd.SERVICES if s.key == "watchdogs"]
+        self.assertEqual(service.classification, "must-neutralize")
+        self.assertIn("LOG 114", service.rationale.upper())
+        self.assertEqual(len(service.evidence), 3)
+
+    def test_the_prototype_watchdog_status_is_no_longer_just_a_disable(self):
+        status = pd.to_dict()["prototype"]["status"]["watchdog policy"]
+        self.assertIn("NOT just a disable", status)
+
     def test_the_usbd_wdt_lead_is_recorded_as_failing(self):
         finding, = [f for f in pd.FINDINGS
                     if f.key == "usbd_wdt_is_not_a_watchdog_feeder"]
