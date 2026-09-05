@@ -1,0 +1,351 @@
+LOG 116 — PHASE 7: THE INSTALLED-IMAGE OFFLINE BUILDER
+Date: 2026-09-05
+Scope: Phase 7 ONLY. Phase 8 was NOT begun — no patch target was selected and
+no artefact was produced. Nothing was committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. THE BUILDER CONTAINS NO
+USB ENUMERATION AND NO FLASHING CODE, and a test asserts the absence of device
+framing rather than trusting the claim. Every build in this phase ran against a
+COPY of the evidence in a temporary directory; NEITHER EVIDENCE BINARY WAS EVER
+OPENED FOR WRITING, and both hashes are unchanged below. No historical log and
+not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+RIDER — THE ADR'S "FIVE OF SIX" MUST-IMPLEMENT SERVICES
+================================================================================
+Log 115 is immutable and was NOT edited. The rider is recorded here.
+
+THE QUESTION: notes/development-strategy.md line 43 said evidence is "in hand
+for five of" the six must-implement services and then listed five, omitting the
+control endpoint. Was that deliberate — is something missing for EP0 — or an
+off-by-one?
+
+THE ANSWER: AN OFF-BY-ONE. Nothing is missing for EP0.
+
+  $ notes/platform-dependencies.json
+    usb_control: class=must-implement conf=observed
+        cite: log 107 step 8: EP 0x00 is required
+        cite: log 112 step 2: the class handler's request codes
+
+The control endpoint carries `observed` confidence with two citations —
+identical standing to the other five — and log 115's own step 3 listed all six
+with their evidence, including "control endpoint traced (logs 107, 112)". So
+the ADR's prose contradicted both the model it summarises and the log that
+accompanied it. It was a drafting slip: I enumerated five items and wrote
+"five of them" instead of counting again.
+
+CORRECTED WORDING, now in the regenerated ADR:
+  "six services are must-implement and their evidence is in hand for ALL SIX —
+   reset/clock/RAM as a preserved sequence, the tick, key-state generation, USB
+   enumeration, the boot-keyboard route and the control endpoint. (An earlier
+   draft said "five of them" and omitted the control endpoint; that was an
+   off-by-one, not a judgement. The dependency map records the control endpoint
+   as `observed` with two citations, log 116 rider.)"
+
+$ python3 tool/report_development_strategy.py --check
+  RESULT reports_current=True stale=0
+No other ADR claim changed, and the decision is unaffected.
+
+
+================================================================================
+STEP 1 — WHY A SECOND BUILDER RATHER THAN A REWRITE
+================================================================================
+tool/build_modified_image.py is locked to the vendor 1.00.58 artefact and is the
+subject of log 77. Rewriting it would invalidate that log's reproducibility for
+no gain. The plan permits "extend or replace"; this is the extension:
+
+  tool/build_offline_image.py    the general builder, two explicit adapters
+  tool/build_modified_image.py   unchanged, still passing its own tests
+
+Nothing is duplicated that already exists. The new builder reuses
+falchion_image's parser, allowlist, `chunked_crc_sum` and `word_sum`, and
+analyze_boot_structures' `known_boot_checks` and `UNRESOLVED` list.
+
+
+================================================================================
+STEP 2 — THE ADAPTERS, AND ONE ADDRESS-SPACE BUG THEY CAUGHT
+================================================================================
+  vendor-1.00.58-full          base 0x00000  size 0x7c000
+  installed-1.59-application   base 0x10000  size 0x6c000
+
+Every offset in the builder is a LOGICAL FLASH offset translated through the
+adapter's base. THE ADAPTER IS CHOSEN BY MATCHING THE SOURCE'S HASH AND SIZE
+AGAINST THE ALLOWLIST — there is no `--base` flag, so a wrong base cannot be
+supplied. A test asserts the string "--base" appears nowhere in the module.
+
+A BUG THIS DISCIPLINE CAUGHT DURING DEVELOPMENT, recorded because it is the
+same class of error logs 110 and 114 already found. The first draft compared a
+patch's logical offset against `record.addr` directly, and every patch was
+refused as "outside every record". A record's address field carries the
+0x60000000 flash base:
+
+    slot 0: addr=0x60011000 len=0x058ac dst=0x18000000
+    slot 1: addr=0x60021000 len=0x1e754 dst=0x18000000
+
+The translation now happens once, in `active_records()`, which returns `Span`
+objects in logical offsets. Nothing downstream ever sees a raw address field.
+
+
+================================================================================
+STEP 3 — NO-OP ROUND TRIPS, BOTH ADAPTERS
+================================================================================
+$ python3 tool/build_offline_image.py --source <vendor> --noop --out <dir>
+  ADAPTER vendor-1.00.58-full base=0x0
+  SOURCE  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+  OUTPUT  vendor-1.00.58-full_noop_UNTESTED_6d410ee0a54f.bin
+          sha256=6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+
+$ python3 tool/build_offline_image.py --source <installed> --noop --out <dir>
+  ADAPTER installed-1.59-application base=0x10000
+  SOURCE  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  OUTPUT  installed-1.59-application_noop_UNTESTED_fc6128ab089e.bin
+          sha256=fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+
+BOTH OUTPUTS ARE BYTE-IDENTICAL TO THEIR SOURCE. Note that a no-op still
+RECOMPUTES the application word-sum; it is identical because recomputing a
+correct sum reproduces the same bytes. That is what makes the byte-identity
+result meaningful rather than a bypass, and a test asserts the recompute
+happened.
+
+
+================================================================================
+STEP 4 — A PATCHED BUILD, AND THE DEPENDENCY ORDER
+================================================================================
+Exercised with a byte inside record slot 1. THIS IS NOT A PHASE 8 TARGET
+SELECTION — it is a functional exercise of the builder, and Phase 8 remains
+unstarted.
+
+  ADAPTER vendor-1.00.58-full base=0x0
+  OUTPUT  vendor-1.00.58-full_demo_UNTESTED_ee0a2ea68483.bin
+          sha256=ee0a2ea684833d080f74a949d153e9bc95f316489822af8abda8905746198783
+  PATCHES 1
+    0x3f66f 52 -> 72
+  RECOMPUTED 2
+    record_chunked_crc at 0x1003c = 0x4ec85064
+    application_word_sum at 0x7bffc = 0xb17954f7
+  WORD SUMS
+    application: available
+    backup_bootloader: available
+    primary_bootloader: available
+  VALIDATIONS 25
+    failed: none
+
+THE ORDER IS ENFORCED BY CONSTRUCTION, not by comment. The record CRC field at
+0x1003c lies inside the application word-sum's covered range [0x10000,0x7bffc),
+so computing the word-sum first would leave it stale. A test asserts that
+containment explicitly, then verifies the stored word-sum against an
+independent recomputation — so the test would fail if the order were reversed.
+
+A patched build changes at most 1 + 4 + 4 bytes: the patched byte, the record's
+CRC field, and the word-sum. A test pins that bound.
+
+
+================================================================================
+STEP 5 — EVERY REFUSED OPERATION CLASS
+================================================================================
+Exercised from the CLI. Each is a clean refusal: a one-line RESULT, no
+traceback, and no file left in the output directory.
+
+  primary bootloader          patch at 0x2000: touches the primary bootloader
+                              region; does not lie wholly inside one active
+                              record's payload
+  backup bootloader           patch at 0x62000: touches the backup bootloader
+                              region; ...
+  SN_FWIN header              patch at 0x10000: touches the SN_FWIN header; ...
+  record table                patch at 0x10028: touches the record table
+                              metadata; ...
+  record checksum field       patch at 0x1003c: touches the record table
+                              metadata; ...
+  word-sum field itself       patch at 0x7bffc: touches the application
+                              word-sum field itself; ...
+  outside every record        patch at 0x79000: does not lie wholly inside one
+                              active record's payload
+  past the image end          patch at 0x900000: outside the
+                              vendor-1.00.58-full adapter's range 0x0..0x7c000
+  overlapping patches         patch at 0x3f670 overlaps the patch at 0x3f66f
+  wrong original bytes        patch at 0x3f66f expected original bytes aa but
+                              the source holds 52
+  missing original bytes      cannot parse patch '0x3f66f=72'; the form is
+                              OFFSET=ORIGINALHEX:REPLACEMENTHEX and the
+                              original bytes are mandatory
+  --noop with a patch         --noop takes no patches
+  wrong source                sha256=5df2a043… size=0x186a0 is not an
+                              allowlisted mutation source
+  output collision            installed-1.59-application_noop_UNTESTED_
+                              fc6128ab089e.bin already exists; refusing to
+                              overwrite
+
+$ files left behind by the refusals above
+  0
+
+NOTE THAT SEVERAL REFUSALS GIVE TWO REASONS. That is deliberate: `reject_reasons`
+collects every applicable reason rather than returning the first, so a reviewer
+sees that a bootloader-region patch is refused on region grounds AND on
+record-containment grounds independently.
+
+POLICY-GATED PATHS. The backup-bootloader word-sum recompute exists and is
+UNREACHABLE by default: any patch overlapping [0x61000,0x71000) is refused
+before it, and no reviewed policy permits that region. The primary-bootloader
+word-sum is in neither the permitted nor the policy-gated list; on an installed
+source it is reported UNAVAILABLE, is never recomputed, and appears in the
+manifest's unresolved risks. Tests pin all three positions.
+
+
+================================================================================
+STEP 6 — THE MANIFEST SCHEMA
+================================================================================
+Written beside every output as `<name>.manifest.json`, exclusive-create.
+
+  adapter               the adapter name
+  adapter_base          its logical base
+  boot_checks           [{name, ok}] from analyze_boot_structures
+  output_sha256         the built image's digest
+  output_size
+  patches               [{flash_off, original, replacement, length}] — the
+                        ORIGINAL-BYTE ASSERTIONS are recorded, not just the
+                        replacements
+  recomputed_fields     [{field, flash_off, record, value}] in the order they
+                        were written
+  source_sha256         the allowlisted source
+  source_size
+  tool_version
+  unresolved_risks      never empty; always leads with "not evidence that the
+                        image will boot"
+  validations           [{name, ok}] from falchion_image.validate
+  word_sum_status       {name: available|unavailable} per adapter
+  written_utc
+
+ACCEPTANCE IS NOT CLAIMED ANYWHERE. The report's final line is
+"RESULT built=1 (construction only; acceptance is NOT claimed)", and a test
+asserts that string is present.
+
+
+================================================================================
+STEP 7 — INDEPENDENCE OF THE VALIDATORS
+================================================================================
+Requirement 11 says the checkers must not import the builder's mutation
+functions. tool/test_build_offline_image.py reimplements both integrity
+algorithms from `zlib` and `struct` directly:
+
+    independent_chunked_crc()   the per-0x10000-chunk CRC-32 sum, written from
+                                the log-75/76 description
+    independent_word_sum()      the additive 32-bit word sum
+
+Three tests use them: the record CRC matches, the application word-sum matches,
+and the word-sum covers the updated CRC field. A bug shared between the builder
+and its checker cannot hide behind these, because they share no code.
+
+
+================================================================================
+STEP 8 — THE BUILDER CONTAINS NO DEVICE CODE, AND THAT IS TESTED
+================================================================================
+Thirteen device-shaped patterns are scanned across the builder's source:
+/dev/hidraw, a bare `hid` token, usb.core, hidapi, opening a /dev path,
+write_report, send_feature, ctrl_transfer, endpoint, enumerate, dfu-util, sudo,
+ioctl.
+
+  test_the_builder_module_contains_no_device_framing   PASS (no matches)
+  test_the_detector_actually_detects                   PASS — fires on six
+      known-bad strings including "import hid", "dev.ctrl_transfer(...)" and
+      "usb.core.find(idVendor=0x0b05)"
+  test_ordinary_builder_prose_is_not_flagged           PASS
+  test_the_builder_imports_nothing_device_shaped       PASS — the import list
+      is checked against usb, hid, hidapi, serial, fcntl, termios, socket,
+      http, urllib, requests and subprocess
+
+The anti-vacuity test exists because a pattern list that never fires would make
+the first test meaningless.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/build_offline_image.py tool/test_build_offline_image.py tool/report_development_strategy.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 732 tests   OK                                                 [exit 0]
+  (686 before this step; +46 in tool/test_build_offline_image.py)
+
+  The 46 new cases, by what each proves:
+    NoOp (4)                  byte-identical round trip on BOTH adapters; the
+                              recompute still happens; UNTESTED in the name
+    SourceGate (5)            wrong hash, truncation, empty file, a padded
+                              file with a valid prefix, and that the adapter
+                              comes from the bytes rather than a flag
+    PatchParsing (5)          missing original bytes, empty patch,
+                              length-changing patch, malformed strings, and a
+                              well-formed patch
+    RejectedRegions (10)      primary bootloader, backup bootloader, SN_FWIN
+                              header, record table, record checksum field,
+                              each word-sum field, outside every record, past
+                              the image end, straddling a record boundary, and
+                              an installed source refusing a bootloader offset
+    PatchIntegrity (3)        wrong original byte, overlapping patches, and a
+                              good patch changing at most 1+4+4 bytes
+    IndependentVerification(3) record CRC, word-sum, and the dependency order
+    Output (7)                collision refusal leaves the original intact,
+                              manifest exists and matches, every schema field
+                              present, original-byte assertions recorded,
+                              unresolved risks never empty, installed adapter
+                              reports the primary word-sum unavailable, and
+                              acceptance is never claimed
+    WordSumPolicy (5)         only the application sum is permitted, the
+                              backup is policy-gated, the primary is in
+                              neither list, and both adapters' availability
+    NoDeviceCode (4)          no device framing, the detector fires, ordinary
+                              prose is not flagged, no device-shaped imports
+
+$ python3 tool/report_phase3.py --check                 reports_current=True stale=0
+$ python3 tool/report_phase4.py --check                 reports_current=True stale=0
+$ python3 tool/report_phase5.py --check                 reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check               reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check             reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check          reports_current=True stale=0
+$ python3 tool/map_nonvolatile_writes.py --check        reports_current=True stale=0
+$ python3 tool/map_rgb_lamparray.py --check             reports_current=True stale=0
+$ python3 tool/map_platform_dependencies.py --check     reports_current=True stale=0
+$ python3 tool/report_development_strategy.py --check   reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                          all OK       [exit 0]
+$ git diff --check                                      clean        [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED
+================================================================================
+  - The builder verifies STRUCTURE. It cannot verify that an image boots, and
+    it says so in every manifest.
+  - The primary-bootloader word-sum is unavailable on an installed source and
+    is never recomputed. An application-region patch does not depend on it,
+    which is why that is a limitation rather than a defect — but a build that
+    needed it would be refused, not approximated.
+  - `known_boot_checks` is run and reported, but the boot-structure UNRESOLVED
+    list (what makes address 0 writable, which physical keys the recovery scan
+    matches, any ROM stage ahead of the bootloader) is carried into every
+    manifest unchanged. Those are still open.
+  - No new record can be added. The record table is a fixed eight slots and
+    the rules for adding one are not proven, so the builder does not offer it.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phase 8 was not begun. NO PATCH TARGET WAS SELECTED and no artefact was
+    produced. The 0x3f66f byte used above exercises the builder; it is not a
+    selection, and Phase 8's criteria assessment in the ADR stands unchanged.
+  - tool/build_modified_image.py was NOT modified.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - Log 115 was not edited; the rider is recorded here.
+  - Neither evidence binary was opened for writing; every build used a copy in
+    a temporary directory.
+  - NO DEVICE WAS ACCESSED, and the builder contains no device code.

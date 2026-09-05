@@ -40,7 +40,7 @@ Keep the device's existing immutable boot path; provide a newly built applicatio
 
 **Path B currently CANNOT produce a typing keyboard. With the Hall acquisition unrecovered, a replacement application could initialise, tick, enumerate, build reports and transmit them, and every key would read as released forever. That is a blocker, not a detail.**
 
-Against the dependency map: six services are must-implement and their evidence is in hand for five of them — reset/clock/RAM as a preserved sequence, the tick, key-state generation, USB enumeration and the boot-keyboard route. Three are must-neutralize and all three are now understood: the three-path watchdog arrangement (log 114), the NMI reset, and the second execution context with its token handshake (log 113). Three are unresolved, and those are the gates below.
+Against the dependency map: six services are must-implement and their evidence is in hand for ALL SIX — reset/clock/RAM as a preserved sequence, the tick, key-state generation, USB enumeration, the boot-keyboard route and the control endpoint. (An earlier draft said "five of them" and omitted the control endpoint; that was an off-by-one, not a judgement. The dependency map records the control endpoint as `observed` with two citations, log 116 rider.) Three are must-neutralize and all three are now understood: the three-path watchdog arrangement (log 114), the NMI reset, and the second execution context with its token handshake (log 113). Three are unresolved, and those are the gates below.
 
 **Toolchain and linker support Path B concretely needs:**
 

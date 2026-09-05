@@ -2011,6 +2011,48 @@ are verified to exist and still hash to what the checksum file records.
 686 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-05 — Phase 7: the offline builder (log 116)
+
+Phase 7 only. Phase 8 was not begun — no patch target selected, no artefact —
+and nothing was committed or staged.
+
+A rider first. The Phase 6 ADR said evidence was in hand for "five of" the six
+must-implement services and then listed five, omitting the control endpoint. The
+question was whether that was deliberate. It was an off-by-one: the dependency
+map records the control endpoint as `observed` with two citations, and log 115's
+own step 3 listed all six. The ADR contradicted both the model it summarised and
+the log beside it, which is a good argument for generating prose from the model
+wherever possible. Corrected and regenerated; log 115 unedited.
+
+The builder itself is a new module rather than a rewrite. `build_modified_image.py`
+is the subject of log 77 and rewriting it would have cost that log's
+reproducibility for nothing. The new one takes two explicit adapters, chosen by
+hash and size rather than by a flag — there is no `--base` to get wrong.
+
+Which turned out to matter immediately, in a different way. The first draft
+refused every patch as "outside every record", because record address fields
+carry the `0x60000000` flash base and I compared them against logical offsets.
+That is the third time this project has found the same address-space slip, after
+logs 110 and 114. The translation now happens exactly once and nothing
+downstream sees a raw field.
+
+Both no-op round trips come back byte-identical, and they do so *through* the
+recompute rather than around it: a no-op still recalculates the application
+word-sum, and gets the same bytes because the stored sum was already correct.
+The dependency order is enforced by construction — the record CRC field lies
+inside the word-sum's covered range, so a reversed order would leave it stale,
+and a test asserts that containment before checking the value against an
+independent reimplementation that shares no code with the builder.
+
+Fourteen refusal classes were exercised from the command line and every one is a
+clean one-line refusal leaving nothing behind. The backup-bootloader word-sum
+recompute exists and is deliberately unreachable; the primary is unavailable on
+an installed source and is never approximated — a build that needed it is
+refused instead.
+
+732 offline tests pass, both evidence hashes are unchanged, every build ran
+against a copy in a temporary directory, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

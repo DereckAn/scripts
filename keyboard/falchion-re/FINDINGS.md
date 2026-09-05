@@ -2198,6 +2198,63 @@ Five evidence gates are named for Path B, the Hall acquisition boundary flagged
 as the largest, with the never-imported `0x18038000` image as the most promising
 single action against it.
 
+### Phase 7: the offline builder (log 116)
+
+`tool/build_offline_image.py` is the general builder Phase 7 required.
+`tool/build_modified_image.py` was **left unchanged** so log 77 stays
+reproducible; the new module reuses `falchion_image`'s parser, allowlist,
+`chunked_crc_sum` and `word_sum` rather than duplicating them.
+
+**Two explicit adapters**, chosen by matching the source's hash *and* size
+against the allowlist:
+
+| adapter | base | size |
+|---|---|---|
+| `vendor-1.00.58-full` | `0x00000` | `0x7c000` |
+| `installed-1.59-application` | `0x10000` | `0x6c000` |
+
+There is no `--base` flag, so a wrong base cannot be supplied; a test asserts
+the string appears nowhere in the module.
+
+**An address-space bug the discipline caught.** The first draft compared a
+patch's logical offset against a record's address field directly and refused
+every patch. Record address fields carry the `0x60000000` flash base
+(`slot 1: addr=0x60021000 len=0x1e754`). Translation now happens once, in
+`active_records()`, which returns spans in logical offsets; nothing downstream
+sees a raw field. This is the same class of error logs 110 and 114 found.
+
+**Both no-op round trips are byte-identical.** The no-op still recomputes the
+application word-sum — it is identical because recomputing a correct sum
+reproduces the same bytes, which is what makes the byte-identity result
+meaningful rather than a bypass.
+
+**Dependency order is enforced by construction.** The record CRC field at
+`0x1003c` lies *inside* the application word-sum's covered range
+`[0x10000,0x7bffc)`, so computing the sum first would leave it stale. A test
+asserts that containment and then verifies the stored value against an
+**independent** reimplementation written from `zlib` and `struct` — sharing no
+code with the builder, so a common bug cannot hide.
+
+**Fourteen refusal classes, all clean**, leaving zero files behind: primary and
+backup bootloader, SN_FWIN header, record table, record checksum field, each
+word-sum field, outside every record, past the image end, straddling a record
+boundary, overlapping patches, wrong original bytes, missing original bytes,
+`--noop` with a patch, an unallowlisted source, and an output collision.
+
+**Word-sum policy.** Only the application sum is permitted. The backup-bootloader
+recompute exists and is **unreachable by default** — any patch overlapping
+`[0x61000,0x71000)` is refused before it. The primary is in neither list; on an
+installed source it is reported **unavailable**, never recomputed, and carried
+into every manifest's unresolved risks.
+
+**The builder contains no device code**, and that is tested rather than
+asserted: thirteen device-shaped patterns scanned, an anti-vacuity test proving
+the detector fires on known-bad strings, and an import allowlist check.
+
+Every build ran against a **copy** in a temporary directory; neither evidence
+binary was opened for writing. Acceptance is never claimed — the report's final
+line is `construction only; acceptance is NOT claimed`.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
