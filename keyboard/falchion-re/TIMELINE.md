@@ -1790,6 +1790,47 @@ numbers carry no unit, and a test enforces that none is given one. The analysis
 authorises no Hall drive and no live experiment. 560 offline tests pass, both
 evidence hashes are unchanged, and no device was accessed.
 
+## 2026-09-05 — Phase 5E: the nonvolatile commit path (log 111)
+
+Phase 5E only, static tracing throughout. 5F and 5G were not begun, nothing was
+committed or staged, every Ghidra run was read-only, and **no command was
+constructed or transmitted — including `50 55`**, which appears in the analysis
+only as a value the firmware compares against.
+
+The headline is a small one that changes the risk picture: the commit **queues
+work**. Its branch in the dispatcher is nine instructions long and contains no
+call at all — it sets one byte and returns. A neighbouring subcommand in the
+same tree does call, so the absence is real rather than an artefact.
+
+From that byte the path runs through two more hops: a state machine switches on
+it and asks for erases at three literal addresses plus a computed slot, filling
+a one-deep request struct with an opcode and an address; a separate drainer
+consumes that struct and reaches hardware five calls later in a DMA setup. The
+entire 36-function storage layer in between touches no MMIO whatsoever.
+
+The opcodes are `0xd8` and `0x52`, which are the JEDEC SPI-NOR block-erase
+codes. That is recognition, and it is recorded as recognition — not as an
+identification. No SPI controller register was found, so the medium stays
+unidentified and the two register windows the DMA reaches stay unnamed. Naming
+them on a recognised opcode would be precisely the correlation this project has
+refused everywhere else.
+
+What was *not* recovered matters for the exit gate: no magic, version, length or
+checksum is constructed or verified anywhere on the path, and the source of the
+persisted data was never found. The `0x51/0x22` link that log 110 left open is
+still open — the per-key bank pointer is loaded under a different subcommand.
+
+So the gate resolves to its second branch, explicitly. Safe persistence cannot
+be implemented from this evidence. But the negative is provable in four steps,
+and the target ranges are disjoint from the application region the bootloader
+programs, so a prototype that never touches the command byte or the request
+struct cannot corrupt existing configuration.
+
+The residual is stated rather than buried: that proof holds within the traced
+set, and both the state machine and the drainer are callerless, so a second
+writer outside that set is not excluded. 587 offline tests pass, both evidence
+hashes are unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

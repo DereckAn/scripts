@@ -1929,6 +1929,72 @@ with the system report being the 2-byte buffer at `0x18023c3d`, and its "per-key
 halfword array" at `0x18023410` is the **key-state bitmap** — five 32-bit words,
 previous-state partner at `+0x810`.
 
+### Phase 5E: the nonvolatile commit path (log 111)
+
+Traced statically. **No command was constructed or transmitted, including
+`50 55`** — those bytes appear below only as values the firmware compares
+against in its own listing.
+
+**The commit queues; it does not program.** The `0x50/0x55` branch at
+`0x18002428` is nine instructions and **contains no call at all**. It sets a
+command byte and returns:
+
+```
+1800242e  cmp    r1,#0x4        ; already 4 -> skip, so a repeat is idempotent
+18002432  strb.w r12,[r0,#0x0]  ; r12 = 4, from mov.w r12,#0x4 at 0x18001fea
+18002436  strb   r5,[r0,#0x8]   ; a sub-selector
+```
+
+The neighbouring `0x60` subcommand at `0x18002440` *does* call, so the absence
+is a property of this branch rather than of the disassembly.
+
+**Two further hops reach hardware.** `FUN_18000d56` switches on that byte
+(`*(0x18000e7c)` = `0x18022ce4`) and calls `FUN_1800e2a8(0x320000)` /
+`FUN_1800e2c4(0x330000, 0x340000)`, plus a computed `0x320000 + byte * 0x4000`.
+Those fill a **one-deep request struct** at `0x18025ef4` — opcode at `+0`,
+address at `+0xc`, pending flag at `+0x18` — and refuse while byte 0 is
+non-zero. `FUN_1800dc92` drains it, and hardware contact happens only five
+calls later in `FUN_18011dd0`, a DMA setup that bounds-checks its source against
+`0x18000000` and touches `0x40020008`–`0x4002001c` and `0x45000000/0c/54`.
+
+**No function in the 36-strong storage cluster touches MMIO at all.** The whole
+layer works on RAM structures.
+
+**The medium is not identified.** The opcodes `0xd8` and `0x52` match the JEDEC
+SPI-NOR 64 KiB and 32 KiB block-erase codes — that is **recognition, not
+proof**. What the code demonstrably does is place those bytes in a struct a DMA
+path consumes; no SPI controller register was identified. `0x40020000` and
+`0x45000000` are **not named**, because naming them from a recognised opcode is
+exactly the correlation this project refuses. Internal MCU storage, external U5
+SPI NOR and a RAM mirror all remain consistent.
+
+**The settings format was not recovered** — no magic, version, length or
+checksum is constructed or verified anywhere on the path, and the source of the
+persisted data was never found. The `0x51/0x22` → per-key-bank link that log 110
+left open is **still open**: the `0x180202d8` bank pointer is loaded in the
+`0x60` branch, not under `0x22`.
+
+**Ranges the path may modify** start at `0x320000` and are **disjoint from the
+bootloader's `0x10000..0x7c000` application region**. The extents assume each
+opcode's nominal size and are the weakest claim; the base addresses are literals
+and are not in doubt. No journal, A/B slotting, wear levelling or completion
+callback appears on the path.
+
+**Exit gate — the evidence supports the omit-all-writes branch only.** Safe
+persistence cannot be implemented from this evidence. The negative *is* provable:
+the only routes into an erase are `FUN_1800e2a8`/`FUN_1800e2c4`; both are called
+only from the sub-switch that runs when `0x18022ce4` is non-idle; the only
+writer of that byte in the traced set is the `0x50` branch; and both primitives
+refuse unless the request struct's opcode byte is zero. **A custom firmware that
+never writes `0x18022ce4`, never fills `0x18025ef4`, never calls those two
+functions and never dispatches `0x50/0x55` cannot reach an erase.**
+
+**The residual, stated because a proof is only as good as its scope:** that
+argument holds *within the traced set*. `FUN_18000d56` and `FUN_1800dc92` are
+both callerless in the application call graph, so the context that runs them is
+not established, and a second writer of the command byte outside the traced set
+is not excluded. The proof is conditional, and the condition is not proven.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

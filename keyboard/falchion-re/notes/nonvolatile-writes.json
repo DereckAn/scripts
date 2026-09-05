@@ -1,0 +1,321 @@
+{
+  "answer_to_the_dispatch_question": {
+    "choice": "b",
+    "confidence": "observed",
+    "detail": "the commit QUEUES work. The 0x50/0x55 branch contains no call instruction; it sets a command byte that a state machine in another context drains, through two further hops."
+  },
+  "constants": {
+    "command_byte": 402795748,
+    "commit_value": 4,
+    "opcodes": {
+      "0x52": "matches the JEDEC SPI-NOR 32 KiB block-erase opcode",
+      "0xd8": "matches the JEDEC SPI-NOR 64 KiB block-erase opcode"
+    },
+    "request_offsets": {
+      "address": 12,
+      "flag": 8,
+      "opcode": 0,
+      "pending": 24
+    },
+    "request_struct": 402808564,
+    "slot_base": 3276800,
+    "slot_stride": 16384,
+    "target_addresses": [
+      3276800,
+      3342336,
+      3407872
+    ]
+  },
+  "exit_gate": {
+    "branch": "omit-all-writes",
+    "detail": "The evidence supports proving a prototype CANNOT corrupt existing configuration, not implementing safe persistence. The format's magic, version, length and checksum were not recovered, and the storage medium is unidentified, so safe persistence cannot be implemented from this evidence. What CAN be shown is the negative, and it is a short argument: every route into the erase primitives runs through the command byte at 0x18022ce4, and a firmware that never writes that byte and never fills the request struct at 0x18025ef4 cannot reach FUN_1800e2a8 or FUN_1800e2c4.",
+    "what_a_custom_firmware_must_never_do": [
+      "write 0x18022ce4",
+      "write the request struct at 0x18025ef4",
+      "call FUN_1800e2a8 or FUN_1800e2c4, or their vendor counterparts",
+      "dispatch vendor opcode 0x50 subcommand 0x55"
+    ]
+  },
+  "hops": [
+    {
+      "confidence": "observed",
+      "kind_basis": "`ldr r4,[0x18002174]` / `ldrb r0,[r4,#0x0]` at 0x18001fc2 (log 107)",
+      "mechanism": "the dispatcher reads mailbox byte 0",
+      "source": "mailbox",
+      "target": "dispatcher"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "two compare-and-branch pairs at 0x18002018 and 0x180023e0",
+      "mechanism": "opcode 0x50 then subcommand 0x55",
+      "source": "dispatcher",
+      "target": "commit_request"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "`strb.w r12,[r0,#0x0]` at 0x18002432",
+      "mechanism": "a single byte store, no call",
+      "source": "commit_request",
+      "target": "command_byte"
+    },
+    {
+      "confidence": "strongly-inferred",
+      "kind_basis": "FUN_18000d56 switches on *(0x18022ce4); it is callerless in the application call graph, so the context that runs it is not established here",
+      "mechanism": "asynchronous: a switch in another context reads the byte",
+      "source": "command_byte",
+      "target": "state_machine"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "`FUN_1800e2a8(0x320000)` in the sub-selector switch",
+      "mechanism": "call with a target address",
+      "source": "state_machine",
+      "target": "erase_64k"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "`FUN_1800e2c4(0x330000)` and `(0x340000)`, and a computed `slot * 0x4000 + 0x320000`",
+      "mechanism": "call with a target address",
+      "source": "state_machine",
+      "target": "erase_32k"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "`movs r2,#0xd8` then four stores at 0x1800e2b2",
+      "mechanism": "opcode and address stores",
+      "source": "erase_64k",
+      "target": "request_struct"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "`movs r2,#0x52` then four stores at 0x1800e2ce",
+      "mechanism": "opcode and address stores",
+      "source": "erase_32k",
+      "target": "request_struct"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "`ldr` of the literal at 0x1800dcf8 = 0x18025ef4, loaded at 0x1800dc96",
+      "mechanism": "the drainer loads the struct base",
+      "source": "request_struct",
+      "target": "drainer"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "0x1800dc92 -> 0x1800d9ce -> 0x1800d914 -> 0x1801ae04 -> 0x18011ece -> 0x18011dd0, from the inventory call graph",
+      "mechanism": "a five-call chain",
+      "source": "drainer",
+      "target": "dma_setup"
+    },
+    {
+      "confidence": "unresolved",
+      "kind_basis": "the transfer reaches 0x40020000 and 0x45000000; neither is named, and no SPI controller was identified",
+      "mechanism": "DMA to an unnamed register window",
+      "source": "dma_setup",
+      "target": "medium"
+    }
+  ],
+  "modifiable_ranges": [
+    {
+      "confidence": "observed",
+      "high": 3342336,
+      "kind_basis": "`FUN_1800e2a8(0x320000)`; the extent assumes the opcode's nominal 64 KiB, which is recognition and not proof, so the extent is the weakest part of this entry",
+      "label": "the 64 KiB target of the 0xd8 erase",
+      "low": 3276800,
+      "overlaps_bootloader_region": false
+    },
+    {
+      "confidence": "observed",
+      "high": 3375104,
+      "kind_basis": "`FUN_1800e2c4(0x330000)`, extent as above",
+      "label": "the 32 KiB target of one 0x52 erase",
+      "low": 3342336,
+      "overlaps_bootloader_region": false
+    },
+    {
+      "confidence": "observed",
+      "high": 3440640,
+      "kind_basis": "`FUN_1800e2c4(0x340000)`, extent as above",
+      "label": "the 32 KiB target of another 0x52 erase",
+      "low": 3407872,
+      "overlaps_bootloader_region": false
+    },
+    {
+      "confidence": "strongly-inferred",
+      "high": 7471104,
+      "kind_basis": "`(uint)*(byte *)(x + 0x1f) * 0x4000 + 0x320000` in the state machine; the index is a byte, so the reachable extent is bounded by 256 slots unless something narrower constrains it, which was not established",
+      "label": "a computed slot: base 0x320000 plus a byte-indexed 0x4000 stride",
+      "low": 3276800,
+      "overlaps_bootloader_region": false
+    }
+  ],
+  "settings_format": {
+    "checksum": null,
+    "defaults": null,
+    "length": null,
+    "magic": null,
+    "migration": null,
+    "note": "NOT RECOVERED. The commit path passes ADDRESSES to erase primitives; no header, magic, version, length or checksum is constructed or verified anywhere in the traced chain. What the commit persists FROM was not established either: no copy from the 0x180202d8 per-key bank or the 0x18024f0c global table into a staging buffer appears in the traced path.",
+    "version": null
+  },
+  "steps": [
+    {
+      "address": 402797480,
+      "confidence": "observed",
+      "detail": "the 64-byte single-slot mailbox Phase 5B recovered. Byte 0 is both the opcode and the busy flag.",
+      "key": "mailbox",
+      "kind": "data",
+      "kind_basis": "log 107 step 7 traced FUN_18000aec filling it and the dispatcher reading byte 0 at 0x18001fc4",
+      "name": "vendor OUT mailbox",
+      "vendor_address": 402797436,
+      "vendor_match_confidence": "flat region shift",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402661310,
+      "confidence": "observed",
+      "detail": "dispatches opcode 0x50 to the branch that contains subcommand 0x55.",
+      "key": "dispatcher",
+      "kind": "function",
+      "kind_basis": "`cmp r2,#0x50` / `beq 0x18002110` at 0x18002018, and `ldrb r0,[r4,#0x1]` / `cmp r0,#0x55` / `beq 0x18002428` at 0x180023de",
+      "name": "VendorHID_CommandDispatcher",
+      "vendor_address": 402661310,
+      "vendor_match_confidence": "matched (tentative)",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402662440,
+      "confidence": "observed",
+      "detail": "sets the command byte to 4 and stores a sub-selector. IT CONTAINS NO CALL INSTRUCTION \u2014 it requests, it does not perform.",
+      "key": "commit_request",
+      "kind": "code",
+      "kind_basis": "the whole branch is nine instructions at 0x18002428..0x1800243e with no `bl` among them; contrast the 0x60 branch at 0x18002440, which does call",
+      "name": "the 0x50/0x55 commit branch",
+      "vendor_address": null,
+      "vendor_match_confidence": "not separately measured",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402795748,
+      "confidence": "observed",
+      "detail": "one byte at request-state+0x84. The commit sets it to 4; a guard skips when it already holds that value, so a repeated commit is idempotent.",
+      "key": "command_byte",
+      "kind": "data",
+      "kind_basis": "`strb.w r12,[r0,#0x0]` at 0x18002432 with `mov.w r12,#0x4` at 0x18001fea, guarded by `cmp r1,#0x4` / `beq` at 0x1800242e",
+      "name": "commit command byte",
+      "vendor_address": 402795704,
+      "vendor_match_confidence": "flat region shift",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402656598,
+      "confidence": "observed",
+      "detail": "switches on the command byte and on the sub-selector, and calls the storage primitives with target addresses.",
+      "key": "state_machine",
+      "kind": "function",
+      "kind_basis": "`switch(*DAT_18000e7c)` where *(0x18000e7c) = 0x18022ce4, the command byte; the sub-switch is on the byte at +8 the commit stored",
+      "name": "FUN_18000d56",
+      "vendor_address": 402656598,
+      "vendor_match_confidence": "matched (structural)",
+      "verified_against": "decompiler"
+    },
+    {
+      "address": 402711208,
+      "confidence": "observed",
+      "detail": "fills the request struct with opcode 0xd8 and an address.",
+      "key": "erase_64k",
+      "kind": "function",
+      "kind_basis": "`movs r2,#0xd8` / `strb r2,[r1,#0x0]` then `str r0,[r1,#0xc]` and `strb r0,[r1,#0x18]` at 0x1800e2b2..0x1800e2c0",
+      "name": "FUN_1800e2a8",
+      "vendor_address": 402711164,
+      "vendor_match_confidence": "matched (identical)",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402711236,
+      "confidence": "observed",
+      "detail": "fills the request struct with opcode 0x52 and an address.",
+      "key": "erase_32k",
+      "kind": "function",
+      "kind_basis": "`movs r2,#0x52` / `strb r2,[r1,#0x0]` at 0x1800e2ce..0x1800e2d0, otherwise identical to FUN_1800e2a8",
+      "name": "FUN_1800e2c4",
+      "vendor_address": 402711192,
+      "vendor_match_confidence": "matched (identical)",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402711154,
+      "confidence": "observed",
+      "detail": "the guard every primitive is called behind: returns whether the pending flag at request+0x18 equals 1.",
+      "key": "busy_check",
+      "kind": "function",
+      "kind_basis": "six instructions: `ldrb r0,[r0,#0x18]` / `cmp r0,#0x1` at 0x1800e274",
+      "name": "FUN_1800e272",
+      "vendor_address": 402711110,
+      "vendor_match_confidence": "matched (identical)",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402808564,
+      "confidence": "observed",
+      "detail": "opcode at +0, a flag at +8, a 32-bit address at +0xc, a pending flag at +0x18. The primitives refuse when byte 0 is non-zero, so one request is outstanding at a time.",
+      "key": "request_struct",
+      "kind": "data",
+      "kind_basis": "the offsets are the store displacements in FUN_1800e2a8's listing; the refusal is `cbz r2` / `movs r0,#0` / `bx lr` at 0x1800e2ac",
+      "name": "storage request struct",
+      "vendor_address": 402808520,
+      "vendor_match_confidence": "flat region shift",
+      "verified_against": "listing"
+    },
+    {
+      "address": 402709650,
+      "confidence": "observed",
+      "detail": "the only consumer of the request struct outside the primitives. Callerless in the application call graph, like the rest of this path.",
+      "key": "drainer",
+      "kind": "function",
+      "kind_basis": "an exhaustive value cross-reference for 0x18025ef4 returns the nine primitives plus FUN_1800dc92 and nothing else",
+      "name": "FUN_1800dc92",
+      "vendor_address": 402709606,
+      "vendor_match_confidence": "matched (identical)",
+      "verified_against": "xref"
+    },
+    {
+      "address": 402726352,
+      "confidence": "observed",
+      "detail": "a DMA transfer setup. Bounds-checks the source against 0x18000000 and a limit word, selects one of two channel bases, and polls a busy bit before starting.",
+      "key": "dma_setup",
+      "kind": "function",
+      "kind_basis": "`cmp.w r0,#0x18000000` / `bcc` at 0x18011de2, `ldrd r0,r6,[r7,#0x14]` for address and length, `ldr r2,[r5,#0x8]` / `lsls r2,r2,#0x1f` for the busy bit, and `mov.w r2,#0x45000000` at 0x18011e10",
+      "name": "FUN_18011dd0",
+      "vendor_address": 402726308,
+      "vendor_match_confidence": "matched (identical)",
+      "verified_against": "listing"
+    },
+    {
+      "address": 0,
+      "confidence": "unresolved",
+      "detail": "UNIDENTIFIED. The path ends in a DMA engine and two unnamed register windows. No SPI controller was identified and no block is named here.",
+      "key": "medium",
+      "kind": "none",
+      "kind_basis": "no function in the whole 0x1800e2xx-0x1800efxx storage cluster touches MMIO at all; the hardware contact is only in the drainer's closure, at 0x40020008/0x40020010/0x40020014/0x40020018/0x4002001c and 0x45000000/0x4500000c/0x45000054",
+      "name": "the storage medium",
+      "vendor_address": null,
+      "vendor_match_confidence": "not separately measured",
+      "verified_against": "xref"
+    }
+  ],
+  "storage_medium": {
+    "identified": false,
+    "note": "UNIDENTIFIED. The opcodes 0xd8 and 0x52 match the JEDEC SPI-NOR block-erase opcodes, which is recognition and not proof. No SPI controller register was identified, the whole storage cluster touches no MMIO, and the only hardware contact is a DMA setup into two unnamed windows. Internal MCU storage, external U5 SPI NOR and a RAM mirror are all still consistent with the evidence.",
+    "registers_touched": [
+      "0x40020008",
+      "0x40020010",
+      "0x40020014",
+      "0x40020018",
+      "0x4002001c",
+      "0x45000000",
+      "0x4500000c",
+      "0x45000054"
+    ]
+  }
+}
