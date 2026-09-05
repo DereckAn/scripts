@@ -34,10 +34,20 @@
       "address": 402799672,
       "confidence": "observed",
       "image": "ram",
-      "kind_basis": "sent with interface index 2 and length 5 at 0x18006766 and 0x18006788, five bytes after the consumer report",
-      "name": "system control report (interface 2, EP 0x8c)",
+      "kind_basis": "sent with interface index 2 and length 5 at 0x18006766 and 0x18006788. Interface 2's report descriptor gives Report ID 4 a 32-bit payload, so 4 + 1 for the ID prefix is exactly 5 \u2014 it is the MOUSE report, not the system report (log 110 rider)",
+      "name": "mouse report, Report ID 4 (interface 2, EP 0x8c)",
       "owner": "FUN_180061c2",
       "size": 5,
+      "synchronisation": "none observed."
+    },
+    {
+      "address": 402799677,
+      "confidence": "observed",
+      "image": "ram",
+      "kind_basis": "sent with interface index 2 and length 2 at 0x180067f4. The descriptor gives Report ID 2 an 8-bit payload, so 1 + 1 for the ID prefix is exactly 2",
+      "name": "system control report, Report ID 2 (interface 2, EP 0x8c)",
+      "owner": "FUN_180061c2",
+      "size": 2,
       "synchronisation": "none observed."
     },
     {
@@ -62,13 +72,23 @@
     },
     {
       "address": 402797584,
-      "confidence": "unresolved",
+      "confidence": "observed",
       "image": "ram",
-      "kind_basis": "its size is *(0x1801e734+0xc) << 1, a runtime value; the region's initialised image has that field zero, so the count is not a static constant",
-      "name": "per-key halfword array (element count at runtime)",
-      "owner": "unresolved producer; read by the report pipeline",
-      "size": 0,
-      "synchronisation": "UNRESOLVED. With no producer recovered there is no observable discipline between it and the reader."
+      "kind_basis": "five words because FUN_18004a7e's outer loop is `cmp r5,#0x5`; the previous-state partner sits 0x7fc higher at 0x18023c0c (log 110)",
+      "name": "current key-state bitmap, 5 x 32-bit words",
+      "owner": "FUN_18004a7e writes; FUN_18005a88 and FUN_180061c2 read",
+      "size": 20,
+      "synchronisation": "none observed: writer and readers all run on the service task."
+    },
+    {
+      "address": 402779500,
+      "confidence": "unresolved",
+      "image": "region",
+      "kind_basis": "the cell holds 0x180344f4, and that value appears in no aligned word of any image \u2014 the buffer is reached only by dereferencing this cell (log 110)",
+      "name": "pointer cell holding the per-key travel byte array",
+      "owner": "unresolved producer; read by FUN_18004a7e",
+      "size": 4,
+      "synchronisation": "UNRESOLVED. With no producer recovered there is no observable discipline between the array and its reader."
     }
   ],
   "cadence": {
@@ -87,7 +107,7 @@
   },
   "checks": [
     {
-      "detail": "11 stages, 10 links",
+      "detail": "12 stages, 11 links",
       "name": "every link joins two declared stages",
       "ok": true
     },
@@ -97,7 +117,7 @@
       "ok": true
     },
     {
-      "detail": "28 items",
+      "detail": "32 items",
       "name": "every stage, link and buffer carries a non-trivial basis",
       "ok": true
     },
@@ -109,6 +129,11 @@
     {
       "detail": "",
       "name": "the acquisition stage is recorded unresolved, not guessed",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "the key-state array is described as a bitmap, not a halfword array (log 110 correction)",
       "ok": true
     },
     {
@@ -187,13 +212,23 @@
       "ok": true
     },
     {
+      "detail": "installed 0x1801ed6c -> vendor 0x1801ed40",
+      "name": "travel_bytes's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
       "detail": "",
       "name": "the two report buffers are the ones Phase 5B mapped to EP 0x81 and EP 0x8e",
       "ok": true
     },
     {
-      "detail": "0x18023c20 +19 -> 0x18023c33 +4 -> 0x18023c38",
-      "name": "the NKRO, consumer and system buffers are one contiguous block",
+      "detail": "0x18023c20 +19 -> 0x18023c33 +4 -> [pad 0x18023c37] -> 0x18023c38 +5 -> 0x18023c3d +2 -> 0x18023c3f",
+      "name": "the interface-2/3 report buffers pack with ONE pad byte, not contiguously",
+      "ok": true
+    },
+    {
+      "detail": "ID 1 consumer 3+1=4 @0x18023c33; ID 4 mouse 4+1=5 @0x18023c38; ID 2 system 1+1=2 @0x18023c3d; ID 3 vendor 20+1=21 via FUN_1800417e",
+      "name": "every interface-2 buffer length equals its report's descriptor size",
       "ok": true
     },
     {
@@ -249,6 +284,13 @@
       "target": "report_builder"
     },
     {
+      "confidence": "observed",
+      "kind_basis": "`cmp r3,#0x64` at 0x180057b4 decides the bit; see log 110 and tool/model_hall_actuation.py",
+      "mechanism": "actuation comparison in FUN_18004a7e",
+      "source": "travel_bytes",
+      "target": "key_array"
+    },
+    {
       "confidence": "strongly-inferred",
       "kind_basis": "FUN_180061c2 loads 0x18023410 from a literal pool at two sites and clears the array through it; FUN_18005a88, which it calls first, loads the same address at eight sites",
       "mechanism": "read of the per-key array",
@@ -264,7 +306,7 @@
     },
     {
       "confidence": "observed",
-      "kind_basis": "constant propagation over FUN_180061c2 resolves the interface index, buffer and length at every call site: 0x1800663e and 0x18006656 for interface 0, 0x1800669a and 0x180066b6 for interface 3, 0x18006702/0x18006724/0x18006766/0x18006788 for interface 2",
+      "kind_basis": "constant propagation over FUN_180061c2 resolves the interface index, buffer and length at every call site: 0x1800663e and 0x18006656 for interface 0, 0x1800669a and 0x180066b6 for interface 3, and 0x18006702/0x18006724/0x18006766/0x18006788/0x180067f4 for interface 2's Report IDs 1, 4 and 2",
       "mechanism": "direct call, nine sites",
       "source": "report_builder",
       "target": "send_wrapper"
@@ -281,7 +323,7 @@
       "kind_basis": "no function reachable from the tick chain writes the array from a hardware register, and no MMIO block in either census matches a scan pattern",
       "mechanism": "unrecovered producer",
       "source": "acquisition",
-      "target": "key_array"
+      "target": "travel_bytes"
     }
   ],
   "physical_dimensions": {
@@ -425,13 +467,23 @@
     },
     {
       "address": 402797584,
-      "confidence": "strongly-inferred",
-      "detail": "a 16-bit-per-element array at +0x14, whose element count is *(key-state+0xc). FUN_180061c2 clears it with a length of count << 1.",
+      "confidence": "observed",
+      "detail": "five 32-bit words, one per scan group, each carrying one bit per position. Its partner previous-state bitmap is 0x7fc higher at 0x18023c0c. CORRECTED BY LOG 110: log 109 called this a per-key HALFWORD array, inferred from a `count << 1` memset length. Phase 5D identified it directly \u2014 FUN_18004a7e and FUN_18005a88 index it as `*(uint *)(base + group*4)` and set bits with a shifting mask, so it is a bitmap of 32-bit words. The per-key travel values are BYTES elsewhere, at *(0x1801ed6c)+0x35c.",
       "image": "ram",
       "key": "key_array",
-      "kind_basis": "the shift by one in `memset(0x18023410+0x14, count << 1)` makes the elements two bytes wide; a byte array would not be doubled",
-      "name": "per-key halfword array",
+      "kind_basis": "indexed as `*(uint *)(0x180233fc + 0x14 + group*4)` in FUN_18005a88 and written with `orrs r3,r1` / `bic` masks in FUN_18004a7e at 0x180057be; the previous-state partner is at +0x810 from the same base",
+      "name": "current key-state bitmap",
       "vendor_address": 402797540
+    },
+    {
+      "address": 402779500,
+      "confidence": "observed",
+      "detail": "one BYTE per key at *(0x1801ed6c) + 0x35c, on a 0..100-ish scale. This is what the actuation comparison reads. Phase 5D models the comparison; the producer of these bytes is still unrecovered.",
+      "image": "ram",
+      "key": "travel_bytes",
+      "kind_basis": "`ldrb r3,[r3,r4]` at 0x180057b2 followed by `cmp r3,#0x64`; the pointer cell is at 0x1801ed6c and holds 0x180344f4 at runtime",
+      "name": "per-key travel bytes",
+      "vendor_address": 402779456
     },
     {
       "address": 0,

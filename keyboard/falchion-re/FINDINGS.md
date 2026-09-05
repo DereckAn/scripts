@@ -1858,6 +1858,77 @@ read off compare constants. **Absolute period: unresolved** — the timer that
 raises IRQ38 is not identified and nothing here observed a clock. Call-graph
 reachability is not timing.
 
+### Phase 5D: Hall actuation recovered, acquisition not (log 110)
+
+Phase 5C stopped at a per-key array with no producer. Phase 5D carries it one
+stage further and stops at a sharper, better-described boundary.
+
+**The decision, confirmed against the listing rather than the decompiler:**
+
+```
+travel >= 100        -> key down          ; cmp r3,#0x64 / orrs r3,r1
+travel == 0          -> key up
+1 <= travel <= 99    -> UNCHANGED         ; the hold band
+key id 0x00 or 0xd3  -> skipped           ; cbz r3 / cmp r3,#0xd3
+```
+
+The 1..99 band is recovered from **control flow** — the sub-threshold branch
+tests for zero first and jumps to the loop tail otherwise, so neither store
+runs. It is what stops a key chattering across the threshold, and it is the
+closest thing to hysteresis in the recovered code. It is not named after a
+feature.
+
+**The geometry is in the instruction encoding**, which is why it can be
+trusted: `rsb r3,r3,r3,lsl #4` then `add.w r3,r3,r3,lsl #2` is ×15 then ×5,
+corroborated by `adds r1,#0x4b`, `mov.w r12,#0xf` and the outer bound
+`cmp r5,#0x5`. So the key map is **5 groups × 15 = 75 entries per layer** — the
+first physical-side dimension this project has proved. The *active* count per
+group is **not** 15: the inner loop compares against a runtime word at
+region+`0x55c` that the region's initialised image leaves zero. 15 is the table
+stride; the active count is a boundary, not a key count.
+
+**Per-key actuation setting.** A 7-bit field at `+8` of a `0x20`-byte record in
+`0x180202d8 + profile*0xd84`, with bit 15 selecting it over a global default,
+clamped `<2 → 0`, `2..4 → v−2`, `≥5 → 3`. That is the shape the vendor-HID
+`0x51/0x22` value ("bytes 7-8 divided by 10") would land in — but **the write
+path from the command handler was not traced**, so only consistency is claimed,
+not a connection.
+
+**No ADC block exists in either image.** Every access in the `0x40000000` block
+is 32 bits wide across all four sub-blocks; there is no halfword data register,
+no repeated read at a stride, and no control/status/data trio. `0x40022000` has
+the shape of a multi-channel timer or PWM bank and is **left unnamed**, because
+shape is correlation.
+
+**Where it stops, and why.** The travel bytes live at `*(0x1801ed6c) + 0x35c`.
+That buffer's address appears in **no aligned word of any preserved image** and
+in no resolvable register — it is reachable only by dereferencing the pointer
+cell, which something fills at runtime. So the acquisition, any calibration or
+baseline table, any filter and its history depth, any raw-to-travel conversion,
+and all invalid-calibration/timeout/fault behaviour are **not recovered**. The
+comparison itself has no error path: every byte maps to set, clear or hold. No
+rapid-trigger state machine was found — the only per-key state in the recovered
+code is one bit plus the hold band. Not found is not the same as not present,
+and it is recorded that way.
+
+**The model is executable.** `tool/model_hall_actuation.py` implements the
+recovered arithmetic and its tests run it, rather than describing it. The
+`active_positions` argument is required with no default, because the firmware
+reads it from a runtime word and the model refuses to invent 15.
+
+**Physical interpretation is not established and is not establishable from
+static code**: sensor polarity, voltage limits, noise margin, physical travel
+distance and any safe scan rate. The recovered numbers carry no unit, and a test
+asserts none in the report is given one. **This analysis authorises no
+custom-firmware Hall drive and no live experiment.**
+
+Two corrections to log 109 are recorded in log 110 rather than by editing it:
+its report buffers are **not** contiguous (a one-byte pad at `0x18023c37`), the
+5-byte buffer it called "system control" is the **mouse** report (Report ID 4)
+with the system report being the 2-byte buffer at `0x18023c3d`, and its "per-key
+halfword array" at `0x18023410` is the **key-state bitmap** — five 32-bit words,
+previous-state partner at `+0x810`.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

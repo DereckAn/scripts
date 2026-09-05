@@ -108,10 +108,19 @@ class ModelHonesty(unittest.TestCase):
                 self.assertIn("0x", item.kind_basis, sp.label_of(item))
 
     def test_a_buffer_with_no_recovered_producer_says_so(self):
-        array, = [item for item in sp.BUFFERS if item.address == 0x18023410]
-        self.assertEqual(array.confidence, "unresolved")
-        self.assertIn("UNRESOLVED", array.synchronisation)
-        self.assertEqual(array.size, 0, "its size is a runtime value")
+        """Log 110 moved this: 0x18023410 turned out to be the key-state
+        BITMAP, which does have a recovered writer. The buffer that still has
+        no producer is the travel-byte pointer cell."""
+        cell, = [item for item in sp.BUFFERS if item.address == 0x1801ED6C]
+        self.assertEqual(cell.confidence, "unresolved")
+        self.assertIn("UNRESOLVED", cell.synchronisation)
+
+    def test_the_key_state_array_is_a_bitmap_with_a_known_writer(self):
+        bitmap, = [item for item in sp.BUFFERS if item.address == 0x18023410]
+        self.assertEqual(bitmap.confidence, "observed")
+        self.assertIn("bitmap", bitmap.name.lower())
+        self.assertNotIn("halfword", bitmap.name.lower())
+        self.assertEqual(bitmap.size, 20, "5 groups x 4 bytes")
 
     def test_the_event_word_records_its_synchronisation(self):
         word, = [item for item in sp.BUFFERS if item.address == 0x1801EE84]

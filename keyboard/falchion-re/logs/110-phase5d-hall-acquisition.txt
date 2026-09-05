@@ -1,0 +1,399 @@
+LOG 110 — PHASE 5D: HALL-EFFECT ACQUISITION AND ACTUATION BEHAVIOUR
+Date: 2026-09-05
+Scope: Phase 5D ONLY, plus two corrections to Phase 5C's tooling recorded below.
+Phases 5E-5G were NOT begun. Nothing was committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary,
+no historical log and not opencode.json were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened. EVERY Ghidra run was -readOnly; no
+seeding was required and none was done, so ghidra/project-step6 is unchanged.
+NO DEVICE WAS ACCESSED.
+
+THIS OFFLINE ANALYSIS AUTHORISES NO CUSTOM-FIRMWARE HALL DRIVE AND NO LIVE
+EXPERIMENT. Nothing here may be used to energise, drive or characterise the
+sensor hardware.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+RIDER 1 — LOG 109'S CONTIGUITY CHECK WAS MISLABELLED, AND SO WAS A BUFFER
+================================================================================
+Log 109 is immutable and was NOT edited. The correction is recorded here.
+
+ORIGINAL WORDING — tool/map_scan_pipeline.py, check name and detail:
+  name:   "the NKRO, consumer and system buffers are one contiguous block"
+  detail: "0x18023c20 +19 -> 0x18023c33 +4 -> 0x18023c38"
+
+THE ARITHMETIC IS WRONG AS PRINTED. 0x18023c33 + 4 = 0x18023c37, not
+0x18023c38. Note the PREDICATE was already right — it read
+`0x18023C33 + 4 + 1 == 0x18023C38`, carrying the pad — so only the label and
+the printed detail misrepresented it. That is the worst kind of error to leave
+standing: a check that passes while its own text says something untrue.
+
+RE-MEASURED FROM INTERFACE 2'S OWN REPORT DESCRIPTOR, by walking its HID items
+and accumulating Input/Feature bits per Report ID:
+
+  Report ID 1:   24 bits =  3 payload bytes ->  4 bytes with the ID prefix
+  Report ID 2:    8 bits =  1 payload byte  ->  2 bytes with the ID prefix
+  Report ID 3:  160 bits = 20 payload bytes -> 21 bytes with the ID prefix
+  Report ID 4:   32 bits =  4 payload bytes ->  5 bytes with the ID prefix
+
+Matching those against the send sites log 109 recovered:
+
+  0x18023c20  19 bytes  interface 3, the NKRO bitmap
+  0x18023c33   4 bytes  interface 2, Report ID 1 — CONSUMER
+  0x18023c37   1 byte   PAD
+  0x18023c38   5 bytes  interface 2, Report ID 4 — MOUSE
+  0x18023c3d   2 bytes  interface 2, Report ID 2 — SYSTEM
+  0x18023c3f   end
+
+SO THERE ARE TWO ERRORS, not one. The buffers are NOT contiguous — there is a
+one-byte pad at 0x18023c37. And log 109 labelled the 5-byte buffer at
+0x18023c38 "system control report"; it is the MOUSE report, because Report ID 4
+is the only interface-2 report with a 4-byte payload. The system report is
+Report ID 2, two bytes, and it is the buffer at 0x18023c3d that log 109 listed
+only as an unlabelled 2-byte send.
+
+CORRECTED WORDING, now in the tool and in the regenerated notes:
+  name:   "the interface-2/3 report buffers pack with ONE pad byte, not
+           contiguously"
+  detail: "0x18023c20 +19 -> 0x18023c33 +4 -> [pad 0x18023c37] -> 0x18023c38
+           +5 -> 0x18023c3d +2 -> 0x18023c3f"
+plus a new check that every interface-2 buffer length equals its report's
+descriptor-derived size, and a new Buffer entry for the system report at
+0x18023c3d that log 109 omitted.
+
+$ python3 tool/map_scan_pipeline.py --check
+  RESULT reports_current=True stale=0
+
+
+================================================================================
+RIDER 2 — LOG 109 CALLED A BITMAP A HALFWORD ARRAY
+================================================================================
+Found while executing 5D, recorded here rather than by editing log 109.
+
+ORIGINAL WORDING — log 109 and tool/map_scan_pipeline.py:
+  "per-key halfword array ... a 16-bit-per-element array at +0x14, whose
+   element count is *(key-state+0xc). FUN_180061c2 clears it with a length of
+   count << 1."
+  basis: "the shift by one in `memset(0x18023410+0x14, count << 1)` makes the
+   elements two bytes wide; a byte array would not be doubled"
+
+That inference was wrong. 5D identified 0x18023410 directly: FUN_18005a88 and
+FUN_18004a7e index it as `*(uint *)(0x180233fc + 0x14 + group*4)` and set bits
+in it with a shifting mask, so it is a BITMAP OF FIVE 32-BIT WORDS — one bit per
+key position — with its previous-state partner 0x7fc higher at 0x18023c0c. The
+`count << 1` memset is a different array at 0x18023424 whose identity 5D did not
+establish, and the halfword inference does not survive.
+
+THE PER-KEY VALUES ARE BYTES, and they live somewhere else entirely: at
+`*(0x1801ed6c) + 0x35c`, read with `ldrb` immediately before the actuation
+compare. Corrected in the tool, with a new `travel_bytes` stage, and a check
+now asserts the array is described as a bitmap and not as a halfword array.
+
+
+================================================================================
+STEP 1 — TOP DOWN: THE ACTUATION COMPARISON
+================================================================================
+Log 109 left the per-key array's producer unrecovered. Working backwards from
+the array's base address rather than the offset log 109 used:
+
+$ ... -postScript FalchionValueXrefs.java 0x180233fc 0x18023c0c
+LITERAL value=0x180233fc at=18005ac0 loader=1800580a(FUN_180057fe) ... loader=18005aae(FUN_18005a88)
+   ... 16 loaders in FUN_18004a7e and FUN_180057fe
+RESULT (heaviest users: FUN_18004a7e at 16 sites, FUN_180057fe at 7)
+
+Both are the every-eighth-tick jobs log 109 traced. FUN_18004a7e, 1214
+instructions, is the writer. Its inner loop, DECOMPILED then CONFIRMED AGAINST
+THE LISTING:
+
+    180057a8  ldrb r3,[r3,r2]        ; key_id = keymap[layer*75 + group*15 + i]
+    180057aa  cbz  r3,0x180057d0     ; key id 0    -> skip
+    180057ac  cmp  r3,#0xd3
+    180057ae  beq  0x180057d0        ; key id 0xd3 -> skip
+    180057b0  ldr  r3,[sp,#0x8]
+    180057b2  ldrb r3,[r3,r4]        ; travel = travel_bytes[linear]   <- a BYTE
+    180057b4  cmp  r3,#0x64          ; <-- THE THRESHOLD IS 100
+    180057b6  bcc  0x180057c2        ; below -> the clear/hold branch
+    180057b8  ldr  r6,[0x18005ac0]
+    180057ba  ldr.w r3,[r6,r0,lsl #0x2]
+    180057be  orrs r3,r1             ; at or above -> SET the key's bit
+
+and the sub-threshold branch tests for zero FIRST and jumps to the loop tail
+when the value is non-zero, so neither store runs. THE RECOVERED DECISION:
+
+    travel >= 100        -> key down
+    travel == 0          -> key up
+    1 <= travel <= 99    -> UNCHANGED
+
+That 1..99 hold band is recovered from CONTROL FLOW, not from a feature name.
+It is what stops a key chattering across the threshold, and it is the closest
+thing to hysteresis in the recovered code.
+
+THE GEOMETRY IS IN THE INSTRUCTION ENCODING, which is why it is trustworthy:
+
+    18005798  rsb r3,r3,r3, lsl #0x4     ; x * 15
+    1800579c  add.w r3,r3,r3, lsl #0x2   ; (x*15) * 5  ==  x * 75  ==  x * 0x4b
+    180057a2  rsb r6,r0,r0, lsl #0x4     ; group * 15
+
+corroborated by `adds r1,#0x4b` at 0x18004bd0, `mov.w r12,#0xf` at 0x18004c12,
+and the outer bound `cmp r5,#0x5` at 0x18004bae. So the key map is dimensioned
+5 GROUPS x 15 = 75 ENTRIES PER LAYER. That is a genuine static dimension, and it
+is the first physical-side number this project has been able to prove.
+
+THE ACTIVE COUNT IS NOT 15. The inner loop compares against `*(0x1801e8dc)` =
+region+0x55c, and the region's initialised image has those four bytes zero:
+$ region+0x55c = 00 00 00 00
+So 15 is the TABLE STRIDE. The active positions per group are set at runtime and
+are not fixed by any image. Recorded as a boundary, not rounded up to 75 keys.
+
+
+================================================================================
+STEP 2 — THE PER-KEY CONFIGURATION RECORD
+================================================================================
+The other branch of FUN_18004a7e reads a per-key configuration record:
+
+    iVar23 = DAT_18004dc8 + profile * 0xd84 + index * 0x20
+    if ((int)((uint)*(ushort *)(iVar23 + 8) << 0x10) < 0)     ; test bit 15
+         uVar8 = *(ushort *)(iVar23 + 8) & 0x7f;              ; per-key value
+    else uVar8 = *(ushort *)(DAT_18004dd0 + keymap*4) >> 9;   ; global default
+
+  DAT_18004dc8 = 0x180202d8   the per-key bank      (0xd84 per profile)
+  DAT_18004dd0 = 0x18024f0c   the global table
+  record stride 0x20, field at +8, LISTING: `and r0,r0,#0x7f` at 0x18004b34
+
+then a clamp, LISTING-confirmed by `cmp r0,#0x5` at 0x18004b38:
+
+    value < 2   -> 0
+    2..4        -> value - 2
+    >= 5        -> 3
+
+That is the shape of an actuation SETTING: a 7-bit per-key field with bit 15
+selecting it over a global default, clamped to a small index. FINDINGS records
+that the vendor-HID `0x51/0x22` command stores its actuation value from bytes
+7-8 DIVIDED BY 10, and this is the field such a value would land in — but the
+write path from the command handler into 0x180202d8 was NOT traced in this
+phase, so the connection is recorded as consistent, NOT as proven.
+
+A THIRD BRANCH reports travel rather than a bit:
+    FUN_1800d640(key_id, travel / 5)          ; `udiv` at 0x18004af6
+guarded by a mode word. A 0..100 value divided by 5 gives 0..20. Recorded;
+its consumer was not traced.
+
+
+================================================================================
+STEP 3 — BOTTOM UP: THERE IS NO ADC-SHAPED BLOCK
+================================================================================
+Censused every 0x40000000 sub-block by user, access width and direction:
+
+  SUB-BLOCK 0x40019000   7 accesses  all 32-bit  CandidateB_Main, FUN_1801a194
+  SUB-BLOCK 0x4001b000  14 accesses  all 32-bit  FUN_180000b8, Main, two others
+  SUB-BLOCK 0x40020000  13 accesses  all 32-bit  FUN_18011dd0 only
+  SUB-BLOCK 0x40022000  35 accesses  all 32-bit  nine functions, a per-channel
+                                                 register set at +4/+8/+c/+10/
+                                                 +1c/+20 used by two similar
+                                                 function pairs
+
+EVERY ACCESS IN THE WHOLE BLOCK IS 32 BITS WIDE. There is no halfword data
+register, no repeated read from a fixed address at a stride, and no
+control/status/data trio with a channel-select and a start bit. 0x40022000 has
+the shape of a multi-channel timer or PWM bank, not a converter — and it is NOT
+named here, because shape is correlation and this project does not name blocks
+on correlation.
+
+Log 109 already established that the entry image's closure from the service
+task reaches eleven functions and zero MMIO, and that no block in either image
+has a scan shape. 5D adds the width evidence and reaches the same place.
+
+
+================================================================================
+STEP 4 — WHERE THE ACQUISITION HIDES, AND WHY IT WAS NOT FOUND
+================================================================================
+The travel bytes are at `*(0x1801ed6c) + 0x35c`. Resolving the pointer cell from
+the region's initialised image gives 0x180344f4, inside the zeroinit region, so
+the travel array is at 0x18034850.
+
+$ ... -postScript FalchionValueXrefs.java 0x180344f4     RESULT uses=0 targets=1
+$ ... -postScript FalchionValueXrefs.java 0x18034850     RESULT uses=0 targets=1
+$ ... -postScript FalchionValueXrefs.java 0x1801ed6c     RESULT uses=49 targets=1
+
+NEITHER BUFFER ADDRESS APPEARS IN ANY ALIGNED WORD OF ANY IMAGE, OR IN ANY
+REGISTER constant propagation can resolve. The buffer is reachable only by
+dereferencing the pointer cell, which something fills at runtime. The cell's
+49 users include FUN_18000136 (called from CandidateB_Main, the likely
+initialiser) and FUN_18008c16 — the callerless function log 109 left
+unexplained.
+
+RESOLUTION METHOD AND ITS LIMITS, stated as required. Three methods were used:
+  1. Ghidra constant propagation per function (SymbolicPropogator), which is
+     what the census uses and what leaves 307 and 892 unresolved accesses in
+     the two per-tick jobs.
+  2. Exhaustive aligned-word search of every preserved image for the candidate
+     addresses — this is what proves the buffer address is stored nowhere.
+  3. Literal-pool dereferencing from the region's initialised bytes, which is
+     how the pointer cell's value was obtained.
+NO EMULATION WAS PERFORMED. Bounded emulation of the specific functions was
+considered and not done: the functions in question read a pointer that is
+written by code outside the traced set, so emulating them would require
+inventing that pointer's provenance — the very thing that is missing. That is a
+LIMIT of this analysis, and the boundary is recorded rather than papered over
+with a guess.
+
+
+================================================================================
+STEP 5 — TIMING RELATION TO THE 5C CADENCE
+================================================================================
+FUN_18004a7e is called from the entry image's every-tick job at veneer 0x4062,
+inside the branch gated by that job's own /8 counter (log 109 step 5). So the
+actuation comparison runs on IRQ38's tick divided by 8.
+
+  cadence source        IRQ38                          OBSERVED (log 109)
+  comparison divisor    every 8th tick                 STRONGLY-INFERRED
+  absolute rate         ---                            UNRESOLVED
+
+The absolute rate is unresolved for the same reason as in 5C: the timer that
+raises IRQ38 is not identified. No claim is made that acquisition runs on this
+cadence at all — the acquisition was not found, so whether it is tick-driven,
+IRQ48-driven, IRQ3-driven or DMA-driven is UNRESOLVED. IRQ48 and IRQ3 were not
+excluded; they were simply not shown to be involved.
+
+
+================================================================================
+STEP 6 — THE MODEL AS EXECUTABLE ARITHMETIC
+================================================================================
+Added tool/model_hall_actuation.py. The recovered decision is implemented, not
+merely described, and the unit tests execute it:
+
+    def actuate(travel, previous_down):
+        if travel >= 100: return True        # cmp #0x64 / orrs
+        if travel == 0:   return False
+        return previous_down                 # the 1..99 hold band
+
+    def scan_pass(travel_bytes, key_map, previous_bits, active_positions, layer):
+        for group in range(5):                       # cmp r5,#0x5
+            for position in range(active_positions): # runtime bound, REQUIRED
+                index = layer*75 + group*15 + position
+                key_id = key_map[index]
+                if key_id in (0x00, 0xd3): linear += 1; continue
+                mask = 1 << position
+                down = actuate(travel_bytes[linear], bool(bits[group] & mask))
+                bits[group] = bits[group] | mask if down else bits[group] & ~mask
+                linear += 1
+
+    def clamp_actuation(raw):                        # and #0x7f, cmp #0x5
+        v = raw & 0x7f
+        return 3 if v >= 5 else (0 if v < 2 else v - 2)
+
+`active_positions` is a REQUIRED argument with no default, because the firmware
+reads it from a runtime word and this model refuses to invent 15.
+
+$ python3 tool/model_hall_actuation.py
+RESULT model_ok=True checks=15
+
+A CHECK CAUGHT AN ERROR OF MINE, and it is worth recording because it changed
+the model. A first draft computed each function's vendor counterpart from
+"above the insertion point, subtract 0x2c". The check failed, and the
+measurement showed why:
+
+  0x18004a7e -> vendor 0x18004a7e   delta 0x0    confidence: TENTATIVE
+  0x18005a88 -> vendor 0x18005a5c   delta 0x2c   confidence: structural
+
+Both sit ABOVE the insertion point and they relocate DIFFERENTLY, so the rule is
+simply wrong. The tool now LOOKS UP every function counterpart in Phase 3's
+measured match table and raises rather than computing one. It also records that
+FUN_18004a7e's cross-release match is only TENTATIVE — a real caveat on every
+installed/vendor claim about the comparison function, kept rather than smoothed.
+
+
+================================================================================
+STEP 7 — WHAT WAS VERIFIED AGAINST WHAT
+================================================================================
+Every finding in the emitted model carries a `verified_against` field, and a
+check enforces that the load-bearing ones are LISTING-verified rather than
+decompiler-only:
+
+  LISTING   threshold (cmp #0x64), hold band, skipped ids (cbz / cmp #0xd3),
+            geometry (the rsb/add shift-multiplies, adds #0x4b, mov #0xf,
+            cmp #0x5), actuation clamp (cmp #0x5)
+  BYTES     the active count's runtime word is zero in the region image
+  XREF      the acquisition boundary, the absence of an ADC-shaped block,
+            the cadence relation
+  DECOMPILER  the per-key record layout, the travel/5 branch, the release rule,
+            the calibration and physical-unit negatives
+
+The decompiler was used to FIND things and the listing to CONFIRM the ones a
+replacement firmware would have to reproduce.
+
+
+================================================================================
+STEP 8 — UNRESOLVED BOUNDARIES
+================================================================================
+  1. THE ACQUISITION. No function writes the travel bytes from a hardware
+     register. Not found; not excluded.
+  2. NO ADC BLOCK IDENTIFIED. Every 0x40000000 access is 32-bit; no converter
+     shape exists in either census. Whether the sensor front end is on a block
+     the census cannot resolve, on a second core, or off-chip, is open.
+  3. CALIBRATION, BASELINE, MIN/MAX, FILTERING. None recovered. The bytes the
+     comparison reads are already on a 0..100-ish scale; whatever produces that
+     scale is outside the traced chain, so filter equations and history depth
+     are NOT recovered — none is asserted.
+  4. RAW-TO-TRAVEL CONVERSION. Not recovered, for the same reason.
+  5. INVALID-CALIBRATION, TIMEOUT AND FAULT BEHAVIOUR. Not recovered. The
+     comparison has no error path: every byte value maps to one of set, clear
+     or hold.
+  6. THE VENDOR-COMMAND WRITE PATH into 0x180202d8 was not traced. The field
+     shape is consistent with FINDINGS' "bytes 7-8 divided by 10", and that is
+     all that is claimed.
+  7. RAPID TRIGGER. No state machine matching that description was found. The
+     only state per key in the recovered code is one bit plus the hold band.
+     Absence of a trace is not absence of the feature; it is recorded as not
+     found.
+  8. PHYSICAL INTERPRETATION. Sensor polarity, voltage limits, noise margin,
+     physical travel distance and any safe scan rate are NOT ESTABLISHED and
+     are not establishable from static code. The recovered numbers carry no
+     unit. A test asserts no number in the report is given one.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/model_hall_actuation.py tool/test_model_hall_actuation.py tool/map_scan_pipeline.py tool/test_map_scan_pipeline.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 560 tests   OK                                                 [exit 0]
+  (518 before this step; +41 in tool/test_model_hall_actuation.py, +1 net in
+   tool/test_map_scan_pipeline.py)
+$ python3 tool/report_phase3.py --check        RESULT reports_current=True stale=0
+$ python3 tool/report_phase4.py --check        RESULT reports_current=True stale=0
+$ python3 tool/report_phase5.py --check        RESULT reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check      RESULT reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check    RESULT reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check RESULT reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                 all OK                [exit 0]
+$ git diff --check                             clean                 [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phases 5E, 5F and 5G were not begun.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - NO MMIO BLOCK WAS NAMED. 0x40022000 has a plausible timer/PWM shape and is
+    left unnamed, because shape is correlation.
+  - No seeding; every Ghidra run was -readOnly; project-step6 is unchanged.
+  - No emulation was performed, and the reason is stated in step 4.
+  - The acquisition, the calibration, the filtering, the raw-to-travel
+    conversion, the fault behaviour and every physical unit remain unrecovered,
+    each with its reason.
+  - THIS ANALYSIS AUTHORISES NO CUSTOM-FIRMWARE HALL DRIVE AND NO LIVE
+    EXPERIMENT.
+  - NO DEVICE WAS ACCESSED.

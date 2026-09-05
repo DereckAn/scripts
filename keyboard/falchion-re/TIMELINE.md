@@ -1738,6 +1738,58 @@ Cadence source and divider ratios are observed; the absolute period is
 unresolved, since the timer behind IRQ38 was not identified. 518 offline tests
 pass, both evidence hashes are unchanged, and no device was accessed.
 
+## 2026-09-05 — Phase 5D: Hall actuation recovered, acquisition not (log 110)
+
+Phase 5D only. 5E–5G were not begun, nothing was committed or staged, every
+Ghidra run was read-only, and no seeding was needed.
+
+Two riders first, recorded in log 110 rather than by editing log 109. Its
+contiguity check printed `0x18023c33 +4 -> 0x18023c38` when `+4` gives
+`0x18023c37` — and re-measuring interface 2's reports from its own descriptor
+turned up a second error: the 5-byte buffer log 109 called "system control" is
+the **mouse** report, and the system report is the 2-byte buffer it had left
+unlabelled. There is a one-byte pad at `0x18023c37`. Separately, log 109's
+"per-key halfword array" turned out to be the **key-state bitmap** — five 32-bit
+words with a previous-state partner `0x810` higher. The halfword reading had been
+inferred from a `count << 1` memset length, and it did not survive direct
+identification.
+
+The phase itself recovered the actuation decision and confirmed it against the
+listing, not the decompiler: a travel byte at or above **100** presses, an exact
+zero releases, and everything between **leaves the bit unchanged**. That hold
+band came out of control flow rather than a feature name, and it is what keeps a
+key from chattering.
+
+The most satisfying part was the geometry, because it is spelled in the
+instruction encoding: a `rsb`/`add` shift pair computing ×15 then ×5. The key map
+is **5 × 15 = 75 entries per layer** — the first physical-side dimension this
+project has been able to prove. The *active* count per group is a runtime word
+the region initialises to zero, so 15 is a stride and not a key count, and that
+distinction is kept.
+
+The honest half again is what was not found. Every access in the `0x40000000`
+block is 32 bits wide; there is no converter shape anywhere, and `0x40022000` —
+which looks like a timer or PWM bank — is left unnamed, because shape is
+correlation. The travel buffer's address appears in no aligned word of any
+image, reachable only through a pointer cell something fills at runtime, so the
+acquisition, calibration, filtering, raw-to-travel conversion and fault
+behaviour are all unrecovered. No rapid-trigger state machine was found; the only
+per-key state in the recovered code is one bit plus the hold band.
+
+A check caught an error of mine mid-phase and changed the tool for the better. A
+first draft computed each function's vendor counterpart from "above the
+insertion point, subtract `0x2c`". Two of the functions in question sit above
+that point and relocate by 0 and `0x2c` respectively, so the rule was simply
+wrong. Counterparts are now looked up in Phase 3's measured match table, which
+also surfaced that the comparison function's cross-release match is only
+*tentative* — a caveat now carried explicitly.
+
+Physical interpretation stays out of reach: polarity, voltage, noise margin,
+distance and safe rate are not establishable from static code, the recovered
+numbers carry no unit, and a test enforces that none is given one. The analysis
+authorises no Hall drive and no live experiment. 560 offline tests pass, both
+evidence hashes are unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

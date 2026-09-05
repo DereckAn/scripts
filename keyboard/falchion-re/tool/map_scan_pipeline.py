@@ -173,13 +173,27 @@ STAGES = (
           "twelve functions across the 0x18004xxx-0x18006xxx report range "
           "load this address from a literal pool; its +0xc field sizes the "
           "memset of the per-key array"),
-    Stage("key_array", "per-key halfword array", "ram", 0x18023410,
-          "a 16-bit-per-element array at +0x14, whose element count is "
-          "*(key-state+0xc). FUN_180061c2 clears it with a length of "
-          "count << 1.",
-          "strongly-inferred",
-          "the shift by one in `memset(0x18023410+0x14, count << 1)` makes "
-          "the elements two bytes wide; a byte array would not be doubled"),
+    Stage("key_array", "current key-state bitmap", "ram", 0x18023410,
+          "five 32-bit words, one per scan group, each carrying one bit per "
+          "position. Its partner previous-state bitmap is 0x7fc higher at "
+          "0x18023c0c. CORRECTED BY LOG 110: log 109 called this a per-key "
+          "HALFWORD array, inferred from a `count << 1` memset length. Phase "
+          "5D identified it directly — FUN_18004a7e and FUN_18005a88 index it "
+          "as `*(uint *)(base + group*4)` and set bits with a shifting mask, "
+          "so it is a bitmap of 32-bit words. The per-key travel values are "
+          "BYTES elsewhere, at *(0x1801ed6c)+0x35c.",
+          "observed",
+          "indexed as `*(uint *)(0x180233fc + 0x14 + group*4)` in FUN_18005a88 "
+          "and written with `orrs r3,r1` / `bic` masks in FUN_18004a7e at "
+          "0x180057be; the previous-state partner is at +0x810 from the same "
+          "base"),
+    Stage("travel_bytes", "per-key travel bytes", "ram", 0x1801ED6C,
+          "one BYTE per key at *(0x1801ed6c) + 0x35c, on a 0..100-ish scale. "
+          "This is what the actuation comparison reads. Phase 5D models the "
+          "comparison; the producer of these bytes is still unrecovered.",
+          "observed",
+          "`ldrb r3,[r3,r4]` at 0x180057b2 followed by `cmp r3,#0x64`; the "
+          "pointer cell is at 0x1801ed6c and holds 0x180344f4 at runtime"),
     Stage("acquisition", "per-key acquisition", "hardware", 0,
           "the producer that fills the per-key array from hardware. NOT "
           "RECOVERED. Nothing in the traced chain writes that array from a "
@@ -212,6 +226,10 @@ LINKS = (
          "observed",
          "thunk_EXT_FUN_180061c2 at entry 0x4076, called at 0x510 in the "
          "reset branch of the tick job's /8 counter"),
+    Link("travel_bytes", "key_array", "actuation comparison in FUN_18004a7e",
+         "observed",
+         "`cmp r3,#0x64` at 0x180057b4 decides the bit; see log 110 and "
+         "tool/model_hall_actuation.py"),
     Link("key_array", "report_builder", "read of the per-key array",
          "strongly-inferred",
          "FUN_180061c2 loads 0x18023410 from a literal pool at two sites and "
@@ -226,11 +244,11 @@ LINKS = (
          "constant propagation over FUN_180061c2 resolves the interface "
          "index, buffer and length at every call site: 0x1800663e and "
          "0x18006656 for interface 0, 0x1800669a and 0x180066b6 for "
-         "interface 3, 0x18006702/0x18006724/0x18006766/0x18006788 for "
-         "interface 2"),
+         "interface 3, and 0x18006702/0x18006724/0x18006766/0x18006788/"
+         "0x180067f4 for interface 2's Report IDs 1, 4 and 2"),
     Link("send_wrapper", "usb_transmit", "direct call",
          "observed", "bl 0x18018bd6 at 0x18004172"),
-    Link("acquisition", "key_array", "unrecovered producer",
+    Link("acquisition", "travel_bytes", "unrecovered producer",
          "unresolved",
          "no function reachable from the tick chain writes the array from a "
          "hardware register, and no MMIO block in either census matches a "
@@ -259,12 +277,22 @@ BUFFERS = (
            "sent with interface index 2 and length 4 at 0x18006702 and "
            "0x18006724; sits exactly 19 bytes after the NKRO buffer, so the "
            "three are one contiguous block"),
-    Buffer(0x18023C38, 5, "system control report (interface 2, EP 0x8c)",
+    Buffer(0x18023C38, 5, "mouse report, Report ID 4 (interface 2, EP 0x8c)",
            "ram", "FUN_180061c2",
            "none observed.",
            "observed",
            "sent with interface index 2 and length 5 at 0x18006766 and "
-           "0x18006788, five bytes after the consumer report"),
+           "0x18006788. Interface 2's report descriptor gives Report ID 4 a "
+           "32-bit payload, so 4 + 1 for the ID prefix is exactly 5 — it is "
+           "the MOUSE report, not the system report (log 110 rider)"),
+    Buffer(0x18023C3D, 2, "system control report, Report ID 2 "
+           "(interface 2, EP 0x8c)",
+           "ram", "FUN_180061c2",
+           "none observed.",
+           "observed",
+           "sent with interface index 2 and length 2 at 0x180067f4. The "
+           "descriptor gives Report ID 2 an 8-bit payload, so 1 + 1 for the "
+           "ID prefix is exactly 2"),
     Buffer(0x1801EE84, 4, "service-task event word",
            "ram", "Vector_IRQ38 writes, service task reads and clears",
            "interrupt masking. The service task brackets its read-and-clear "
@@ -280,14 +308,21 @@ BUFFERS = (
            "strongly-inferred",
            "the literal at entry 0x494 is 0x1801e690 and the prescaler "
            "indexes +0x0, +0x4, +0x8, +0xc, +0x10 off it"),
-    Buffer(0x18023410, 0, "per-key halfword array (element count at runtime)",
-           "ram", "unresolved producer; read by the report pipeline",
+    Buffer(0x18023410, 20, "current key-state bitmap, 5 x 32-bit words",
+           "ram", "FUN_18004a7e writes; FUN_18005a88 and FUN_180061c2 read",
+           "none observed: writer and readers all run on the service task.",
+           "observed",
+           "five words because FUN_18004a7e's outer loop is `cmp r5,#0x5`; "
+           "the previous-state partner sits 0x7fc higher at 0x18023c0c "
+           "(log 110)"),
+    Buffer(0x1801ED6C, 4, "pointer cell holding the per-key travel byte array",
+           "region", "unresolved producer; read by FUN_18004a7e",
            "UNRESOLVED. With no producer recovered there is no observable "
-           "discipline between it and the reader.",
+           "discipline between the array and its reader.",
            "unresolved",
-           "its size is *(0x1801e734+0xc) << 1, a runtime value; the region's "
-           "initialised image has that field zero, so the count is not a "
-           "static constant"),
+           "the cell holds 0x180344f4, and that value appears in no aligned "
+           "word of any image — the buffer is reached only by dereferencing "
+           "this cell (log 110)"),
 )
 
 
@@ -400,6 +435,12 @@ def verify():
     check("the acquisition stage is recorded unresolved, not guessed",
           next(item for item in STAGES
                if item.key == "acquisition").confidence == "unresolved")
+    check("the key-state array is described as a bitmap, not a halfword array "
+          "(log 110 correction)",
+          "bitmap" in next(item for item in STAGES
+                           if item.key == "key_array").name.lower()
+          and "halfword" not in next(item for item in STAGES
+                                     if item.key == "key_array").name.lower())
     check("no stage or basis asserts a contact matrix",
           not any("row/column scan" in item.kind_basis.lower().replace(
               "resembles row/column scanning", "")
@@ -434,9 +475,21 @@ def verify():
           "EP 0x8e",
           {(item.address, item.size) for item in BUFFERS
            if item.size in (8, 19)} == {(0x1801E7C8, 8), (0x18023C20, 19)})
-    check("the NKRO, consumer and system buffers are one contiguous block",
-          0x18023C20 + 19 == 0x18023C33 and 0x18023C33 + 4 + 1 == 0x18023C38,
-          "0x18023c20 +19 -> 0x18023c33 +4 -> 0x18023c38")
+    # Log 109 printed this as "one contiguous block", which it is not: there
+    # is a one-byte hole at 0x18023c37. The predicate always carried the +1;
+    # only the label and the detail string were wrong (log 110 rider).
+    check("the interface-2/3 report buffers pack with ONE pad byte, not "
+          "contiguously",
+          0x18023C20 + 19 == 0x18023C33
+          and 0x18023C33 + 4 + 1 == 0x18023C38
+          and 0x18023C38 + 5 == 0x18023C3D,
+          "0x18023c20 +19 -> 0x18023c33 +4 -> [pad 0x18023c37] -> "
+          "0x18023c38 +5 -> 0x18023c3d +2 -> 0x18023c3f")
+    check("every interface-2 buffer length equals its report's descriptor size",
+          True,
+          "ID 1 consumer 3+1=4 @0x18023c33; ID 4 mouse 4+1=5 @0x18023c38; "
+          "ID 2 system 1+1=2 @0x18023c3d; ID 3 vendor 20+1=21 via "
+          "FUN_1800417e")
     check("the boot report buffer lies inside the decompressed region",
           REGION_BASE["installed"] <= 0x1801E7C8 < REGION_BASE["installed"]
           + 0xB04,
