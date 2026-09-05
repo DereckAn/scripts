@@ -1,0 +1,447 @@
+{
+  "buffers": [
+    {
+      "address": 402778056,
+      "confidence": "observed",
+      "image": "region",
+      "kind_basis": "sent by FUN_180061c2 with interface index 0 and length 8 at 0x1800663e and 0x18006656; the address resolves to region+0x448",
+      "name": "boot keyboard report (interface 0, EP 0x81)",
+      "owner": "FUN_180061c2",
+      "size": 8,
+      "synchronisation": "none observed. The builder writes and transmits in the same function on the service task, so there is no cross-context handoff to synchronise."
+    },
+    {
+      "address": 402799648,
+      "confidence": "observed",
+      "image": "ram",
+      "kind_basis": "sent with interface index 3 and length 0x13 at 0x1800669a and 0x180066b6",
+      "name": "NKRO bitmap report (interface 3, EP 0x8e)",
+      "owner": "FUN_180061c2",
+      "size": 19,
+      "synchronisation": "none observed, same reason as the boot report."
+    },
+    {
+      "address": 402799667,
+      "confidence": "observed",
+      "image": "ram",
+      "kind_basis": "sent with interface index 2 and length 4 at 0x18006702 and 0x18006724; sits exactly 19 bytes after the NKRO buffer, so the three are one contiguous block",
+      "name": "consumer control report (interface 2, EP 0x8c)",
+      "owner": "FUN_180061c2",
+      "size": 4,
+      "synchronisation": "none observed."
+    },
+    {
+      "address": 402799672,
+      "confidence": "observed",
+      "image": "ram",
+      "kind_basis": "sent with interface index 2 and length 5 at 0x18006766 and 0x18006788, five bytes after the consumer report",
+      "name": "system control report (interface 2, EP 0x8c)",
+      "owner": "FUN_180061c2",
+      "size": 5,
+      "synchronisation": "none observed."
+    },
+    {
+      "address": 402779780,
+      "confidence": "observed",
+      "image": "ram",
+      "kind_basis": "the cpsid/cpsie pair is in the listing at entry 0x4a0 and 0x4a8, around exactly the load and the store",
+      "name": "service-task event word",
+      "owner": "Vector_IRQ38 writes, service task reads and clears",
+      "size": 4,
+      "synchronisation": "interrupt masking. The service task brackets its read-and-clear with cpsid i / cpsie i, so a tick arriving mid-sequence cannot be lost between the read and the store."
+    },
+    {
+      "address": 402777744,
+      "confidence": "strongly-inferred",
+      "image": "region",
+      "kind_basis": "the literal at entry 0x494 is 0x1801e690 and the prescaler indexes +0x0, +0x4, +0x8, +0xc, +0x10 off it",
+      "name": "prescaler counters",
+      "owner": "FUN_0000042c",
+      "size": 24,
+      "synchronisation": "none needed: only the service task touches them, and it is single-threaded over the prescaler."
+    },
+    {
+      "address": 402797584,
+      "confidence": "unresolved",
+      "image": "ram",
+      "kind_basis": "its size is *(0x1801e734+0xc) << 1, a runtime value; the region's initialised image has that field zero, so the count is not a static constant",
+      "name": "per-key halfword array (element count at runtime)",
+      "owner": "unresolved producer; read by the report pipeline",
+      "size": 0,
+      "synchronisation": "UNRESOLVED. With no producer recovered there is no observable discipline between it and the reader."
+    }
+  ],
+  "cadence": {
+    "divider_chain": [
+      1,
+      8,
+      5,
+      2,
+      10,
+      10
+    ],
+    "note": "the chain is read off the prescaler's compare constants. It gives RATIOS, not a rate: no absolute period was recovered, because nothing here observed the timer that raises IRQ38 or its clock.",
+    "period_confidence": "unresolved",
+    "source_irq": 38,
+    "source_stage": "irq38"
+  },
+  "checks": [
+    {
+      "detail": "11 stages, 10 links",
+      "name": "every link joins two declared stages",
+      "ok": true
+    },
+    {
+      "detail": "observed, strongly-inferred, hypothesis, unresolved",
+      "name": "every stage and link carries a confidence from the closed set",
+      "ok": true
+    },
+    {
+      "detail": "28 items",
+      "name": "every stage, link and buffer carries a non-trivial basis",
+      "ok": true
+    },
+    {
+      "detail": "all cite one",
+      "name": "every `observed` claim cites a concrete address",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "the acquisition stage is recorded unresolved, not guessed",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "no stage or basis asserts a contact matrix",
+      "ok": true
+    },
+    {
+      "detail": "Report Size 1 x Report Count 152 = 152 bits in a 19-byte packet",
+      "name": "the NKRO report is 152 bits, read from its own descriptor items",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "152 bits is exactly the 19-byte packet the host enumerated",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "the boot report is the 8-byte packet the host enumerated",
+      "ok": true
+    },
+    {
+      "detail": "189 is a wire-ID translation table and is not used as a dimension anywhere in this module",
+      "name": "the NKRO bit count is NOT the 189-entry translation table's size",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x180000e4 -> vendor 0x180000e4",
+      "name": "irq38's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x1801ee84 -> vendor 0x1801ee58",
+      "name": "event_flag's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x00000498 -> vendor 0x00000498",
+      "name": "service_task's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x0000042c -> vendor 0x0000042c",
+      "name": "prescaler's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x000004ba -> vendor 0x000004ba",
+      "name": "tick_job's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x180061c2 -> vendor 0x18006196",
+      "name": "report_builder's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x18004164 -> vendor 0x18004164",
+      "name": "send_wrapper's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x18018bd6 -> vendor 0x18018baa",
+      "name": "usb_transmit's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x1801e734 -> vendor 0x1801e708",
+      "name": "key_state's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "installed 0x18023410 -> vendor 0x180233e4",
+      "name": "key_array's vendor address follows the measured relocation",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "the two report buffers are the ones Phase 5B mapped to EP 0x81 and EP 0x8e",
+      "ok": true
+    },
+    {
+      "detail": "0x18023c20 +19 -> 0x18023c33 +4 -> 0x18023c38",
+      "name": "the NKRO, consumer and system buffers are one contiguous block",
+      "ok": true
+    },
+    {
+      "detail": "region+0x448",
+      "name": "the boot report buffer lies inside the decompressed region",
+      "ok": true
+    },
+    {
+      "detail": "Phase 3 put the zeroinit region's start at 0x1801ee84",
+      "name": "the event word is the first word of the zeroinit region",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "no physical row, column or key count is claimed",
+      "ok": true
+    }
+  ],
+  "links": [
+    {
+      "confidence": "observed",
+      "kind_basis": "Vector_IRQ38's listing stores r0=1 through the literal at 0x180003cc, whose value is 0x1801ee84",
+      "mechanism": "store of 1 to the flag word",
+      "source": "irq38",
+      "target": "event_flag"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "entry 0x4b2 spins on the word; 0x4a0-0x4a8 masks interrupts, reads it, stores zero and unmasks",
+      "mechanism": "busy-spin then masked read-and-clear",
+      "source": "event_flag",
+      "target": "service_task"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "bl 0x42c at entry 0x4ae",
+      "mechanism": "direct call",
+      "source": "service_task",
+      "target": "prescaler"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "bl 0x4ba is the first instruction of the prescaler, before any counter is touched",
+      "mechanism": "unconditional call every tick",
+      "source": "prescaler",
+      "target": "tick_job"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "thunk_EXT_FUN_180061c2 at entry 0x4076, called at 0x510 in the reset branch of the tick job's /8 counter",
+      "mechanism": "cross-image veneer",
+      "source": "tick_job",
+      "target": "report_builder"
+    },
+    {
+      "confidence": "strongly-inferred",
+      "kind_basis": "FUN_180061c2 loads 0x18023410 from a literal pool at two sites and clears the array through it; FUN_18005a88, which it calls first, loads the same address at eight sites",
+      "mechanism": "read of the per-key array",
+      "source": "key_array",
+      "target": "report_builder"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "FUN_180061c2 loads 0x1801e734 at 0x180061d4 and 0x180062bc and reads its +0xc, +0x28, +0x50 and +8 fields",
+      "mechanism": "read of the shared state block",
+      "source": "key_state",
+      "target": "report_builder"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "constant propagation over FUN_180061c2 resolves the interface index, buffer and length at every call site: 0x1800663e and 0x18006656 for interface 0, 0x1800669a and 0x180066b6 for interface 3, 0x18006702/0x18006724/0x18006766/0x18006788 for interface 2",
+      "mechanism": "direct call, nine sites",
+      "source": "report_builder",
+      "target": "send_wrapper"
+    },
+    {
+      "confidence": "observed",
+      "kind_basis": "bl 0x18018bd6 at 0x18004172",
+      "mechanism": "direct call",
+      "source": "send_wrapper",
+      "target": "usb_transmit"
+    },
+    {
+      "confidence": "unresolved",
+      "kind_basis": "no function reachable from the tick chain writes the array from a hardware register, and no MMIO block in either census matches a scan pattern",
+      "mechanism": "unrecovered producer",
+      "source": "acquisition",
+      "target": "key_array"
+    }
+  ],
+  "physical_dimensions": {
+    "columns": null,
+    "keys": null,
+    "note": "not established statically. The per-key array's element count is *(0x1801e734+0xc), a runtime value that the region's initialised image leaves zero, and no loop bound or mask width in the recovered chain fixes it. The 189-entry translation table is a wire-ID map and is NOT used as a key count.",
+    "rows": null
+  },
+  "relocation": {
+    "delta": 44,
+    "entry_image_moves": false,
+    "insertion_point": 402671612
+  },
+  "report_dimensions": {
+    "0": {
+      "bits": 48,
+      "last_report_count": 6,
+      "last_report_size": 8,
+      "last_usage_maximum": 152,
+      "packet_bytes": 8
+    },
+    "1": {
+      "bits": 512,
+      "last_report_count": 64,
+      "last_report_size": 8,
+      "last_usage_maximum": null,
+      "packet_bytes": 64
+    },
+    "2": {
+      "bits": 24,
+      "last_report_count": 3,
+      "last_report_size": 8,
+      "last_usage_maximum": 3,
+      "packet_bytes": 21
+    },
+    "3": {
+      "bits": 152,
+      "last_report_count": 152,
+      "last_report_size": 1,
+      "last_usage_maximum": 152,
+      "packet_bytes": 19
+    },
+    "4": {
+      "bits": 8,
+      "last_report_count": 1,
+      "last_report_size": 8,
+      "last_usage_maximum": null,
+      "packet_bytes": 64
+    }
+  },
+  "stages": [
+    {
+      "address": 402653412,
+      "confidence": "observed",
+      "detail": "the periodic tick. Reads a channel flag, clears it, sets the service-task event word and increments a 16-bit tick counter.",
+      "image": "app",
+      "key": "irq38",
+      "kind_basis": "the ONLY writer of 0x1801ee84 in either image, found by an exhaustive value cross-reference; log 100 recorded that software enables exactly IRQ6 and IRQ38",
+      "name": "Vector_IRQ38",
+      "vendor_address": 402653412
+    },
+    {
+      "address": 402779780,
+      "confidence": "observed",
+      "detail": "one word at the very start of the zeroinit region. Set to 1 by IRQ38, read and cleared by the service task.",
+      "image": "ram",
+      "key": "event_flag",
+      "kind_basis": "written at Vector_IRQ38+0x18 and read/written at entry 0x4a2/0x4a6; Phase 3 put the zeroinit region's start at exactly this address",
+      "name": "service-task event word",
+      "vendor_address": 402779736
+    },
+    {
+      "address": 1176,
+      "confidence": "observed",
+      "detail": "busy-spins on the event word, then does an interrupt-masked read-and-clear (cpsid i / read / store 0 / cpsie i) and calls the prescaler. It never blocks on a queue or semaphore.",
+      "image": "entry",
+      "key": "service_task",
+      "kind_basis": "the listing is 0x22 bytes and contains the cpsid/cpsie pair verbatim; log 106 recovered its creation with a 16 KiB stack at priority 10, sixteen times any other task's stack",
+      "name": "Task_OEM_MAIN_SERVICE_TASK",
+      "vendor_address": 1176
+    },
+    {
+      "address": 1068,
+      "confidence": "observed",
+      "detail": "a cascaded divider run once per drained event: an unconditional job every tick, then jobs at /8, /5, /2, /10 and /10 of that, with the counters in a six-word block.",
+      "image": "entry",
+      "key": "prescaler",
+      "kind_basis": "six increment-compare-reset sequences read straight off the listing at 0x432..0x486, with the bounds 8, 5, 2 (odd/even), 0xa and 0xa",
+      "name": "FUN_0000042c",
+      "vendor_address": 1068
+    },
+    {
+      "address": 1210,
+      "confidence": "observed",
+      "detail": "the every-tick job. Calls two application functions through veneers, then either the full report chain or a single update, gated by a nibble test and its own /8 counter.",
+      "image": "entry",
+      "key": "tick_job",
+      "kind_basis": "its callee list is eight cross-image veneers, and the listing shows the counter reset at 0x4fc feeding the five-call chain",
+      "name": "FUN_000004ba",
+      "vendor_address": 1210
+    },
+    {
+      "address": 402678210,
+      "confidence": "observed",
+      "detail": "builds and sends the boot, NKRO, consumer and system reports. It is the only function in the application that touches either the 8-byte or the 19-byte report buffer.",
+      "image": "app",
+      "key": "report_builder",
+      "kind_basis": "an exhaustive value cross-reference over the whole application image returns FUN_180061c2 and nothing else for 0x1801e7c8 and 0x18023c20",
+      "name": "FUN_180061c2",
+      "vendor_address": 402678166
+    },
+    {
+      "address": 402669924,
+      "confidence": "observed",
+      "detail": "a guard around the USB core transmit: it forwards only when a state word equals 1, and maps any transmit error to 2.",
+      "image": "app",
+      "key": "send_wrapper",
+      "kind_basis": "0x1a bytes; the listing compares *DAT_18004510 with 1 before the call and returns 2 on any non-zero result",
+      "name": "FUN_18004164",
+      "vendor_address": 402669924
+    },
+    {
+      "address": 402754518,
+      "confidence": "observed",
+      "detail": "the USB core transmit Phase 5B recovered, bounds-checked against the descriptor table's wMaxPacketSize.",
+      "image": "app",
+      "key": "usb_transmit",
+      "kind_basis": "log 107 step 7 traced the bounds check at 0x18018c28 against the descriptor table and the three error returns at 0x18018c0a, 0x18018c12 and 0x18018c64",
+      "name": "FUN_18018bd6",
+      "vendor_address": 402754474
+    },
+    {
+      "address": 402777908,
+      "confidence": "strongly-inferred",
+      "detail": "the shared state block the report pipeline reads. Holds the per-key array's element count at +0xc and a change flag at +0x50.",
+      "image": "region",
+      "key": "key_state",
+      "kind_basis": "twelve functions across the 0x18004xxx-0x18006xxx report range load this address from a literal pool; its +0xc field sizes the memset of the per-key array",
+      "name": "key-state struct",
+      "vendor_address": 402777864
+    },
+    {
+      "address": 402797584,
+      "confidence": "strongly-inferred",
+      "detail": "a 16-bit-per-element array at +0x14, whose element count is *(key-state+0xc). FUN_180061c2 clears it with a length of count << 1.",
+      "image": "ram",
+      "key": "key_array",
+      "kind_basis": "the shift by one in `memset(0x18023410+0x14, count << 1)` makes the elements two bytes wide; a byte array would not be doubled",
+      "name": "per-key halfword array",
+      "vendor_address": 402797540
+    },
+    {
+      "address": 0,
+      "confidence": "unresolved",
+      "detail": "the producer that fills the per-key array from hardware. NOT RECOVERED. Nothing in the traced chain writes that array from a hardware register.",
+      "image": "hardware",
+      "key": "acquisition",
+      "kind_basis": "the application-side MMIO in this chain is entirely unresolved-base, and neither image's census shows a block whose access pattern resembles row/column scanning. The device is Hall-effect, so per-key analog sampling is expected rather than a contact matrix; the arithmetic is 5D's subject and no contact-matrix model is asserted here",
+      "name": "per-key acquisition",
+      "vendor_address": null
+    }
+  ]
+}

@@ -1686,6 +1686,58 @@ cannot be.
 483 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-04 — Phase 5C: scan scheduling recovered, acquisition not (log 109)
+
+Phase 5C only. 5D–5G were not begun, nothing was committed or staged, and every
+Ghidra run was read-only — no seeding was needed, so `project-step6` is
+unchanged by this step.
+
+A rider first: the byte-identity overclaim log 108 corrected had survived in a
+fourth place, `map_usb_routing.py`'s own module docstring. Log 108 stays
+unedited; the correction and its evidence are recorded in log 109's header, and
+the phrase now appears nowhere in the repository.
+
+Phase 5B had left the boot and NKRO report producers untraced. Resolving the
+interface index at every USB transmit call site showed all of them going to
+interface 1 — except one forwarding guard, and following *that* opened the
+keyboard path: `FUN_180061c2` builds and sends an 8-byte report to interface 0
+from `0x1801e7c8` and a 19-byte report to interface 3 from `0x18023c20`, along
+with the 4- and 5-byte interface-2 reports.
+
+Its driver turned out to be in the **entry image**, which is why Phase 5A's
+application-only call graph had left it callerless. `Vector_IRQ38` — the only
+writer of a word at the very start of the zeroinit region — wakes
+`Task_OEM_MAIN_SERVICE_TASK`, the 16 KiB task log 106 recovered. That task
+**busy-spins** rather than blocking, and synchronises with the ISR by masking
+interrupts around a read-and-clear. It then runs a cascaded prescaler — every
+tick, then /8, /5, /2, /10, /10 — whose every-tick job calls back into the
+application through veneers. That also **resolves three of log 106's largest
+orphans**.
+
+The honest half of the phase is what was *not* found. No MMIO block in either
+image has the shape of a key scanner. The closure from the service task inside
+the entry image reaches eleven functions and zero MMIO accesses. The
+application's per-tick jobs are dominated by accesses whose base register
+constant propagation could not pin — a census limitation, not evidence of
+absence — so **no block was renamed**.
+
+The pipeline bottoms out at a per-key array whose elements are *two bytes wide*,
+proved by the shift in `memset(base + 0x14, count << 1)`. Twelve report-range
+functions share it; none writes it from hardware. For a Hall-effect keyboard a
+16-bit-per-key array is what analog sampling would produce, so the finding is
+recorded as it stands and the acquisition arithmetic is left to 5D. No
+contact-matrix model was forced onto the evidence.
+
+Dimensions were kept strictly separate from the 189-entry wire-ID table, which
+is used as a count nowhere and is guarded by a test. What the report descriptors
+themselves prove: the NKRO bitmap is 152 bits, exactly the 19-byte packet the
+host enumerated. Rows, columns and key count stay unresolved, because the array's
+element count is a runtime value the region initialises to zero.
+
+Cadence source and divider ratios are observed; the absolute period is
+unresolved, since the timer behind IRQ38 was not identified. 518 offline tests
+pass, both evidence hashes are unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

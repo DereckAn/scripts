@@ -7,7 +7,13 @@ reconstructed decompressed region from log 105, and the Ghidra analysis of the
 application image.
 
 WHAT THE FIRMWARE ACTUALLY STORES. The five HID *report* descriptors are stored
-verbatim and are byte-identical to what the host read back. The standard
+verbatim. Four of them — interfaces 0-3 — are byte-identical to the raw bytes
+the host read back in log 09. The fifth, interface 4's, cannot be compared that
+way: interface 4 was unbound on the host, so this repository holds no raw bytes
+for it. It is verified structurally instead — the item walk consumes exactly its
+declared 327 bytes and yields 155 items matching lsusb's 155 decoded items one
+for one. That is an item comparison, not a byte comparison (log 108). The
+standard
 descriptors — device, configuration, interface, HID-class and endpoint — are
 NOT stored anywhere in any preserved image. They are built at runtime by
 `FUN_18018082` from a 0x8c-byte parameter table at region+0x284, which

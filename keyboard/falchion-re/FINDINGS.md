@@ -1780,6 +1780,84 @@ not located. The scan, media and lighting *producers* were not traced — those 
 5C's and 5D's subjects. And the searches cover the five preserved images: a mask
 ROM was not searched and cannot be, though nothing recovered here requires one.
 
+### Phase 5C: scan scheduling and the scan-to-HID flow (log 109)
+
+Phase 5B left the interface 0 and interface 3 report producers untraced. They
+are traced now, and the chain crosses back into the entry image — which is why
+Phase 5A's application-only call graph had left most of it callerless.
+
+**The chain, every link observed:**
+
+    Vector_IRQ38 (app 0x180000e4)
+      -> event word 0x1801ee84   (the first word of the zeroinit region)
+    Task_OEM_MAIN_SERVICE_TASK (entry 0x498, 16 KiB stack, priority 10)
+      -> busy-spins, then `cpsid i` / read-and-clear / `cpsie i`
+    FUN_0000042c (entry 0x42c)   -> prescaler ladder 1, 8, 5, 2, 10, 10
+    FUN_000004ba (entry 0x4ba)   -> cross-image veneers
+    FUN_180061c2 (app 0x180061c2) -> builds AND sends
+    FUN_18004164 -> FUN_18018bd6 -> the endpoints Phase 5B mapped
+
+`Vector_IRQ38` is the **only** writer of the event word in either image, found
+by exhaustive value cross-reference. The service task never blocks on a queue or
+a semaphore — it spins — and its synchronisation with the ISR is **interrupt
+masking** around the read-and-clear, so a tick cannot be lost between the load
+and the store. Two ticks arriving before one drain are, however,
+indistinguishable from one: the flag is a level set to 1, not a counter. The
+separate 16-bit tick counter at region+0 is incremented by the ISR and is not
+consulted by the drain loop.
+
+**The report buffers**, with the interface index and length resolved by constant
+propagation at every call site:
+
+| buffer | size | interface | endpoint |
+|---|---|---|---|
+| `0x1801e7c8` (region+`0x448`) | 8 | 0 | EP `0x81` boot keyboard |
+| `0x18023c20` | 19 | 3 | EP `0x8e` NKRO bitmap |
+| `0x18023c33` | 4 | 2 | EP `0x8c` consumer |
+| `0x18023c38` | 5 | 2 | EP `0x8c` system |
+
+`FUN_180061c2` is the only function in the application that touches the boot or
+NKRO buffer, and it both builds and transmits — so there is no producer/consumer
+handoff to synchronise on the report path. The three RAM buffers are one
+contiguous block. Reaching them through the entry-image veneer also **resolves
+three of log 106's largest callerless functions** — `FUN_18004a7e`,
+`FUN_180057fe` and `FUN_180061c2` itself.
+
+**No MMIO block was renamed, and none could be.** Neither image has a block
+whose access pattern resembles a key scanner; the breadth-first closure from the
+service task inside the entry image reaches 11 functions and **zero** MMIO
+accesses; and the application-side per-tick jobs are dominated by
+unresolved-base accesses (307 in `FUN_18004a7e`, 892 in `FUN_180061c2`), which
+is a census limitation, not evidence of absence. `0x40100000` keeps the USB
+identity log 107 proved from the firmware's own strings; every other block stays
+unnamed.
+
+**Where the pipeline bottoms out.** `FUN_180061c2` clears a per-key array with
+`memset(0x18023410 + 0x14, *(0x1801e734+0xc) << 1)`. The shift by one makes the
+elements **two bytes wide** — a contact matrix would not need 16 bits per key.
+Twelve functions, all inside the `0x18004xxx`–`0x18006xxx` report and policy
+range, share that array and the key-state struct at `0x1801e734` (region+`0x3b4`),
+and **none of them writes the array from a hardware register**. The producer is
+not recovered. The device is Hall-effect, so per-key analog sampling is what a
+16-bit-per-key array implies; the acquisition arithmetic is 5D's subject and **no
+contact-matrix model is asserted**.
+
+**Physical dimensions — what is proven and what is not.** The 189-entry wire-ID
+translation table is *not* used as a key count anywhere, and a unit test asserts
+the string never appears in a dimension field. What is proven comes from each
+report descriptor's own HID items: the NKRO report is **152 bits** (Report Size
+1 × Report Count `0x98`), which is exactly the 19-byte packet the host
+enumerated, and the boot report is the standard 8-byte packet. Both releases
+agree on all five interfaces. Rows, columns and key count are **unresolved**: the
+per-key array's element count is `*(0x1801e734+0xc)`, a runtime value that the
+region's initialised image leaves zero, and no loop bound or mask width in the
+recovered chain fixes it.
+
+**Cadence.** Source: IRQ38, observed. Divider ratios 1, 8, 5, 2, 10, 10: observed,
+read off compare constants. **Absolute period: unresolved** — the timer that
+raises IRQ38 is not identified and nothing here observed a clock. Call-graph
+reachability is not timing.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

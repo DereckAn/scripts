@@ -1,0 +1,468 @@
+LOG 109 — PHASE 5C: GPIO AND KEYBOARD SCAN SCHEDULING
+Date: 2026-09-04
+Scope: Phase 5C ONLY, plus one rider correction to Phase 5B's tooling recorded
+below. Phases 5D-5G were NOT begun. Nothing was committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary,
+no historical log and not opencode.json were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened. EVERY Ghidra run in this step was
+-readOnly; no seeding was required and none was done, so ghidra/project-step6 is
+unchanged by this step. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+RIDER — A THIRD INSTANCE OF THE LOG 108 OVERCLAIM
+================================================================================
+Log 108 is immutable and was NOT edited. The rider is recorded here.
+
+Log 108 corrected the interface-4 byte-identity overclaim in the EP 0x0f
+kind_basis, and found and corrected two more instances in FINDINGS.md and
+TIMELINE.md. It MISSED a fourth: the same sentence in tool/map_usb_routing.py's
+own module docstring.
+
+ORIGINAL WORDING — tool/map_usb_routing.py, module docstring:
+  "WHAT THE FIRMWARE ACTUALLY STORES. The five HID *report* descriptors are
+   stored verbatim and are byte-identical to what the host read back."
+
+CORRECTED WORDING:
+  "WHAT THE FIRMWARE ACTUALLY STORES. The five HID *report* descriptors are
+   stored verbatim. Four of them — interfaces 0-3 — are byte-identical to the
+   raw bytes the host read back in log 09. The fifth, interface 4's, cannot be
+   compared that way: interface 4 was unbound on the host, so this repository
+   holds no raw bytes for it. It is verified structurally instead — the item
+   walk consumes exactly its declared 327 bytes and yields 155 items matching
+   lsusb's 155 decoded items one for one. That is an item comparison, not a
+   byte comparison (log 108)."
+
+EVIDENCE, unchanged from log 108 and re-verified here: log 09 contains
+`== hidraw0 ==` through `== hidraw3 ==` and no hidraw4; log 15 contains zero
+lines matching `^[0-9a-f]{8}: ` and for interface 4 preserves only lsusb's
+decoded item listing. FINDINGS.md line 106 independently records interface 4 as
+unbound.
+
+$ grep -rn "byte-identical to what the host read back" tool/ notes/ FINDINGS.md TIMELINE.md
+  (no matches)
+The overclaim is now gone from every file in the repository. The existing
+tests, checks and generated notes were already correct and were not weakened;
+tool/map_usb_routing.py --check reports stale=0 after the docstring edit,
+confirming the change did not perturb the generated artefacts.
+
+
+================================================================================
+STEP 1 — TOP DOWN: WHO SENDS THE BOOT AND NKRO REPORTS
+================================================================================
+Phase 5B left the interface 0 and interface 3 producers untraced. Starting from
+5B's transmit function and resolving the interface index at every call site by
+constant propagation:
+
+$ ... -postScript FalchionTaskCreation.java 'primitive=0x18018bd6'
+PRIMITIVE entry=18018bd6 name=FUN_18018bd6 params=0 body=18018bd6..18018c75 callers=8
+CALLSITE ... instr=18000ad0 func=18000a70 a0=0x1 a1=0xffffff68 a2=0x40
+CALLSITE ... instr=18004172 func=18004164 a0=unknown a1=unknown a2=unknown
+CALLSITE ... instr=1800f0c6 func=1800f3e0 a0=0x1 a1=0x1802654a a2=0x40
+CALLSITE ... instr=1800f3c4 func=1800f3e0 a0=0x1 a1=0x1802654a a2=0x40
+CALLSITE ... instr=1800f56e func=1800f4f2 a0=0x1 a1=0x1802654a a2=0x40
+CALLSITE ... instr=1800f658 func=1800f572 a0=0x1 a1=0x1802654a a2=0x40
+CALLSITE ... instr=1800f6e2 func=1800f65c a0=0x1 a1=0x1802654a a2=0x40
+CALLSITE ... instr=1800f716 func=1800f6e6 a0=0x1 a1=0x1802654a a2=0x40
+RESULT callsites=8 resolved=0 partial=8 validated=0
+
+EVERY resolvable transmit uses interface 1 — the vendor channel. The keyboard
+reports do not go through it directly. The one unresolved site is FUN_18004164,
+a 0x1a-byte forwarding guard whose arguments pass straight through:
+
+    18004164  ldr r3,[0x18004510]    ; a state word
+    1800416a  cmp r3,#0x1            ; forward only when it equals 1
+    18004172  bl  0x18018bd6
+    18004176  cmp r0,#0x0            ; any error becomes 2
+    1800417a  movs r0,#0x2
+
+Resolving ITS call sites is what opens the keyboard path:
+
+$ ... -postScript FalchionTaskCreation.java 'primitive=0x18004164'
+PRIMITIVE entry=18004164 name=FUN_18004164 callers=15
+CALLSITE instr=1800663e func=180061c2 a0=0x0 a1=0x1801e7c8 a2=0x8
+CALLSITE instr=18006656 func=180061c2 a0=0x0 a1=0x1801e7c8 a2=0x8
+CALLSITE instr=1800669a func=180061c2 a0=0x3 a1=0x18023c20 a2=0x13
+CALLSITE instr=180066b6 func=180061c2 a0=0x3 a1=0x18023c20 a2=0x13
+CALLSITE instr=18006702 func=180061c2 a0=0x2 a1=0x18023c33 a2=0x4
+CALLSITE instr=18006724 func=180061c2 a0=0x2 a1=0x18023c33 a2=0x4
+CALLSITE instr=18006766 func=180061c2 a0=0x2 a1=0x18023c38 a2=0x5
+CALLSITE instr=18006788 func=180061c2 a0=0x2 a1=0x18023c38 a2=0x5
+CALLSITE instr=180041f8..18004344 func=1800417e a0=0x2 a2=0x15  (six sites)
+RESULT callsites=15 resolved=0 partial=15 validated=0
+
+  interface 0, 8 bytes  -> 0x1801e7c8   the boot keyboard report, EP 0x81
+  interface 3, 0x13=19  -> 0x18023c20   the NKRO bitmap, EP 0x8e
+  interface 2, 4 and 5  -> 0x18023c33, 0x18023c38
+  interface 2, 0x15=21  -> from FUN_1800417e, EP 0x8c
+
+Every length matches the wMaxPacketSize Phase 5B read out of the descriptor
+table. NOTE ON THE TOOL: FalchionTaskCreation resolves six arguments because it
+was written for the six-argument task-creation primitive; FUN_18004164 takes
+three, so its a3/a4/a5 columns are meaningless here and are ignored. Only a0-a2
+are used above.
+
+An exhaustive value cross-reference shows FUN_180061c2 is the ONLY function in
+the application that touches either keyboard report buffer:
+
+$ ... -postScript FalchionValueXrefs.java 0x1801e7c8 0x18023c20 0x18023cc0
+LITERAL value=0x1801e7c8 at=180067a0 loader=180063c6(FUN_180061c2) ... (9 loaders, all FUN_180061c2)
+REF value=0x1801e7c8 from=18006648 in=FUN_180061c2 type=WRITE
+REF value=0x1801e7c8 from=18006406 in=FUN_180061c2 type=READ
+RESULT uses=16 targets=3
+
+So FUN_180061c2 both BUILDS and SENDS. 0x1801e7c8 resolves to region+0x448 —
+the boot report buffer lives in the decompressed descriptor region, not in the
+zeroinit RAM where the other three sit.
+
+
+================================================================================
+STEP 2 — WHAT DRIVES IT: THE SERVICE TASK IS A BUSY-SPIN EVENT PUMP
+================================================================================
+FUN_180061c2's only in-image caller is FUN_18008c16, which log 106 recorded as
+callerless. A value cross-reference for 0x18008c16 and 0x18008c17 over the
+application, and an aligned-word search over the entry image, the region and the
+application, return NOTHING — the address is stored nowhere. The chain is
+entered from outside the application image.
+
+Log 106 recovered Task_OEM_MAIN_SERVICE_TASK at entry-image 0x498, created by
+INIT_TASK with a 16 KiB stack at priority 10 — sixteen times any other task's
+stack. Decompiled read-only:
+
+    00000498  push {r1,r2,r3,lr}
+    0000049a  ldr  r4,[0x000005b0]
+    000004b2  ldr  r0,[r4,#0x0]
+    000004b4  cmp  r0,#0x0
+    000004b6  beq  0x000004b2          <- BUSY-SPIN on the event word
+    000004a0  cpsid i                  <- mask interrupts
+    000004a2  ldr  r0,[r4,#0x0]
+    000004a6  str  r5,[r4,#0x0]        <- read-and-CLEAR
+    000004a8  cpsie i                  <- unmask
+    000004ac  cbz  r0,0x000004b2
+    000004ae  bl   0x0000042c
+
+  *(0x5b0) = 0x1801ee84
+
+THE SYNCHRONISATION DISCIPLINE IS INTERRUPT MASKING. The read and the store are
+bracketed by cpsid i / cpsie i, so a tick arriving between them cannot be lost.
+The task NEVER blocks on a queue or a semaphore — it spins. That is a real
+scheduling fact and it is why this task holds the largest stack and a high
+priority.
+
+0x1801ee84 is exactly where Phase 3 placed the start of the zeroinit region.
+
+
+================================================================================
+STEP 3 — THE CADENCE SOURCE IS IRQ38
+================================================================================
+$ ... -postScript FalchionValueXrefs.java 0x1801ee84   (both images)
+  entry image: LITERAL at 0x5b0, loader 0x49a (Task_OEM_MAIN_SERVICE_TASK)
+               REF READ from 0x4b2 and 0x4a2, REF WRITE from 0x4a6
+  application: LITERAL at 0x180003cc, loader 0x180000f8 (Vector_IRQ38)
+               REF WRITE from 0x180000fc
+  RESULT uses=5 / uses=3
+
+Vector_IRQ38 is the ONLY writer of the event word in either image.
+
+    180000e4  push {r4,lr}
+    180000e8  bl   0x180123ea          ; read channel 0's flag
+    180000ec  lsls r0,r0,#0x1f         ; test bit 0
+    180000ee  beq  0x18000106
+    180000f4  bl   0x1801242e          ; clear it
+    180000f8  ldr  r1,[0x180003cc]     ; = 0x1801ee84
+    180000fc  str  r0,[r1,#0x0]        ; event word = 1
+    18000100  ldrh r1,[r0,#0x0]        ; *(0x1801e380) += 1
+    18000104  strh r1,[r0,#0x0]        ;   a 16-bit tick counter at region+0
+
+Log 100 recorded that software enables exactly IRQ6 and IRQ38 through NVIC_ISER.
+IRQ6 is the USB device controller (log 107). IRQ38 is the periodic tick.
+
+The flag helpers FUN_180123ea and FUN_1801242e are in the RTOS range and the
+census attributes NO MMIO to either, so the hardware that raises IRQ38 is not
+identified here. THAT IS THE BOUNDARY: the tick's SOURCE is IRQ38, observed; the
+tick's RATE is unresolved.
+
+
+================================================================================
+STEP 4 — THE PRESCALER LADDER
+================================================================================
+FUN_0000042c, entry image, called once per drained event:
+
+    0000042e  bl 0x000004ba            ; EVERY tick, before any counter
+    00000432  ldr r4,[0x00000494]      ; counters at 0x1801e690 = region+0x310
+    00000436  adds r0,r0,#0x1 ; cmp r0,#0x8 ; blt   -> /8   bl 0x00000516
+    00000448  adds r0,r0,#0x1 ; cmp r0,#0x5 ; bcc   -> /5   bl 0x0000057a
+    00000458  adds r0,r0,#0x1 ; lsls r0,r0,#0x1f     -> /2   0x0000057c / 0x0000057e
+    00000470  adds r0,r0,#0x1 ; cmp r0,#0xa ; bcc   -> /10  bl 0x00000580
+    00000480  adds r0,r0,#0x1 ; cmp r0,#0xa ; bcc   -> /10
+
+A cascaded divider: 1, 8, 5, 2, 10, 10. These are RATIOS read off compare
+constants. No absolute period is claimed anywhere in this phase.
+
+The counters live at region+0x310 — immediately after the 0x8c-byte USB
+parameter table Phase 5B mapped at region+0x284..+0x310. The region's RW data is
+densely packed and shared across subsystems.
+
+
+================================================================================
+STEP 5 — THE EVERY-TICK JOB CROSSES BACK INTO THE APPLICATION
+================================================================================
+FUN_000004ba, entry image, callees are eight cross-image veneers:
+
+    000004be  bl 0x00004030    thunk_EXT_FUN_1800bb00(1)
+    000004c8  bl 0x0000403a    thunk_EXT_FUN_1800439a(0,0,1)
+    000004cc  ldr r0,[0x5b4] ; ldr r0,[r0] ; cmp r0,#1
+    000004d6  ldrb.w r0,[r0,#0x4f8] ; and r1,r0,#0xf   ; a mode nibble
+    000004e4  ldrb r1,[r0] ; adds r1,#1 ; cmp r1,#0x8  ; its own /8 counter
+    000004fc  movs r1,#0 ; strb r1,[r0]                ; reset, then:
+    00000500  bl 0x00004058    thunk_EXT_FUN_180045b6
+    00000504  bl 0x00004044    thunk_EXT_FUN_180049a4
+    00000508  bl 0x00004062    thunk_EXT_FUN_18004a7e
+    0000050c  bl 0x0000406c    thunk_EXT_FUN_180057fe
+    00000510  bl 0x00004076    thunk_EXT_FUN_180061c2   <- the report builder
+    000004f8  b.w 0x0000404e   thunk_EXT_FUN_1800417e   <- the 21-byte sender
+
+THE CHAIN IS CLOSED. FUN_180061c2 is invoked from the entry image through a
+veneer, which is why it looked callerless in log 106's application-only call
+graph.
+
+THIS ALSO RESOLVES THREE OF LOG 106's LARGEST ORPHANS. FUN_18004a7e (1214
+instructions) and FUN_180057fe (236) were the third and seventh largest
+callerless application functions; both are called here every eighth tick.
+FUN_18008c16 (197) remains unexplained by this chain.
+
+
+================================================================================
+STEP 6 — BOTTOM UP: THERE IS NO SCAN-SHAPED MMIO BLOCK
+================================================================================
+Censused every non-USB MMIO block in both images from the Phase 5 peripheral
+maps, grouped by accessing function.
+
+APPLICATION:
+  0x20000000  3 regs  18 accesses   FUN_18008c16(PM), CandidateB_Main, IRQ-free
+  0x40000000 17 regs  69 accesses   0x40019000/0x4001b000/0x40020000/0x40022000
+  0x40100000 20 regs 139 accesses   USB device controller (log 107)
+  0x45000000  5 regs  21 accesses
+ENTRY IMAGE:
+  0x40000000  7 regs  17 accesses   reset/clock init
+  0x45000000 11 regs  66 accesses   FUN_000007fe(22), FUN_00000de8(15), IRQ3
+  0x08000000, 0x10000000, 0x20000000, 0x60000000 — 1-5 accesses each
+
+NONE has the shape of a key scanner: no block shows a dense repeated
+byte/halfword read from a small register window driven by a loop, and no drive/
+settle/read sequence appears.
+
+AND THE TICK CHAIN DOES NOT REACH THE CANDIDATES. A breadth-first closure from
+Task_OEM_MAIN_SERVICE_TASK inside the entry image reaches 11 functions, of which
+ZERO touch MMIO. The entry image's 0x45000000 users — FUN_000007fe,
+FUN_00000de8, FUN_00001216, Vector_IRQ3 and seven others — are all OUTSIDE that
+closure; they belong to the reset/init path and IRQ3.
+
+On the application side, the closure MMIO of each per-tick job is:
+  FUN_1800439a  106 insns   blocks=[]  unresolved=9
+  FUN_18004a7e 1214 insns   blocks=[]  unresolved=307
+  FUN_180057fe  236 insns   blocks=[]  unresolved=47
+  FUN_180061c2  604 insns   blocks=[0x0, 0xe0000000] regs=7 unresolved=892
+  FUN_1800417e  189 insns   blocks=[0xe0000000] regs=1 unresolved=92
+
+Every one of them is dominated by UNRESOLVED accesses — loads and stores whose
+base register constant propagation could not pin. That is a stated limitation of
+the census, not evidence of absence, and it is why no block is renamed here.
+
+WHAT THE PER-TICK JOBS ACTUALLY DO. FUN_1800439a, decompiled read-only, is HID
+report assembly: it memsets a 0x15-byte buffer, sets a bit with
+`buf[id >> 3] |= 1 << (id & 7)` through a translation table at DAT_18004554,
+remaps HID usage ranges (0xe0-0xe8 by -0x70, 0xf0-0xf6 by -0x77, 0x87-0x8b by
+-0x1f — the modifier and international key ranges), and advances a three-deep
+ring at *(base+0x14). It consumes key state; it does not acquire it.
+
+
+================================================================================
+STEP 7 — WHERE THE PIPELINE BOTTOMS OUT
+================================================================================
+FUN_180061c2 reads two shared objects:
+
+  0x1801e734  = region+0x3b4, the key-state struct. Twelve functions across the
+                0x18004xxx-0x18006xxx report range load it from a literal pool.
+                Fields used: +0xc (element count), +0x28/+0x50 (a change flag
+                pair), +8, +6.
+  0x18023410  = zeroinit RAM. FUN_180061c2 clears it with
+                  memset(0x18023410 + 0x14, *(0x1801e734+0xc) << 1)
+                The SHIFT BY ONE makes the elements two bytes wide. A per-key
+                HALFWORD array is what a Hall-effect keyboard's analog readings
+                would live in; a contact matrix would not need 16 bits per key.
+
+A value cross-reference for both addresses returns twelve functions, ALL inside
+the 0x18004xxx-0x18006xxx report and policy range. FUN_18005a88 — which
+FUN_180061c2 calls first — is the heaviest user of the halfword array with eight
+literal loads.
+
+NO FUNCTION IN THE RECOVERED CHAIN WRITES THAT ARRAY FROM A HARDWARE REGISTER.
+
+THE FINDING, stated as the prompt requires rather than forced into a
+contact-matrix model: the scan pipeline as recovered runs from IRQ38 through the
+service task and the prescaler into report assembly over a per-key 16-bit array,
+and it bottoms out at that array. The producer is not recovered. The device is
+Hall-effect, the array is 16 bits per element, and the detailed acquisition
+arithmetic is 5D's subject. No row, column, drive or settle behaviour is
+asserted, because none was observed.
+
+
+================================================================================
+STEP 8 — PHYSICAL DIMENSIONS: WHAT IS PROVEN AND WHAT IS NOT
+================================================================================
+THE 189-ENTRY TRANSLATION TABLE IS NOT USED AS A KEY COUNT ANYWHERE in this
+phase's tooling, and a unit test asserts the string "189" appears in no
+dimension field of the emitted model.
+
+PROVEN, each read out of a report descriptor's own HID items:
+  interface 3 (NKRO): Report Size 1 x Report Count 0x98 = 152 bits = 19 bytes,
+      Usage Minimum 0x00, Usage Maximum 0x98. 152/8 = 19 is exactly the packet
+      size the host enumerated. This is a REPORT dimension — the number of HID
+      usage codes the bitmap covers — and it is not a key count.
+  interface 0 (boot): an 8-byte packet, the standard 1 modifier + 1 reserved +
+      6 key slots.
+  Both releases produce identical dimensions for all five interfaces.
+
+NOT PROVEN — rows, columns, key count. The per-key array's element count is
+*(0x1801e734+0xc), a RUNTIME value: the region's initialised image has that
+field zero (region+0x3c0 = 00 00 00 00), so no static constant fixes it. No loop
+bound or mask width in the recovered chain fixes it either. Recorded as
+unresolved with that reason, in the emitted JSON and in the report.
+
+
+================================================================================
+STEP 9 — THE SCAN-TO-HID GRAPH
+================================================================================
+$ python3 tool/map_scan_pipeline.py
+CADENCE
+  source: IRQ38 (Vector_IRQ38 @ 0x180000e4)
+  divider chain: [1, 8, 5, 2, 10, 10] (every tick, then /8, /5, /2, /10, /10)
+  absolute period: UNRESOLVED — ratios only, no rate
+
+PIPELINE
+  [observed]           irq38          Vector_IRQ38            app 0x180000e4
+  [observed]           event_flag     service-task event word ram 0x1801ee84
+  [observed]           service_task   Task_OEM_MAIN_SERVICE_TASK entry 0x00000498
+  [observed]           prescaler      FUN_0000042c            entry 0x0000042c
+  [observed]           tick_job       FUN_000004ba            entry 0x000004ba
+  [observed]           report_builder FUN_180061c2            app 0x180061c2
+  [observed]           send_wrapper   FUN_18004164            app 0x18004164
+  [observed]           usb_transmit   FUN_18018bd6            app 0x18018bd6
+  [strongly-inferred]  key_state      key-state struct        region 0x1801e734
+  [strongly-inferred]  key_array      per-key halfword array  ram 0x18023410
+  [unresolved]         acquisition    per-key acquisition     hardware n/a
+
+LINKS
+  irq38 -> event_flag                  [observed]          store of 1
+  event_flag -> service_task           [observed]          busy-spin + masked read-and-clear
+  service_task -> prescaler            [observed]          direct call
+  prescaler -> tick_job                [observed]          unconditional every tick
+  tick_job -> report_builder           [observed]          cross-image veneer
+  key_array -> report_builder          [strongly-inferred] read of the array
+  key_state -> report_builder          [observed]          read of the state block
+  report_builder -> send_wrapper       [observed]          direct call, nine sites
+  send_wrapper -> usb_transmit         [observed]          direct call
+  acquisition -> key_array             [unresolved]        unrecovered producer
+
+BUFFERS
+  0x1801e7c8       8B  boot keyboard report (interface 0, EP 0x81)   [observed]
+      owner: FUN_180061c2 | sync: none observed — build and transmit are in one
+      function on one task, so there is no cross-context handoff
+  0x18023c20      19B  NKRO bitmap report (interface 3, EP 0x8e)     [observed]
+  0x18023c33       4B  consumer control report (interface 2)         [observed]
+  0x18023c38       5B  system control report (interface 2)           [observed]
+  0x1801ee84       4B  service-task event word                       [observed]
+      owner: Vector_IRQ38 writes, service task reads and clears
+      sync: INTERRUPT MASKING — cpsid i / cpsie i around the read-and-clear
+  0x1801e690      24B  prescaler counters                   [strongly-inferred]
+  0x18023410  runtime  per-key halfword array                      [unresolved]
+      sync: UNRESOLVED — with no producer recovered there is no observable
+      discipline between it and the reader
+
+RESULT pipeline_ok=True checks=25
+  [exit 0]
+
+WHAT CAN PRE-EMPT OR BLOCK A SCAN, from the recovered structure:
+  - the service task busy-spins rather than blocking, so it is always runnable;
+    at priority 10 any higher-priority task (INIT_TASK at the clamped 14) can
+    pre-empt it, and it will consume the remainder of its slice otherwise.
+  - IRQ38's write and the task's read-and-clear cannot interleave destructively,
+    because the task masks interrupts across the pair.
+  - a tick raised while the task is inside FUN_0000042c is NOT lost: the flag is
+    a level, set to 1, and the next spin iteration observes it. But two ticks
+    arriving before one drain are INDISTINGUISHABLE from one — the flag is a
+    single word set to 1, not a counter. The separate 16-bit counter at
+    region+0 is incremented by the ISR and is not consulted by the drain loop.
+    THAT IS A REAL PROPERTY of the design and it is recorded, not judged.
+  - the USB transmit can fail three ways (log 107); FUN_18004164 maps any of
+    them to a return of 2, and FUN_180061c2's call sites do not branch on it.
+
+CADENCE CLAIMS ARE LABELLED. Source: OBSERVED (IRQ38 is the sole writer).
+Divider ratios: OBSERVED (compare constants in the listing). Absolute period:
+UNRESOLVED — the timer that raises IRQ38 is not identified and nothing here
+observed a clock. Call-graph reachability is not timing.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_scan_pipeline.py tool/test_map_scan_pipeline.py tool/map_usb_routing.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 518 tests   OK                                                 [exit 0]
+  (492 before this step; +26 in tool/test_map_scan_pipeline.py)
+$ python3 tool/report_phase3.py --check      RESULT reports_current=True stale=0
+$ python3 tool/report_phase4.py --check      RESULT reports_current=True stale=0
+$ python3 tool/report_phase5.py --check      RESULT reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check    RESULT reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check  RESULT reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS               all OK                  [exit 0]
+$ git diff --check                           clean                   [exit 0]
+
+FAIL-CLOSED TESTS (tool/test_map_scan_pipeline.py, 26 tests). Most exist to keep
+the model honest rather than to check arithmetic, because the failure mode that
+matters is a later edit quietly upgrading an unresolved link:
+  - the acquisition stage must stay `unresolved` and keep "NOT RECOVERED"
+  - the link into the key array must stay `unresolved`
+  - no absolute rate: the report may not contain "hz", "milliseconds",
+    "microseconds", " ms " or " us "
+  - no physical dimension: rows, columns and keys must all be null
+  - "189" must appear in no dimension, buffer, stage or link field
+  - no contact-matrix model: "hall-effect" must appear; "row drive",
+    "column read" and "the matrix is" must not
+  - every confidence from the closed four-value set; every link must join two
+    declared stages; every `observed` claim must cite a hex address
+  - the per-key array must report size 0 (runtime) and an UNRESOLVED sync rule
+  - the event word must cite cpsid and name interrupt masking
+  - relocation: the entry image never moves, an application function below the
+    insertion never moves, one above it moves by exactly 0x2c, RAM and region
+    always move, installed is the identity, and an unknown image RAISES
+  - both releases must agree on every report dimension
+
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phases 5D, 5E, 5F and 5G were not begun.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - NO MMIO BLOCK WAS RENAMED. 0x40100000 keeps the USB identity log 107 proved
+    from the firmware's own strings; every other block stays unnamed.
+  - No seeding was done. Every Ghidra run was -readOnly and project-step6 is
+    unchanged by this step.
+  - The acquisition producer, the physical matrix, and the absolute scan rate
+    are NOT recovered. Each is recorded with its reason.
+  - Logs 107 and 108 were not edited; the rider is recorded here.
+  - NO DEVICE WAS ACCESSED.
