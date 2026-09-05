@@ -2053,6 +2053,50 @@ refused instead.
 732 offline tests pass, both evidence hashes are unchanged, every build ran
 against a copy in a temporary directory, and no device was accessed.
 
+## 2026-09-05 — Phase 8: the first offline experimental artefact (log 117)
+
+Phase 8 only. Phase 9 not begun, nothing committed or staged, and no flashing
+command, updater invocation or device instruction produced. Booting is not
+claimed anywhere.
+
+The target came from the ADR's ranking: the USB product string. Its offset was
+verified rather than taken on trust, and the prompt's estimate for the vendor
+image turned out to be off — the string is at region+`0x882` in both releases,
+with only the compressed source's flash address differing by the measured
+`0x2c`.
+
+The interesting work was proving the patch was safe at all. The string lives
+inside a compressed stream, so a same-length replacement is only safe if the
+replaced bytes are literals *and* nothing later copies from the output they
+produce. A decoder with per-byte provenance answered both: all twenty bytes are
+literals, contiguous at the same stream offsets in both releases, and zero later
+back-references read from them. The first-ranked target held.
+
+Four artefacts were built into a git-ignored directory, every name carrying
+UNTESTED, and validated by a module that imports nothing from either builder —
+re-decoding, confirming the token structure is unchanged, and recomputing both
+integrity fields from zlib and struct directly. Thirty-eight checks pass.
+
+One of my own checks failed on the first run, and it was right to. It demanded
+twenty differing decoded bytes and found nineteen, because the two strings
+happen to share an `F` at position 18. The artefact was fine; the check was
+asserting a count when the invariant is containment. It was replaced with "no
+byte outside the span changed" plus an explicit accounting of the coincidence,
+rather than loosened to accept either number — a count check would have passed
+for the wrong reason on some other string.
+
+The rollback is the no-op build, byte-identical to source on both adapters,
+which is a stronger guarantee than a copy: it proves the pipeline itself
+introduces no drift.
+
+Both failure modes are demonstrated on a synthetic stream small enough to reason
+about by hand — a patched literal that a later back-reference copies changes two
+output bytes and is caught, and corrupting a control byte changes the token
+structure. Without those, a validator that only ever passes would prove nothing.
+
+759 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

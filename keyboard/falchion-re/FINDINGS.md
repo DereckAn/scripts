@@ -2255,6 +2255,61 @@ Every build ran against a **copy** in a temporary directory; neither evidence
 binary was opened for writing. Acceptance is never claimed — the report's final
 line is `construction only; acceptance is NOT claimed`.
 
+### Phase 8: the first offline experimental artefact (log 117)
+
+Four artefacts exist under the git-ignored `generated/`, every filename
+carrying `UNTESTED`, each with a manifest. **Booting is not claimed** — the
+phase succeeds because the builder and an independent validator agree on
+structure, and for no other reason.
+
+**The target's offset was verified, not assumed.** The USB product string sits
+at region+`0x882` in **both** releases; only the compressed source's *flash*
+address differs, by the measured `0x2c`. Replacement:
+`ROG FALCHION ACE HFX` → `UNTESTED FALCHION FW` — 20 bytes both, uppercase
+ASCII and spaces, self-identifying as a test build.
+
+**The token-level literal proof.** The string lives inside a compressed stream,
+so a same-length replacement is safe only if the replaced bytes are literals
+*and* nothing later copies from the output positions they produce. A decoder
+with per-output-byte provenance shows:
+
+| release | provenance | stream offsets | flash offsets | later reads |
+|---|---|---|---|---|
+| installed | all `literal` | `0x31b..0x32e` | `0x3f69b..0x3f6ae` | **0** |
+| vendor | all `literal` | `0x31b..0x32e` | `0x3f66f..0x3f682` | **0** |
+
+Identical stream positions, flash addresses `0x2c` apart. The first-ranked ADR
+target held; no fallback to the key-policy entry was needed.
+
+**Independent validation** — by a module that imports nothing from either
+builder, asserted by test. It re-decodes, confirms the token structure is
+unchanged (254 and 253 tokens, identical boundaries and control bytes),
+identical consumption, produced length still `0xb04`, and recomputes both
+integrity fields from `zlib` and `struct` directly. **38 checks, all pass.**
+
+**A check that failed for the right reason.** The first run demanded 20
+differing decoded bytes and found 19 — because the two strings coincide at
+position 18 (`F` in both). The artefact was correct and the check was wrong:
+the invariant is **containment**, not a count. It was replaced by "no decoded
+byte outside the intended span changed" plus "19 differ + 1 coincide = 20",
+rather than loosened to accept either number.
+
+**The rollback** is the no-op build of the same source, byte-identical to it
+for both adapters. That is stronger than a copy: it is produced by the same
+builder through the same recompute path, so it also demonstrates the pipeline
+introduces no drift.
+
+**Both failure modes are demonstrated**, on a synthetic stream small enough to
+check by hand: a patched literal that a later back-reference copies changes
+**two** output bytes and is detected, and corrupting a control byte changes the
+token structure.
+
+**Unresolved.** The artefact is untested. The runtime effect is *inferred* from
+logs 105 and 107 — no execution was observed, so "a host would display a
+different name" is an expectation, not a result. The installed adapter's
+primary-bootloader word-sum stays unavailable, and every boot-structure
+unresolved item from log 101 rides along in the manifests.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

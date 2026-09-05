@@ -1,0 +1,525 @@
+{
+  "acceptance": "NOT CLAIMED. This validates structure only. Nothing here is evidence that any image boots, and no device was accessed.",
+  "original_string": "ROG FALCHION ACE HFX",
+  "region_length": 2820,
+  "releases": {
+    "installed": {
+      "artefact": "installed-1.59-application_productstring_UNTESTED_96f6157868da.bin",
+      "artefact_sha256": "96f6157868dae85b63232781e61842a0421979052e4bb2394efb9f7118a93080",
+      "checks": [
+        {
+          "detail": "",
+          "name": "the artefact filename carries UNTESTED",
+          "ok": true
+        },
+        {
+          "detail": "sha256 fc6128ab089e4fd7",
+          "name": "the rollback build is byte-identical to the source",
+          "ok": true
+        },
+        {
+          "detail": "flash 0x3f380..0x3f780 size 0xb04",
+          "name": "the patch did not move the compressed region",
+          "ok": true
+        },
+        {
+          "detail": "0xb04",
+          "name": "the original region still decodes to its declared length",
+          "ok": true
+        },
+        {
+          "detail": "0xb04",
+          "name": "the patched region decodes to the same declared length",
+          "ok": true
+        },
+        {
+          "detail": "0x3fd both",
+          "name": "the patched stream consumes identically",
+          "ok": true
+        },
+        {
+          "detail": "254 tokens, identical boundaries and control bytes",
+          "name": "the token structure is unchanged",
+          "ok": true
+        },
+        {
+          "detail": "literal",
+          "name": "every patched output byte is a LITERAL in the token stream",
+          "ok": true
+        },
+        {
+          "detail": "0x31b..0x32e",
+          "name": "the literal stream offsets are contiguous",
+          "ok": true
+        },
+        {
+          "detail": "zero reads",
+          "name": "NO later back-reference reads from the patched output range",
+          "ok": true
+        },
+        {
+          "detail": "zero bytes outside 0x882..0x896",
+          "name": "NO decoded byte outside the intended span changed",
+          "ok": true
+        },
+        {
+          "detail": "19 differ, 1 coincide (0x894), 20 = 20 total",
+          "name": "every differing byte is accounted for by the replacement",
+          "ok": true
+        },
+        {
+          "detail": "ROG FALCHION ACE HFX",
+          "name": "the original decoded bytes are the expected string",
+          "ok": true
+        },
+        {
+          "detail": "UNTESTED FALCHION FW",
+          "name": "the patched decoded bytes are the replacement string",
+          "ok": true
+        },
+        {
+          "detail": "",
+          "name": "the replacement preserves length and character class",
+          "ok": true
+        },
+        {
+          "detail": "0xb5661320",
+          "name": "the record chunked-CRC matches an independent recomputation",
+          "ok": true
+        },
+        {
+          "detail": "0x30fcff70",
+          "name": "the application word-sum matches an independent recomputation",
+          "ok": true
+        },
+        {
+          "detail": "so a reversed dependency order would have left it stale",
+          "name": "the word-sum's covered range contains the record CRC field",
+          "ok": true
+        },
+        {
+          "detail": "18 checks",
+          "name": "every layout check that passed on the source still passes",
+          "ok": true
+        }
+      ],
+      "coinciding_positions": [
+        2196
+      ],
+      "consumed": 1021,
+      "decoded_diff": [
+        {
+          "offset": 2178,
+          "original": 82,
+          "patched": 85
+        },
+        {
+          "offset": 2179,
+          "original": 79,
+          "patched": 78
+        },
+        {
+          "offset": 2180,
+          "original": 71,
+          "patched": 84
+        },
+        {
+          "offset": 2181,
+          "original": 32,
+          "patched": 69
+        },
+        {
+          "offset": 2182,
+          "original": 70,
+          "patched": 83
+        },
+        {
+          "offset": 2183,
+          "original": 65,
+          "patched": 84
+        },
+        {
+          "offset": 2184,
+          "original": 76,
+          "patched": 69
+        },
+        {
+          "offset": 2185,
+          "original": 67,
+          "patched": 68
+        },
+        {
+          "offset": 2186,
+          "original": 72,
+          "patched": 32
+        },
+        {
+          "offset": 2187,
+          "original": 73,
+          "patched": 70
+        },
+        {
+          "offset": 2188,
+          "original": 79,
+          "patched": 65
+        },
+        {
+          "offset": 2189,
+          "original": 78,
+          "patched": 76
+        },
+        {
+          "offset": 2190,
+          "original": 32,
+          "patched": 67
+        },
+        {
+          "offset": 2191,
+          "original": 65,
+          "patched": 72
+        },
+        {
+          "offset": 2192,
+          "original": 67,
+          "patched": 73
+        },
+        {
+          "offset": 2193,
+          "original": 69,
+          "patched": 79
+        },
+        {
+          "offset": 2194,
+          "original": 32,
+          "patched": 78
+        },
+        {
+          "offset": 2195,
+          "original": 72,
+          "patched": 32
+        },
+        {
+          "offset": 2197,
+          "original": 88,
+          "patched": 87
+        }
+      ],
+      "decoded_diff_outside_span": [],
+      "literal_flash_offsets": [
+        259739,
+        259740,
+        259741,
+        259742,
+        259743,
+        259744,
+        259745,
+        259746,
+        259747,
+        259748,
+        259749,
+        259750,
+        259751,
+        259752,
+        259753,
+        259754,
+        259755,
+        259756,
+        259757,
+        259758
+      ],
+      "literal_stream_offsets": [
+        795,
+        796,
+        797,
+        798,
+        799,
+        800,
+        801,
+        802,
+        803,
+        804,
+        805,
+        806,
+        807,
+        808,
+        809,
+        810,
+        811,
+        812,
+        813,
+        814
+      ],
+      "propagation_reads": 0,
+      "record_crc": 3043365664,
+      "region_flash": [
+        258944,
+        259968
+      ],
+      "rollback": "installed-1.59-application_noop_UNTESTED_fc6128ab089e.bin",
+      "rollback_sha256": "fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b",
+      "source_sha256": "fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b",
+      "tokens": 254,
+      "word_sum": 821886832
+    },
+    "vendor": {
+      "artefact": "vendor-1.00.58-full_productstring_UNTESTED_fda342b393a7.bin",
+      "artefact_sha256": "fda342b393a732ad3d37ebff4ad557b7faee8c1fc7fe673d0112e83018043661",
+      "checks": [
+        {
+          "detail": "",
+          "name": "the artefact filename carries UNTESTED",
+          "ok": true
+        },
+        {
+          "detail": "sha256 6d410ee0a54f640b",
+          "name": "the rollback build is byte-identical to the source",
+          "ok": true
+        },
+        {
+          "detail": "flash 0x3f354..0x3f754 size 0xb04",
+          "name": "the patch did not move the compressed region",
+          "ok": true
+        },
+        {
+          "detail": "0xb04",
+          "name": "the original region still decodes to its declared length",
+          "ok": true
+        },
+        {
+          "detail": "0xb04",
+          "name": "the patched region decodes to the same declared length",
+          "ok": true
+        },
+        {
+          "detail": "0x3fe both",
+          "name": "the patched stream consumes identically",
+          "ok": true
+        },
+        {
+          "detail": "253 tokens, identical boundaries and control bytes",
+          "name": "the token structure is unchanged",
+          "ok": true
+        },
+        {
+          "detail": "literal",
+          "name": "every patched output byte is a LITERAL in the token stream",
+          "ok": true
+        },
+        {
+          "detail": "0x31b..0x32e",
+          "name": "the literal stream offsets are contiguous",
+          "ok": true
+        },
+        {
+          "detail": "zero reads",
+          "name": "NO later back-reference reads from the patched output range",
+          "ok": true
+        },
+        {
+          "detail": "zero bytes outside 0x882..0x896",
+          "name": "NO decoded byte outside the intended span changed",
+          "ok": true
+        },
+        {
+          "detail": "19 differ, 1 coincide (0x894), 20 = 20 total",
+          "name": "every differing byte is accounted for by the replacement",
+          "ok": true
+        },
+        {
+          "detail": "ROG FALCHION ACE HFX",
+          "name": "the original decoded bytes are the expected string",
+          "ok": true
+        },
+        {
+          "detail": "UNTESTED FALCHION FW",
+          "name": "the patched decoded bytes are the replacement string",
+          "ok": true
+        },
+        {
+          "detail": "",
+          "name": "the replacement preserves length and character class",
+          "ok": true
+        },
+        {
+          "detail": "0xd49f3d6f",
+          "name": "the record chunked-CRC matches an independent recomputation",
+          "ok": true
+        },
+        {
+          "detail": "0x507d3ff0",
+          "name": "the application word-sum matches an independent recomputation",
+          "ok": true
+        },
+        {
+          "detail": "so a reversed dependency order would have left it stale",
+          "name": "the word-sum's covered range contains the record CRC field",
+          "ok": true
+        },
+        {
+          "detail": "25 checks",
+          "name": "every layout check that passed on the source still passes",
+          "ok": true
+        }
+      ],
+      "coinciding_positions": [
+        2196
+      ],
+      "consumed": 1022,
+      "decoded_diff": [
+        {
+          "offset": 2178,
+          "original": 82,
+          "patched": 85
+        },
+        {
+          "offset": 2179,
+          "original": 79,
+          "patched": 78
+        },
+        {
+          "offset": 2180,
+          "original": 71,
+          "patched": 84
+        },
+        {
+          "offset": 2181,
+          "original": 32,
+          "patched": 69
+        },
+        {
+          "offset": 2182,
+          "original": 70,
+          "patched": 83
+        },
+        {
+          "offset": 2183,
+          "original": 65,
+          "patched": 84
+        },
+        {
+          "offset": 2184,
+          "original": 76,
+          "patched": 69
+        },
+        {
+          "offset": 2185,
+          "original": 67,
+          "patched": 68
+        },
+        {
+          "offset": 2186,
+          "original": 72,
+          "patched": 32
+        },
+        {
+          "offset": 2187,
+          "original": 73,
+          "patched": 70
+        },
+        {
+          "offset": 2188,
+          "original": 79,
+          "patched": 65
+        },
+        {
+          "offset": 2189,
+          "original": 78,
+          "patched": 76
+        },
+        {
+          "offset": 2190,
+          "original": 32,
+          "patched": 67
+        },
+        {
+          "offset": 2191,
+          "original": 65,
+          "patched": 72
+        },
+        {
+          "offset": 2192,
+          "original": 67,
+          "patched": 73
+        },
+        {
+          "offset": 2193,
+          "original": 69,
+          "patched": 79
+        },
+        {
+          "offset": 2194,
+          "original": 32,
+          "patched": 78
+        },
+        {
+          "offset": 2195,
+          "original": 72,
+          "patched": 32
+        },
+        {
+          "offset": 2197,
+          "original": 88,
+          "patched": 87
+        }
+      ],
+      "decoded_diff_outside_span": [],
+      "literal_flash_offsets": [
+        259695,
+        259696,
+        259697,
+        259698,
+        259699,
+        259700,
+        259701,
+        259702,
+        259703,
+        259704,
+        259705,
+        259706,
+        259707,
+        259708,
+        259709,
+        259710,
+        259711,
+        259712,
+        259713,
+        259714
+      ],
+      "literal_stream_offsets": [
+        795,
+        796,
+        797,
+        798,
+        799,
+        800,
+        801,
+        802,
+        803,
+        804,
+        805,
+        806,
+        807,
+        808,
+        809,
+        810,
+        811,
+        812,
+        813,
+        814
+      ],
+      "propagation_reads": 0,
+      "record_crc": 3567205743,
+      "region_flash": [
+        258900,
+        259924
+      ],
+      "rollback": "vendor-1.00.58-full_noop_UNTESTED_6d410ee0a54f.bin",
+      "rollback_sha256": "6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d",
+      "source_sha256": "6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d",
+      "tokens": 253,
+      "word_sum": 1350385648
+    }
+  },
+  "replacement_string": "UNTESTED FALCHION FW",
+  "string_offset": 2178
+}
