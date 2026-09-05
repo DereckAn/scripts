@@ -1970,6 +1970,47 @@ same blind spot anywhere else. Logs 109, 110 and 112 all record large unresolved
 access counts, and none has been re-examined this way. 659 offline tests pass,
 both evidence hashes are unchanged, and no device was accessed.
 
+## 2026-09-05 — Phase 6: the development strategy decided (log 115)
+
+An analysis and writing phase. No firmware artefact, no builder change, no
+live-use instructions, nothing committed or staged.
+
+The output is an architecture decision record at `notes/development-strategy.md`,
+generated from one data model so its structured claims can be checked. The
+decision is Path A first — controlled patching, for offline format validation
+only — and Path B not yet.
+
+The interesting part was that the plan's default survived for a different reason
+than the plan gave. The plan tied Path B to the platform map becoming credible,
+and after five subphases the map *is* credible: six must-implement services
+understood, three must-neutralize policies recovered including the corrected
+three-path watchdog arrangement. So the condition arguably passed. Path B is
+still blocked, because credibility was not the binding constraint. The binding
+constraint is that nothing in either analysed image produces a key reading, so a
+clean-room application would enumerate perfectly and type nothing.
+
+Two things the ADR insists on that are easy to lose. The dangerous recovery case
+is not a rejected image — that leaves the device recoverable in bootloader mode —
+but a checksum-correct image that does not enumerate, after which the documented
+route back is a recovery key combination whose physical keys nobody here has
+established. And there is no on-device debugging at all, which makes every
+iteration blind and argues for small reversible changes independently of any
+blocker.
+
+Seven candidate first targets were assessed against Phase 8's criteria. Two pass:
+the USB product string and one ordinary key-policy entry. Five fail, each against
+named criteria — including the one that looks safest and is not, the application's
+USB identity, because changing it is a recovery effect.
+
+The ADR is a decision document and not a runbook, and that is enforced rather
+than promised: a scan for fourteen command-shaped patterns, a companion test
+proving the detector fires on known-bad strings so it cannot pass vacuously, and
+a third confirming ordinary flash-layout prose is not flagged. Twelve cited logs
+are verified to exist and still hash to what the checksum file records.
+
+686 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

@@ -2163,6 +2163,41 @@ was never found in either analysed image. Those facts are consistent; testing
 them means analysing the `0x18038000` image, which is preserved in
 `ghidra/imports` and **has not been imported into `project-step6`**.
 
+### Phase 6: the development strategy is decided (log 115)
+
+The decision itself lives in `notes/development-strategy.md`, which is the
+architecture decision record; only its existence and outcome are recorded here.
+
+**Decision: Path A first — controlled patching, for offline format validation
+only. Status: decided.** The plan's default is confirmed, and confirmed rather
+than inherited: five subphases of evidence since could have overturned it and
+did not.
+
+What changed is the *reason*. The plan attached Path B to "once the platform map
+is credible", and the map is now substantially credible — six must-implement
+services understood, three must-neutralize policies recovered. Map credibility
+turned out not to be the binding constraint. **The binding constraint is that
+nothing in either analysed image produces a key reading**, so a clean-room
+application could initialise, tick, enumerate, build reports and transmit them,
+and every key would read as released forever.
+
+Two facts from the ADR are worth carrying here because they are evidence, not
+opinion:
+
+- **The dangerous recovery case is not a rejected image.** A rejected image
+  leaves the device in bootloader mode, which is recoverable. The dangerous case
+  is an image that is checksum-correct and still does not enumerate: it passes
+  the boot gate, and the remaining documented route back is a recovery key
+  combination whose physical keys log 101 records as unresolved.
+- **There is no on-device debugging available today** — no trace, no console, no
+  working breakpoint path. Every iteration would be blind, with the only signal
+  being whether the device enumerates afterwards. That applies to both paths and
+  would still apply if the Hall blocker were resolved tomorrow.
+
+Five evidence gates are named for Path B, the Hall acquisition boundary flagged
+as the largest, with the never-imported `0x18038000` image as the most promising
+single action against it.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
