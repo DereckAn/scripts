@@ -1,0 +1,451 @@
+{
+  "classes": [
+    "must-implement",
+    "must-neutralize",
+    "may-omit",
+    "unresolved"
+  ],
+  "findings": [
+    {
+      "area": "watchdogs",
+      "confidence": "strongly-inferred",
+      "key": "watchdog_disabled",
+      "kind_basis": "FUN_00001216 writes 0x5afa55aa to +0xc then 0x5afa0000 to +0 of both 0x40008000 and 0x40009000; the literals are at entry 0x1494, 0x1498, 0x149c and 0x14a0 and were read from raw bytes. The control value's low half is ZERO, which is what a disable looks like \u2014 but no register map confirms the bit meanings, so this is inference from the write pattern, not identification",
+      "statement": "both magic-key blocks are DISABLED on the reset path, not fed",
+      "verified_against": "bytes"
+    },
+    {
+      "area": "watchdogs",
+      "confidence": "observed",
+      "key": "watchdog_sole_user",
+      "kind_basis": "a per-function MMIO census over both peripheral maps returns FUN_00001216 in the entry image and NOTHING in the application; so nothing re-enables or feeds them after reset",
+      "statement": "exactly one function in either image touches those blocks",
+      "verified_against": "xref"
+    },
+    {
+      "area": "watchdogs",
+      "confidence": "observed",
+      "key": "usbd_wdt_is_not_a_watchdog_feeder",
+      "kind_basis": "its body FUN_18015c84 is 37 instructions and its whole 12-function call-graph closure reaches only 0xe000ed04 (ICSR). The task name was a lead and it does not pan out: it is a USB-device software supervisor, not a watchdog feeder",
+      "statement": "the usbd_wdt task does NOT service any hardware watchdog",
+      "verified_against": "xref"
+    },
+    {
+      "area": "clocks",
+      "confidence": "observed",
+      "key": "reset_sequence",
+      "kind_basis": "FUN_00001216, called by Vector_Reset, listing at 0x1216..0x1278: `ldr r3,[r4,#0x0]` / `cbnz` / `ldr r3,[r4,#0xc]` / `cbz`, then `mrs r0,msp` compared against 0x18000000 and 0x18040000, then bl to 0xd3e, 0xde8, 0xe68, 0xec4, 0xef6 and a tail branch to 0xf0a",
+      "statement": "the reset-path init reads 0x45000000 and 0x4500000c to choose a branch, validates the stack pointer, then runs a fixed five-call chain",
+      "verified_against": "listing"
+    },
+    {
+      "area": "clocks",
+      "confidence": "observed",
+      "key": "stack_window",
+      "kind_basis": "`mrs r0,msp` / `cmp.w r0,#0x18000000` / `bcc` then a compare against the literal at 0x14a4 = 0x18040000, with `movs r0,#0x7` and a call to FUN_00000dbc on failure",
+      "statement": "the reset path requires the stack pointer to lie in 0x18000000..0x18040000, and faults out otherwise",
+      "verified_against": "listing"
+    },
+    {
+      "area": "clocks",
+      "confidence": "unresolved",
+      "key": "no_frequency_claimed",
+      "kind_basis": "no constant in the recovered reset chain carries a unit, and no timing relationship ties a divider to a rate. Phase 5C recovered the tick's RATIOS (1, 8, 5, 2, 10, 10) and explicitly not its period; nothing since has changed that",
+      "statement": "no clock frequency is established anywhere",
+      "verified_against": "listing"
+    },
+    {
+      "area": "clocks",
+      "confidence": "observed",
+      "key": "boot_remap",
+      "kind_basis": "FUN_00000ec4's census entries record both stores; log 100 identified 0x60021000 as record slot 1's address, so the pair looks like a boot-source remap. The block is NOT named",
+      "statement": "the reset path writes 0x4002f000 = 3 and 0x4002f004 = 0x60021000",
+      "verified_against": "xref"
+    },
+    {
+      "area": "faults",
+      "confidence": "observed",
+      "key": "nmi_resets",
+      "kind_basis": "log 100 recorded Vector_NMI at entry 0x20be writing AIRCR with 0x05fa0004, which is VECTKEY | SYSRESETREQ. That is a hardware action, not a diagnostic",
+      "statement": "the NMI handler requests a system reset",
+      "verified_against": "listing"
+    },
+    {
+      "area": "faults",
+      "confidence": "strongly-inferred",
+      "key": "fault_handlers_diagnostic",
+      "kind_basis": "log 100's peripheral census attributes those three ARM core registers to the HardFault vector and nothing else; reading a status register cannot itself be required for correct operation",
+      "statement": "the HardFault handler reads CFSR, MMFAR and BFAR \u2014 diagnostics, not a hardware requirement",
+      "verified_against": "xref"
+    },
+    {
+      "area": "faults",
+      "confidence": "strongly-inferred",
+      "key": "vector_extent",
+      "kind_basis": "log 102 established the extent by the first code address rather than a terminator, because ARMv7-M tables have none. THIS IS DELIBERATELY LEFT AS INFERENCE: no exact-device evidence proves the implemented interrupt count, and none has appeared since",
+      "statement": "the vector table is 80 slots and IRQ63 is live",
+      "verified_against": "bytes"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "second_context_exists",
+      "kind_basis": "CandidateB_Main at 0x1800023a: `ldr r0,[0x180003f0]` loads 0x60074000, `str r5,[r4,#0x0]` clears 0x20000000, a veneer call, then `ldr r0,[0x180003f4]` / `ldr r1,[r4,#0x0]` / `cmp` / `bne` spins until the mailbox holds 0x12345678",
+      "statement": "a second execution context is started and waited for at boot",
+      "verified_against": "listing"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "handshake_token_location",
+      "kind_basis": "an exhaustive aligned-word search of the entry slice, the application slice, the reconstructed region, the bootloader mirror and the 0x18038000 RAM image finds 0x12345678 only at app+0x3f4 (the expected value) and ram18038000+0x3214",
+      "statement": "the handshake token exists in exactly two places, one of them inside the 0x18038000 image",
+      "verified_against": "bytes"
+    },
+    {
+      "area": "multicore",
+      "confidence": "strongly-inferred",
+      "key": "start_mechanism",
+      "kind_basis": "the veneer at 0x1801bd96 encodes `movw r12,#0x1f51`; entry+0x1f50 is `70 b5` (push {r4,r5,r6,lr}), validates as a subroutine and decodes cleanly, and its first register work is a read-modify-write of [r4,#0x100] clearing bit 15. Ghidra had not disassembled it because it is unreached, so this rests on raw bytes plus the validator rather than on an analysed function",
+      "statement": "the start routine is entry-image 0x1f50, reached by a veneer, and it manipulates 0x45000100",
+      "verified_against": "bytes"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "second_image_vector",
+      "kind_basis": "log 104 recorded it; re-verified here \u2014 the word at ram18038000+0x4 is 0x180381c1",
+      "statement": "the 0x18038000 image carries its own vector table with reset 0x180381c1",
+      "verified_against": "bytes"
+    },
+    {
+      "area": "multicore",
+      "confidence": "unresolved",
+      "key": "second_context_ownership",
+      "kind_basis": "the start is recovered and the handshake is recovered, but no evidence assigns USB, the Hall acquisition or storage to it. It is a strong candidate for the Phase 5D acquisition boundary precisely because that producer was never found in either analysed image \u2014 but a candidate is not a finding",
+      "statement": "what the second context OWNS is not established",
+      "verified_against": "xref"
+    },
+    {
+      "area": "multicore",
+      "confidence": "unresolved",
+      "key": "no_rom_service_identified",
+      "kind_basis": "every cross-image call recovered so far resolves into one of the preserved images. A mask ROM was not searched and cannot be, so its absence is unproven either way",
+      "statement": "no ROM call was identified",
+      "verified_against": "xref"
+    }
+  ],
+  "multicore": {
+    "handshake_mailbox": 536870912,
+    "handshake_token": 305419896,
+    "second_image_dest": 402882560,
+    "second_image_reset_vector": 402883009,
+    "second_image_source": 1611087872,
+    "start_register": 1157628160,
+    "start_routine_entry_image": 8016,
+    "token_offset_in_second_image": 12820
+  },
+  "prototype": {
+    "blockers": [
+      {
+        "boundary": "no function in either analysed image writes the per-key travel array from a hardware register, and the buffer is reachable only by dereferencing a pointer cell that something fills at runtime. The producer is outside the analysed set. The second execution context at 0x18038000 is a CANDIDATE owner and is not evidence.",
+        "key": "hall_acquisition",
+        "name": "per-key Hall sample acquisition"
+      },
+      {
+        "boundary": "the LED driver is unidentified, so its idle polarity is unknown and no shared clock, pin or controller initialisation could be inspected. Proving safe omission requires identifying the consumer of the 306-byte frame at 0x1802505e.",
+        "key": "rgb",
+        "name": "RGB / LampArray lighting"
+      },
+      {
+        "boundary": "no crystal value, PLL multiplier or divider with a stated unit appears in the recovered code, and no register map exists for the blocks the sequence writes. Any Hz figure would have to come from the silicon or from measurement, neither of which this project has.",
+        "key": "clock_frequency",
+        "name": "the actual clock configuration"
+      }
+    ],
+    "minimum_from_the_plan": [
+      "understood reset/clock/RAM behaviour",
+      "a safe watchdog policy",
+      "GPIO plus Hall/sample acquisition",
+      "calibrated key-state generation",
+      "one USB keyboard-IN route"
+    ],
+    "status": {
+      "Hall acquisition": "BLOCKED \u2014 the producer is not recovered",
+      "USB keyboard-IN": "recovered end to end",
+      "key-state generation": "recovered and executable",
+      "reset/clock/RAM": "sequence preserved; FREQUENCY UNRESOLVED",
+      "watchdog policy": "known: disable both, as the vendor does"
+    }
+  },
+  "relocation": {
+    "delta": 44,
+    "note": "function counterparts are looked up in Phase 3's measured match table, never computed; see log 110's correction"
+  },
+  "services": [
+    {
+      "classification": "must-implement",
+      "confidence": "observed",
+      "evidence": [
+        "log 113 step 1: FUN_00001216's listing",
+        "log 113: the stack window 0x18000000..0x18040000"
+      ],
+      "evidence_boundary": "",
+      "key": "reset_clock_ram",
+      "name": "reset, clock and RAM bring-up",
+      "rationale": "the reset path validates the stack window and runs a fixed five-call init chain before anything else can run. A replacement must reproduce an equivalent, though it need not reproduce this one instruction for instruction.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-neutralize",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 113 step 2: FUN_00001216 writes the key then a zero control word to both blocks",
+        "log 113 step 2: no other function in either image touches them"
+      ],
+      "evidence_boundary": "",
+      "key": "watchdogs",
+      "name": "the two magic-key watchdog blocks",
+      "rationale": "the vendor firmware disables both on the reset path and never feeds them. A replacement that simply ignores them inherits whatever their reset default is, which is not established \u2014 so the safe policy is to perform the same disable, not to omit it.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-implement",
+      "confidence": "observed",
+      "evidence": [
+        "log 109 step 3: Vector_IRQ38 is the only writer of 0x1801ee84",
+        "log 109 step 4: the prescaler ladder"
+      ],
+      "evidence_boundary": "",
+      "key": "tick",
+      "name": "the periodic tick that drives everything",
+      "rationale": "IRQ38 is the sole writer of the service-task event word, and the entire scan-to-HID chain hangs off it. Without a tick there is no key state and no report.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "unresolved",
+      "confidence": "unresolved",
+      "evidence": [
+        "log 110 step 4: the travel buffer's address appears in no aligned word of any image",
+        "log 110 step 3: every 0x40000000 access is 32-bit; no converter shape exists in either census"
+      ],
+      "evidence_boundary": "no function in either analysed image writes the per-key travel array from a hardware register, and the buffer is reachable only by dereferencing a pointer cell that something fills at runtime. The producer is outside the analysed set. The second execution context at 0x18038000 is a CANDIDATE owner and is not evidence.",
+      "key": "hall_acquisition",
+      "name": "per-key Hall sample acquisition",
+      "rationale": "THE LARGEST BLOCKER. Phase 5D recovered the comparison that turns a travel byte into a key bit, but not the producer of those bytes. Without it a prototype has no input at all, so this is a blocker and not an omission.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-implement",
+      "confidence": "observed",
+      "evidence": [
+        "log 110 step 1: cmp r3,#0x64 and the surrounding control flow",
+        "tool/model_hall_actuation.py implements and tests it"
+      ],
+      "evidence_boundary": "",
+      "key": "key_state",
+      "name": "key-state generation from travel bytes",
+      "rationale": "the comparison, the hold band and the bitmap update are recovered as executable arithmetic and are reproducible.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-implement",
+      "confidence": "observed",
+      "evidence": [
+        "log 107 step 4: the builder's arithmetic reproduces 0x008d",
+        "log 107 step 5: 24 field checks against the host capture"
+      ],
+      "evidence_boundary": "",
+      "key": "usb_enumeration",
+      "name": "USB enumeration and the descriptor set",
+      "rationale": "the descriptor parameter table and the builder's own size arithmetic reproduce the host-observed wTotalLength exactly, so a replacement can enumerate compatibly.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-implement",
+      "confidence": "observed",
+      "evidence": [
+        "log 109 step 1: interface 0, 8 bytes, buffer 0x1801e7c8",
+        "log 107 step 8: EP 0x81 is one of the two required endpoints"
+      ],
+      "evidence_boundary": "",
+      "key": "usb_boot_keyboard",
+      "name": "interface 0, the 8-byte boot report",
+      "rationale": "the chosen USB compatibility target. Its route from the report builder to the endpoint is fully traced.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-implement",
+      "confidence": "observed",
+      "evidence": [
+        "log 107 step 8: EP 0x00 is required",
+        "log 112 step 2: the class handler's request codes"
+      ],
+      "evidence_boundary": "",
+      "key": "usb_control",
+      "name": "the control endpoint",
+      "rationale": "enumeration and every Feature report depend on it.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "must-neutralize",
+      "confidence": "observed",
+      "evidence": [
+        "log 113 step 4: the spin at 0x1800024c..0x18000250",
+        "log 113 step 4: the token exists inside the 0x18038000 image"
+      ],
+      "evidence_boundary": "",
+      "key": "second_context",
+      "name": "the second execution context at 0x18038000",
+      "rationale": "main SPINS forever until the mailbox token appears, so a replacement that neither starts the second context nor removes the wait will hang at boot. It must either reproduce the start or remove the handshake \u2014 it cannot ignore it.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "may-omit",
+      "confidence": "observed",
+      "evidence": [
+        "log 107 step 7: the RX mailbox and its ownership rule",
+        "log 111 step 7: the four-step never-do argument"
+      ],
+      "evidence_boundary": "",
+      "key": "vendor_channel",
+      "name": "the vendor 0xFF00 configuration channel",
+      "rationale": "the receive mailbox, the dispatcher and the transmit path are all traced, and omitting them removes only vendor-software support. The safe idle state is proven: the mailbox is a single RAM slot gated on its own byte 0, so a firmware that never fills it cannot dispatch anything.",
+      "safe_idle_proven": true
+    },
+    {
+      "classification": "may-omit",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 111 step 7: the omit-all-writes proof",
+        "log 111 step 6: the ranges start at 0x320000, disjoint from 0x10000..0x7c000"
+      ],
+      "evidence_boundary": "",
+      "key": "persistence",
+      "name": "nonvolatile settings and the commit path",
+      "rationale": "omission is provably safe: every route into an erase runs through one command byte and a one-deep request struct, and the target ranges are disjoint from the application region. A prototype that writes neither cannot corrupt existing configuration.",
+      "safe_idle_proven": true
+    },
+    {
+      "classification": "unresolved",
+      "confidence": "unresolved",
+      "evidence": [
+        "log 112 step 5: both frame consumers reach zero resolved MMIO",
+        "log 112 step 6: the buffer's idle state is provable, the hardware's is not"
+      ],
+      "evidence_boundary": "the LED driver is unidentified, so its idle polarity is unknown and no shared clock, pin or controller initialisation could be inspected. Proving safe omission requires identifying the consumer of the 306-byte frame at 0x1802505e.",
+      "key": "rgb",
+      "name": "RGB / LampArray lighting",
+      "rationale": "NOT safely omittable on current evidence. The protocol is fully recovered and the frame buffer's idle state is provable, but whether an all-zero frame means the LEDs are OFF depends on a driver polarity nobody has established. Omission could leave the array at full brightness.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "may-omit",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 109 step 1: the interface 2 and 3 send sites",
+        "log 107 step 8: both are marked optional"
+      ],
+      "evidence_boundary": "",
+      "key": "media_nkro",
+      "name": "interface 2 and 3, media and NKRO reports",
+      "rationale": "both are built and sent by the same function as the boot report, from separate buffers. Omitting them means not calling those sends; nothing else depends on them, and the buffers are inert RAM.",
+      "safe_idle_proven": true
+    },
+    {
+      "classification": "may-omit",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 113 step 3: the fault handlers read CFSR/MMFAR/BFAR only"
+      ],
+      "evidence_boundary": "",
+      "key": "diagnostics",
+      "name": "the fault logger and debug strings",
+      "rationale": "the fault handlers read status registers and the debug paths print strings. Neither is a hardware requirement; the NMI's reset request is classified separately.",
+      "safe_idle_proven": true
+    },
+    {
+      "classification": "must-neutralize",
+      "confidence": "observed",
+      "evidence": [
+        "log 113 step 3: AIRCR is written with VECTKEY|SYSRESETREQ"
+      ],
+      "evidence_boundary": "",
+      "key": "nmi_reset",
+      "name": "the NMI handler's system reset",
+      "rationale": "the handler requests SYSRESETREQ. A replacement must decide deliberately whether an NMI resets the device; inheriting the vendor behaviour by accident is not acceptable, and neither is leaving the vector unpopulated.",
+      "safe_idle_proven": false
+    },
+    {
+      "classification": "may-omit",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 109 step 2: the service task busy-spins rather than blocking",
+        "log 106: the five tasks and their roles"
+      ],
+      "evidence_boundary": "",
+      "key": "rtos",
+      "name": "the vendor RTOS",
+      "rationale": "the plan says a replacement need not copy it. The scheduling the mandatory path depends on is a busy-spin event pump and a prescaler, both of which are reproducible without the RTOS; the RTOS's own tasks are the optional services.",
+      "safe_idle_proven": true
+    },
+    {
+      "classification": "unresolved",
+      "confidence": "unresolved",
+      "evidence": [
+        "log 113 step 1: no constant in the chain carries a unit",
+        "log 109: the tick's ratios are known, its period is not"
+      ],
+      "evidence_boundary": "no crystal value, PLL multiplier or divider with a stated unit appears in the recovered code, and no register map exists for the blocks the sequence writes. Any Hz figure would have to come from the silicon or from measurement, neither of which this project has.",
+      "key": "clock_frequency",
+      "name": "the actual clock configuration",
+      "rationale": "the reset sequence is preserved as a call chain, but no frequency is established. A prototype can copy the sequence; it cannot reason about timing.",
+      "safe_idle_proven": false
+    }
+  ],
+  "summary": {
+    "may-omit": [
+      "vendor_channel",
+      "persistence",
+      "media_nkro",
+      "diagnostics",
+      "rtos"
+    ],
+    "must-implement": [
+      "reset_clock_ram",
+      "tick",
+      "key_state",
+      "usb_enumeration",
+      "usb_boot_keyboard",
+      "usb_control"
+    ],
+    "must-neutralize": [
+      "watchdogs",
+      "second_context",
+      "nmi_reset"
+    ],
+    "unresolved": [
+      "hall_acquisition",
+      "rgb",
+      "clock_frequency"
+    ]
+  },
+  "upstream_models": [
+    "hall-actuation.json",
+    "nonvolatile-writes.json",
+    "rgb-lamparray.json",
+    "scan-pipeline.json",
+    "usb-routing.json"
+  ],
+  "watchdog": {
+    "blocks": [
+      1073774592,
+      1073778688
+    ],
+    "control_value": 1526333440,
+    "fed_anywhere": false,
+    "key_offset": 12,
+    "sole_user": 4630,
+    "unlock_key": 1526355370
+  }
+}

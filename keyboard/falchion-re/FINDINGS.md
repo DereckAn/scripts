@@ -2062,6 +2062,81 @@ all-zero as full brightness. Nor could any shared clock, pin or controller
 initialisation be inspected, because it lives in the unreached consumers. A
 first custom firmware that omits RGB must treat this as an open risk.
 
+### Phase 5G and the Phase 5 final dependency gate (log 113)
+
+**Watchdogs.** Exactly **one** function in either image touches the two
+magic-key blocks `0x40008000` and `0x40009000`: `FUN_00001216`, on the reset
+path. It writes the key `0x5afa55aa` to `+0xc` and then `0x5afa0000` to `+0` of
+both. **Nothing anywhere re-enables or feeds them.** The control value's low
+half is zero, which is what a disable looks like — but no register map confirms
+the bit meanings, so this is *inference from the write pattern, not
+identification*.
+
+**The `usbd_wdt` lead does not pan out.** Its body is 37 instructions and its
+whole twelve-function closure reaches only `0xe000ed04` (ICSR) — no watchdog
+block at all. It is a USB-device software supervisor, not a hardware watchdog
+feeder. Taking the task name as evidence would have produced the opposite
+conclusion.
+
+**Clocks.** The reset path reads `0x45000000`/`0x4500000c` to choose a branch,
+then **faults out unless MSP lies in `0x18000000..0x18040000`** — a hard,
+listing-verified constraint on any replacement's RAM layout — then runs a fixed
+five-call init chain. **No frequency is established anywhere**: no constant
+carries a unit, and a test forbids any Hz figure in the model's output.
+
+**Faults.** NMI writes AIRCR with `VECTKEY|SYSRESETREQ` — a hardware action, so
+the decision must be deliberate. HardFault reads CFSR/MMFAR/BFAR only, which is
+diagnostic. The 80-slot vector extent and the live IRQ63 stay **strongly
+inferred**, enforced by test, because no exact-device evidence proves the
+implemented interrupt count.
+
+**Multicore — log 104's open question is answered.** `CandidateB_Main` loads
+`0x60074000`, clears `0x20000000`, calls entry-image `0x1f50` through a veneer
+(`movw r12,#0x1f51`, hand-decoded; the target validates as a subroutine and its
+first register work is a read-modify-write of `0x45000100`), then **spins until
+`0x20000000` holds `0x12345678`**. That token appears in exactly two places in
+the whole repository: the application's expected-value literal, and **inside the
+`0x18038000` image at `+0x3214`**. So a second execution context is started at
+boot and waited for. **What it owns is still unresolved** — it is a *candidate*
+owner of the Phase 5D acquisition, and a candidate is not a finding.
+
+**The final dependency gate.** Seventeen services, partitioned:
+
+| class | count | services |
+|---|---|---|
+| must-implement | 6 | reset/clock/RAM, tick, key-state, USB enumeration, boot keyboard, control endpoint |
+| must-neutralize | 3 | watchdogs, second context, NMI reset |
+| may-omit | 5 | vendor channel, persistence, media/NKRO, diagnostics, the RTOS |
+| **unresolved (blockers)** | **3** | **Hall acquisition, RGB, clock frequency** |
+
+Every classification cites a log step. The gate is enforced by tests rather than
+by good intentions: an unresolved service must name an evidence boundary of more
+than 60 characters, `may-omit` requires a **proven** safe idle state, and the
+contrapositive of that rule is what makes **RGB a blocker** — its protocol is
+fully recovered, but an all-zero frame cannot be shown to mean *LEDs off*.
+
+**No reset-reachable write is called an initialisation requirement solely
+because of graph reachability.** Each must-implement service names a consumer
+that fails without it.
+
+**A first typing prototype: three of five requirements are done.**
+
+| requirement | status |
+|---|---|
+| reset/clock/RAM | sequence preserved; **frequency unresolved** |
+| watchdog policy | known — disable both, as the vendor does |
+| Hall acquisition | **BLOCKED** |
+| key-state generation | recovered and executable |
+| USB keyboard-IN | recovered end to end |
+
+**The Hall acquisition is the largest blocker.** Without it a prototype could
+enumerate, tick, build reports and transmit them, and every key would read as
+released forever. The leading lead is the second execution context — started,
+waited for, and owning something the application does not, while the 5D producer
+was never found in either analysed image. Those facts are consistent; testing
+them means analysing the `0x18038000` image, which is preserved in
+`ghidra/imports` and **has not been imported into `project-step6`**.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

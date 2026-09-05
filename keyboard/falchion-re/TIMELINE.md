@@ -1878,6 +1878,57 @@ depends on a driver polarity nobody here can establish.
 617 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-05 — Phase 5G and the Phase 5 final gate (log 113)
+
+Phase 5G and the final dependency gate in one invocation. Nothing was committed
+or staged, every Ghidra run was read-only, and no seeding was needed.
+
+The watchdog question resolved cleanly and the answer was smaller than expected:
+exactly one function in either image touches the two magic-key blocks, on the
+reset path, writing an unlock key and then a zeroed control word to both. Nothing
+feeds them anywhere. The write pattern is what a disable looks like, and that is
+recorded as inference rather than identification, because no register map
+confirms the bits.
+
+The most useful thing about the phase was a lead that failed. The `usbd_wdt`
+task's name points straight at a watchdog feeder; tracing it shows a
+twelve-function closure that reaches only ICSR and never touches a watchdog
+block. It is a USB software supervisor. Had the name been taken as evidence the
+phase would have concluded the opposite, which is a reasonable argument for the
+habit of tracing names rather than trusting them.
+
+Clocks gave one hard constraint and one firm refusal: the reset path faults out
+unless the stack pointer lies in a specific 256 KiB window, and no frequency is
+established anywhere — a test now forbids any Hz figure from appearing in the
+model.
+
+Then the question log 104 left open got its answer. Main hands a flash address
+to an entry-image routine through a veneer and spins until a mailbox word holds
+`0x12345678`. Searching every preserved image for that token turns it up in
+exactly two places: the value main compares against, and inside the `0x18038000`
+image itself. So a second execution context is started at boot and waited for.
+What it *owns* is still unresolved, and it is recorded as a candidate rather than
+promoted to a finding — with a test to keep it that way.
+
+The final gate then classified seventeen services rather than address spaces: six
+must-implement, three must-neutralize, five may-omit, three unresolved. The rules
+that give it teeth are enforced by tests, not by intention — an unresolved
+service must name a real evidence boundary, and `may-omit` requires a *proven*
+safe idle state. That second rule is what keeps RGB in the blocker column despite
+its protocol being fully recovered: nobody can show that an all-zero frame means
+the LEDs are dark.
+
+Three of the five requirements for a first typing prototype are done, one is
+partial, and one is blocked outright. The Hall acquisition remains the largest
+blocker, and the strongest lead for it is the second context — started, waited
+for, and owning something the application does not, while the producer Phase 5D
+hunted was never found in either analysed image. Consistent, untested, and the
+obvious next move: the `0x18038000` image is preserved and has never been
+imported.
+
+650 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
