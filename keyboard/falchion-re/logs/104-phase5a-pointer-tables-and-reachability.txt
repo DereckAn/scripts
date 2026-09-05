@@ -1,0 +1,340 @@
+ASUS ROG Falchion Ace HFX — Phase 5A: function-pointer tables and reachability
+Date: 2026-09-04 America/Mexico_City
+Status: offline only; no device was accessed. Phase 5A of the continuation
+plan. Phase 5 remains INCOMPLETE.
+
+WHY 5A COMES FIRST
+Ghidra's call graph cannot follow a call made through a pointer held in a
+table, so before this subphase only 51 of the application's 530 functions
+were reachable from any evidence-backed root. Every later subphase — USB,
+scan, Hall/ADC, settings, RGB — inherits that blindness, because a function
+with no context cannot be placed in a task or an interrupt. 5A therefore
+recovers the tables first.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no bootloader entry, no
+probe or backup tool run, no sudo, no package install, no network access,
+and no unlock/erase/program/reset/SPI construction. The only Ghidra writes
+were createFunction calls at candidate addresses in the ignored
+ghidra/project-step6. The pre-existing ghidra/project/falchion-hfx was not
+opened. Both evidence binaries are unchanged.
+
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+ADDED FILES
+  tool/find_pointer_tables.py       — table detector, 5A's evidence source
+  tool/test_find_pointer_tables.py  — 22 offline tests
+  notes/references.md               — the SNC7320-series brief, scoped
+  notes/dual-core-question.md       — the dual-core participation question
+
+STEP 1 — THE DETECTION RULE
+A candidate is a word with the Thumb bit set whose target, once that bit is
+cleared, is an even address at or above the image's first code address. A
+lone such word proves nothing, so a candidate is reported only as part of a
+run of at least three at a constant stride. The code floor matters: without
+it, structure words that happen to carry bit 0 produce targets like
+0x00000004, and the first cut of this tool reported exactly that.
+$ python3 tool/find_pointer_tables.py | sed -n '1,6p'
+  PROGRAM find_pointer_tables
+  PURPOSE locate function-pointer tables so their targets can be seeded
+  RULE a run of at least 3 Thumb pointers at a constant stride from (4, 8, 12, 16, 20, 24, 32), each targeting an even address at or above the image's first code address. A lone word that looks like a pointer is not reported as a table.
+
+  IMAGE entry base=0x00000000 size=0x58ac code_floor=0x140
+    slice=installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  [exit 0]
+
+STEP 2 — THE TABLES
+$ python3 tool/find_pointer_tables.py | sed -n '/^IMAGE entry/,/^RESULT/p'
+  IMAGE entry base=0x00000000 size=0x58ac code_floor=0x140
+    slice=installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+    sha256=f093979a9204faf0a2ca2c81a68a70b813d8c015def89546eca2e24c70e5b835
+    tables=2 entries=11 known_targets=3 new_targets=1 loose_candidates=15
+    excluded=0x0..0x140 (decoded and seeded separately)
+    TABLE 0x00001404..0x00001478 stride=16 entries=8
+      0x00001404 -> 0x00000a0c
+      0x00001414 -> 0x00000a0c
+      0x00001424 -> 0x00000a0c
+      0x00001434 -> 0x00000a0c
+      0x00001444 -> 0x00000a0c
+      0x00001454 -> 0x00000a0c
+      0x00001464 -> 0x00000a0c
+      0x00001474 -> 0x00000a0c
+    TABLE 0x00005680..0x000056b4 stride=24 entries=3
+      0x00005680 -> 0x00004004
+      0x00005698 -> 0x00004018
+      0x000056b0 -> 0x000040b4
+    NEW_TARGETS 0x00004018
+    LOOSE 0x000013b8 -> 0x00000a0c (not part of any run; not reported as a table entry)
+    LOOSE 0x000013dc -> 0x00000a0c (not part of any run; not reported as a table entry)
+    LOOSE 0x000014ec -> 0x00001216 (not part of any run; not reported as a table entry)
+    LOOSE 0x000014f0 -> 0x00000140 (not part of any run; not reported as a table entry)
+    LOOSE 0x00001868 -> 0x000016b0 (not part of any run; not reported as a table entry)
+    LOOSE 0x00001888 -> 0x00000a0c (not part of any run; not reported as a table entry)
+    LOOSE 0x00001c9c -> 0x00000a0c (not part of any run; not reported as a table entry)
+    LOOSE 0x00002124 -> 0x00000a0c (not part of any run; not reported as a table entry)
+    LOOSE 0x000024d0 -> 0x00000a0c (not part of any run; not reported as a table entry)
+    LOOSE 0x0000250c -> 0x000004f0 (not part of any run; not reported as a table entry)
+    LOOSE 0x00003700 -> 0x00000bc8 (not part of any run; not reported as a table entry)
+    LOOSE 0x00005414 -> 0x00000e04 (not part of any run; not reported as a table entry)
+    LOOSE 0x000056d0 -> 0x000042d8 (not part of any run; not reported as a table entry)
+    LOOSE 0x000056f0 -> 0x00003ffe (not part of any run; not reported as a table entry)
+    LOOSE 0x000056fc -> 0x00003ffe (not part of any run; not reported as a table entry)
+
+  IMAGE app base=0x18000000 size=0x1e380 code_floor=0x18000000
+    slice=installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+    sha256=be463863b8cd6ca7dae56a1bba396ec7906f248389fd3e2a6656210ca20773be
+    tables=3 entries=44 known_targets=44 new_targets=0 loose_candidates=9
+    TABLE 0x18016d44..0x18016dac stride=4 entries=26
+      0x18016d44 -> 0x18016828
+      0x18016d48 -> 0x180167a4
+      0x18016d4c -> 0x180167a0
+      0x18016d50 -> 0x1801671c
+      0x18016d54 -> 0x18016584
+      0x18016d58 -> 0x18016502
+      0x18016d5c -> 0x180164fe
+      0x18016d60 -> 0x18016458
+      0x18016d64 -> 0x180162bc
+      0x18016d68 -> 0x180162b8
+      0x18016d6c -> 0x180162b4
+      0x18016d70 -> 0x180162b0
+      0x18016d74 -> 0x1801622e
+      0x18016d78 -> 0x18016104
+      0x18016d7c -> 0x18016082
+      0x18016d80 -> 0x18015f52
+      0x18016d84 -> 0x18015f28
+      0x18016d88 -> 0x18015f1a
+      0x18016d8c -> 0x1801533c
+      0x18016d90 -> 0x180155e8
+      0x18016d94 -> 0x180172e0
+      0x18016d98 -> 0x18015ee2
+      0x18016d9c -> 0x18015ece
+      0x18016da0 -> 0x180158de
+      0x18016da4 -> 0x18015950
+      0x18016da8 -> 0x1801597e
+    TABLE 0x18017d08..0x18017d20 stride=4 entries=6
+      0x18017d08 -> 0x1801756a
+      0x18017d0c -> 0x18017522
+      0x18017d10 -> 0x18017678
+      0x18017d14 -> 0x1801781c
+      0x18017d18 -> 0x1801781e
+      0x18017d1c -> 0x18017820
+    TABLE 0x18018ce8..0x18018d18 stride=4 entries=12
+      0x18018ce8 -> 0x18018204
+      0x18018cec -> 0x18017f9a
+      0x18018cf0 -> 0x180184b6
+      0x18018cf4 -> 0x18018996
+      0x18018cf8 -> 0x180186a4
+      0x18018cfc -> 0x18018992
+      0x18018d00 -> 0x180186a6
+      0x18018d04 -> 0x180186d4
+      0x18018d08 -> 0x18018704
+      0x18018d0c -> 0x18018734
+      0x18018d10 -> 0x18018764
+      0x18018d14 -> 0x180188f0
+    LOOSE 0x18000e80 -> 0x1801c0de (not part of any run; not reported as a table entry)
+    LOOSE 0x18000e90 -> 0x1801c230 (not part of any run; not reported as a table entry)
+    LOOSE 0x18002594 -> 0x1801c382 (not part of any run; not reported as a table entry)
+    LOOSE 0x1800403c -> 0x1801c382 (not part of any run; not reported as a table entry)
+    LOOSE 0x18008644 -> 0x1801d2fe (not part of any run; not reported as a table entry)
+    LOOSE 0x1801373c -> 0x180136ca (not part of any run; not reported as a table entry)
+    LOOSE 0x18014420 -> 0x1801414c (not part of any run; not reported as a table entry)
+    LOOSE 0x180193c0 -> 0x18018eda (not part of any run; not reported as a table entry)
+    LOOSE 0x180193c4 -> 0x18018e7c (not part of any run; not reported as a table entry)
+
+  RESULT tables=5 new_targets=1
+  [exit 0]
+  NOTE the entry image's 0x1404 array is eight 16-byte structures all carrying the same handler 0x00000a0c, which two loose words also point at: a shared default callback. 0x5680 is a three-element 24-byte structure array with three distinct handlers. In the application, 25 of the 44 table entries were ALREADY known functions, which is what makes those three tables evidence rather than a byte coincidence.
+
+STEP 3 — CORROBORATION FROM THE OTHER RELEASE
+$ python3 tool/find_pointer_tables.py --vendor | grep -E '^  TABLE'
+    TABLE 0x00001404..0x00001478 stride=16 entries=8
+    TABLE 0x00005680..0x000056b4 stride=24 entries=3
+    TABLE 0x18016d18..0x18016d80 stride=4 entries=26
+    TABLE 0x18017cdc..0x18017cf4 stride=4 entries=6
+    TABLE 0x18018cbc..0x18018cec stride=4 entries=12
+  [exit 0]
+  NOTE the vendor tables sit at exactly the installed locations minus 0x2c, the relocation Phase 3 measured independently. Two unrelated methods agreeing.
+
+STEP 4 — SEEDING (ignored project only)
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -process <slice> -noanalysis \
+      -scriptPath "$PWD/ghidra/scripts" \
+      -postScript FalchionSeedVectors.java \
+        $(python3 tool/find_pointer_tables.py --seed-args <entry|app>)
+  then -process <slice> to re-analyse.
+
+  installed entry: created=3 existing=0 skipped=1
+  installed app:   created=19 existing=0 skipped=0
+  vendor entry:    created=3 existing=0 skipped=1
+  vendor app:      created=19 existing=0 skipped=0
+
+One of the four entry-image targets was skipped as already covered. Both
+releases were seeded so the two sides stay comparable.
+$ grep -c '^FUNC' ghidra/inventories/*.txt
+  ghidra/inventories/installed_a.txt:101
+  ghidra/inventories/installed_b.txt:573
+  ghidra/inventories/vendor_a.txt:101
+  ghidra/inventories/vendor_b.txt:573
+  [exit 0]
+  NOTE 101 functions per entry image and 573 per application, up from 97 and 530. Symmetric across releases, so Phase 3 stays valid.
+
+STEP 5 — 5A's ACTUAL DELIVERABLE: REACHABILITY
+A function reached only through a table is entered by a mechanism the call
+graph cannot see, so each table entry is itself a reachability root,
+labelled with the table it came from.
+$ python3 tool/map_hardware_interfaces.py | grep -E 'functions=[0-9]+ reached|table roots'
+    base=0x00000000 functions=101 reached=91 unreached=10
+    table roots: table@0x00001404, table@0x00005680
+    base=0x18000000 functions=573 reached=138 unreached=435
+    table roots: table@0x18016d44, table@0x18017d08, table@0x18018ce8
+  [exit 0]
+  NOTE entry image 87 -> 91 of 101 reached. Application 51 -> 138 of 573: reachability nearly tripled. Contexts now name the table a function is entered from, not merely that it is reachable.
+
+STEP 6 — WHAT 5A DID NOT CLOSE
+435 of the application's 573 functions are still unreached. Flash-resident
+tables are now exhausted: the detector finds no further run of three, and
+the nine remaining loose candidates are single words that the stated rule
+declines to call a table.
+$ python3 tool/find_pointer_tables.py | grep -c '^  LOOSE'
+  24
+  [exit 0]
+  NOTE loose candidates across both images; each is a single word, not a run
+
+So the remaining entry mechanisms are outside flash tables. The three
+possibilities, none yet distinguished:
+  * a callback installed into RAM at runtime, which no static table shows;
+  * a table inside the decompressed region 0x1801e380..0x1801ee84, which
+    Phase 3 mapped but did not reconstruct because the ARM decompressor
+    was not reimplemented;
+  * dispatch through a computed value rather than a stored pointer.
+The second is testable offline and is the concrete next step: reconstruct
+the decompressed region and re-run this detector over it.
+
+STEP 7 — THE SERIES-LEVEL SOURCE, AND WHAT IT MAY NOT DO
+The SNC7320-series product brief was added as a reference at the owner's
+direction. It is series-level and carries no SNC73270 register map, so no
+register identity in this repository is assigned from it. It was NOT
+fetched: the URL and its summary were supplied by the owner, so every
+log's 'no network access' assertion stays true.
+$ sed -n '/^### What it may not be used for/,/^### Where it is used/p' notes/references.md
+  ### What it may not be used for
+
+  It is a **product brief for the SNC7320 series**, not a register map for the
+  SNC73270. It carries no register addresses, no bit fields and no interrupt
+  assignment table.
+
+  **Therefore no register identity in this repository may be assigned from it
+  alone.** It can raise or lower the prior on a hypothesis — for example, "two
+  identical magic-key-protected blocks on the reset path" is consistent with the
+  brief's *two watchdogs*, and a six-channel SAR ADC is consistent with a
+  Hall-effect front end — but a consistency is not an identification. Any claim
+  that a given address is a given peripheral still needs data-flow evidence from
+  the image, and must carry its own confidence level.
+
+  ### Where it is used
+  [exit 0]
+
+STEP 8 — DUAL-CORE PARTICIPATION
+The brief states the series has two Cortex-M3 cores, so the question is
+whether this firmware shows two cores participating.
+$ sed -n '/^## Answer, as far as the evidence reaches/,$p' notes/dual-core-question.md
+  ## Answer, as far as the evidence reaches
+
+  **One core is doing everything the recovered boot path describes.** The multiple
+  images are sequential stages, the shared RAM is inter-stage, and the interrupts
+  belong to a single NVIC.
+
+  **Dual-core participation is neither shown nor excluded.** The brief says the
+  silicon has two cores; the unexplained `0x18038000` image is a plausible second
+  core payload; and no start mechanism for it has been found. That is the precise
+  state of the question, and it is a named blocker rather than a conclusion.
+  [exit 0]
+
+$ grep -c '0x18038000' ghidra/peripherals/installed_a.txt ghidra/peripherals/installed_b.txt
+  ghidra/peripherals/installed_a.txt:0
+  ghidra/peripherals/installed_b.txt:0
+  [exit 1]
+  NOTE neither analysed image accesses 0x18038000, which is what keeps the second-core hypothesis a hypothesis: nothing has been found that starts that image
+
+EXIT GATE
+$ python3 tool/report_phase3.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/report_phase4.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/report_phase5.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/find_pointer_tables.py --json | sha256sum; python3 tool/find_pointer_tables.py --json | sha256sum
+  899f884d3e783aa074fc0904c8e8f420d063d0ccd0c1ca948be98abfdf807eca  -
+  899f884d3e783aa074fc0904c8e8f420d063d0ccd0c1ca948be98abfdf807eca  -
+  [exit 0]
+  NOTE deterministic
+
+$ python3 -m py_compile tool/*.py
+  [exit 0]
+
+$ python3 tool/map_hardware_interfaces.py | grep -E '^(PHASE_STATUS|RESULT)'
+  PHASE_STATUS first-pass — This is an MMIO access census plus a decoded vector table. Five of the plan's seven analysis areas are not covered and one is only partial, and the dependency map classifies address spaces rather than the original *services* the exit gate asks about. Phase 5 should be treated as incomplete and partly blocked on a SNC73270 reference manual, not as finished.
+  RESULT map_ok=True live_interrupts=19 blocks=15 contradictions=1
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmp3wa9l2ht/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpv9tvpyv_/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp6hdqr1pm/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp27dx2yz4/dump.bin
+  Ran 406 tests in 2.879s
+  OK
+  [exit 0]
+  NOTE 406 tests, up from 384: 22 for the table detector
+
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+$ git diff --check; git diff --cached --check
+  [exit 0]
+
+PHASE 5 STATUS: STILL INCOMPLETE
+5A is done to the limit of flash-resident evidence and its result is
+measured, not asserted. 5B through 5G are NOT started. What each needs:
+  5B USB — correlate the recovered HID report descriptors (logs 07/09,
+     notes/usb-descriptors.txt) against the report-building code now that
+     138 application functions carry a context, and follow IRQ6's handler
+     data flow into the report buffers.
+  5C scan — trace the periodic task and IRQ MMIO reads into raw state,
+     debounce and HID report generation.
+  5D Hall/ADC — recover the sample pipeline and its arithmetic, keeping
+     observed arithmetic separate from inferred physical meaning.
+  5E settings — start at the dispatcher's 0x50/0x55 persistent-commit path
+     (logs 48/49) and recover the structure and write call graph statically.
+  5F RGB — follow HID page 0x59 / interface 4 / EP15 OUT into LampArray
+     parsing and the frame buffers.
+  5G reset/clock/watchdog — revisit once downstream peripherals are
+     identified by data flow.
+The dependency map still names address spaces rather than services, so the
+Phase 5 exit gate remains partly met and partly blocked.
+
+RESULT
+Phase 5A complete within its evidence limit. Five function-pointer tables
+were found by a stated rule, corroborated by the other release sitting at
+the measured relocation, and their 22 new targets seeded in both releases.
+Application reachability rose from 51 to 138 of 573 and contexts now name
+the entry mechanism. The remaining 435 need an entry mechanism outside
+flash tables, and reconstructing the decompressed region is the named next
+step. 406 offline tests pass, both evidence hashes are unchanged, and no
+device was accessed. Phase 5 is not complete and is not declared so.

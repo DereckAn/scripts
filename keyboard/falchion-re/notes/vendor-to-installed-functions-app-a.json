@@ -1,9 +1,9 @@
 {
   "counts": {
-    "identical": 78,
-    "tentative": 2
+    "identical": 94,
+    "tentative": 7
   },
-  "data_region_bytes": 131,
+  "data_region_bytes": 129,
   "data_regions": [
     {
       "flash_hi": 69633,
@@ -596,16 +596,6 @@
       "vendor_lo": 16554
     },
     {
-      "flash_hi": 86198,
-      "flash_lo": 86196,
-      "installed_hi": 16566,
-      "installed_lo": 16564,
-      "length": 2,
-      "shift": 0,
-      "vendor_hi": 16566,
-      "vendor_lo": 16564
-    },
-    {
       "flash_hi": 86207,
       "flash_lo": 86206,
       "installed_hi": 16575,
@@ -1067,8 +1057,8 @@
     }
   ],
   "discontiguous_bodies": {
-    "installed": 15,
-    "vendor": 15
+    "installed": 16,
+    "vendor": 16
   },
   "dominant_shift": 0,
   "header": {
@@ -1077,12 +1067,37 @@
     "installed_program": "installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin",
     "vendor_program": "vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin"
   },
-  "installed_count": 80,
+  "installed_count": 101,
   "matches": [
     {
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 1,
+        "bytes_sha": "940792bc12784f0a755c70a597d98f0b773e847ca04aa1fe8ef1297563b26863",
+        "entry": 320,
+        "insns": 2,
+        "name": "EntryImage_PostScatter",
+        "shape_sha": "00cc3f75516f6a042b885c4ab828adcd1d923328f6c2a8ab22dcd08f2fcb4161",
+        "size": 8
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "940792bc12784f0a755c70a597d98f0b773e847ca04aa1fe8ef1297563b26863",
+        "entry": 320,
+        "insns": 2,
+        "name": "EntryImage_PostScatter",
+        "shape_sha": "00cc3f75516f6a042b885c4ab828adcd1d923328f6c2a8ab22dcd08f2fcb4161",
+        "size": 8
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 6,
         "bytes_sha": "f092d1a53cb67bc07db97dcc7260431ca81720a5549a06c492cadee564031a8b",
         "entry": 328,
@@ -1183,25 +1198,100 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
-        "blocks": 3,
-        "bytes_sha": "575c45e0f0cea5e663bec75f151a6c6714f9408866b6aeaecfa5067d78367604",
+        "blocks": 2,
+        "bytes_sha": "245cf8e1ffcd0f2b0e04e70b8594c788f7cc8ef81cd7d90ff5b6e2002862e164",
         "entry": 712,
-        "insns": 20,
+        "insns": 10,
         "name": "FUN_000002c8",
-        "shape_sha": "52252972fba648b8207deb4107be4e12f83828015c02ad2d751981cd4a06e909",
-        "size": 64
+        "shape_sha": "c33ebba956f52796c564c3eb0e37e87a0cb4d8dec2dd1a5fede78dda8b334252",
+        "size": 32
       },
       "moved": false,
       "reason": "same body bytes",
       "score": 1.0,
       "vendor": {
-        "blocks": 3,
-        "bytes_sha": "575c45e0f0cea5e663bec75f151a6c6714f9408866b6aeaecfa5067d78367604",
+        "blocks": 2,
+        "bytes_sha": "245cf8e1ffcd0f2b0e04e70b8594c788f7cc8ef81cd7d90ff5b6e2002862e164",
         "entry": 712,
-        "insns": 20,
+        "insns": 10,
         "name": "FUN_000002c8",
-        "shape_sha": "52252972fba648b8207deb4107be4e12f83828015c02ad2d751981cd4a06e909",
-        "size": 64
+        "shape_sha": "c33ebba956f52796c564c3eb0e37e87a0cb4d8dec2dd1a5fede78dda8b334252",
+        "size": 32
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 2,
+        "bytes_sha": "62c626be9cca867c7abd73e3c4b14c6715ca093f5a7afee913b29bc78c70fde2",
+        "entry": 744,
+        "insns": 10,
+        "name": "Vector_SVCall",
+        "shape_sha": "5bb103db460b7da10f595f22f167c3c0cb70ef20de146a44b438b00fbcb946df",
+        "size": 32
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 2,
+        "bytes_sha": "62c626be9cca867c7abd73e3c4b14c6715ca093f5a7afee913b29bc78c70fde2",
+        "entry": 744,
+        "insns": 10,
+        "name": "Vector_SVCall",
+        "shape_sha": "5bb103db460b7da10f595f22f167c3c0cb70ef20de146a44b438b00fbcb946df",
+        "size": 32
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "b5567864525b5e05ba1e510f4816f69ecfb5815748f3252a982f8be212510a9f",
+        "entry": 812,
+        "insns": 21,
+        "name": "Vector_PendSV",
+        "shape_sha": "64ff777cf6beae501b81ce8d8e0515b089bfb6ad1ff672e300dd3f44e207cbf4",
+        "size": 70
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "b5567864525b5e05ba1e510f4816f69ecfb5815748f3252a982f8be212510a9f",
+        "entry": 812,
+        "insns": 21,
+        "name": "Vector_PendSV",
+        "shape_sha": "64ff777cf6beae501b81ce8d8e0515b089bfb6ad1ff672e300dd3f44e207cbf4",
+        "size": 70
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "e445020b4eb07d13f3b7b0ba5bd30b2b8086ff5187cb77e0f1697de83e9e58bb",
+        "entry": 888,
+        "insns": 2,
+        "name": "FUN_00000378",
+        "shape_sha": "b180ab169272ea7935b4cf489637f4dcb169d871d5727a367306761a5d2e1123",
+        "size": 6
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "e445020b4eb07d13f3b7b0ba5bd30b2b8086ff5187cb77e0f1697de83e9e58bb",
+        "entry": 888,
+        "insns": 2,
+        "name": "FUN_00000378",
+        "shape_sha": "b180ab169272ea7935b4cf489637f4dcb169d871d5727a367306761a5d2e1123",
+        "size": 6
       }
     },
     {
@@ -1227,6 +1317,31 @@
         "name": "FUN_000005d6",
         "shape_sha": "ed10a9d00959faa0f2433ac1fff7236ef33659bdf5ab62bbe2f8449a6bcf3fb9",
         "size": 42
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 11,
+        "bytes_sha": "295560fba45993fd21e3e3ca96baf08e27f3ea18b85e1da28e1d95d0cddfc45d",
+        "entry": 1536,
+        "insns": 30,
+        "name": "FUN_00000600",
+        "shape_sha": "6f4197eb5d6b285c3f5065c81cb3368e6f7ba02ef4fcaa4a9881d0e5d8d6b728",
+        "size": 70
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 11,
+        "bytes_sha": "295560fba45993fd21e3e3ca96baf08e27f3ea18b85e1da28e1d95d0cddfc45d",
+        "entry": 1536,
+        "insns": 30,
+        "name": "FUN_00000600",
+        "shape_sha": "6f4197eb5d6b285c3f5065c81cb3368e6f7ba02ef4fcaa4a9881d0e5d8d6b728",
+        "size": 70
       }
     },
     {
@@ -1408,6 +1523,31 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 7,
+        "bytes_sha": "9d5d2a761b5c256489b8ed745f72d18aad920654aa04cd89ee6079a816639656",
+        "entry": 2572,
+        "insns": 26,
+        "name": "PtrTarget_00000a0c",
+        "shape_sha": "dd757b217bf07dca2db31e18b5aa4e7ecb81ea9cbd60d25c24f29f3d59fd436a",
+        "size": 58
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 7,
+        "bytes_sha": "9d5d2a761b5c256489b8ed745f72d18aad920654aa04cd89ee6079a816639656",
+        "entry": 2572,
+        "insns": 26,
+        "name": "PtrTarget_00000a0c",
+        "shape_sha": "dd757b217bf07dca2db31e18b5aa4e7ecb81ea9cbd60d25c24f29f3d59fd436a",
+        "size": 58
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 5,
         "bytes_sha": "65d0dcb382edd78dff7011d368211ab7643e0efa4acd13fd16dab8abb0ea7c82",
         "entry": 2670,
@@ -1427,6 +1567,31 @@
         "name": "FUN_00000a6e",
         "shape_sha": "d4c502e0f7948205f0885af2f1d4a391fd50a504d7a576fc113a54415abeb0ba",
         "size": 98
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 4,
+        "bytes_sha": "a892b8e720dbeb6f797f85e42aa2e70f94cdcc75800b5334a1ceb0901b0d686f",
+        "entry": 2768,
+        "insns": 20,
+        "name": "FUN_00000ad0",
+        "shape_sha": "b6bf9b9c78dfbb09d149961470037f203a34f00c70d6d91e3d59dbf65bc2e365",
+        "size": 48
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 4,
+        "bytes_sha": "a892b8e720dbeb6f797f85e42aa2e70f94cdcc75800b5334a1ceb0901b0d686f",
+        "entry": 2768,
+        "insns": 20,
+        "name": "FUN_00000ad0",
+        "shape_sha": "b6bf9b9c78dfbb09d149961470037f203a34f00c70d6d91e3d59dbf65bc2e365",
+        "size": 48
       }
     },
     {
@@ -1680,6 +1845,31 @@
       }
     },
     {
+      "confidence": "tentative",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 4046,
+        "insns": 1,
+        "name": "Vector_MemManage",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      },
+      "moved": false,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 4046,
+        "insns": 1,
+        "name": "Vector_MemManage",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      }
+    },
+    {
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
@@ -1759,6 +1949,31 @@
       "differing_bytes": 0,
       "installed": {
         "blocks": 17,
+        "bytes_sha": "61cba037369c624328cdeb377f1b801491fed11a77f7f0897876194b1b0ee307",
+        "entry": 4270,
+        "insns": 138,
+        "name": "Vector_HardFault",
+        "shape_sha": "aa7c16ed5d4911beefb09b0bba08ee0c57bcd9285e7fcd6b512b72d0f67e7d75",
+        "size": 360
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 17,
+        "bytes_sha": "61cba037369c624328cdeb377f1b801491fed11a77f7f0897876194b1b0ee307",
+        "entry": 4270,
+        "insns": 138,
+        "name": "Vector_HardFault",
+        "shape_sha": "aa7c16ed5d4911beefb09b0bba08ee0c57bcd9285e7fcd6b512b72d0f67e7d75",
+        "size": 360
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 17,
         "bytes_sha": "692ba35f6a54d62f3b15756d0a75cc34d6daa93118691e3575838c329ec0c3b2",
         "entry": 4630,
         "insns": 55,
@@ -1783,6 +1998,31 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 3,
+        "bytes_sha": "d7afcfe4e633fa7900a0da4c54224963304670249f85fd4ed05e931ca885bdca",
+        "entry": 4730,
+        "insns": 10,
+        "name": "FUN_0000127a",
+        "shape_sha": "9283ae8d22b3cc8747b3122f4ab446479ed088b7c797ffff08d22e39a4444ad4",
+        "size": 26
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 3,
+        "bytes_sha": "d7afcfe4e633fa7900a0da4c54224963304670249f85fd4ed05e931ca885bdca",
+        "entry": 4730,
+        "insns": 10,
+        "name": "FUN_0000127a",
+        "shape_sha": "9283ae8d22b3cc8747b3122f4ab446479ed088b7c797ffff08d22e39a4444ad4",
+        "size": 26
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 5,
         "bytes_sha": "0fef62c678fd2988656360b76d21469e965e9149c4d2ed5bd9408dc909bb0ce3",
         "entry": 4790,
@@ -1802,6 +2042,131 @@
         "name": "FUN_000012b6",
         "shape_sha": "78aa2b381ac766e7927e437888fbb2a0fb49ce43b7c13f672f92f55a0b9783a1",
         "size": 40
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "2b61af3519ef6ec8b9455631e4e99f6ee69fe888c5a0577688d5b6cc34be7847",
+        "entry": 5288,
+        "insns": 8,
+        "name": "Vector_Reset",
+        "shape_sha": "e868732b0de0ebeb32a26215e2eae4f12d271ea69106094cbfdf9e7ded95eafc",
+        "size": 22
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "2b61af3519ef6ec8b9455631e4e99f6ee69fe888c5a0577688d5b6cc34be7847",
+        "entry": 5288,
+        "insns": 8,
+        "name": "Vector_Reset",
+        "shape_sha": "e868732b0de0ebeb32a26215e2eae4f12d271ea69106094cbfdf9e7ded95eafc",
+        "size": 22
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "117b446371c79f02c19ea75f1b9fe030d713be367d74ddffb1f6d1ace0a4a6fe",
+        "entry": 5310,
+        "insns": 6,
+        "name": "Vector_IRQ3",
+        "shape_sha": "323d23a79731e4eb6182a0a2df622b7e40f3c6245d1ceac56a0631521b5a9e08",
+        "size": 18
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "117b446371c79f02c19ea75f1b9fe030d713be367d74ddffb1f6d1ace0a4a6fe",
+        "entry": 5310,
+        "insns": 6,
+        "name": "Vector_IRQ3",
+        "shape_sha": "323d23a79731e4eb6182a0a2df622b7e40f3c6245d1ceac56a0631521b5a9e08",
+        "size": 18
+      }
+    },
+    {
+      "confidence": "tentative",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 5330,
+        "insns": 1,
+        "name": "Vector_BusFault",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      },
+      "moved": false,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 5330,
+        "insns": 1,
+        "name": "Vector_BusFault",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      }
+    },
+    {
+      "confidence": "tentative",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 5332,
+        "insns": 1,
+        "name": "Vector_UsageFault",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      },
+      "moved": false,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 5332,
+        "insns": 1,
+        "name": "Vector_UsageFault",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      }
+    },
+    {
+      "confidence": "tentative",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 5336,
+        "insns": 1,
+        "name": "Vector_DebugMonitor",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
+      },
+      "moved": false,
+      "reason": "byte-identical and consistent with the +0x0 shift measured from the unambiguous matches, but the body hash is not unique so the pairing is a lead, not a proof",
+      "score": 0.95,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "575fc8fa9e92ffe7d57a6aef6f1168f39da04f07d6bcd5b5e17883bff7b33165",
+        "entry": 5336,
+        "insns": 1,
+        "name": "Vector_DebugMonitor",
+        "shape_sha": "e6c115ab8105bc6d16d770d6bfd41d08557d4ea0e430ee7243be8926c81dcc66",
+        "size": 2
       }
     },
     {
@@ -1858,6 +2223,31 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
+        "blocks": 5,
+        "bytes_sha": "1efed6350e00d01c9289c1adbbec21c3cbbc967a49521e96b7a6d68df9570655",
+        "entry": 5440,
+        "insns": 15,
+        "name": "FUN_00001540",
+        "shape_sha": "04ba29554060c5699a2a6ffe9d844b2a03651f8ed91e2e6e7af6e0aa51cb02d1",
+        "size": 32
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "1efed6350e00d01c9289c1adbbec21c3cbbc967a49521e96b7a6d68df9570655",
+        "entry": 5440,
+        "insns": 15,
+        "name": "FUN_00001540",
+        "shape_sha": "04ba29554060c5699a2a6ffe9d844b2a03651f8ed91e2e6e7af6e0aa51cb02d1",
+        "size": 32
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
         "blocks": 7,
         "bytes_sha": "d1024ea18357c8a681911857d3de3edcf3fd0ef45c1d27039c238fd0ba23d9f9",
         "entry": 5472,
@@ -1902,6 +2292,81 @@
         "name": "FUN_0000165c",
         "shape_sha": "e9bf9b8185f9936ccd758a753d3b419bb49282d6b554d5efb81be3d330e1451b",
         "size": 48
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 3,
+        "bytes_sha": "11acd62e14d5c524c0f7f08333f2c5e6045b237c23783857e6367418a19623c5",
+        "entry": 6112,
+        "insns": 14,
+        "name": "Vector_SysTick",
+        "shape_sha": "936aef3c072e88418cfdda4975e58963ea61a86c0f620d29f2b39bd85af42f7c",
+        "size": 40
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 3,
+        "bytes_sha": "11acd62e14d5c524c0f7f08333f2c5e6045b237c23783857e6367418a19623c5",
+        "entry": 6112,
+        "insns": 14,
+        "name": "Vector_SysTick",
+        "shape_sha": "936aef3c072e88418cfdda4975e58963ea61a86c0f620d29f2b39bd85af42f7c",
+        "size": 40
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 8,
+        "bytes_sha": "30958c27b6624dd22d133f4e067cba286102f5805e9819e14caa00195ba620a7",
+        "entry": 6152,
+        "insns": 28,
+        "name": "FUN_00001808",
+        "shape_sha": "1262b9ebdba5b0e5e432d5ca60b4cec42765b455cbc7b00c5bec01d0ea73787d",
+        "size": 76
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 8,
+        "bytes_sha": "30958c27b6624dd22d133f4e067cba286102f5805e9819e14caa00195ba620a7",
+        "entry": 6152,
+        "insns": 28,
+        "name": "FUN_00001808",
+        "shape_sha": "1262b9ebdba5b0e5e432d5ca60b4cec42765b455cbc7b00c5bec01d0ea73787d",
+        "size": 76
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 5,
+        "bytes_sha": "64f32feb206092560955bc2778feb5e49ededd16a3fd19e887c86562a67f5f14",
+        "entry": 8382,
+        "insns": 20,
+        "name": "Vector_NMI",
+        "shape_sha": "770b0de71fc2dd2d41cd2aab6982ffc40ad445cc0b6db3d238111acd163becf6",
+        "size": 46
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 5,
+        "bytes_sha": "64f32feb206092560955bc2778feb5e49ededd16a3fd19e887c86562a67f5f14",
+        "entry": 8382,
+        "insns": 20,
+        "name": "Vector_NMI",
+        "shape_sha": "770b0de71fc2dd2d41cd2aab6982ffc40ad445cc0b6db3d238111acd163becf6",
+        "size": 46
       }
     },
     {
@@ -2733,25 +3198,75 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
-        "blocks": 12,
-        "bytes_sha": "7b9da2c26bfbca6a5da282504d0fd6cdb534e4d5de7b749cf9a2b78c9c3c408e",
+        "blocks": 11,
+        "bytes_sha": "19379b6cbc2bf64e7c2b5f85043e4b9c16315e63dc3065fc4c10a2201dc72862",
         "entry": 15832,
-        "insns": 160,
+        "insns": 152,
         "name": "FUN_00003dd8",
-        "shape_sha": "da69c233c9ae5276713d2ce976be5a89731b3d17d7c1947e1ab51f17813b8430",
-        "size": 580
+        "shape_sha": "74f1655d1e7f23287e83effb420f97abce4531fe50ef84da63928c4a8024cd2c",
+        "size": 556
       },
       "moved": false,
       "reason": "same body bytes",
       "score": 1.0,
       "vendor": {
-        "blocks": 12,
-        "bytes_sha": "7b9da2c26bfbca6a5da282504d0fd6cdb534e4d5de7b749cf9a2b78c9c3c408e",
+        "blocks": 11,
+        "bytes_sha": "19379b6cbc2bf64e7c2b5f85043e4b9c16315e63dc3065fc4c10a2201dc72862",
         "entry": 15832,
-        "insns": 160,
+        "insns": 152,
         "name": "FUN_00003dd8",
-        "shape_sha": "da69c233c9ae5276713d2ce976be5a89731b3d17d7c1947e1ab51f17813b8430",
-        "size": 580
+        "shape_sha": "74f1655d1e7f23287e83effb420f97abce4531fe50ef84da63928c4a8024cd2c",
+        "size": 556
+      }
+    },
+    {
+      "confidence": "identical",
+      "differing_bytes": 0,
+      "installed": {
+        "blocks": 2,
+        "bytes_sha": "8c580f264c33cfbbcfccb44aa70d2b7c438a02b95a749d336524123e7b7f4e96",
+        "entry": 16388,
+        "insns": 8,
+        "name": "PtrTarget_00004004",
+        "shape_sha": "3c9ef10c76bafd99a7384af6349638bf4ec82e728902174c30a788d51187dada",
+        "size": 23
+      },
+      "moved": false,
+      "reason": "same body bytes",
+      "score": 1.0,
+      "vendor": {
+        "blocks": 2,
+        "bytes_sha": "8c580f264c33cfbbcfccb44aa70d2b7c438a02b95a749d336524123e7b7f4e96",
+        "entry": 16388,
+        "insns": 8,
+        "name": "PtrTarget_00004004",
+        "shape_sha": "3c9ef10c76bafd99a7384af6349638bf4ec82e728902174c30a788d51187dada",
+        "size": 23
+      }
+    },
+    {
+      "confidence": "tentative",
+      "differing_bytes": 2,
+      "installed": {
+        "blocks": 1,
+        "bytes_sha": "55c6a5e321bf9528dc523677d9f0803f7b40fcd041a45a136032834eec5f8f1d",
+        "entry": 16564,
+        "insns": 3,
+        "name": "PtrTarget_000040b4",
+        "shape_sha": "b337dac07324cf7dc9567741073c40d40f36cd7937006c10ec1b4e319c878c59",
+        "size": 8
+      },
+      "moved": false,
+      "reason": "scored 0.905 with a 0.905 lead over the next candidate",
+      "score": 0.904762,
+      "vendor": {
+        "blocks": 1,
+        "bytes_sha": "6ca3df2e3815f0d1d3e7e683d3aab556178087a0f9e26435c00c786405a49cc0",
+        "entry": 16564,
+        "insns": 3,
+        "name": "PtrTarget_000040b4",
+        "shape_sha": "81ee59b866468b3e701045f5b04e067e2f9485a500c9d0deb2b00da35cf43d6a",
+        "size": 8
       }
     },
     {
@@ -3082,6 +3597,26 @@
   ],
   "must_not_assume_equal": [
     {
+      "installed": 4046,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 4046
+    },
+    {
+      "installed": 5330,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 5330
+    },
+    {
+      "installed": 5332,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 5332
+    },
+    {
+      "installed": 5336,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 5336
+    },
+    {
       "installed": 14084,
       "reason": "tentative match only; the correspondence is not proven",
       "vendor": 14084
@@ -3090,15 +3625,29 @@
       "installed": 14468,
       "reason": "tentative match only; the correspondence is not proven",
       "vendor": 14468
+    },
+    {
+      "installed": 16564,
+      "reason": "tentative match only; the correspondence is not proven",
+      "vendor": 16564
     }
   ],
   "program": "app_a",
-  "review_ranking": [],
+  "review_ranking": [
+    {
+      "confidence": "tentative",
+      "differing_bytes": 2,
+      "installed_entry": 16564,
+      "vendor_entry": 16564
+    }
+  ],
   "unaligned_gaps": [],
   "uncovered_span_counts": {
-    "installed": 70,
-    "vendor": 70
+    "compared": 78,
+    "installed": 78,
+    "vendor": 78
   },
-  "uncovered_spans_aligned": true,
-  "vendor_count": 80
+  "uncovered_span_counts_equal": true,
+  "uncovered_spans_fully_compared": true,
+  "vendor_count": 101
 }

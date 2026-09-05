@@ -237,9 +237,25 @@ class TestAnalyzers(unittest.TestCase):
         self.assertFalse(any(name.startswith("primary") for name in checks))
 
     def test_unresolved_points_are_recorded(self):
+        """The list must hold what is still open, not what log 101 resolved."""
         text = " ".join(abs_.UNRESOLVED)
-        self.assertIn("FUN_000029d4", text)
-        self.assertIn("selected entry", text)
+        self.assertIn("ROM or first-stage", text)
+        self.assertIn("address 0 writable", text)
+        self.assertIn("recovery scan pattern", text)
+
+    def test_the_resolved_boot_gates_are_no_longer_listed_as_unknown(self):
+        text = " ".join(abs_.UNRESOLVED)
+        self.assertNotIn("is not decompiled", text)
+        self.assertNotIn("is not recovered", text)
+
+    def test_the_proven_boot_constants_are_checked(self):
+        _present, _skipped, _records, checks = abs_.known_boot_checks(
+            self.full, 0)
+        self.assertTrue(checks["entry pointer equals the bootloader constant"])
+        self.assertTrue(checks[
+            "policy: entry record lies inside the fixed handoff copy window"])
+        self.assertEqual(abs_.BOOT_ENTRY_CONSTANT, 0x60011000)
+        self.assertEqual(abs_.BOOT_HANDOFF_COPY_LENGTH, 0x10000)
 
     def test_no_boots_if_and_only_if_claim(self):
         for module in (abs_, aci, bmi):

@@ -68,6 +68,39 @@ image is named `dstNA` and has no import base.
 `tool/report_phase3.py` regenerates the Phase 3 notes and the complete mapping
 JSON; `--check` fails if the committed artifacts drift from a fresh render.
 
+### Vector seeding (Phase 5)
+
+A raw binary import gives Ghidra no reason to treat a vector-table word as a code
+reference, so a handler that nothing calls is never disassembled and never
+becomes a function. Before seeding, none of the handler addresses existed as
+functions and reachability out of the vector table came back empty.
+`FalchionSeedVectors.java` creates a function and label at each address passed to
+it as a `Name=0xaddr` argument, and changes nothing else:
+
+```bash
+ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+  -process <slice> -noanalysis \
+  -scriptPath "$PWD/ghidra/scripts" \
+  -postScript FalchionSeedVectors.java Vector_Reset=0x14a8 ...
+ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 -process <slice>
+```
+
+Handler addresses come from **each release's own vector table**, never copied
+across releases, and both releases are seeded so the two sides stay comparable.
+Doing this grew the analysed function set from 80 to 97 per entry image and from
+293 to 530 per application, so every Phase 3 figure derived from the function set
+had to be regenerated (log 100).
+
+`FalchionPeripheralMap.java` then reports every load and store whose base
+register Ghidra's constant propagation resolves outside the program's own memory,
+with width, direction, the containing function and the stored value where it is
+known. Accesses it cannot resolve are counted by reason rather than dropped, so
+the resulting register list is an explicit lower bound. Output goes to the
+ignored `ghidra/peripherals/`. `tool/map_hardware_interfaces.py` and
+`tool/report_phase5.py` consume it; evidence:
+`logs/100-installed-hardware-interface-map.txt` and
+`notes/installed-hardware-interfaces.md`.
+
 | Program | Source range | Import base | Basis for that base |
 |---|---:|---:|---|
 | `vendor_app_a_slot0_…` | `0x11000-0x168ab` of the vendor BIN | `0x00000000` | reset vector `0x000014a9`, region table at image offset `0x5750` and its handler pointers are all base-0 offsets inside the image |

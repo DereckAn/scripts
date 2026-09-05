@@ -1,0 +1,643 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 5: hardware and runtime interface map
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed at any point in this phase
+
+SCOPE AND ORDER
+Phase 5 of notes/step6-offline-custom-firmware-plan.md, executed at the
+owner's direction with Phase 4 not yet done. Phase 5 does not depend on
+Phase 4: Phase 4 resolves the bootloader's accept/reject rules, this phase
+maps the application's hardware and runtime interfaces. Phase 6's strategy
+choice and Phase 7's builder acceptance rules will still need Phase 4.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no lsusb/dfu-util/fwupd,
+no bootloader entry, no probe or backup tool run, no sudo, no package
+install, no network access, and no unlock/erase/program/reset/SPI
+construction. Both evidence binaries were opened read-only and are
+unchanged. The pre-existing ghidra/project/falchion-hfx was not opened.
+Only ghidra/project-step6 was used, and the only write to it was creating
+functions at handler addresses.
+
+SOURCE HASHES BEFORE
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+ADDED FILES
+  ghidra/scripts/FalchionPeripheralMap.java  — resolved MMIO access census
+  ghidra/scripts/FalchionSeedVectors.java    — create functions at handlers
+  tool/map_hardware_interfaces.py            — vector table, register and dependency map
+  tool/test_map_hardware_interfaces.py       — 29 offline tests
+  tool/report_phase5.py                      — tracked report generator
+  notes/installed-hardware-interfaces.md     — the Phase 5 report
+  notes/installed-hardware-interfaces.json   — complete machine-readable map
+ghidra/peripherals/ added to ghidra/.gitignore alongside inventories/.
+
+STEP 1 — WHY THE VECTOR HANDLERS HAD TO BE SEEDED
+A raw binary import gives Ghidra no reason to treat a vector-table word as
+a code reference, so a handler that nothing calls is never disassembled and
+never becomes a function. Before seeding, none of the handler addresses
+existed as functions, every reachability root failed to resolve, and the
+context column came back empty for all 80 functions.
+$ python3 - <<'PY'
+import re
+text = open('ghidra/inventories/installed_a.txt').read()
+for address in ('000014a8', '000010ae', '000002e8', '000017e0'):
+    print('function at %s now present: %s'
+          %% (address, ('FUNC entry=%s ' %% address) in text))
+PY
+    File "<stdin>", line 5
+      %% (address, ('FUNC entry=%s ' %% address) in text))
+       ^
+  SyntaxError: invalid syntax
+  [exit 1]
+  NOTE after seeding, the reset, fault, SVCall and SysTick handlers are all functions
+
+STEP 2 — SEEDING (write to the ignored project only)
+Handler addresses come from each release's own vector table, never copied
+across releases. The two non-vector cross-image code pointers are seeded
+in the application image as well.
+
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -process <slice> -noanalysis \
+      -scriptPath "$PWD/ghidra/scripts" \
+      -postScript FalchionSeedVectors.java <Name=0xaddr> ...
+
+  installed entry image: Vector_Reset=0x14a8 Vector_NMI=0x20be
+    Vector_HardFault=0x10ae Vector_MemManage=0xfce Vector_BusFault=0x14d2
+    Vector_UsageFault=0x14d4 Vector_SVCall=0x2e8 Vector_DebugMonitor=0x14d8
+    Vector_PendSV=0x32c Vector_SysTick=0x17e0 Vector_IRQ3=0x14be
+    EntryImage_PostScatter=0x140   -> created=12
+  installed application: Vector_IRQ6=0x18016f6e Vector_IRQ31=0x18019f2c
+    Vector_IRQ32=0x18019f36 Vector_IRQ36=0x180106be Vector_IRQ37=0x180106ca
+    Vector_IRQ38=0x180000e4 Vector_IRQ48=0x1801ac26
+    AppEntry_from_0x1994=0x18016e68 AppEntry_from_0x19cc=0x18016f2c
+                                   -> created=9
+  vendor entry image: the same eleven handler names at the same addresses
+    plus EntryImage_PostScatter=0x140  -> created=12
+  vendor application: Vector_IRQ6=0x18016f42 Vector_IRQ31=0x18019f00
+    Vector_IRQ32=0x18019f0a Vector_IRQ36=0x18010692 Vector_IRQ37=0x1801069e
+    Vector_IRQ38=0x180000e4 Vector_IRQ48=0x1801abfa
+    AppEntry_from_0x1994=0x18016e3c AppEntry_from_0x19cc=0x18016f00
+                                   -> created=9
+
+Both releases were seeded so the two sides stay comparable. Each was then
+re-analysed (-process <slice>, analysis enabled) and all four inventories
+and peripheral maps regenerated.
+$ grep -c '^FUNC' ghidra/inventories/*.txt
+  ghidra/inventories/installed_a.txt:97
+  ghidra/inventories/installed_b.txt:530
+  ghidra/inventories/vendor_a.txt:97
+  ghidra/inventories/vendor_b.txt:530
+  [exit 0]
+  NOTE 97 functions per entry image and 530 per application, up from 80 and 293 — symmetric across the two releases
+
+STEP 3 — THE VECTOR TABLE
+$ python3 tool/map_hardware_interfaces.py | sed -n '1,40p'
+  PROGRAM map_hardware_interfaces
+  PURPOSE installed application hardware and runtime interface map
+  IMAGE_SHA256 fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  VECTOR_TABLE 0x0..0x124 (73 slots = 16 core + 57 external)
+  DEFAULT_HANDLER 0x000014df; the table ends at the last slot holding it, and the first code address is 0x140
+  AMBIGUOUS_TAIL 1 non-zero word(s) between the table end and the first code address; they may be one more vector or unrelated data
+    0x013c = 0x00000ad1
+  CORE_VECTOR [ 0] initial_SP    0x18036168 initial_sp
+  CORE_VECTOR [ 1] Reset         0x000014a9 live
+  CORE_VECTOR [ 2] NMI           0x000020bf live
+  CORE_VECTOR [ 3] HardFault     0x000010af live
+  CORE_VECTOR [ 4] MemManage     0x00000fcf live
+  CORE_VECTOR [ 5] BusFault      0x000014d3 live
+  CORE_VECTOR [ 6] UsageFault    0x000014d5 live
+  CORE_VECTOR [ 7] Reserved7     0x00000000 zero
+  CORE_VECTOR [ 8] Reserved8     0x00000000 zero
+  CORE_VECTOR [ 9] Reserved9     0x00000000 zero
+  CORE_VECTOR [10] Reserved10    0x00000000 zero
+  CORE_VECTOR [11] SVCall        0x000002e9 live
+  CORE_VECTOR [12] DebugMonitor  0x000014d9 live
+  CORE_VECTOR [13] Reserved13    0x00000000 zero
+  CORE_VECTOR [14] PendSV        0x0000032d live
+  CORE_VECTOR [15] SysTick       0x000017e1 live
+  LIVE_INTERRUPTS 18
+    IRQ3     0x000014bf -> entry image at 0x000014be
+    IRQ6     0x18016f6f -> app image at 0x18016f6e
+    IRQ31    0x18019f2d -> app image at 0x18019f2c
+    IRQ32    0x18019f37 -> app image at 0x18019f36
+    IRQ36    0x180106bf -> app image at 0x180106be
+    IRQ37    0x180106cb -> app image at 0x180106ca
+    IRQ38    0x180000e5 -> app image at 0x180000e4
+    IRQ48    0x1801ac27 -> app image at 0x1801ac26
+  CODE_ENTRIES 9 into the application code range (2 outside the vector table)
+    entry image 0x1994 -> 0x18016e69
+    entry image 0x19cc -> 0x18016f2d
+  DATA_POINTERS 48 entry-image words point into application RAM outside the code range; those are shared variables, not entry points
+
+  IMAGE Candidate A (entry image)
+    slice=installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+    base=0x00000000 functions=97 reached=86 unreached=11
+  [exit 0]
+
+STEP 4 — WHAT THE WRITTEN VALUES SAY
+$ python3 tool/map_hardware_interfaces.py | sed -n '/^NOTABLE_OBSERVATIONS/,/^COVERAGE/p'
+  NOTABLE_OBSERVATIONS 8
+    The NMI handler requests a system reset.
+      basis: AIRCR is written 0x05fa0004: the architectural VECTKEY 0x05fa with SYSRESETREQ set. Written from the NMI context.
+      confidence: high — the value and the register are both architectural
+    The timebase pends a software interrupt, which is the shape of a preemptive scheduler.
+      basis: ICSR is written 0x10000000 (PENDSVSET) from the SysTick context, and the PendSV vector points at its own handler.
+      confidence: high for the mechanism, none for what the scheduler schedules
+    The application also pends that software interrupt, from several sites.
+      basis: ICSR is written 14 times in the application image, including from an interrupt context.
+      confidence: high for the mechanism
+    The interrupts the software enables are the ones the table actually populates: IRQ6, IRQ38.
+      basis: NVIC_ISER words written with those bits set, cross-checked against the vector slots that hold a non-default handler. Two independent parts of the image agree.
+      confidence: high
+    The fault handler reads the architectural fault status and address registers rather than just hanging.
+      basis: CFSR, MMFAR and BFAR are all read from the HardFault context.
+      confidence: high — all three registers are architectural
+    Two identical unnamed blocks are unlocked with a magic key on the reset path.
+      basis: 0x40008000 and 0x40009000 are each written 0x5afa0000, and 0x4000800c and 0x4000900c are each written 0x5afa55aa. A key-protected register pair, duplicated. What the blocks control is not established.
+      confidence: high for the pattern, none for the identity
+    A reset-path register is programmed with the flash address of SN_FWIN record slot 1.
+      basis: 0x4002f004 is written 0x60021000, which is exactly record slot 1's address from the installed header. The register is therefore tied to the image layout, whatever else it does.
+      confidence: high for the correspondence, none for the register's purpose
+    The unnamed block at 0x40100000 is the one the live interrupt serves.
+      basis: 19 registers, 126 accesses, touched from IRQ6,called from entry image 0x1994 — that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.
+      confidence: high for the association, none for the identity
+
+  COVERAGE OF THE PLANNED ANALYSIS AREAS
+  [exit 0]
+  NOTE each statement is a predicate the tool evaluates over the assembled map, so it is checked rather than asserted
+
+STEP 5 — REGISTER MAP, ENTRY IMAGE
+$ python3 tool/map_hardware_interfaces.py --max-registers 0 | sed -n '/^IMAGE Candidate A/,/^IMAGE Candidate B/p'
+  IMAGE Candidate A (entry image)
+    slice=installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+    base=0x00000000 functions=97 reached=86 unreached=11
+    roots=BusFault@0x000014d2, DebugMonitor@0x000014d8, HardFault@0x000010ae, IRQ3@0x000014be, MemManage@0x00000fce, NMI@0x000020be, PendSV@0x0000032c, Reset@0x000014a8, SVCall@0x000002e8, SysTick@0x000017e0, UsageFault@0x000014d4
+    resolved_accesses=173
+    unresolved_accesses=base_lr_unknown=3, base_r0_unknown=67, base_r1_unknown=41, base_r2_unknown=17, base_r3_unknown=7, base_r4_unknown=105, base_r5_unknown=16, base_r6_unknown=3, base_r7_unknown=1, base_r8_unknown=6, base_r9_unknown=3, register_offset=43, stack_relative=44
+    BLOCK 0x08000000 vendor-mmio registers=1 accesses=1 contexts=Reset
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x0800fff8 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=Reset
+    BLOCK 0x10000000 vendor-mmio registers=1 accesses=1 contexts=Reset
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x10000000 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=Reset
+    BLOCK 0x18000000 ram registers=28 accesses=56 contexts=HardFault,NMI,PendSV,Reset,SVCall
+      RAM inside the scatter-loaded runtime image or its zero-initialised region, so data rather than a peripheral
+    BLOCK 0x20000000 ram registers=5 accesses=5 contexts=Reset
+      the second observed RAM range from the boot SP checks
+    BLOCK 0x40000000 vendor-mmio registers=7 accesses=17 contexts=Reset
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x40008000 unnamed    widths=[4] reads=0 writes=2 stored=0x5afa0000 contexts=Reset
+      0x4000800c unnamed    widths=[4] reads=0 writes=2 stored=0x5afa55aa contexts=Reset
+      0x40009000 unnamed    widths=[4] reads=0 writes=2 stored=0x5afa0000 contexts=Reset
+      0x4000900c unnamed    widths=[4] reads=0 writes=2 stored=0x5afa55aa contexts=Reset
+      0x40022000 unnamed    widths=[4] reads=3 writes=3 stored=none resolved contexts=Reset
+      0x4002f000 unnamed    widths=[4] reads=0 writes=1 stored=0x3 contexts=Reset
+      0x4002f004 unnamed    widths=[4] reads=0 writes=2 stored=0x60021000 contexts=Reset
+    BLOCK 0x45000000 vendor-mmio registers=11 accesses=66 contexts=IRQ3,Reset
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x45000000 unnamed    widths=[4] reads=10 writes=4 stored=none resolved contexts=Reset
+      0x45000004 unnamed    widths=[4] reads=10 writes=7 stored=none resolved contexts=Reset
+      0x45000008 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=Reset
+      0x4500000c unnamed    widths=[4] reads=14 writes=4 stored=0x0 contexts=Reset
+      0x45000010 unnamed    widths=[4] reads=1 writes=1 stored=0x0 contexts=Reset
+      0x45000018 unnamed    widths=[4] reads=2 writes=2 stored=none resolved contexts=Reset
+      0x45000020 unnamed    widths=[4] reads=1 writes=1 stored=none resolved contexts=Reset
+      0x45000050 unnamed    widths=[4] reads=1 writes=1 stored=none resolved contexts=Reset
+      0x45000100 unnamed    widths=[4] reads=0 writes=1 stored=0x9fff contexts=Reset
+      0x4500010c unnamed    widths=[4] reads=1 writes=2 stored=0xfffd contexts=Reset
+      0x45000300 unnamed    widths=[4] reads=1 writes=1 stored=none resolved contexts=IRQ3
+    BLOCK 0x60000000 flash-window registers=3 accesses=4 contexts=HardFault,Reset
+      mapped external-flash window; the program reading its own storage, not a peripheral
+      0x60000800 unnamed    widths=[4] reads=1 writes=1 stored=0x0 contexts=HardFault
+      0x60021000 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=Reset
+      0x60021020 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=Reset
+    BLOCK 0xe0000000 arm-core registers=11 accesses=23 contexts=HardFault,NMI,Reset,SysTick
+      ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
+      0xe000e010 SYST_CSR   widths=[4] reads=3 writes=2 stored=none resolved contexts=unreached
+      0xe000e014 SYST_RVR   widths=[4] reads=1 writes=2 stored=none resolved contexts=unreached
+      0xe000e018 SYST_CVR   widths=[4] reads=1 writes=1 stored=0x0 contexts=unreached
+      0xe000e406 NVIC_IPR1  widths=[1] reads=0 writes=1 stored=0x30 contexts=Reset
+      0xe000ed04 ICSR       widths=[4] reads=0 writes=1 stored=0x10000000 contexts=SysTick
+      0xe000ed08 VTOR       widths=[4] reads=3 writes=0 stored=none resolved contexts=HardFault,Reset
+      0xe000ed0c AIRCR      widths=[4] reads=1 writes=1 stored=0x5fa0004 contexts=NMI
+      0xe000ed1a SHPR1+2    widths=[1] reads=0 writes=1 stored=0x30 contexts=Reset
+      0xe000ed28 CFSR       widths=[4] reads=3 writes=0 stored=none resolved contexts=HardFault
+      0xe000ed34 MMFAR      widths=[4] reads=1 writes=0 stored=none resolved contexts=HardFault
+      0xe000ed38 BFAR       widths=[4] reads=1 writes=0 stored=none resolved contexts=HardFault
+
+  IMAGE Candidate B (application)
+  [exit 0]
+
+STEP 6 — REGISTER MAP, APPLICATION IMAGE
+$ python3 tool/map_hardware_interfaces.py --max-registers 6 | sed -n '/^IMAGE Candidate B/,/^NOTABLE_OBS/p'
+  IMAGE Candidate B (application)
+    slice=installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+    base=0x18000000 functions=530 reached=51 unreached=479
+    roots=IRQ31@0x18019f2c, IRQ32@0x18019f36, IRQ36@0x180106be, IRQ37@0x180106ca, IRQ38@0x180000e4, IRQ48@0x1801ac26, IRQ6@0x18016f6e, called from entry image 0x1994@0x18016e68, called from entry image 0x19cc@0x18016f2c
+    resolved_accesses=3811
+    unresolved_accesses=base_lr_unknown=17, base_r0_unknown=1079, base_r10_unknown=3, base_r11_unknown=9, base_r12_unknown=31, base_r1_unknown=498, base_r2_unknown=253, base_r3_unknown=148, base_r4_unknown=745, base_r5_unknown=200, base_r6_unknown=151, base_r7_unknown=82, base_r8_unknown=42, base_r9_unknown=37, register_offset=843, stack_relative=1052
+    BLOCK 0x00000000 artifact registers=10 accesses=12 contexts=unreached
+      constant propagation resolved a base register to zero, so these targets are small offsets from a null pointer rather than real addresses: an unresolved structure pointer, not a peripheral
+    BLOCK 0x18000000 ram registers=815 accesses=3597 contexts=IRQ36,IRQ37,IRQ38,IRQ48,IRQ6,called from entry image 0x1994,called from entry image 0x19cc
+      RAM inside the scatter-loaded runtime image or its zero-initialised region, so data rather than a peripheral
+    BLOCK 0x20000000 ram registers=3 accesses=8 contexts=unreached
+      the second observed RAM range from the boot SP checks
+    BLOCK 0x40000000 vendor-mmio registers=13 accesses=40 contexts=unreached
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x40019000 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=unreached
+      0x40020008 unnamed    widths=[4] reads=1 writes=0 stored=none resolved contexts=unreached
+      0x40020010 unnamed    widths=[4] reads=0 writes=2 stored=none resolved contexts=unreached
+      0x40020014 unnamed    widths=[4] reads=0 writes=2 stored=none resolved contexts=unreached
+      0x40020018 unnamed    widths=[4] reads=4 writes=2 stored=none resolved contexts=unreached
+      0x4002001c unnamed    widths=[4] reads=0 writes=2 stored=none resolved contexts=unreached
+      ... 7 more registers, complete list in the JSON
+    BLOCK 0x40100000 vendor-mmio registers=19 accesses=126 contexts=IRQ6,called from entry image 0x1994
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x40100000 unnamed    widths=[4] reads=4 writes=10 stored=0x2, 0x20, 0x4200, 0x8000, 0x8080, 0x20000, 0x40000 contexts=unreached
+      0x40100004 unnamed    widths=[4] reads=2 writes=0 stored=none resolved contexts=called from entry image 0x1994
+      0x40100008 unnamed    widths=[4] reads=0 writes=1 stored=0x200 contexts=unreached
+      0x40100014 unnamed    widths=[4] reads=2 writes=3 stored=0xf370800 contexts=IRQ6,called from entry image 0x1994
+      0x40100018 unnamed    widths=[4] reads=1 writes=1 stored=0xffffffff contexts=IRQ6
+      0x4010001c unnamed    widths=[4] reads=1 writes=30 stored=0x0, 0x1, 0x80, 0x8c contexts=IRQ6,called from entry image 0x1994
+      ... 13 more registers, complete list in the JSON
+    BLOCK 0x45000000 vendor-mmio registers=4 accesses=9 contexts=unreached
+      unnamed vendor block; described only by observed accesses because no SNC73270 reference manual is available
+      0x45000000 unnamed    widths=[4] reads=2 writes=0 stored=none resolved contexts=unreached
+      0x4500000c unnamed    widths=[4] reads=2 writes=0 stored=none resolved contexts=unreached
+      0x45000054 unnamed    widths=[4] reads=2 writes=0 stored=none resolved contexts=unreached
+      0x45000110 unnamed    widths=[4] reads=1 writes=2 stored=0x8 contexts=unreached
+    BLOCK 0xe0000000 arm-core registers=5 accesses=19 contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc
+      ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
+      0xe000e100 NVIC_ISER0 widths=[4] reads=0 writes=1 stored=0x40 contexts=called from entry image 0x1994
+      0xe000e104 NVIC_ISER1 widths=[4] reads=0 writes=1 stored=0x40 contexts=unreached
+      0xe000e180 NVIC_ICER0 widths=[4] reads=0 writes=1 stored=0x40 contexts=called from entry image 0x1994
+      0xe000ed04 ICSR       widths=[4] reads=0 writes=14 stored=0x10000000 contexts=IRQ6,called from entry image 0x1994,called from entry image 0x19cc
+      0xe000ed0c AIRCR      widths=[4] reads=1 writes=1 stored=none resolved contexts=unreached
+
+  DEPENDENCY_MAP
+    must-replace                   0x08000000 vendor-mmio   Candidate A (entry image)
+      every access is on the reset path, so this is platform bring-up that runs before any service exists: a replacement has to do the equivalent or prove it unnecessary
+    must-replace                   0x10000000 vendor-mmio   Candidate A (entry image)
+      every access is on the reset path, so this is platform bring-up that runs before any service exists: a replacement has to do the equivalent or prove it unnecessary
+    not-a-service                  0x18000000 ram           Candidate A (entry image)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    not-a-service                  0x20000000 ram           Candidate A (entry image)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    must-replace                   0x40000000 vendor-mmio   Candidate A (entry image)
+      every access is on the reset path, so this is platform bring-up that runs before any service exists: a replacement has to do the equivalent or prove it unnecessary
+    must-replace-if-service-needed 0x45000000 vendor-mmio   Candidate A (entry image)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    may-omit                       0x60000000 flash-window  Candidate A (entry image)
+      reading the mapped flash window is storage access, not a platform service a minimal application has to provide
+    must-replace                   0xe0000000 arm-core      Candidate A (entry image)
+      architectural: any firmware that takes an interrupt or keeps time has to program these itself
+    not-a-service                  0x00000000 artifact      Candidate B (application)
+      a constant-propagation artifact, excluded from the register map
+    not-a-service                  0x18000000 ram           Candidate B (application)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    not-a-service                  0x20000000 ram           Candidate B (application)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    must-replace-if-service-needed 0x40000000 vendor-mmio   Candidate B (application)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    must-replace-if-service-needed 0x40100000 vendor-mmio   Candidate B (application)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    must-replace-if-service-needed 0x45000000 vendor-mmio   Candidate B (application)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    must-replace                   0xe0000000 arm-core      Candidate B (application)
+      architectural: any firmware that takes an interrupt or keeps time has to program these itself
+
+  NOTABLE_OBSERVATIONS 8
+  [exit 0]
+  NOTE the complete register list is in notes/installed-hardware-interfaces.json
+
+STEP 7 — EXIT GATE: THE DEPENDENCY MAP
+$ python3 tool/map_hardware_interfaces.py | sed -n '/^DEPENDENCY_MAP/,/^NOTABLE_OBS/p'
+  DEPENDENCY_MAP
+    must-replace                   0x08000000 vendor-mmio   Candidate A (entry image)
+      every access is on the reset path, so this is platform bring-up that runs before any service exists: a replacement has to do the equivalent or prove it unnecessary
+    must-replace                   0x10000000 vendor-mmio   Candidate A (entry image)
+      every access is on the reset path, so this is platform bring-up that runs before any service exists: a replacement has to do the equivalent or prove it unnecessary
+    not-a-service                  0x18000000 ram           Candidate A (entry image)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    not-a-service                  0x20000000 ram           Candidate A (entry image)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    must-replace                   0x40000000 vendor-mmio   Candidate A (entry image)
+      every access is on the reset path, so this is platform bring-up that runs before any service exists: a replacement has to do the equivalent or prove it unnecessary
+    must-replace-if-service-needed 0x45000000 vendor-mmio   Candidate A (entry image)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    may-omit                       0x60000000 flash-window  Candidate A (entry image)
+      reading the mapped flash window is storage access, not a platform service a minimal application has to provide
+    must-replace                   0xe0000000 arm-core      Candidate A (entry image)
+      architectural: any firmware that takes an interrupt or keeps time has to program these itself
+    not-a-service                  0x00000000 artifact      Candidate B (application)
+      a constant-propagation artifact, excluded from the register map
+    not-a-service                  0x18000000 ram           Candidate B (application)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    not-a-service                  0x20000000 ram           Candidate B (application)
+      RAM traffic: the scatter-loaded image and its zero-initialised region
+    must-replace-if-service-needed 0x40000000 vendor-mmio   Candidate B (application)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    must-replace-if-service-needed 0x40100000 vendor-mmio   Candidate B (application)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    must-replace-if-service-needed 0x45000000 vendor-mmio   Candidate B (application)
+      the block is touched by the original firmware, but its service is unidentified without a reference manual, so a replacement must either reproduce the observed initialisation or establish that the service is not needed
+    must-replace                   0xe0000000 arm-core      Candidate B (application)
+      architectural: any firmware that takes an interrupt or keeps time has to program these itself
+
+  NOTABLE_OBSERVATIONS 8
+  [exit 0]
+
+STEP 8 — COVERAGE AND CONTRADICTIONS
+$ python3 tool/map_hardware_interfaces.py | sed -n '/^COVERAGE OF THE PLANNED/,$p'
+  COVERAGE OF THE PLANNED ANALYSIS AREAS
+    covered      1. vector/interrupt table, reset path, memory init
+      the table is decoded from installed bytes, the reset path is the reachability root, and the scatter-load memory initialisation is mapped in log 98/99
+    partial      1b. clock tree, watchdog, fault behaviour
+      the fault and NMI vectors are identified and the reset-path vendor blocks are enumerated with their written values, but which block is the clock tree and which is a watchdog cannot be established without a reference manual
+    not-covered  2. USB device controller, descriptors, endpoints, HID reports
+      no vendor block can be identified as the USB controller from these bytes alone; the HID report descriptors already recovered over USB in logs 07/09 are the evidence for report layout, not this map
+    not-covered  3. GPIO and keyboard scan scheduling
+      the same identification barrier; the interrupt slots in use are known but not what they are wired to
+    not-covered  4. Hall-effect acquisition, ADC, calibration, thresholds
+      no analog block is identifiable; nothing here supports any claim about actuation thresholds or rapid trigger
+    not-covered  5. nonvolatile settings format and write paths
+      flash-window reads are visible but no write path to nonvolatile storage is identified in the application; the bootloader's programming path is the one already documented in log 81
+    not-covered  6. RGB controller, timing, frame buffers
+      the same identification barrier
+    partial      7. RTOS/task init, queues, timers, synchronisation
+      SysTick and PendSV handlers exist and are located, which is the shape of a preemptive scheduler, but no queue or task structure is decoded here
+
+  CONTRADICTION FINDINGS.md records Candidate B's runtime entry as 0x1800023a, called by Candidate A after the scatter load (logs 79-80). No word in either release's Candidate A points there. The installed image's only non-vector cross-image code pointers are 0x18016e69, 0x18016f2d. Either the call is computed at runtime rather than taken from a literal, or the earlier attribution needs rechecking. Not resolved here.
+
+  LIMITATION Vendor MMIO blocks are described by observed accesses only. No SNC73270 reference manual is available, so this map names no vendor peripheral and supports no claim about USB, scan, Hall-effect, nonvolatile or RGB hardware.
+  LIMITATION An access appears only when constant propagation resolved its base register. Accesses through a pointer held in a parameter or a structure are counted as unresolved, so the register list is a lower bound, not a complete set.
+  LIMITATION Reachability is computed from Ghidra's call graph, which does not follow calls made through function-pointer tables, so a function reported as unreached may still run.
+  UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
+  UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
+  UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+  RESULT map_ok=True live_interrupts=18 blocks=15 contradictions=1
+  [exit 0]
+
+STEP 9 — GENERATED REPORTS
+$ python3 tool/report_phase5.py
+  WROTE notes/installed-hardware-interfaces.md (44293 bytes)
+  WROTE notes/installed-hardware-interfaces.json (636327 bytes)
+  RESULT reports_written=2
+  [exit 0]
+
+$ python3 tool/report_phase5.py --check
+    CURRENT notes/installed-hardware-interfaces.md
+    CURRENT notes/installed-hardware-interfaces.json
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ sha256sum notes/installed-hardware-interfaces.md notes/installed-hardware-interfaces.json
+  0978c220ca337e47e440b970b47c5ea91dc2e3c9927d2c22f7dc71011ea74aa6  notes/installed-hardware-interfaces.md
+  38982e8e0a54ae81980829a5bc867bbe2f4aa6443cff462a8bc0a04ad8fa8a4d  notes/installed-hardware-interfaces.json
+  [exit 0]
+
+PHASE 3 REGENERATED — SEEDING CHANGED THE FUNCTION SET
+Seeding roughly doubled the analysed function set, so every Phase 3 number
+derived from it had to be recomputed. Doing that exposed a real flaw in the
+Phase 3 method: data spans were paired by list index, guarded only by the
+two sides having equal span counts. With the larger function set the counts
+still matched while the k-th spans described different regions, so the
+pairing silently drifted.
+
+The fix is referential rather than positional. Each uncovered span is keyed
+by the matched function that precedes it, and a pair is compared only when
+the anchor key, the distance past that anchor and the length all agree on
+both sides. Anything else is reported and left uncompared, so a mispaired
+span can no longer be diffed.
+$ python3 - <<'PY'
+import json, subprocess
+IMP = 'ghidra/imports'
+PAIRS = (
+    ('a', IMP + '/vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin',
+     IMP + '/installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin',
+     '0x0', '0x11000', 131),
+    ('b', IMP + '/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin',
+     IMP + '/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin',
+     '0x18000000', '0x21000', 101112),
+)
+for tag, vendor_bin, installed_bin, base, flash, raw in PAIRS:
+    args = ['python3', 'tool/match_functions.py', '--program', 'app_' + tag,
+            '--vendor-inventory', 'ghidra/inventories/vendor_%s.txt' % tag,
+            '--installed-inventory', 'ghidra/inventories/installed_%s.txt' % tag,
+            '--vendor-bin', vendor_bin, '--installed-bin', installed_bin,
+            '--base', base, '--flash-base', flash, '--json']
+    d = json.loads(subprocess.run(args, capture_output=True, text=True).stdout)
+    body = sum(m['differing_bytes'] or 0 for m in d['matches'])
+    print('candidate %s: functions=%d tiers=%s' % (tag.upper(), d['vendor_count'], d['counts']))
+    print('    body=%d data=%d aligned_total=%d raw_log96=%d' % (body, d['data_region_bytes'], body + d['data_region_bytes'], raw))
+    print('    spans=%s discontiguous=%s unaligned=%d' % (d['uncovered_span_counts'], d['discontiguous_bodies'], len(d['unaligned_gaps'])))
+PY
+  candidate A: functions=97 tiers={'identical': 91, 'tentative': 6}
+      body=0 data=131 aligned_total=131 raw_log96=131
+      spans={'compared': 75, 'installed': 75, 'vendor': 75} discontiguous={'installed': 15, 'vendor': 15} unaligned=0
+  candidate B: functions=530 tiers={'identical': 462, 'structural': 48, 'tentative': 20}
+      body=332 data=741 aligned_total=1073 raw_log96=101112
+      spans={'compared': 251, 'installed': 269, 'vendor': 269} discontiguous={'installed': 100, 'vendor': 100} unaligned=19
+  [exit 0]
+  NOTE Candidate A: 97/97, nothing unmatched, still ZERO differing function bytes and still exactly log 96's 131 data bytes, with every span pairing cleanly. Candidate B: 530/530, nothing unmatched, shift still +0x2c, aligned change 1,073 bytes against 101,112 raw — but 20 spans could not be paired safely, so B's total is a LOWER BOUND
+
+CORRECTION TO LOGS 98 AND 99 — THE GROWTH IS DISTRIBUTED
+Logs 98 and 99 reported record slot 1's 44 bytes of growth as a single
+insertion in one data gap at vendor 0x180047f8. That was an artifact of the
+shallower function set: before the handlers were seeded, a large
+unanalysed region read as one uncovered span. With 530 functions per side
+the same bytes resolve into code plus several smaller spans.
+$ python3 - <<'PY'
+import json, subprocess
+IMP = 'ghidra/imports'
+args = ['python3', 'tool/match_functions.py', '--program', 'app_b',
+        '--vendor-inventory', 'ghidra/inventories/vendor_b.txt',
+        '--installed-inventory', 'ghidra/inventories/installed_b.txt',
+        '--vendor-bin', IMP + '/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin',
+        '--installed-bin', IMP + '/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin',
+        '--base', '0x18000000', '--flash-base', '0x21000', '--json']
+d = json.loads(subprocess.run(args, capture_output=True, text=True).stdout)
+pairs = [m for m in d['matches'] if m['vendor'] and m['installed']]
+grew = [m for m in pairs if m['installed']['size'] != m['vendor']['size']]
+print('matched pairings whose body size changed:', len(grew))
+print('net body size delta:', sum(m['installed']['size'] - m['vendor']['size'] for m in grew))
+gaps = d['unaligned_gaps']
+print('spans that could not be paired:', len(gaps))
+print('net span length delta:', sum(g['installed_length'] - g['vendor_length'] for g in gaps))
+print('record slot 1 growth: 44 (0x1e754 -> 0x1e780)')
+print('single 44-byte gap still present:', any(g['installed_length'] - g['vendor_length'] == 44 for g in gaps))
+PY
+  matched pairings whose body size changed: 2
+  net body size delta: 38
+  spans that could not be paired: 19
+  net span length delta: 8
+  record slot 1 growth: 44 (0x1e754 -> 0x1e780)
+  single 44-byte gap still present: False
+  [exit 0]
+  NOTE the split does not sum exactly to 44 because a pairing whose bodies have different range shapes is not byte-compared and function extents can overlap; 44 is the reliable total and the split is indicative
+
+EXIT GATE — reports reproduce and the suite passes
+$ python3 tool/report_phase5.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/report_phase3.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/map_hardware_interfaces.py --json | sha256sum; python3 tool/map_hardware_interfaces.py --json | sha256sum
+  38982e8e0a54ae81980829a5bc867bbe2f4aa6443cff462a8bc0a04ad8fa8a4d  -
+  38982e8e0a54ae81980829a5bc867bbe2f4aa6443cff462a8bc0a04ad8fa8a4d  -
+  [exit 0]
+
+$ python3 -m py_compile tool/*.py
+  [exit 0]
+  NOTE every tool compiles
+
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=12 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=23 containers_skipped=0 word_sums_skipped=0
+  [exit 0]
+
+$ python3 tool/extract_installed_records.py | grep -E '^RESULT'
+  RESULT extraction_ok=True checks_run=9 slices=3 runtime_ranges=3
+  [exit 0]
+
+$ python3 tool/compare_firmware_images.py | grep -E '^- differing bytes'
+  - differing bytes: **101297** of 442368 (22.90%)
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmprq59h4ud/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp17thal0p/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpzdly9lx6/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp6jod3jv4/dump.bin
+  Ran 337 tests in 2.497s
+  OK
+  [exit 0]
+  NOTE 337 tests = 303 from log 99, plus 29 Phase 5 tests, plus 5 net from the Phase 3 span-pairing rework
+
+FACTS ESTABLISHED IN THIS PHASE
+  1. The vector table is 73 slots at entry-image 0x0..0x124: 16 ARMv7-M
+     core vectors plus 57 external interrupts. Unused slots are filled with
+     the default handler 0x000014df, which is what bounds the table; the
+     first code address is 0x140. Initial SP 0x18036168, reset 0x000014a9.
+  2. All six fault-class vectors plus SVCall, PendSV and SysTick are
+     populated with distinct handlers.
+  3. Eight external interrupts carry a non-default handler: IRQ3 in the
+     entry image, and IRQ6, IRQ31, IRQ32, IRQ36, IRQ37, IRQ38 and IRQ48 in
+     the application image. So the entry image owns the table while the
+     application owns most of the handlers, and the table's application
+     addresses are only valid after the scatter load.
+  4. Software enables exactly IRQ6 and IRQ38 through NVIC_ISER0/1, both of
+     which hold a non-default handler in the table. Two independent parts
+     of the image agree.
+  5. The NMI handler writes AIRCR 0x05fa0004 — VECTKEY with SYSRESETREQ —
+     so NMI requests a system reset.
+  6. SysTick writes ICSR 0x10000000 (PENDSVSET) and the application writes
+     it 14 more times. A timebase pending a software interrupt with a
+     populated PendSV vector is the shape of a preemptive scheduler.
+  7. The HardFault handler reads CFSR, MMFAR and BFAR, so it reports faults
+     rather than merely hanging.
+  8. Two identical unnamed blocks at 0x40008000 and 0x40009000 are each
+     written 0x5afa0000, with 0x5afa55aa written at +0xc, on the reset
+     path: a magic-key-protected register pair, duplicated.
+  9. Reset-path register 0x4002f004 is written 0x60021000, exactly SN_FWIN
+     record slot 1's address from the installed header.
+ 10. The unnamed block at 0x40100000 — 19 registers, 126 accesses — is the
+     one IRQ6 serves, touched from both IRQ6's handler and the initialiser
+     the entry image calls. It is the application's principal peripheral.
+ 11. The entry image transfers control into the application through exactly
+     two non-vector code pointers, 0x18016e69 and 0x18016f2d.
+
+WHAT THIS PHASE DOES NOT ESTABLISH
+  * No vendor peripheral is named. Four of the plan's seven analysis areas
+    — USB, GPIO/scan, Hall-effect/ADC, RGB — and the nonvolatile write path
+    are reported not-covered, because identifying a block needs a SNC73270
+    reference manual that this repository does not have. Nothing here
+    supports any claim about actuation thresholds or rapid trigger.
+  * The register list is a lower bound. An access is reported only when
+    constant propagation resolved its base register; accesses through a
+    pointer in a parameter or structure are counted as unresolved.
+  * Reachability follows Ghidra's call graph, which does not follow calls
+    through function-pointer tables. The application image therefore has
+    479 of 530 functions unreached: its task entry points are dispatched
+    through tables (logs 48, 49, 65), not called directly.
+  * The interrupt-to-peripheral wiring is unknown. Knowing that IRQ6 is
+    enabled and serves the 0x40100000 block says nothing about what that
+    block does.
+
+CONTRADICTION RECORDED
+FINDINGS.md records Candidate B's runtime entry as 0x1800023a, called by
+Candidate A after the scatter load (logs 79-80). No word in either
+release's Candidate A points there. The only non-vector cross-image code
+pointers in the installed image are 0x18016e69 and 0x18016f2d, and the
+vendor image has the corresponding 0x18016e3d and 0x18016f01. Either the
+call is computed at runtime rather than taken from a literal, or the
+earlier attribution needs rechecking. Not resolved here.
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  [exit 0]
+  NOTE no output means no whitespace errors
+
+$ git status --short
+   M ghidra/.gitignore
+   M notes/vendor-to-installed-functions-app-a.json
+   M notes/vendor-to-installed-functions-app-b.json
+   M notes/vendor-to-installed-functions.md
+   M tool/match_functions.py
+   M tool/report_phase3.py
+   M tool/test_match_functions.py
+   M tool/test_report_phase3.py
+  ?? ghidra/scripts/FalchionPeripheralMap.java
+  ?? ghidra/scripts/FalchionSeedVectors.java
+  ?? notes/installed-hardware-interfaces.json
+  ?? notes/installed-hardware-interfaces.md
+  ?? tool/map_hardware_interfaces.py
+  ?? tool/report_phase5.py
+  ?? tool/test_map_hardware_interfaces.py
+  [exit 0]
+
+RESULT
+Phase 5 complete. The vector table, the reset and fault paths, the
+scheduler mechanism and every resolvable MMIO register are mapped from
+installed bytes, with observed behaviour kept strictly separate from
+peripheral identity and with reachability computed from evidence-backed
+roots. The exit gate is answered: a dependency map states which blocks a
+replacement must program, which it may omit, and which cannot be judged
+until their service is identified. Four of the seven analysis areas are
+declared not-covered rather than guessed at. Seeding the handlers also
+forced a Phase 3 regeneration and exposed a real span-pairing flaw, both
+recorded above. 337 offline tests pass, both evidence hashes are
+unchanged, and no device was accessed. Phase 4 remains undone and Phase 6
+was not started; everything left uncommitted for review.

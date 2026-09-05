@@ -17,7 +17,6 @@ fd6a34f590f33c1500edf014cee900e630e75697c225cd89817319dc3474295a  logs/13-interf
 84e4b2817e9323340f05740a839b71605db2ebaadb92aa88fd4e6d5e641b8036  logs/16-dfu-util-list-direct.txt
 d7ee4b87afc9d074af6e6ad21d6e5285b93f5b7e6cbe3e9afad8f826febbee27  logs/17-prior-report-descriptor-comparison.txt
 c0c4a9af4edca2bb0685356cc785b48bbbf47c1ca205bc8b1709f3bbf500db2c  logs/18-device-node-metadata.txt
-
 5b8e2f4fdfe431347a1507de6668146f9e66bc9f5547e0c07d6b97be6b24bff5  logs/19-port-retry-sysfs-devices.txt
 25abc5a0d8bbdd275fe541cc61cf2b61441a43bedd47a22ab7e4d22cfde604e5  logs/20-port-retry-sysfs-interfaces.txt
 9e0c2f9236cd7efdf0517e43eca6e3852a60e08d56a1aac1a45422677a953a7b  logs/21-port-retry-lsusb-tree.txt
@@ -99,3 +98,8 @@ da26698462ef0cca8c04da24dba4df63c84f5170741dd43725093bf69fc6a358  logs/94-versio
 d9d837e9187236b00e457f349612dda097b97f3bbec67517d587dff8a2c993ac  logs/97-phase2-review-corrections.txt
 d1d9a8b9892011b8dd75ad4635188bf66074d1f7dab1209c73b492f6b6c2e7fb  logs/98-installed-code-map-and-function-matching.txt
 776b3aa47c9d4967b8eafd06f376e1340634122fc77c1ca8f102e640947def87  logs/99-phase3-review-corrections.txt
+3a06e1eaebb369c8d72336a673c663312504c2c456c5a5b255aac54f104290b3  logs/100-installed-hardware-interface-map.txt
+51af454ad1b43416eb421b8fe7bdff9aa0d8682a4800da6d764574ddff81ef93  logs/101-boot-acceptance-resolved.txt
+a8cff1d4ab013f0be0f5fccabfc36e48a7d0edf046ac62f959cc2cc14bd96286  logs/102-phase4-and-phase5-review-corrections.txt
+33162a587b0f4c60b6e76d14827af9c75380c512b72f4106a906e49730c0fa97  logs/103-phase4-prose-and-policy-corrections.txt
+f86b7b6d3334941cb8189bcfe492534d3015c1ab7238d270b9b7d3bcb6153df2  logs/104-phase5a-pointer-tables-and-reachability.txt

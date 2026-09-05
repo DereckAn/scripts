@@ -1,0 +1,712 @@
+ASUS ROG Falchion Ace HFX — Step 6 Phase 4: boot-acceptance checks resolved
+Date: 2026-09-03 America/Mexico_City
+Status: offline only; no device was accessed at any point in this phase
+
+SCOPE
+Phase 4 of notes/step6-offline-custom-firmware-plan.md, run after Phase 5 at
+the owner's direction. Both named unknowns are resolved, a third gate that
+nobody had named is recovered, the whole accept chain and the final transfer
+of control are reconfirmed, and the search for signatures, versions,
+rollback rules, device IDs and configuration gates returns a definitive
+negative.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no bootloader entry, no
+probe or backup tool run, no sudo, no package install, no network access,
+and no unlock/erase/program/reset/SPI construction. Both evidence binaries
+were opened read-only and are unchanged. The pre-existing
+ghidra/project/falchion-hfx was NOT opened; all work used the ignored
+ghidra/project-step6.
+
+PROVENANCE — THE BYTES ANALYSED ARE ON THE DEVICE
+Log 100 established that the installed dump's mirrored copy at logical
+[0x61000,0x71000) is byte-identical to the vendor 1.00.58 primary and backup
+bootloader. This phase therefore reads the bootloader out of the *device
+dump* rather than the vendor file, and proves the slice is the same byte
+range the earlier analysis called bootloader_primary.bin.
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ python3 - <<'PY'
+import hashlib, sys
+sys.path.insert(0, 'tool')
+import falchion_image as fi
+inst = fi.ImageView(open('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin','rb').read(), 0x10000)
+vend = fi.ImageView(open('dumps/vendor/M605_V01_00_58.bin','rb').read(), 0)
+mirrored = inst.read(0x61000 + 0x1000, 0xf000)
+primary = vend.read(0x1000, 0xf000)
+print('installed mirror code sha256:', hashlib.sha256(mirrored).hexdigest())
+print('vendor primary  code sha256:', hashlib.sha256(primary).hexdigest())
+print('identical:', mirrored == primary)
+PY
+  installed mirror code sha256: c244aef0a92424cc92354a8cebd312be3098780d1ec062e05e5d5333e38d870c
+  vendor primary  code sha256: c244aef0a92424cc92354a8cebd312be3098780d1ec062e05e5d5333e38d870c
+  identical: True
+  [exit 0]
+  NOTE c244aef0... is the same hash the existing project's bootloader_primary.bin carries, so the two analyses are of one byte range with two independent provenances
+
+ADDED FILES
+  ghidra/scripts/FalchionDecompileTargets.java  — decompile + listing + xrefs
+  tool/analyze_boot_acceptance.py               — the gates, from installed bytes
+  tool/test_analyze_boot_acceptance.py          — 34 offline tests
+  tool/report_phase4.py                         — tracked report generator
+  notes/boot-acceptance-conditions.md           — the Phase 4 report
+  notes/boot-acceptance-conditions.json         — machine-readable
+ghidra/decompiles/ added to ghidra/.gitignore.
+
+STEP 1 — IMPORT AND SEED (ignored project only)
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -import "$PWD/ghidra/imports/installed_bootloader_mirror_flash01000_dst00000000_len0f000_c244aef0.bin" \
+      -processor ARM:LE:32:Cortex -loader BinaryLoader -loader-baseAddr 0x0
+
+  then -postScript FalchionSeedVectors.java with
+    BootReset=0x2f4 BootOrchestrator=0x7ec8 Gate_FUN_29d4=0x29d4
+    Gate_FUN_2a44=0x2a44 CandidateSelect=0x2af0 SlotScan=0x8000
+    EntrySpCheck=0x5240 RecordVerify=0x511c WordSum=0x26d0
+  -> created=1 existing=8; the eight were already functions from analysis
+
+STEP 2 — THE TOP-LEVEL COMPARISON, READ FROM THE LITERAL POOL
+Log 75 recovered the orchestrator's accept expression but left the compared
+value unread:
+
+    iVar3 = FUN_000029d4();
+    if ((((iVar3 == 0) && (iVar2 == DAT_00007f98)) &&
+         (iVar3 = FUN_00002a44(), iVar3 == 0)) &&
+        (iVar3 = FUN_000026d0(0x6c000), iVar3 == 0)) {
+      FUN_00000ffc(0);
+      FUN_00007fa8(iVar2);
+      thunk_EXT_FUN_18010000(0,iVar2,0x10000);
+    }
+
+$ python3 tool/analyze_boot_acceptance.py | grep '^LITERAL'
+  LITERAL backup_container @prog 0x2b0c = 0x60060000  DAT_00002b0c, the second container FUN_00002af0 falls back to
+  LITERAL ram_entry_flag_pointer @prog 0x2a60 = 0x20000ffc  DAT_00002a60, the RAM word FUN_00002a44 reads
+  LITERAL ram_entry_magic @prog 0x2a64 = 0x73207320  DAT_00002a64, the magic FUN_00002a44 looks for in RAM
+  LITERAL recovery_scan_buffer @prog 0x2a40 = 0x18012ac8  DAT_00002a40, the RAM scan buffer FUN_000029d4 polls
+  LITERAL selected_entry_constant @prog 0x7f98 = 0x60011000  DAT_00007f98, the value the selected entry must equal before the jump
+  LITERAL systick_reload @prog 0x7f9c = 0x000278d0  DAT_00007f9c, the reload the service loop programs when no image is booted
+  LITERAL vtor_pointer @prog 0x7fb0 = 0xe000ed08  DAT_00007fb0, the register FUN_00007fa8 writes the entry into
+  LITERAL word_sum_base @prog 0x277c = 0x60010000  DAT_0000277c, the base FUN_000026d0 sums from
+  [exit 0]
+  NOTE DAT_00007f98 = 0x60011000. The selected entry must equal that constant exactly, so the entry image cannot be relocated. DAT_0000277c = 0x60010000 makes FUN_000026d0(0x6c000) exactly the application region 0x10000..0x7c000
+
+STEP 3 — FUN_000029d4 DECOMPILED: A RECOVERY KEY-COMBINATION POLL
+$ sed -n '/=== TARGET 000029d4/,/=== TARGET 00002a44/p' ghidra/decompiles/boot_gates.txt | grep -vE '^    [0-9a-f]{8}  [0-9]b  '
+  === TARGET 000029d4
+    FUNCTION FUN_000029d4 @ 000029d4 size=0x6c
+    BODY_RANGES 000029d4-00002a3f
+    CALLERS FUN_00007ec8@00007ec8
+    CALLEES FUN_00002d4a@00002d4a, FUN_00003732@00003732, FUN_00005272@00005272
+    REFERENCED_DATA 21
+      000029d8 -> 000029f4 = 0xd3f02c64
+      000029dc -> 00005272 = 0x8810f380
+      000029e0 -> 00002d4a = 0xf7ffb510
+      000029e6 -> 00005272 = 0x8810f380
+      000029ee -> 00003732 = 0x4604b510
+      000029f6 -> 000029da = 0xf0022001
+      000029fc -> 00002a38 = 0xd3e02c64
+      00002a00 -> 00005272 = 0x8810f380
+      00002a04 -> 00002d4a = 0xf7ffb510
+      00002a0a -> 00005272 = 0x8810f380
+      00002a0e -> 00002a40 = 0x18012ac8
+      00002a10 -> 18012ac8 (outside this program)
+      00002a14 -> 00002a2c = 0xf44f2500
+      00002a16 -> 00002a40 = 0x18012ac8
+      00002a18 -> 18012ad8 (outside this program)
+      00002a1e -> 00002a2c = 0xf44f2500
+      00002a22 -> 00002a28 = 0xe0001c6d
+      00002a2a -> 00002a2e = 0x707af44f
+      00002a32 -> 00003732 = 0x4604b510
+      00002a3a -> 000029fe = 0xf0022001
+      00002a3e -> 00002a26 = 0x1c6dbd70
+    LISTING
+    DECOMPILE
+
+      undefined4 FUN_000029d4(void)
+
+      {
+        uint uVar1;
+        int iVar2;
+
+        for (uVar1 = 0; uVar1 < 100; uVar1 = uVar1 + 1) {
+          FUN_00005272(1);
+          FUN_00002d4a();
+          FUN_00005272(0);
+          FUN_00003732(1000);
+        }
+        iVar2 = 0;
+        uVar1 = 0;
+        do {
+          if (99 < uVar1) {
+            return 0;
+          }
+          FUN_00005272(1);
+          FUN_00002d4a();
+          FUN_00005272(0);
+          if ((*DAT_00002a40 == 0xa0) && (DAT_00002a40[4] == 0x100)) {
+            if (iVar2 == 0x1e) {
+              return 1;
+            }
+            iVar2 = iVar2 + 1;
+          }
+          else {
+            iVar2 = 0;
+          }
+          FUN_00003732(1000);
+          uVar1 = uVar1 + 1;
+        } while( true );
+      }
+
+  === TARGET 00002a44
+  [exit 0]
+  NOTE not an integrity check: it ticks the bootloader's own key scan and returns 1 — blocking the boot — once the pattern at RAM 0x18012ac8 (+0x0 == 0xa0 and +0x10 == 0x100) has held for 30 consecutive samples. A custom image has to satisfy nothing here
+
+STEP 4 — FUN_00002a44 DECOMPILED: A THIRD GATE NOBODY HAD NAMED
+$ sed -n '/=== TARGET 00002a44/,$p' ghidra/decompiles/boot_gates.txt | grep -vE '^    [0-9a-f]{8}  [0-9]b  '
+  === TARGET 00002a44
+    FUNCTION FUN_00002a44 @ 00002a44 size=0x1a
+    BODY_RANGES 00002a44-00002a5d
+    CALLERS FUN_00007ec8@00007ec8
+    CALLEES none
+    REFERENCED_DATA 8
+      00002a44 -> 00002a60 = 0x20000ffc
+      00002a46 -> 20000ffc (outside this program)
+      00002a48 -> 00002a64 = 0x73207320
+      00002a4c -> 00002a5a = 0xe7fc2000
+      00002a50 -> 00002a60 = 0x20000ffc
+      00002a52 -> 20000ffc (outside this program)
+      00002a54 -> 20000ffc (outside this program)
+      00002a5c -> 00002a58 = 0x20004770
+    LISTING
+    DECOMPILE
+
+      bool FUN_00002a44(void)
+
+      {
+        int *piVar1;
+        bool bVar2;
+
+        piVar1 = DAT_00002a60;
+        bVar2 = *DAT_00002a60 == DAT_00002a64;
+        if (bVar2) {
+          *DAT_00002a60 = 0;
+          *piVar1 = 0;
+        }
+        return bVar2;
+      }
+
+  RESULT targets=2
+  [exit 0]
+  NOTE reads 0x20000ffc, compares it with 0x73207320 (the bytes " s s"), and when they match clears the word and returns 1. A one-shot, software-requested bootloader-entry flag, consistent with the reset-only entry report of logs 87 and 88
+
+STEP 5 — THE SUPPORTING ROUTINES
+$ grep -vE '^    [0-9a-f]{8}  [0-9]b  ' ghidra/decompiles/boot_handoff.txt
+  PROGRAM installed_bootloader_mirror_flash01000_dst00000000_len0f000_c244aef0.bin
+  IMAGE_BASE 00000000
+
+  === TARGET 00007fa8
+    FUNCTION FUN_00007fa8 @ 00007fa8 size=0x8
+    BODY_RANGES 00007fa8-00007faf
+    CALLERS FUN_00007ec8@00007ec8
+    CALLEES none
+    REFERENCED_DATA 2
+      00007fa8 -> 00007fb0 = 0xe000ed08
+      00007faa -> e000ed08 (outside this program)
+    LISTING
+    DECOMPILE
+
+      void FUN_00007fa8(undefined4 param_1)
+
+      {
+        *(undefined4 *)(*DAT_00007fb0 + 0x1c) = param_1;
+        return;
+      }
+
+  === TARGET 00000ffc
+    FUNCTION FUN_00000ffc @ 00000ffc size=0x2
+    BODY_RANGES 00000ffc-00000ffd
+    CALLERS FUN_00007ec8@00007ec8
+    CALLEES none
+    REFERENCED_DATA 0
+    LISTING
+    DECOMPILE
+
+      void FUN_00000ffc(void)
+
+      {
+        return;
+      }
+
+  === TARGET 00005272
+    FUNCTION FUN_00005272 @ 00005272 size=0x6
+    BODY_RANGES 00005272-00005277
+    CALLERS FUN_000029d4@000029d4
+    CALLEES none
+    REFERENCED_DATA 0
+    LISTING
+    DECOMPILE
+
+      void FUN_00005272(uint param_1)
+
+      {
+        bool bVar1;
+
+        bVar1 = (bool)isCurrentModePrivileged();
+        if (bVar1) {
+          enableIRQinterrupts((param_1 & 1) == 1);
+        }
+        return;
+      }
+
+  === TARGET 00002d4a
+    FUNCTION FUN_00002d4a @ 00002d4a size=0x14
+    BODY_RANGES 00002d4a-00002d5d
+    CALLERS FUN_000029d4@000029d4, FUN_000036fc@000036fc
+    CALLEES FUN_00002780@00002780, FUN_0000350c@0000350c, FUN_00003b98@00003b98, FUN_00007e14@00007e14
+    REFERENCED_DATA 4
+      00002d4c -> 00002780 = 0x211eb510
+      00002d50 -> 00007e14 = 0x4818b510
+      00002d54 -> 00003b98 = 0x2200b510
+      00002d58 -> 0000350c = 0x2400b5f0
+    LISTING
+    DECOMPILE
+
+      void FUN_00002d4a(void)
+
+      {
+        FUN_00002780();
+        FUN_00007e14();
+        FUN_00003b98();
+        FUN_0000350c();
+        return;
+      }
+
+  RESULT targets=4
+  [exit 0]
+  NOTE FUN_00007fa8 parks the entry in VTOR+0x1c, a reserved vector slot; FUN_00005272 is enable/disable-IRQ; FUN_00002d4a is the bootloader's four-call scan tick; FUN_00000ffc is empty
+
+STEP 6 — THE FINAL TRANSFER OF CONTROL IS A COPY AND A RESET
+thunk_EXT_FUN_18010000 is bootloader code, not an external symbol. The
+bootloader's own scatter table copies it to RAM:
+$ python3 - <<'PY'
+import struct, sys
+sys.path.insert(0, 'tool')
+import falchion_image as fi
+v = fi.ImageView(open('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin','rb').read(), 0x10000)
+data = v.read(0x61000 + 0x1000, 0xf000)
+for off in (0xcca0, 0xccb0, 0xccc0):
+    src, dst, size, handler = struct.unpack_from('<4I', data, off)
+    print('prog 0x%04x: src=0x%08x dst=0x%08x size=0x%-7x handler=0x%x'
+          % (off, src, dst, size, handler))
+PY
+  prog 0xcca0: src=0x0000cdfc dst=0x18010000 size=0x50      handler=0x1e0
+  prog 0xccb0: src=0x0000ce4c dst=0x18010050 size=0x1118    handler=0x17c
+  prog 0xccc0: src=0x0000d13c dst=0x18011168 size=0x1a0c8   handler=0x1fc
+  [exit 0]
+  NOTE the first descriptor copies 0x50 bytes from bootloader program 0xcdfc to 0x18010000; the third matches log 86's Region$$Table at 0x0000ccc0 exactly
+
+$ grep -vE '^    [0-9a-f]{8}  [0-9]+b  ' ghidra/decompiles/boot_ram_handoff.txt | head -n 20
+  PROGRAM installed_boot_handoff_ram_prog0cdfc_dst18010000_len00050_1e418391.bin
+  IMAGE_BASE 00000000
+
+  === TARGET 18010000
+    FUNCTION BootHandoff @ 18010000 size=0x46
+    BODY_RANGES 18010000-18010045
+    CALLERS none
+    CALLEES none
+    REFERENCED_DATA 6
+      18010012 -> 1801001e = 0xd3f84290
+      18010020 -> 18010014 = 0x4020f856
+      18010028 -> 18010048 = 0xe000ed0c
+      18010030 -> 1801004c = 0x5fa0000
+      18010036 -> 18010048 = 0xe000ed0c
+      18010044 -> 18010042 = 0xe7fdbf00
+    LISTING
+    DECOMPILE
+
+      /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+  [exit 0]
+
+$ sed -n '/  LISTING/,/  DECOMPILE/p' ghidra/decompiles/boot_ram_handoff.txt
+    LISTING
+      18010000  2b  mov r3,r0
+      18010002  2b  mov r5,r3
+      18010004  2b  mov r6,r1
+      18010006  2b  movs r4,#0x1
+      18010008  4b  msr primask,r4
+      1801000c  2b  nop
+      1801000e  2b  lsrs r2,r2,#0x2
+      18010010  2b  movs r0,#0x0
+      18010012  2b  b 0x1801001e
+      18010014  4b  ldr.w r4,[r6,r0,lsl #0x2]
+      18010018  4b  str.w r4,[r5,r0,lsl #0x2]
+      1801001c  2b  adds r0,r0,#0x1
+      1801001e  2b  cmp r0,r2
+      18010020  2b  bcc 0x18010014
+      18010022  2b  nop
+      18010024  4b  dsb #0xf
+      18010028  2b  ldr r4,[0x18010048]
+      1801002a  2b  ldr r4,[r4,#0x0]
+      1801002c  4b  and r4,r4,#0x700
+      18010030  2b  ldr r7,[0x1801004c]
+      18010032  2b  orrs r4,r7
+      18010034  2b  adds r4,r4,#0x4
+      18010036  2b  ldr r7,[0x18010048]
+      18010038  2b  str r4,[r7,#0x0]
+      1801003a  4b  dsb #0xf
+      1801003e  2b  nop
+      18010040  2b  nop
+      18010042  2b  nop
+      18010044  2b  b 0x18010042
+    DECOMPILE
+  [exit 0]
+  NOTE mask interrupts, copy (len>>2) words from src to dst, dsb, write AIRCR = (AIRCR & 0x700) | 0x05fa0000 + 4 which is VECTKEY with SYSRESETREQ, dsb, then spin. Called as (0, 0x60011000, 0x10000): the bootloader copies a fixed 64 KiB window from the entry address to ADDRESS 0 and requests a system reset. It never branches to the image
+
+STEP 7 — SEARCH FOR SIGNATURES, VERSIONS, ROLLBACK RULES, DEVICE IDS
+$ python3 - <<'PY'
+import re, struct, sys
+sys.path.insert(0, 'tool')
+import falchion_image as fi
+v = fi.ImageView(open('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin','rb').read(), 0x10000)
+bl = v.read(0x61000 + 0x1000, 0xf000)
+CRYPTO = {0x428a2f98: 'SHA-256 K[0]', 0x6a09e667: 'SHA-256 H[0]',
+          0x67452301: 'SHA-1/MD5 A', 0xefcdab89: 'SHA-1/MD5 B',
+          0xd76aa478: 'MD5 T[1]', 0x5a827999: 'SHA-1 K[0]',
+          0xedb88320: 'CRC-32 reflected poly',
+          0x04c11db7: 'CRC-32 forward poly', 0x1021: 'CRC-16 CCITT poly',
+          0x8408: 'CRC-16 reflected', 0x63636363: 'AES S-box seed',
+          0x9e3779b9: 'TEA/XXTEA delta'}
+hits = {}
+for off in range(0, len(bl) - 3):
+    word, = struct.unpack_from('<I', bl, off)
+    if word in CRYPTO:
+        hits.setdefault(CRYPTO[word], []).append(off)
+print('checksum/crypto constants found:')
+for name in sorted(hits):
+    print('   %-24s at %s' % (name, ', '.join('0x%x' % o for o in hits[name])))
+KEY = ('ver','Ver','VER','sign','Sign','SIGN','rsa','RSA','sha','SHA',
+       'key','Key','KEY','auth','Auth','roll','Roll','devi','Devi')
+strings = sorted({m.group().decode('ascii','replace')
+                  for m in re.finditer(rb'[\\x20-\\x7e]{5,}', bl)})
+print('strings mentioning version/signature/key/auth/rollback/device:')
+for s in strings:
+    if any(k in s for k in KEY):
+        print('   ', s)
+print('USB identity words:', {hex(x): sum(1 for o in range(0, len(bl) - 1)
+      if struct.unpack_from('<H', bl, o)[0] == x)
+      for x in (0x0b05, 0x1b7e, 0x1b7f)})
+PY
+  checksum/crypto constants found:
+     CRC-16 reflected         at 0xc76c
+     CRC-32 reflected poly    at 0xc78c
+  strings mentioning version/signature/key/auth/rollback/device:
+  USB identity words: {'0xb05': 3, '0x1b7e': 0, '0x1b7f': 3}
+  [exit 0]
+  NOTE no cryptographic constant of any kind; only the reflected CRC-32 and CRC-16 polynomials the recovered CRC engine already accounts for. No version, signature, key, auth or rollback string. The only USB identity words are the bootloader's own vendor and bootloader product IDs. There is no signature check, no version or rollback rule, no device-ID gate and no configuration-dependent gate
+
+STEP 8 — THE COMPLETE ACCEPT EXPRESSION AND THE BUILDER RULES
+$ python3 tool/analyze_boot_acceptance.py | sed -n '/^ACCEPT EXPRESSION/,$p'
+  ACCEPT EXPRESSION — FUN_00007ec8 jumps only when all four pass
+    GATE 1 [environment] recovery key combination
+      function: FUN_000029d4
+      requirement: must return 0
+      evidence: polls the scan buffer at 0x18012ac8 up to 100 times, enabling and disabling interrupts around a scan tick each time, and returns 1 once the pattern (+0x0 == 0xa0 and +0x10 == 0x100) has held for 30 consecutive samples
+      blocks boot when: the combination is held at power-on
+    GATE 2 [image] selected entry equals the bootloader's constant
+      function: iVar2 == DAT_00007f98 (0x60011000)
+      requirement: the SN_FWIN entry pointer must be exactly 0x60011000
+      evidence: a literal-pool word in the orchestrator, compared with the value FUN_00002af0 returned from the container scan
+      blocks boot when: the image declares any other entry address
+    GATE 3 [environment] software bootloader-entry flag
+      function: FUN_00002a44
+      requirement: must return 0
+      evidence: reads 0x20000ffc and compares it with 0x73207320; when equal it clears the word and returns 1, so the flag is one-shot
+      blocks boot when: the application set the magic and reset
+    GATE 4 [image] application-region word-sum
+      function: FUN_000026d0(0x6c000)
+      requirement: must return 0
+      evidence: sums every 32-bit word of 0x10000..0x7c000 in 0x1000-byte pages and requires the final word to equal the sum; an all-0xff first page also fails
+      blocks boot when: the stored guard word does not equal the sum
+
+  TRANSFER OF CONTROL
+    copy_destination: 0x0
+    copy_length: 0x10000
+    entry_parked_in: 0xe000ed24
+    mechanism: copy then system reset, not a branch
+    reset_request: AIRCR = (AIRCR & 0x700) | 0x05fa0000 + 4, i.e. VECTKEY with SYSRESETREQ, preserving PRIGROUP
+    routine_length: 0x50
+    routine_program_offset: 0xcdfc
+    routine_runtime_address: 0x18010000
+
+  IMAGE RULES A BUILDER MUST SATISFY
+    [proven] entry pointer is fixed
+      SN_FWIN +0x10 must be exactly 0x60011000. The entry image cannot be relocated.
+      evidence: orchestrator gate 2, a constant comparison against DAT_00007f98
+    [proven] entry image must survive a fixed-size copy
+      0x10000 bytes are copied from the entry address to 0x0 regardless of the record length, so the whole window must be safe to copy and the image must be linked to run at 0.
+      evidence: BootHandoff, scatter-loaded from bootloader program 0xcdfc to 0x18010000, called as (0, entry, 0x10000)
+    [proven] application word-sum must be correct
+      the final word of the application region must equal the 32-bit sum of every preceding word in it.
+      evidence: orchestrator gate 4; base and length both read from bootloader constants rather than assumed
+    [proven] every active record's chunked-CRC sum must be correct
+      FUN_0000511c scans all eight record slots and verifies each slot whose length is nonzero.
+      evidence: log 75 decompile, confirmed by log 95
+    [proven] the entry image's initial SP must be in RAM
+      FUN_00005240 dereferences the entry pointer and requires the first word to fall in an observed RAM range.
+      evidence: log 75 decompile
+    [proven] SN_FWIN magic and the container chain must be intact
+      FUN_00008000 walks the boot-priority table, checks the SN_FWIN magic and only then validates the entry and records.
+      evidence: log 75 decompile
+
+  SEARCHED FOR AND NOT FOUND
+    no cryptographic signature or hash
+      The bootloader contains no SHA, MD5, RSA, AES or TEA constant. The only checksum constants are the reflected CRC-32 polynomial 0xedb88320 and a reflected CRC-16 polynomial, both accounted for by the recovered CRC engine.
+    no version or rollback rule
+      No string in the bootloader mentions a version, signature, key, authentication or rollback, and no gate in the accept expression reads a version field.
+    no device-ID gate on the image
+      The only USB identity words in the bootloader are its own: the ASUS vendor ID and the bootloader product ID from its own descriptors. Nothing compares an identity against the image.
+    no configuration-dependent gate
+      All four gates are the ones listed above. Two are environmental and two are image integrity; none consults stored configuration.
+
+    PASS the mirrored bootloader copy is the analysed image — c244aef0a92424cc92354a8cebd312be3098780d1ec062e05e5d5333e38d870c
+    PASS the image's SN_FWIN entry pointer equals the bootloader's constant — 0x60011000 vs 0x60011000
+    PASS the word-sum region the bootloader checks is the application region — 0x10000..0x7c000 vs 0x10000..0x7c000
+    PASS the fixed handoff copy window lies inside the application region — 0x11000..0x21000 inside 0x10000..0x7c000
+    PASS record slot 0 begins at the copy window's start — 0x11000 vs 0x11000
+    PASS record slot 0 fits inside the copy window — 0x168ac <= 0x21000
+    PASS the handoff routine is the analysed 0x50-byte block — 1e4183918235efcdd7a0ded8055742bc9e51015e8da874f4604dd6861df7dee8
+    PASS the RAM bootloader-entry magic is printable ASCII — b' s s'
+  RESULT acceptance_ok=True checks_run=8 gates=4 rules=6
+  UNRESOLVED What makes address 0 writable is not established from these bytes. BootHandoff copies there and then resets, so a RAM or remap window must be aliased at 0, but the register that arranges it is not identified.
+  UNRESOLVED The recovery scan pattern (+0x0 == 0xa0, +0x10 == 0x100) is read from a RAM buffer the bootloader's own scan tick fills. Which physical keys produce it is not established.
+  UNRESOLVED Any ROM or first-stage condition ahead of this bootloader is still unexamined.
+  LIMITATION Two of the four gates are environmental, so an image that satisfies every rule here can still be refused because the recovery combination is held or the RAM entry flag is set. Passing the image rules is necessary, not sufficient, and says nothing about whether the image then runs correctly.
+  [exit 0]
+
+STEP 9 — THE PROVEN CHECKS ADDED TO THE ANALYZERS
+The plan permits adding checks only once their semantics are proven. Two
+qualify, and both are now enforced by falchion_image.validate and by
+analyze_boot_structures.known_boot_checks:
+  entry pointer equals the bootloader constant       (gate 2)
+  fixed handoff copy window inside application region (the 0x10000 copy)
+
+The two boot-gate items also left the UNRESOLVED lists, which is the whole
+point of this phase. Check counts move as a result: analyze_boot_structures
+goes from 18 to 20 on the full image and from 12 to 14 on the installed
+dump, superseding the counts published in log 92.
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT|^UNRESOLVED'
+  RESULT known_checks_ok=True checks_run=20 containers_skipped=0
+  UNRESOLVED Any ROM or first-stage condition ahead of the bootloader is unexamined.
+  UNRESOLVED What makes address 0 writable is not established, although the bootloader copies the entry window there and resets (log 101).
+  UNRESOLVED Which physical keys produce the recovery scan pattern FUN_000029d4 matches is not established (log 101).
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=14 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT|^UNRESOLVED'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=1 word_sums_skipped=1
+  UNRESOLVED Any ROM or first-stage condition ahead of the bootloader is unexamined.
+  UNRESOLVED What makes address 0 writable is not established. The bootloader's BootHandoff routine copies 0x10000 bytes from the selected entry to address 0 and then requests a system reset, so a RAM or remap window must be aliased there, but the register that arranges it is unidentified (log 101).
+  UNRESOLVED Which physical keys produce the recovery scan pattern that FUN_000029d4 matches is not established; only the RAM buffer and the matched values are known (log 101).
+  [exit 0]
+
+STEP 10 — GENERATED REPORTS
+$ python3 tool/report_phase4.py
+  WROTE notes/boot-acceptance-conditions.md (13006 bytes)
+  WROTE notes/boot-acceptance-conditions.json (8321 bytes)
+  RESULT reports_written=2
+  [exit 0]
+
+$ python3 tool/report_phase4.py --check
+    CURRENT notes/boot-acceptance-conditions.md
+    CURRENT notes/boot-acceptance-conditions.json
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ sha256sum notes/boot-acceptance-conditions.md notes/boot-acceptance-conditions.json
+  5c826dd86f2acebc9ca7494fd3db7103b6f5d5ab68ddd155c4626608c78fdf03  notes/boot-acceptance-conditions.md
+  666bdce302141efc84b63bfa7bd0e35b59caf5137f44cb82aa83d08ab098d784  notes/boot-acceptance-conditions.json
+  [exit 0]
+
+EXIT GATE — determinism, other phases still current, suite
+$ python3 tool/analyze_boot_acceptance.py --json | sha256sum; python3 tool/analyze_boot_acceptance.py --json | sha256sum
+  666bdce302141efc84b63bfa7bd0e35b59caf5137f44cb82aa83d08ab098d784  -
+  666bdce302141efc84b63bfa7bd0e35b59caf5137f44cb82aa83d08ab098d784  -
+  [exit 0]
+
+$ python3 tool/report_phase3.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/report_phase5.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 -m py_compile tool/*.py
+  [exit 0]
+  NOTE every tool compiles
+
+$ python3 tool/analyze_candidate_integrity.py | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/analyze_candidate_integrity.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT integrity_checks_ok=True
+  [exit 0]
+
+$ python3 tool/extract_installed_records.py | grep -E '^RESULT'
+  RESULT extraction_ok=True checks_run=9 slices=3 runtime_ranges=3
+  [exit 0]
+
+$ python3 tool/map_hardware_interfaces.py | grep -E '^RESULT'
+  RESULT map_ok=True live_interrupts=18 blocks=15 contradictions=1
+  [exit 0]
+
+$ python3 tool/compare_firmware_images.py | grep -E '^- differing bytes'
+  - differing bytes: **101297** of 442368 (22.90%)
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmp1srco_fe/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpabf44_m5/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpahz17yre/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpc93v_gyk/dump.bin
+  Ran 373 tests in 2.494s
+  OK
+  [exit 0]
+  NOTE 373 tests = 339 after the Phase 4 constant changes, plus 34 boot-acceptance tests
+
+FACTS ESTABLISHED IN THIS PHASE
+  1. FUN_000029d4 is a recovery key-combination poll, not an integrity
+     check. It ticks the bootloader's own scan, and returns 1 — blocking
+     the boot — once the pattern at RAM 0x18012ac8 (+0x0 == 0xa0 and
+     +0x10 == 0x100) has held for 30 consecutive samples. A custom image
+     has to satisfy nothing here.
+  2. The top-level comparison is against DAT_00007f98 = 0x60011000. The
+     SN_FWIN +0x10 entry pointer must equal that constant exactly, so the
+     entry image CANNOT be relocated. This is a hard builder rule.
+  3. A third gate, FUN_00002a44, was not previously named. It reads
+     0x20000ffc, compares it with 0x73207320, and when equal clears the
+     word and returns 1 — a one-shot software-requested bootloader-entry
+     flag, consistent with logs 87 and 88.
+  4. FUN_000026d0(0x6c000) sums from DAT_0000277c = 0x60010000, so the
+     region it guards is exactly the application region 0x10000..0x7c000,
+     with the guard word at 0x7bffc. Base and length are now read from
+     bootloader constants rather than assumed.
+  5. The transfer of control is a copy and a system reset, not a branch.
+     FUN_00007fa8 parks the entry in VTOR+0x1c; BootHandoff, scatter-loaded
+     from program 0xcdfc to RAM 0x18010000, masks interrupts, copies a
+     fixed 0x10000 bytes from the entry address to ADDRESS 0, writes AIRCR
+     with VECTKEY and SYSRESETREQ, and spins until the reset lands.
+  6. That explains three previously inferred things: Candidate A is linked
+     at 0 because it genuinely runs there; the SN_FWIN record's +0xc word
+     is not a load destination, since the destination is the constant 0 in
+     the call and FUN_0000511c never reads +0xc; and the 0xff fill from
+     0x168ac to 0x21000 sits inside the copied window, because the copy
+     length is fixed regardless of record slot 0's 0x58ac.
+  7. There is no signature check, no cryptographic constant, no version or
+     rollback rule, no device-ID gate and no configuration-dependent gate
+     anywhere in the bootloader.
+  8. The complete accept expression is four gates: two environmental
+     (recovery combination, RAM entry flag) and two image properties
+     (entry pointer constant, application word-sum), on top of the
+     per-container checks FUN_00008000 already performed — SN_FWIN magic,
+     entry initial-SP in RAM, and every nonzero-length record slot's
+     chunked-CRC sum.
+
+WHAT REMAINS UNRESOLVED
+  * What makes address 0 writable. BootHandoff copies there and resets, so
+    a RAM or remap window must be aliased at 0, but the register that
+    arranges it is unidentified. This is the one remaining gap in the boot
+    path itself.
+  * Which physical keys produce the recovery scan pattern. Only the RAM
+    buffer and the matched values are known.
+  * Any ROM or first-stage condition ahead of this bootloader.
+  * Two of the four gates are environmental, so satisfying every image rule
+    is necessary and not sufficient, and says nothing about whether the
+    image then runs correctly.
+
+SOURCE HASHES AFTER
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+REPOSITORY CHECKS
+$ git diff --check && git diff --cached --check
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:135: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:168: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:231: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:280: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:312: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:350: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:373: trailing whitespace.
+  +
+  keyboard/falchion-re/logs/100-installed-hardware-interface-map.txt:375: trailing whitespace.
+  +
+  [exit 2]
+  NOTE no output means no whitespace errors
+
+$ git status --short
+  M  FINDINGS.md
+  M  TIMELINE.md
+  MM ghidra/.gitignore
+  M  ghidra/README.md
+  A  ghidra/scripts/FalchionPeripheralMap.java
+  A  ghidra/scripts/FalchionSeedVectors.java
+  A  logs/100-installed-hardware-interface-map.txt
+  M  logs/COMMANDS.md
+  M  logs/SHA256SUMS
+  A  notes/installed-hardware-interfaces.json
+  AM notes/installed-hardware-interfaces.md
+   M notes/installed-record-load-map.md
+  M  notes/vendor-to-installed-functions-app-a.json
+  M  notes/vendor-to-installed-functions-app-b.json
+  MM notes/vendor-to-installed-functions.md
+   M tool/analyze_boot_structures.py
+   M tool/falchion_image.py
+  A  tool/map_hardware_interfaces.py
+  M  tool/match_functions.py
+  M  tool/report_phase3.py
+  A  tool/report_phase5.py
+   M tool/test_build_modified_image.py
+  A  tool/test_map_hardware_interfaces.py
+  M  tool/test_match_functions.py
+  M  tool/test_report_phase3.py
+  ?? ghidra/scripts/FalchionDecompileTargets.java
+  ?? notes/boot-acceptance-conditions.json
+  ?? notes/boot-acceptance-conditions.md
+  ?? tool/analyze_boot_acceptance.py
+  ?? tool/report_phase4.py
+  ?? tool/test_analyze_boot_acceptance.py
+  [exit 0]
+
+RESULT
+Phase 4 complete and its exit gate met. Both named unknowns are resolved
+with reproducible evidence rather than left blocked: FUN_000029d4 is a
+recovery key poll and the top-level comparison is against the constant
+0x60011000. A third gate was recovered, the whole chain and the final
+transfer of control are reconfirmed from the device's own bootloader bytes,
+and the search for signatures, versions, rollback rules and device gates
+returns a definitive negative. No 'probably' result became a builder rule:
+every rule is marked proven and cites its evidence, and the two gates that
+are environmental are labelled as such so no image can be said to satisfy
+them. 373 offline tests pass, both evidence hashes are unchanged, the
+pre-existing Ghidra project was not opened, and no device was accessed.
+Phase 6 not started; everything left uncommitted for review.

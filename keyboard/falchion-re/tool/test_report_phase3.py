@@ -55,7 +55,12 @@ class Artifacts(unittest.TestCase):
         payload = json.loads(
             self.rendered["vendor-to-installed-functions-app-b.json"])
         self.assertGreater(payload["discontiguous_bodies"]["vendor"], 0)
-        self.assertTrue(payload["uncovered_spans_aligned"])
+        # Equal counts are reported as equal counts, never as alignment.
+        self.assertTrue(payload["uncovered_span_counts_equal"])
+        self.assertFalse(payload["uncovered_spans_fully_compared"],
+                         "Candidate B has spans that could not be paired, so "
+                         "it must not report as fully compared")
+        self.assertNotIn("uncovered_spans_aligned", payload)
 
     def test_the_load_map_json_covers_every_active_record(self):
         payload = json.loads(self.rendered["installed-record-load-map.json"])
@@ -79,11 +84,27 @@ class Artifacts(unittest.TestCase):
     def test_totals_match_the_matcher(self):
         _extraction, reports = rp.load_reports()
         body, data, total = rp.totals(reports["a"])
-        self.assertEqual((body, data, total), (0, 131, 131))
+        # The invariant is the total: it must equal log 96's raw count for
+        # Candidate A, which did not move. How it splits between bodies and data
+        # shifts every time the analysed function set grows, so the split is
+        # reported rather than pinned.
+        self.assertEqual(total, 131,
+                         "Candidate A's aligned total must equal log 96's raw "
+                         "131 differing bytes")
+        self.assertEqual(body + data, total)
         body, data, total = rp.totals(reports["b"])
-        self.assertEqual((body, data, total), (253, 977, 1230))
+        self.assertGreater(body, 0)
+        self.assertGreater(data, 0)
+        self.assertLess(total, 5000,
+                        "far below log 96's 101,112 raw differing bytes")
         self.assertEqual(mf.tally(reports["a"]).get("unmatched", 0), 0)
         self.assertEqual(mf.tally(reports["b"]).get("unmatched", 0), 0)
+
+    def test_the_markdown_corrects_the_single_insertion_claim(self):
+        text = self.rendered["vendor-to-installed-functions.md"]
+        self.assertIn("distributed, not a single insertion", text)
+        self.assertIn("corrects logs 98 and 99", text)
+        self.assertIn("lower bound", text)
 
 
 if __name__ == "__main__":

@@ -21,8 +21,8 @@ ranges rather than `entry..entry+size`.
 
 | program | vendor | installed | identical | structural | tentative | unmatched | discontiguous bodies | shift |
 |---|---|---|---|---|---|---|---|---|
-| Candidate A | 80 | 80 | 78 | 0 | 2 | 0 | 15/15 | `0x0` |
-| Candidate B | 293 | 293 | 260 | 24 | 9 | 0 | 61/61 | `0x2c` |
+| Candidate A | 101 | 101 | 94 | 0 | 7 | 0 | 16/16 | `0x0` |
+| Candidate B | 573 | 573 | 494 | 50 | 29 | 0 | 104/104 | `0x2c` |
 
 Both programs have the same function count in both releases and nothing
 is left unmatched.
@@ -33,31 +33,69 @@ Log 96 measured raw byte-position differences. Once functions are paired
 and the spans no body covers are compared in address order, the real
 change is:
 
-| program | function-body bytes | data-span bytes | aligned total | raw total (log 96) |
-|---|---|---|---|---|
-| Candidate A | 0 | 131 | **131** | 131 |
-| Candidate B | 253 | 977 | **1230** | 101,112 |
+| program | function-body bytes | data-span bytes | aligned total | spans compared | raw total (log 96) |
+|---|---|---|---|---|---|
+| Candidate A | 2 | 129 | **131** | 78/78 | 131 |
+| Candidate B | 335 | 738 | **1073** | 244/262 | 101,112 |
 
-Candidate A did not move, so its aligned total matches log 96 exactly, and
-every one of those bytes turns out to be data rather than instructions.
-Candidate B is shifted by `0x2c` after one insertion point, so almost all
-of its raw differing bytes are the relocation, not a change in content.
+Candidate A did not move, every one of its spans compares cleanly, its
+aligned total matches log 96 exactly, and every changed byte turns out to
+be data rather than an instruction. Candidate B is relocated by `0x2c`, so
+almost all of its raw differing bytes are the relocation rather than a
+change in content — but 18 of its spans could not be paired safely, so its aligned
+total is a **lower bound**, not a complete count.
 
-## The insertion site
+## Where record slot 1's 44 bytes of growth sit
 
-Exactly one paired span in Candidate B has different lengths on the two
-sides:
+The growth is **distributed, not a single insertion**. Under the vector-seeded
+analysis the accounting is:
 
-- vendor `0x180047f8..0x180057d2` (`0xfda` bytes)
-- installed `0x180047f8..0x180057fe` (`0x1006` bytes)
-- difference: **+44 bytes**
+- matched function bodies grow by **38 bytes** in total across 2 pairings;
+- the spans no function body covers contribute a net **+8 bytes** across 19 spans whose two sides differ in length;
+- record slot 1 grew by 44 bytes overall (`0x1e754` to `0x1e780`).
 
-That is the whole of record slot 1's growth, and it lands in a span that no
-function body covers. The tool reports the span as unaligned and does not
-compare its bytes, because comparing across an insertion boundary would
-manufacture differences.
+Those figures do not sum exactly to 44: a pairing whose two bodies have
+different range shapes is not byte-compared, and function extents can
+overlap, so the two accountings are not a partition of the image. The 44
+is the reliable total; the split is indicative.
 
-No claim is made here about *what* those 44 bytes are.
+**This corrects logs 98 and 99**, which reported the growth as one 44-byte
+insertion in a single data gap at vendor `0x180047f8`. That was an artifact
+of the shallower function set: before the vector handlers were seeded, a
+large unanalysed region read as one uncovered span. With 530 functions per
+side instead of 293 the same bytes resolve into code and several smaller
+spans.
+
+No claim is made here about *what* the added bytes are.
+
+### Spans that could not be compared
+
+| vendor | installed | vendor length | installed length |
+|---|---|---|---|
+| `0x180029b2..0x180029d8` | `0x180025c0..0x180025c4` | `0x26` | `0x4` |
+| `0x18002a52..0x18002a54` | `0x180029b2..0x180029d8` | `0x2` | `0x26` |
+| `0x18002c24..0x18002c2a` | `0x18002a52..0x18002a54` | `0x6` | `0x2` |
+| `0x18002e34..0x18002e64` | `0x18002c24..0x18002c2a` | `0x30` | `0x6` |
+| `0x1800329e..0x18003310` | `0x18002e34..0x18002e64` | `0x72` | `0x30` |
+| `0x1800354a..0x1800354c` | `0x1800329e..0x18003310` | `0x2` | `0x72` |
+| `0x1800370e..0x18003768` | `0x1800354a..0x1800354c` | `0x5a` | `0x2` |
+| `0x18003a90..0x18003a98` | `0x1800370e..0x18003768` | `0x8` | `0x5a` |
+| `0x18003ae0..0x18003ae6` | `0x18003a90..0x18003a98` | `0x6` | `0x8` |
+| `0x18003ba2..0x18003c00` | `0x18003ae0..0x18003ae6` | `0x5e` | `0x6` |
+| `0x18003c72..0x18003c74` | `0x18003ba2..0x18003c00` | `0x2` | `0x5e` |
+| `0x18003cca..0x18003cd2` | `0x18003c72..0x18003c74` | `0x8` | `0x2` |
+| `0x18003df8..0x18003dfe` | `0x18003cca..0x18003cd2` | `0x6` | `0x8` |
+| `0x18004002..0x18004078` | `0x18003df8..0x18003dfe` | `0x76` | `0x6` |
+| `0x18004002..0x18004002` | `0x18004002..0x18004078` | `0x0` | `0x76` |
+| `0x18004da8..0x18004ddc` | `0x18004da6..0x18004dd8` | `0x34` | `0x32` |
+| `0x18005204..0x18005218` | `0x180051f6..0x18005210` | `0x14` | `0x1a` |
+| `0x18005670..0x18005694` | `0x18005690..0x180056b4` | `0x24` | `0x24` |
+| `0x180056fa..0x180056fc` | `0x180056fa..0x180056fc` | `0x2` | `0x2` |
+
+A span is compared only when its anchor key, its distance past that
+anchor and its length all agree on both sides. Anything else is listed
+here and left uncompared, so no byte is ever diffed against the wrong
+region.
 
 ## Complete mapping
 
@@ -66,16 +104,21 @@ differ in bytes, or that one side has no counterpart. `ranges` is the
 number of address ranges in the body, so anything above 1 is a
 discontiguous body.
 
-### Candidate A — 80 pairings
+### Candidate A — 101 pairings
 
 | vendor | installed | confidence | moved | changed | size | ranges | differing bytes |
 |---|---|---|---|---|---|---|---|
+| `0x00000140` | `0x00000140` | identical | no | no | `0x8` | 1 | 0 |
 | `0x00000148` | `0x00000148` | identical | no | no | `0x46` | 2 | 0 |
 | `0x00000210` | `0x00000210` | identical | no | no | `0x8f4` | 11 | 0 |
 | `0x000002a0` | `0x000002a0` | identical | no | no | `0x24` | 1 | 0 |
 | `0x000002c4` | `0x000002c4` | identical | no | no | `0x4` | 1 | 0 |
-| `0x000002c8` | `0x000002c8` | identical | no | no | `0x40` | 1 | 0 |
+| `0x000002c8` | `0x000002c8` | identical | no | no | `0x20` | 1 | 0 |
+| `0x000002e8` | `0x000002e8` | identical | no | no | `0x20` | 1 | 0 |
+| `0x0000032c` | `0x0000032c` | identical | no | no | `0x46` | 1 | 0 |
+| `0x00000378` | `0x00000378` | identical | no | no | `0x6` | 1 | 0 |
 | `0x000005d6` | `0x000005d6` | identical | no | no | `0x2a` | 1 | 0 |
+| `0x00000600` | `0x00000600` | identical | no | no | `0x46` | 1 | 0 |
 | `0x0000075c` | `0x0000075c` | identical | no | no | `0x3a` | 1 | 0 |
 | `0x00000796` | `0x00000796` | identical | no | no | `0x2` | 1 | 0 |
 | `0x000007d4` | `0x000007d4` | identical | no | no | `0x2a` | 1 | 0 |
@@ -83,7 +126,9 @@ discontiguous body.
 | `0x00000918` | `0x00000918` | identical | no | no | `0x3c` | 1 | 0 |
 | `0x00000954` | `0x00000954` | identical | no | no | `0x2c` | 2 | 0 |
 | `0x00000986` | `0x00000986` | identical | no | no | `0x76` | 1 | 0 |
+| `0x00000a0c` | `0x00000a0c` | identical | no | no | `0x3a` | 1 | 0 |
 | `0x00000a6e` | `0x00000a6e` | identical | no | no | `0x62` | 1 | 0 |
+| `0x00000ad0` | `0x00000ad0` | identical | no | no | `0x30` | 1 | 0 |
 | `0x00000d3e` | `0x00000d3e` | identical | no | no | `0x10` | 1 | 0 |
 | `0x00000d4e` | `0x00000d4e` | identical | no | no | `0x28` | 1 | 0 |
 | `0x00000da2` | `0x00000da2` | identical | no | no | `0x1a` | 1 | 0 |
@@ -94,15 +139,27 @@ discontiguous body.
 | `0x00000ef6` | `0x00000ef6` | identical | no | no | `0x10` | 1 | 0 |
 | `0x00000f0a` | `0x00000f0a` | identical | no | no | `0x3a` | 1 | 0 |
 | `0x00000fb8` | `0x00000fb8` | identical | no | no | `0x42` | 2 | 0 |
+| `0x00000fce` | `0x00000fce` | tentative | no | no | `0x2` | 1 | 0 |
 | `0x00000fd4` | `0x00000fd4` | identical | no | no | `0x4c` | 1 | 0 |
 | `0x00001020` | `0x00001020` | identical | no | no | `0x4c` | 1 | 0 |
 | `0x0000106c` | `0x0000106c` | identical | no | no | `0x44` | 2 | 0 |
+| `0x000010ae` | `0x000010ae` | identical | no | no | `0x168` | 1 | 0 |
 | `0x00001216` | `0x00001216` | identical | no | no | `0x8a` | 2 | 0 |
+| `0x0000127a` | `0x0000127a` | identical | no | no | `0x1a` | 1 | 0 |
 | `0x000012b6` | `0x000012b6` | identical | no | no | `0x28` | 1 | 0 |
+| `0x000014a8` | `0x000014a8` | identical | no | no | `0x16` | 1 | 0 |
+| `0x000014be` | `0x000014be` | identical | no | no | `0x12` | 1 | 0 |
+| `0x000014d2` | `0x000014d2` | tentative | no | no | `0x2` | 1 | 0 |
+| `0x000014d4` | `0x000014d4` | tentative | no | no | `0x2` | 1 | 0 |
+| `0x000014d8` | `0x000014d8` | tentative | no | no | `0x2` | 1 | 0 |
 | `0x000014e0` | `0x000014e0` | identical | no | no | `0xa` | 1 | 0 |
 | `0x00001520` | `0x00001520` | identical | no | no | `0x20` | 1 | 0 |
+| `0x00001540` | `0x00001540` | identical | no | no | `0x20` | 1 | 0 |
 | `0x00001560` | `0x00001560` | identical | no | no | `0x38` | 1 | 0 |
 | `0x0000165c` | `0x0000165c` | identical | no | no | `0x30` | 1 | 0 |
+| `0x000017e0` | `0x000017e0` | identical | no | no | `0x28` | 1 | 0 |
+| `0x00001808` | `0x00001808` | identical | no | no | `0x4c` | 1 | 0 |
+| `0x000020be` | `0x000020be` | identical | no | no | `0x2e` | 1 | 0 |
 | `0x000021b0` | `0x000021b0` | identical | no | no | `0x18` | 1 | 0 |
 | `0x000021c8` | `0x000021c8` | identical | no | no | `0x1a` | 1 | 0 |
 | `0x000021e2` | `0x000021e2` | identical | no | no | `0x18` | 1 | 0 |
@@ -136,7 +193,9 @@ discontiguous body.
 | `0x00003ca8` | `0x00003ca8` | identical | no | no | `0xdc` | 1 | 0 |
 | `0x00003d84` | `0x00003d84` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x00003dae` | `0x00003dae` | identical | no | no | `0x2a` | 1 | 0 |
-| `0x00003dd8` | `0x00003dd8` | identical | no | no | `0x244` | 1 | 0 |
+| `0x00003dd8` | `0x00003dd8` | identical | no | no | `0x22c` | 1 | 0 |
+| `0x00004004` | `0x00004004` | identical | no | no | `0x17` | 2 | 0 |
+| `0x000040b4` | `0x000040b4` | tentative | no | yes | `0x8` | 1 | 2 |
 | `0x00004264` | `0x00004264` | identical | no | no | `0x28` | 1 | 0 |
 | `0x0000428c` | `0x0000428c` | identical | no | no | `0xe` | 1 | 0 |
 | `0x0000429c` | `0x0000429c` | identical | no | no | `0x22` | 1 | 0 |
@@ -151,71 +210,151 @@ discontiguous body.
 | `0x00004b7a` | `0x00004b7a` | identical | no | no | `0x88` | 2 | 0 |
 | `0x00004c10` | `0x00004c10` | identical | no | no | `0xf0` | 2 | 0 |
 
-### Candidate B — 293 pairings
+### Candidate B — 573 pairings
 
 | vendor | installed | confidence | moved | changed | size | ranges | differing bytes |
 |---|---|---|---|---|---|---|---|
+| `0x180000e4` | `0x180000e4` | structural | no | yes | `0x24` | 1 | 2 |
+| `0x18000108` | `0x18000108` | structural | no | yes | `0x80` | 2 | 4 |
+| `0x18000136` | `0x18000136` | structural | no | yes | `0x9c` | 1 | 2 |
+| `0x180001d2` | `0x180001d2` | structural | no | yes | `0x68` | 1 | 4 |
 | `0x18000420` | `0x18000420` | identical | no | no | `0x1a` | 1 | 0 |
 | `0x18000466` | `0x18000466` | structural | no | yes | `0x11e` | 1 | 1 |
 | `0x18000584` | `0x18000584` | structural | no | yes | `0x42` | 1 | 2 |
 | `0x180005c6` | `0x180005c6` | structural | no | yes | `0x34` | 1 | 1 |
+| `0x180005fa` | `0x180005fa` | structural | no | yes | `0xb8` | 2 | 1 |
+| `0x180006b4` | `0x180006b4` | identical | no | no | `0x78` | 1 | 0 |
 | `0x1800072c` | `0x1800072c` | identical | no | no | `0x2e` | 1 | 0 |
 | `0x1800075a` | `0x1800075a` | structural | no | yes | `0x28a` | 3 | 3 |
+| `0x18000a1a` | `0x18000a1a` | structural | no | yes | `0x56` | 1 | 6 |
 | `0x18000a70` | `0x18000a70` | structural | no | yes | `0x68` | 1 | 5 |
+| `0x18000ad8` | `0x18000ad8` | identical | no | no | `0x14` | 1 | 0 |
 | `0x18000aec` | `0x18000aec` | structural | no | yes | `0x3c` | 1 | 3 |
 | `0x18000b28` | `0x18000b28` | structural | no | yes | `0x70` | 1 | 4 |
 | `0x18000b98` | `0x18000b98` | identical | no | no | `0xe` | 1 | 0 |
 | `0x18000ba6` | `0x18000ba6` | identical | no | no | `0x12` | 1 | 0 |
 | `0x18000bb8` | `0x18000bb8` | structural | no | yes | `0xda` | 1 | 9 |
+| `0x18000c92` | `0x18000c92` | structural | no | yes | `0x6e` | 1 | 1 |
 | `0x18000d56` | `0x18000d56` | structural | no | yes | `0xf46` | 12 | 204 |
 | `0x18001f6e` | `0x18001f6e` | structural | no | yes | `0x4e` | 2 | 2 |
+| `0x18001fbe` | `0x18001fbe` | tentative | no | yes | `0x1e7e` | 20 | n/a |
+| `0x180040dc` | `0x180040dc` | structural | no | yes | `0x36` | 1 | 1 |
 | `0x18004120` | `0x18004120` | identical | no | no | `0x40` | 1 | 0 |
+| `0x18004160` | `0x18004160` | identical | no | no | `0x4` | 1 | 0 |
 | `0x18004164` | `0x18004164` | structural | no | yes | `0x1a` | 1 | 1 |
+| `0x1800417e` | `0x1800417e` | structural | no | yes | `0x1e4` | 1 | 4 |
+| `0x1800439a` | `0x1800439a` | structural | no | yes | `0xfe` | 1 | 4 |
 | `0x18004498` | `0x18004498` | structural | no | yes | `0x60` | 2 | 2 |
-| `0x180046a0` | `0x180046a0` | structural | no | yes | `0x15c` | 2 | 1 |
+| `0x180044c0` | `0x180044c0` | identical | no | no | `0x44` | 1 | 0 |
+| `0x1800460e` | `0x1800460e` | identical | no | no | `0x30` | 1 | 0 |
+| `0x1800463e` | `0x1800463e` | structural | no | yes | `0x10` | 1 | 1 |
+| `0x1800464e` | `0x1800464e` | structural | no | yes | `0x20` | 1 | 2 |
+| `0x1800466e` | `0x1800466e` | identical | no | no | `0x32` | 1 | 0 |
+| `0x180046a0` | `0x180046a0` | structural | no | yes | `0x158` | 1 | 1 |
+| `0x180047f8` | `0x180047f8` | identical | no | no | `0x16c` | 2 | 0 |
+| `0x18004a1c` | `0x18004a1c` | identical | no | no | `0x62` | 1 | 0 |
+| `0x18004a7e` | `0x18004a7e` | tentative | no | yes | `0xd10` | 4 | n/a |
 | `0x180057d2` | `0x180057fe` | identical | yes | no | `0x288` | 2 | 0 |
+| `0x18005a5c` | `0x18005a88` | structural | yes | yes | `0x412` | 3 | 10 |
 | `0x18005eac` | `0x18005ed8` | identical | yes | no | `0x102` | 3 | 0 |
 | `0x18006024` | `0x18006050` | identical | yes | no | `0xc4` | 2 | 0 |
+| `0x180060ea` | `0x18006116` | identical | yes | no | `0xa4` | 2 | 0 |
+| `0x18006196` | `0x180061c2` | structural | yes | yes | `0x5f0` | 5 | 16 |
 | `0x18006800` | `0x1800682c` | identical | yes | no | `0x7e` | 1 | 0 |
+| `0x1800687e` | `0x180068aa` | structural | yes | yes | `0x6a` | 1 | 1 |
+| `0x180068e8` | `0x18006914` | identical | yes | no | `0x6e` | 1 | 0 |
 | `0x18006956` | `0x18006982` | structural | yes | yes | `0x8c` | 1 | 1 |
+| `0x180069e2` | `0x18006a0e` | structural | yes | yes | `0x68` | 1 | 1 |
 | `0x18006a90` | `0x18006abc` | identical | yes | no | `0x18` | 1 | 0 |
 | `0x18006aa8` | `0x18006ad4` | structural | yes | yes | `0x36` | 1 | 2 |
+| `0x18006ade` | `0x18006b0a` | identical | yes | no | `0x30` | 1 | 0 |
+| `0x18006b0e` | `0x18006b3a` | identical | yes | no | `0x90` | 1 | 0 |
 | `0x18006c9a` | `0x18006cc6` | identical | yes | no | `0x76` | 1 | 0 |
 | `0x18006d10` | `0x18006d3c` | identical | yes | no | `0x2be` | 6 | 0 |
 | `0x18006f4e` | `0x18006f7a` | identical | yes | no | `0x66` | 1 | 0 |
 | `0x18006fb4` | `0x18006fe0` | identical | yes | no | `0x50` | 1 | 0 |
+| `0x18007004` | `0x18007030` | structural | yes | yes | `0xce` | 1 | 2 |
+| `0x18007b7c` | `0x18007ba8` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x18007b88` | `0x18007bb4` | identical | yes | no | `0x18` | 1 | 0 |
 | `0x18007ba0` | `0x18007bcc` | identical | yes | no | `0xe4` | 1 | 0 |
+| `0x18007c84` | `0x18007cb0` | identical | yes | no | `0x46` | 1 | 0 |
 | `0x18007d78` | `0x18007da4` | identical | yes | no | `0x68` | 1 | 0 |
+| `0x18007de0` | `0x18007e0c` | identical | yes | no | `0x2c` | 1 | 0 |
+| `0x18007e0c` | `0x18007e38` | structural | yes | yes | `0x7fa` | 5 | 3 |
+| `0x18008724` | `0x18008750` | structural | yes | yes | `0x1a0` | 2 | 1 |
+| `0x180087c8` | `0x180087f4` | identical | yes | no | `0x80` | 1 | 0 |
+| `0x18008848` | `0x18008874` | identical | yes | no | `0x40` | 1 | 0 |
 | `0x180088c8` | `0x180088f4` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x180088d2` | `0x180088fe` | identical | yes | no | `0x18` | 1 | 0 |
+| `0x180088ea` | `0x18008916` | structural | yes | yes | `0x92` | 1 | 2 |
 | `0x1800897c` | `0x180089a8` | identical | yes | no | `0x42` | 1 | 0 |
 | `0x180089be` | `0x180089ea` | identical | yes | no | `0x18` | 1 | 0 |
 | `0x180089d6` | `0x18008a02` | structural | yes | yes | `0x74` | 1 | 1 |
 | `0x18008a4a` | `0x18008a76` | structural | yes | yes | `0xb0` | 1 | 1 |
+| `0x18008afa` | `0x18008b26` | identical | yes | no | `0x2c` | 1 | 0 |
 | `0x18008f1e` | `0x18008f4a` | identical | yes | no | `0xe` | 2 | 0 |
 | `0x18008f9c` | `0x18008fc8` | identical | yes | no | `0x50` | 1 | 0 |
+| `0x18008fec` | `0x18009018` | identical | yes | no | `0x5e` | 2 | 0 |
 | `0x18009016` | `0x18009042` | identical | yes | no | `0x18` | 1 | 0 |
+| `0x1800902e` | `0x1800905a` | identical | yes | no | `0x12` | 1 | 0 |
+| `0x18009040` | `0x1800906c` | identical | yes | no | `0x54` | 2 | 0 |
 | `0x18009096` | `0x180090c2` | identical | yes | no | `0x38` | 1 | 0 |
+| `0x180090ce` | `0x180090fa` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x18009102` | `0x1800912e` | identical | yes | no | `0xbc` | 2 | 0 |
 | `0x180091c4` | `0x180091f0` | identical | yes | no | `0x32` | 1 | 0 |
-| `0x180092f0` | `0x1800931c` | identical | yes | no | `0x78` | 2 | 0 |
+| `0x180091f6` | `0x18009222` | identical | yes | no | `0xfa` | 1 | 0 |
+| `0x180092f0` | `0x1800931c` | identical | yes | no | `0x74` | 2 | 0 |
 | `0x1800937e` | `0x180093aa` | identical | yes | no | `0x4e` | 1 | 0 |
+| `0x180093cc` | `0x180093f8` | identical | yes | no | `0xf6` | 1 | 0 |
+| `0x180094c2` | `0x180094ee` | identical | yes | no | `0x8` | 1 | 0 |
 | `0x180094ca` | `0x180094f6` | identical | yes | no | `0xde` | 1 | 0 |
+| `0x180095a8` | `0x180095d4` | identical | yes | no | `0xe` | 1 | 0 |
+| `0x180095b6` | `0x180095e2` | identical | yes | no | `0x124` | 1 | 0 |
 | `0x180096da` | `0x18009706` | identical | yes | no | `0x154` | 3 | 0 |
 | `0x1800983c` | `0x18009868` | identical | yes | no | `0xa6` | 1 | 0 |
+| `0x180098e2` | `0x1800990e` | identical | yes | no | `0xac` | 1 | 0 |
+| `0x1800998e` | `0x180099ba` | identical | yes | no | `0x96` | 3 | 0 |
+| `0x18009a38` | `0x18009a64` | identical | yes | no | `0x4a` | 1 | 0 |
+| `0x18009a82` | `0x18009aae` | identical | yes | no | `0x9c` | 1 | 0 |
+| `0x18009b1e` | `0x18009b4a` | identical | yes | no | `0x106` | 1 | 0 |
+| `0x18009c24` | `0x18009c50` | identical | yes | no | `0x102` | 2 | 0 |
 | `0x18009d28` | `0x18009d54` | identical | yes | no | `0x10a` | 2 | 0 |
 | `0x18009e40` | `0x18009e6c` | identical | yes | no | `0xea` | 1 | 0 |
+| `0x18009f2a` | `0x18009f56` | identical | yes | no | `0x22e` | 1 | 0 |
+| `0x1800a158` | `0x1800a184` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x1800a17a` | `0x1800a1a6` | identical | yes | no | `0xa6` | 1 | 0 |
+| `0x1800a220` | `0x1800a24c` | identical | yes | no | `0x2f0` | 2 | 0 |
 | `0x1800a51e` | `0x1800a54a` | identical | yes | no | `0xe6` | 1 | 0 |
+| `0x1800a604` | `0x1800a630` | identical | yes | no | `0x76` | 1 | 0 |
+| `0x1800a67a` | `0x1800a6a6` | identical | yes | no | `0x82` | 2 | 0 |
+| `0x1800a6fe` | `0x1800a72a` | identical | yes | no | `0x13e` | 1 | 0 |
+| `0x1800a83c` | `0x1800a868` | identical | yes | no | `0xa6` | 2 | 0 |
+| `0x1800a8ee` | `0x1800a91a` | identical | yes | no | `0x44` | 1 | 0 |
 | `0x1800a934` | `0x1800a960` | identical | yes | no | `0xa6` | 1 | 0 |
+| `0x1800a9da` | `0x1800aa06` | identical | yes | no | `0xaa` | 1 | 0 |
 | `0x1800aa84` | `0x1800aab0` | identical | yes | no | `0x2c` | 1 | 0 |
+| `0x1800aab0` | `0x1800aadc` | identical | yes | no | `0xc8` | 1 | 0 |
 | `0x1800ab78` | `0x1800aba4` | identical | yes | no | `0x3a6` | 2 | 0 |
+| `0x1800af50` | `0x1800af7c` | identical | yes | no | `0x12e` | 1 | 0 |
 | `0x1800b07e` | `0x1800b0aa` | identical | yes | no | `0x1b4` | 2 | 0 |
+| `0x1800b25a` | `0x1800b286` | identical | yes | no | `0x5c` | 1 | 0 |
+| `0x1800b2b6` | `0x1800b2e2` | identical | yes | no | `0x8e` | 1 | 0 |
+| `0x1800b344` | `0x1800b370` | identical | yes | no | `0x306` | 2 | 0 |
 | `0x1800b654` | `0x1800b680` | identical | yes | no | `0x70` | 2 | 0 |
 | `0x1800b6d8` | `0x1800b704` | identical | yes | no | `0xe6` | 1 | 0 |
 | `0x1800b7be` | `0x1800b7ea` | identical | yes | no | `0x3e` | 1 | 0 |
+| `0x1800b7fc` | `0x1800b828` | identical | yes | no | `0x60` | 1 | 0 |
+| `0x1800b85c` | `0x1800b888` | identical | yes | no | `0xc0` | 1 | 0 |
+| `0x1800be76` | `0x1800bea2` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x1800be82` | `0x1800beae` | identical | yes | no | `0xa6` | 1 | 0 |
 | `0x1800bf28` | `0x1800bf54` | identical | yes | no | `0x4a` | 1 | 0 |
+| `0x1800bf72` | `0x1800bf9e` | identical | yes | no | `0xb0` | 2 | 0 |
 | `0x1800c048` | `0x1800c074` | identical | yes | no | `0xbe` | 1 | 0 |
 | `0x1800c106` | `0x1800c132` | identical | yes | no | `0x3c` | 1 | 0 |
+| `0x1800c14e` | `0x1800c17a` | identical | yes | no | `0xa` | 1 | 0 |
+| `0x1800c158` | `0x1800c184` | identical | yes | no | `0x12` | 1 | 0 |
+| `0x1800c16a` | `0x1800c196` | identical | yes | no | `0xa` | 1 | 0 |
+| `0x1800c174` | `0x1800c1a0` | identical | yes | no | `0x12` | 1 | 0 |
 | `0x1800c188` | `0x1800c1b4` | identical | yes | no | `0x222` | 2 | 0 |
 | `0x1800c3b0` | `0x1800c3dc` | identical | yes | no | `0xa2` | 2 | 0 |
 | `0x1800c472` | `0x1800c49e` | identical | yes | no | `0x7e` | 1 | 0 |
@@ -230,12 +369,29 @@ discontiguous body.
 | `0x1800ca9c` | `0x1800cac8` | identical | yes | no | `0x48` | 1 | 0 |
 | `0x1800cae4` | `0x1800cb10` | identical | yes | no | `0x10` | 1 | 0 |
 | `0x1800caf4` | `0x1800cb20` | identical | yes | no | `0x184` | 2 | 0 |
+| `0x1800cc8a` | `0x1800ccb6` | identical | yes | no | `0x1c` | 1 | 0 |
+| `0x1800cca6` | `0x1800ccd2` | identical | yes | no | `0x110` | 3 | 0 |
 | `0x1800ce1e` | `0x1800ce4a` | structural | yes | yes | `0x12e` | 1 | 2 |
 | `0x1800cf4c` | `0x1800cf78` | identical | yes | no | `0x11e` | 2 | 0 |
+| `0x1800cf6a` | `0x1800cf96` | tentative | yes | no | `0x2` | 1 | 0 |
 | `0x1800cf6c` | `0x1800cf98` | identical | yes | no | `0x92` | 1 | 0 |
+| `0x1800cffe` | `0x1800d02a` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x1800d020` | `0x1800d04c` | identical | yes | no | `0xe` | 1 | 0 |
+| `0x1800d02e` | `0x1800d05a` | identical | yes | no | `0x3a` | 1 | 0 |
+| `0x1800d168` | `0x1800d194` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1800d17e` | `0x1800d1aa` | identical | yes | no | `0x4c` | 1 | 0 |
+| `0x1800d1ca` | `0x1800d1f6` | identical | yes | no | `0x46` | 2 | 0 |
+| `0x1800d24a` | `0x1800d276` | identical | yes | no | `0x46` | 1 | 0 |
+| `0x1800d290` | `0x1800d2bc` | identical | yes | no | `0x7c` | 1 | 0 |
+| `0x1800d30c` | `0x1800d338` | identical | yes | no | `0x6c` | 1 | 0 |
+| `0x1800d614` | `0x1800d640` | identical | yes | no | `0xae` | 2 | 0 |
+| `0x1800d706` | `0x1800d732` | identical | yes | no | `0x10e` | 1 | 0 |
 | `0x1800d814` | `0x1800d840` | identical | yes | no | `0x68` | 2 | 0 |
+| `0x1800d872` | `0x1800d89e` | identical | yes | no | `0x28` | 1 | 0 |
 | `0x1800d8a4` | `0x1800d8d0` | identical | yes | no | `0x44` | 1 | 0 |
 | `0x1800d8e8` | `0x1800d914` | identical | yes | no | `0x54` | 1 | 0 |
+| `0x1800d93c` | `0x1800d968` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x1800d964` | `0x1800d990` | identical | yes | no | `0x38` | 1 | 0 |
 | `0x1800d99c` | `0x1800d9c8` | tentative | yes | no | `0x2` | 1 | 0 |
 | `0x1800d99e` | `0x1800d9ca` | tentative | yes | no | `0x2` | 1 | 0 |
 | `0x1800d9a0` | `0x1800d9cc` | tentative | yes | no | `0x2` | 1 | 0 |
@@ -243,14 +399,28 @@ discontiguous body.
 | `0x1800da1c` | `0x1800da48` | identical | yes | no | `0x36` | 1 | 0 |
 | `0x1800da52` | `0x1800da7e` | identical | yes | no | `0x20` | 1 | 0 |
 | `0x1800da72` | `0x1800da9e` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x1800da98` | `0x1800dac4` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x1800dabe` | `0x1800daea` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x1800dae4` | `0x1800db10` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1800dafa` | `0x1800db26` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1800db10` | `0x1800db3c` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1800db26` | `0x1800db52` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1800db3c` | `0x1800db68` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x1800db62` | `0x1800db8e` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x1800db88` | `0x1800dbb4` | identical | yes | no | `0x30` | 1 | 0 |
+| `0x1800dbb8` | `0x1800dbe4` | identical | yes | no | `0x26` | 1 | 0 |
 | `0x1800dbde` | `0x1800dc0a` | identical | yes | no | `0x36` | 1 | 0 |
+| `0x1800dc14` | `0x1800dc40` | identical | yes | no | `0x2c` | 1 | 0 |
 | `0x1800dc40` | `0x1800dc6c` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x1800dc66` | `0x1800dc92` | identical | yes | no | `0x572` | 11 | 0 |
 | `0x1800e246` | `0x1800e272` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x1800e252` | `0x1800e27e` | identical | yes | no | `0xe` | 1 | 0 |
 | `0x1800e27c` | `0x1800e2a8` | identical | yes | no | `0x1c` | 1 | 0 |
 | `0x1800e298` | `0x1800e2c4` | identical | yes | no | `0x1c` | 1 | 0 |
 | `0x1800e2b4` | `0x1800e2e0` | identical | yes | no | `0x1c` | 1 | 0 |
 | `0x1800e2d0` | `0x1800e2fc` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x1800e2f4` | `0x1800e320` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x1800e318` | `0x1800e344` | identical | yes | no | `0x24` | 1 | 0 |
 | `0x1800e33c` | `0x1800e368` | identical | yes | no | `0x24` | 1 | 0 |
 | `0x1800e37c` | `0x1800e3a8` | identical | yes | no | `0x16` | 1 | 0 |
 | `0x1800e39c` | `0x1800e3c8` | identical | yes | no | `0xb8` | 1 | 0 |
@@ -259,38 +429,82 @@ discontiguous body.
 | `0x1800e4a4` | `0x1800e4d0` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x1800e4be` | `0x1800e4ea` | identical | yes | no | `0x164` | 1 | 0 |
 | `0x1800e622` | `0x1800e64e` | identical | yes | no | `0x88` | 1 | 0 |
+| `0x1800e6aa` | `0x1800e6d6` | identical | yes | no | `0xa0` | 1 | 0 |
+| `0x1800e74a` | `0x1800e776` | identical | yes | no | `0x60` | 2 | 0 |
 | `0x1800e7c2` | `0x1800e7ee` | identical | yes | no | `0x48` | 1 | 0 |
+| `0x1800e80a` | `0x1800e836` | identical | yes | no | `0x1fa` | 2 | 0 |
+| `0x1800ea0a` | `0x1800ea36` | identical | yes | no | `0xae` | 2 | 0 |
+| `0x1800eabe` | `0x1800eaea` | identical | yes | no | `0x30` | 1 | 0 |
+| `0x1800eaee` | `0x1800eb1a` | identical | yes | no | `0x60` | 1 | 0 |
 | `0x1800eb4e` | `0x1800eb7a` | structural | yes | yes | `0x9a` | 2 | 1 |
 | `0x1800ebfc` | `0x1800ec28` | structural | yes | yes | `0x44` | 1 | 1 |
+| `0x1800ec40` | `0x1800ec6c` | identical | yes | no | `0x76` | 1 | 0 |
+| `0x1800ecb6` | `0x1800ece2` | identical | yes | no | `0x2c` | 1 | 0 |
+| `0x1800ece2` | `0x1800ed0e` | identical | yes | no | `0x3c` | 1 | 0 |
+| `0x1800ed74` | `0x1800eda0` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x1800ed80` | `0x1800edac` | identical | yes | no | `0x6c` | 1 | 0 |
+| `0x1800edec` | `0x1800ee18` | identical | yes | no | `0x30` | 1 | 0 |
+| `0x1800ee1c` | `0x1800ee48` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1800ee32` | `0x1800ee5e` | identical | yes | no | `0xa` | 1 | 0 |
+| `0x1800ee3c` | `0x1800ee68` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x1800ee46` | `0x1800ee72` | identical | yes | no | `0x10c` | 4 | 0 |
+| `0x1800ef58` | `0x1800ef84` | identical | yes | no | `0xbc` | 1 | 0 |
 | `0x1800f0b8` | `0x1800f0e4` | identical | yes | no | `0x23e` | 2 | 0 |
+| `0x1800f3b4` | `0x1800f3e0` | structural | yes | yes | `0x1d6` | 2 | 4 |
+| `0x1800f448` | `0x1800f474` | identical | yes | no | `0x7e` | 1 | 0 |
+| `0x1800f4c6` | `0x1800f4f2` | structural | yes | yes | `0x80` | 1 | 4 |
+| `0x1800f546` | `0x1800f572` | structural | yes | yes | `0x8a` | 2 | 2 |
+| `0x1800f630` | `0x1800f65c` | structural | yes | yes | `0x8a` | 1 | 2 |
+| `0x1800f6ba` | `0x1800f6e6` | structural | yes | yes | `0x34` | 1 | 1 |
+| `0x1800f6ee` | `0x1800f71a` | identical | yes | no | `0xd4` | 2 | 0 |
 | `0x1800f7d2` | `0x1800f7fe` | identical | yes | no | `0x14a` | 1 | 0 |
+| `0x1800f91c` | `0x1800f948` | identical | yes | no | `0xfe` | 2 | 0 |
+| `0x1800fa50` | `0x1800fa7c` | identical | yes | no | `0x122` | 1 | 0 |
 | `0x1800fb82` | `0x1800fbae` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x1800fb8c` | `0x1800fbb8` | structural | yes | yes | `0x20` | 1 | 3 |
+| `0x1800fbac` | `0x1800fbd8` | structural | yes | yes | `0x2a` | 1 | 1 |
 | `0x1800fbd6` | `0x1800fc02` | identical | yes | no | `0x20` | 1 | 0 |
 | `0x1800fbf6` | `0x1800fc22` | identical | yes | no | `0x20` | 1 | 0 |
+| `0x1800fc16` | `0x1800fc42` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x1800fc3e` | `0x1800fc6a` | identical | yes | no | `0x1c` | 1 | 0 |
+| `0x1800fc5a` | `0x1800fc86` | identical | yes | no | `0x5e` | 1 | 0 |
 | `0x1800fd20` | `0x1800fd4c` | structural | yes | yes | `0x3e` | 1 | 1 |
 | `0x1800ff7e` | `0x1800ffaa` | identical | yes | no | `0x158` | 1 | 0 |
 | `0x180100d6` | `0x18010102` | structural | yes | yes | `0x24a` | 4 | 1 |
 | `0x1801011c` | `0x18010148` | identical | yes | no | `0xc4` | 2 | 0 |
+| `0x180101e2` | `0x1801020e` | identical | yes | no | `0x1ac` | 2 | 0 |
+| `0x180103f4` | `0x18010420` | identical | yes | no | `0xac` | 3 | 0 |
 | `0x180104aa` | `0x180104d6` | identical | yes | no | `0x136` | 1 | 0 |
+| `0x180105e0` | `0x1801060c` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x18010602` | `0x1801062e` | identical | yes | no | `0x2a` | 1 | 0 |
+| `0x1801062c` | `0x18010658` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x18010650` | `0x1801067c` | identical | yes | no | `0x30` | 2 | 0 |
+| `0x18010692` | `0x180106be` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x1801069e` | `0x180106ca` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x18010740` | `0x1801076c` | identical | yes | no | `0x24` | 1 | 0 |
 | `0x18010764` | `0x18010790` | tentative | yes | no | `0xc` | 1 | 0 |
 | `0x18010770` | `0x1801079c` | identical | yes | no | `0x14` | 1 | 0 |
 | `0x18010784` | `0x180107b0` | identical | yes | no | `0x80` | 2 | 0 |
 | `0x18010824` | `0x18010850` | identical | yes | no | `0x4a` | 2 | 0 |
+| `0x18010874` | `0x180108a0` | identical | yes | no | `0x134` | 2 | 0 |
 | `0x180109b8` | `0x180109e4` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x180109ec` | `0x18010a18` | identical | yes | no | `0x2c` | 1 | 0 |
+| `0x18010a18` | `0x18010a44` | identical | yes | no | `0x2c` | 1 | 0 |
 | `0x18010a90` | `0x18010abc` | identical | yes | no | `0x36` | 1 | 0 |
 | `0x18010e08` | `0x18010e34` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x18011014` | `0x18011040` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x18011234` | `0x18011260` | identical | yes | no | `0x36` | 2 | 0 |
 | `0x18011440` | `0x1801146c` | identical | yes | no | `0x34` | 1 | 0 |
 | `0x18011664` | `0x18011690` | identical | yes | no | `0x34` | 1 | 0 |
+| `0x18011806` | `0x18011832` | tentative | yes | no | `0xc` | 1 | 0 |
 | `0x18011828` | `0x18011854` | identical | yes | no | `0x32` | 1 | 0 |
+| `0x1801185a` | `0x18011886` | identical | yes | no | `0x56` | 1 | 0 |
+| `0x180118b0` | `0x180118dc` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x180118d4` | `0x18011900` | identical | yes | no | `0x94` | 1 | 0 |
+| `0x18011968` | `0x18011994` | identical | yes | no | `0x98` | 1 | 0 |
 | `0x18011a00` | `0x18011a2c` | identical | yes | no | `0xca` | 1 | 0 |
 | `0x18011aca` | `0x18011af6` | identical | yes | no | `0xc8` | 1 | 0 |
+| `0x18011b92` | `0x18011bbe` | identical | yes | no | `0x64` | 1 | 0 |
 | `0x18011cca` | `0x18011cf6` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x18011cd6` | `0x18011d02` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x18011ce2` | `0x18011d0e` | tentative | yes | no | `0xc` | 1 | 0 |
@@ -302,7 +516,18 @@ discontiguous body.
 | `0x18012004` | `0x18012030` | identical | yes | no | `0x9c` | 1 | 0 |
 | `0x180120dc` | `0x18012108` | identical | yes | no | `0x30` | 2 | 0 |
 | `0x18012114` | `0x18012140` | identical | yes | no | `0x8a` | 1 | 0 |
-| `0x18012522` | `0x1801254e` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x1801219e` | `0x180121ca` | identical | yes | no | `0x34` | 1 | 0 |
+| `0x180121d2` | `0x180121fe` | identical | yes | no | `0x50` | 1 | 0 |
+| `0x18012222` | `0x1801224e` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x18012248` | `0x18012274` | identical | yes | no | `0x54` | 1 | 0 |
+| `0x180122fe` | `0x1801232a` | identical | yes | no | `0x40` | 1 | 0 |
+| `0x1801233e` | `0x1801236a` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x18012360` | `0x1801238c` | identical | yes | no | `0x1c` | 1 | 0 |
+| `0x1801237c` | `0x180123a8` | identical | yes | no | `0x42` | 1 | 0 |
+| `0x180123be` | `0x180123ea` | identical | yes | no | `0x44` | 1 | 0 |
+| `0x18012402` | `0x1801242e` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x18012424` | `0x18012450` | identical | yes | no | `0xd4` | 2 | 0 |
+| `0x18012522` | `0x1801254e` | tentative | yes | no | `0x22` | 1 | 0 |
 | `0x18012544` | `0x18012570` | tentative | yes | no | `0x1a` | 1 | 0 |
 | `0x1801255e` | `0x1801258a` | tentative | yes | no | `0xc` | 1 | 0 |
 | `0x18012570` | `0x1801259c` | identical | yes | no | `0x84` | 1 | 0 |
@@ -310,35 +535,61 @@ discontiguous body.
 | `0x1801263c` | `0x18012668` | identical | yes | no | `0x6a` | 1 | 0 |
 | `0x180126a6` | `0x180126d2` | identical | yes | no | `0x6c` | 1 | 0 |
 | `0x18012712` | `0x1801273e` | identical | yes | no | `0x15a` | 1 | 0 |
+| `0x1801286c` | `0x18012898` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x18012890` | `0x180128bc` | identical | yes | no | `0x3e` | 1 | 0 |
 | `0x180128ce` | `0x180128fa` | identical | yes | no | `0x26` | 1 | 0 |
 | `0x180128f4` | `0x18012920` | identical | yes | no | `0x16a` | 2 | 0 |
+| `0x18012a62` | `0x18012a8e` | identical | yes | no | `0x44` | 1 | 0 |
 | `0x18012aa6` | `0x18012ad2` | identical | yes | no | `0x3a` | 1 | 0 |
+| `0x18012ae0` | `0x18012b0c` | identical | yes | no | `0xba` | 1 | 0 |
+| `0x18012b9a` | `0x18012bc6` | identical | yes | no | `0x9c` | 1 | 0 |
+| `0x18012c36` | `0x18012c62` | identical | yes | no | `0x98` | 1 | 0 |
+| `0x18012cce` | `0x18012cfa` | identical | yes | no | `0x72` | 1 | 0 |
 | `0x18012d40` | `0x18012d6c` | identical | yes | no | `0x24` | 1 | 0 |
 | `0x18012da2` | `0x18012dce` | identical | yes | no | `0x26` | 1 | 0 |
 | `0x18012dc8` | `0x18012df4` | identical | yes | no | `0x24` | 1 | 0 |
 | `0x18012eb4` | `0x18012ee0` | identical | yes | no | `0x1c` | 1 | 0 |
+| `0x18012ed4` | `0x18012f00` | identical | yes | no | `0x14` | 1 | 0 |
+| `0x18012ee8` | `0x18012f14` | identical | yes | no | `0xbc` | 1 | 0 |
+| `0x18012fa4` | `0x18012fd0` | identical | yes | no | `0x56` | 1 | 0 |
 | `0x18012ffa` | `0x18013026` | identical | yes | no | `0x84` | 1 | 0 |
-| `0x1801307e` | `0x180130aa` | identical | yes | no | `0xc0` | 2 | 0 |
+| `0x1801307e` | `0x180130aa` | identical | yes | no | `0xbc` | 1 | 0 |
 | `0x1801313a` | `0x18013166` | identical | yes | no | `0xb8` | 1 | 0 |
 | `0x180131f2` | `0x1801321e` | identical | yes | no | `0x54` | 1 | 0 |
 | `0x18013246` | `0x18013272` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x18013250` | `0x1801327c` | identical | yes | no | `0x84` | 2 | 0 |
 | `0x1801330c` | `0x18013338` | identical | yes | no | `0x42` | 1 | 0 |
+| `0x1801334e` | `0x1801337a` | identical | yes | no | `0x5e` | 1 | 0 |
+| `0x180133ac` | `0x180133d8` | identical | yes | no | `0x18` | 1 | 0 |
+| `0x180133c4` | `0x180133f0` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x180133ec` | `0x18013418` | identical | yes | no | `0xa6` | 1 | 0 |
+| `0x18013492` | `0x180134be` | identical | yes | no | `0x70` | 1 | 0 |
+| `0x18013502` | `0x1801352e` | identical | yes | no | `0x82` | 1 | 0 |
 | `0x18013752` | `0x1801377e` | identical | yes | no | `0x6` | 1 | 0 |
+| `0x18013758` | `0x18013784` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x180137a0` | `0x180137cc` | identical | yes | no | `0x1c` | 1 | 0 |
 | `0x180137ea` | `0x18013816` | identical | yes | no | `0x2a` | 1 | 0 |
+| `0x18013814` | `0x18013840` | identical | yes | no | `0x4a` | 1 | 0 |
+| `0x1801385e` | `0x1801388a` | identical | yes | no | `0x32` | 1 | 0 |
 | `0x18013890` | `0x180138bc` | identical | yes | no | `0x62` | 1 | 0 |
+| `0x180138f2` | `0x1801391e` | identical | yes | no | `0x6a` | 1 | 0 |
 | `0x1801395c` | `0x18013988` | identical | yes | no | `0x1e` | 1 | 0 |
 | `0x1801397a` | `0x180139a6` | identical | yes | no | `0x66` | 1 | 0 |
 | `0x180139e0` | `0x18013a0c` | identical | yes | no | `0x8` | 1 | 0 |
+| `0x18013a2c` | `0x18013a58` | identical | yes | no | `0x6` | 1 | 0 |
 | `0x18013a32` | `0x18013a5e` | identical | yes | no | `0x16` | 1 | 0 |
 | `0x18013a48` | `0x18013a74` | identical | yes | no | `0x62` | 1 | 0 |
 | `0x18013aaa` | `0x18013ad6` | identical | yes | no | `0x76` | 1 | 0 |
 | `0x18013b40` | `0x18013b6c` | identical | yes | no | `0x12` | 1 | 0 |
 | `0x18013b52` | `0x18013b7e` | identical | yes | no | `0x60` | 1 | 0 |
+| `0x18013bb2` | `0x18013bde` | identical | yes | no | `0x80` | 1 | 0 |
+| `0x18013c32` | `0x18013c5e` | identical | yes | no | `0xb4` | 2 | 0 |
+| `0x18013cec` | `0x18013d18` | identical | yes | no | `0xdc` | 2 | 0 |
 | `0x18013dce` | `0x18013dfa` | identical | yes | no | `0xa4` | 2 | 0 |
+| `0x18013ea0` | `0x18013ecc` | identical | yes | no | `0xac` | 2 | 0 |
 | `0x18013f5c` | `0x18013f88` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x18013f76` | `0x18013fa2` | identical | yes | no | `0x14` | 1 | 0 |
+| `0x18013f8a` | `0x18013fb6` | identical | yes | no | `0x46` | 2 | 0 |
 | `0x18014430` | `0x1801445c` | identical | yes | no | `0x48` | 1 | 0 |
 | `0x18014478` | `0x180144a4` | identical | yes | no | `0xdc` | 1 | 0 |
 | `0x18014554` | `0x18014580` | identical | yes | no | `0x5a` | 1 | 0 |
@@ -353,27 +604,51 @@ discontiguous body.
 | `0x1801515e` | `0x1801518a` | identical | yes | no | `0x19e` | 1 | 0 |
 | `0x18015310` | `0x1801533c` | identical | yes | no | `0x2ac` | 1 | 0 |
 | `0x180155bc` | `0x180155e8` | identical | yes | no | `0x42` | 1 | 0 |
+| `0x180155fe` | `0x1801562a` | identical | yes | no | `0x70` | 2 | 0 |
 | `0x18015670` | `0x1801569c` | identical | yes | no | `0x1e` | 3 | 0 |
+| `0x180156a6` | `0x180156d2` | identical | yes | no | `0x68` | 1 | 0 |
 | `0x18015720` | `0x1801574c` | identical | yes | no | `0x192` | 1 | 0 |
 | `0x180158b2` | `0x180158de` | identical | yes | no | `0x72` | 1 | 0 |
-| `0x18015924` | `0x18015950` | identical | yes | no | `0x30` | 2 | 0 |
+| `0x18015924` | `0x18015950` | identical | yes | no | `0x2e` | 1 | 0 |
+| `0x18015952` | `0x1801597e` | identical | yes | no | `0x5e` | 1 | 0 |
 | `0x180159b0` | `0x180159dc` | identical | yes | no | `0x278` | 4 | 0 |
 | `0x18015c58` | `0x18015c84` | identical | yes | no | `0x5e` | 1 | 0 |
+| `0x18015cb6` | `0x18015ce2` | identical | yes | no | `0x1ec` | 1 | 0 |
+| `0x18015ea2` | `0x18015ece` | identical | yes | no | `0x14` | 1 | 0 |
+| `0x18015eb6` | `0x18015ee2` | identical | yes | no | `0x38` | 1 | 0 |
+| `0x18015eee` | `0x18015f1a` | identical | yes | no | `0xe` | 1 | 0 |
+| `0x18015efc` | `0x18015f28` | identical | yes | no | `0x2a` | 1 | 0 |
 | `0x18015f26` | `0x18015f52` | identical | yes | no | `0xb0` | 2 | 0 |
 | `0x18016056` | `0x18016082` | identical | yes | no | `0x82` | 1 | 0 |
 | `0x180160d8` | `0x18016104` | structural | yes | yes | `0x12a` | 1 | 1 |
 | `0x18016202` | `0x1801622e` | identical | yes | no | `0x82` | 1 | 0 |
+| `0x18016284` | `0x180162b0` | tentative | yes | no | `0x4` | 1 | 0 |
+| `0x18016288` | `0x180162b4` | tentative | yes | no | `0x4` | 1 | 0 |
+| `0x1801628c` | `0x180162b8` | tentative | yes | no | `0x4` | 1 | 0 |
 | `0x18016290` | `0x180162bc` | identical | yes | no | `0x19a` | 2 | 0 |
 | `0x1801642c` | `0x18016458` | identical | yes | no | `0x86` | 2 | 0 |
+| `0x180164d2` | `0x180164fe` | tentative | yes | no | `0x4` | 1 | 0 |
 | `0x180164d6` | `0x18016502` | identical | yes | no | `0x82` | 1 | 0 |
 | `0x18016558` | `0x18016584` | identical | yes | no | `0x194` | 3 | 0 |
 | `0x180166f0` | `0x1801671c` | identical | yes | no | `0x84` | 1 | 0 |
+| `0x18016774` | `0x180167a0` | tentative | yes | no | `0x4` | 1 | 0 |
 | `0x18016778` | `0x180167a4` | identical | yes | no | `0x84` | 1 | 0 |
 | `0x180167fc` | `0x18016828` | identical | yes | no | `0xea` | 3 | 0 |
+| `0x18016908` | `0x18016934` | identical | yes | no | `0x238` | 2 | 0 |
 | `0x18016b50` | `0x18016b7c` | identical | yes | no | `0x12` | 1 | 0 |
 | `0x18016b62` | `0x18016b8e` | identical | yes | no | `0xba` | 1 | 0 |
 | `0x18016c1c` | `0x18016c48` | identical | yes | no | `0x44` | 1 | 0 |
+| `0x18016c64` | `0x18016c90` | identical | yes | no | `0x22` | 1 | 0 |
+| `0x18016c86` | `0x18016cb2` | identical | yes | no | `0x52` | 1 | 0 |
+| `0x18016cd8` | `0x18016d04` | identical | yes | no | `0x96` | 3 | 0 |
+| `0x18016e3c` | `0x18016e68` | identical | yes | no | `0xc4` | 1 | 0 |
+| `0x18016f00` | `0x18016f2c` | identical | yes | no | `0x42` | 1 | 0 |
+| `0x18016f42` | `0x18016f6e` | identical | yes | no | `0x1b2` | 1 | 0 |
+| `0x180170f4` | `0x18017120` | identical | yes | no | `0x62` | 1 | 0 |
+| `0x18017156` | `0x18017182` | identical | yes | no | `0x10` | 1 | 0 |
+| `0x18017166` | `0x18017192` | identical | yes | no | `0x1e` | 1 | 0 |
 | `0x18017184` | `0x180171b0` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x180172b4` | `0x180172e0` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x180172c4` | `0x180172f0` | identical | yes | no | `0x6c` | 1 | 0 |
 | `0x180174f0` | `0x1801751c` | identical | yes | no | `0x6` | 1 | 0 |
 | `0x180174f6` | `0x18017522` | identical | yes | no | `0x42` | 1 | 0 |
@@ -382,6 +657,9 @@ discontiguous body.
 | `0x18017636` | `0x18017662` | identical | yes | no | `0x10` | 1 | 0 |
 | `0x18017646` | `0x18017672` | identical | yes | no | `0x6` | 1 | 0 |
 | `0x1801764c` | `0x18017678` | identical | yes | no | `0x19e` | 2 | 0 |
+| `0x180177f0` | `0x1801781c` | tentative | yes | no | `0x2` | 1 | 0 |
+| `0x180177f2` | `0x1801781e` | tentative | yes | no | `0x2` | 1 | 0 |
+| `0x180177f4` | `0x18017820` | tentative | yes | no | `0x2` | 1 | 0 |
 | `0x180177f6` | `0x18017822` | identical | yes | no | `0x3a` | 1 | 0 |
 | `0x18017830` | `0x1801785c` | identical | yes | no | `0x18` | 1 | 0 |
 | `0x18017848` | `0x18017874` | identical | yes | no | `0xb2` | 2 | 0 |
@@ -390,25 +668,43 @@ discontiguous body.
 | `0x180178d2` | `0x180178fe` | identical | yes | no | `0x76` | 2 | 0 |
 | `0x18017952` | `0x1801797e` | identical | yes | no | `0x90` | 1 | 0 |
 | `0x18017a14` | `0x18017a40` | identical | yes | no | `0x6` | 1 | 0 |
+| `0x18017a20` | `0x18017a4c` | identical | yes | no | `0x74` | 1 | 0 |
 | `0x18017a94` | `0x18017ac0` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x18017a9e` | `0x18017aca` | identical | yes | no | `0x3c` | 1 | 0 |
 | `0x18017ada` | `0x18017b06` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x18017af4` | `0x18017b20` | identical | yes | no | `0x21c` | 2 | 0 |
 | `0x18017df8` | `0x18017e24` | identical | yes | no | `0x2e` | 1 | 0 |
+| `0x18017e26` | `0x18017e52` | identical | yes | no | `0x58` | 1 | 0 |
+| `0x18017e7e` | `0x18017eaa` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x18017f32` | `0x18017f5e` | identical | yes | no | `0x1e` | 1 | 0 |
+| `0x18017f54` | `0x18017f80` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x18017f6e` | `0x18017f9a` | identical | yes | no | `0xd6` | 1 | 0 |
 | `0x18018044` | `0x18018070` | identical | yes | no | `0x12` | 1 | 0 |
 | `0x18018056` | `0x18018082` | identical | yes | no | `0x182` | 1 | 0 |
 | `0x180181d8` | `0x18018204` | identical | yes | no | `0x264` | 2 | 0 |
 | `0x18018454` | `0x18018480` | identical | yes | no | `0x34` | 2 | 0 |
 | `0x1801848a` | `0x180184b6` | identical | yes | no | `0x1ec` | 2 | 0 |
+| `0x18018678` | `0x180186a4` | tentative | yes | no | `0x2` | 1 | 0 |
+| `0x1801867a` | `0x180186a6` | identical | yes | no | `0x2e` | 1 | 0 |
+| `0x180186a8` | `0x180186d4` | identical | yes | no | `0x30` | 1 | 0 |
+| `0x180186d8` | `0x18018704` | identical | yes | no | `0x30` | 1 | 0 |
+| `0x18018708` | `0x18018734` | identical | yes | no | `0x30` | 1 | 0 |
 | `0x18018738` | `0x18018764` | identical | yes | no | `0x8c` | 2 | 0 |
 | `0x180188c4` | `0x180188f0` | identical | yes | no | `0x88` | 1 | 0 |
+| `0x1801894c` | `0x18018978` | identical | yes | no | `0x1a` | 1 | 0 |
+| `0x18018966` | `0x18018992` | identical | yes | no | `0x4` | 1 | 0 |
 | `0x1801896a` | `0x18018996` | identical | yes | no | `0x92` | 1 | 0 |
+| `0x180189fc` | `0x18018a28` | identical | yes | no | `0x82` | 1 | 0 |
+| `0x18018a7e` | `0x18018aaa` | identical | yes | no | `0x46` | 1 | 0 |
+| `0x18018ac4` | `0x18018af0` | identical | yes | no | `0xc` | 1 | 0 |
+| `0x18018ad0` | `0x18018afc` | identical | yes | no | `0x26` | 1 | 0 |
+| `0x18018af6` | `0x18018b22` | identical | yes | no | `0x74` | 2 | 0 |
+| `0x18018b8c` | `0x18018bb8` | identical | yes | no | `0x1e` | 1 | 0 |
 | `0x18018baa` | `0x18018bd6` | identical | yes | no | `0xa0` | 1 | 0 |
 | `0x18018c4a` | `0x18018c76` | identical | yes | no | `0xfc` | 2 | 0 |
 | `0x18018e50` | `0x18018e7c` | identical | yes | no | `0x5e` | 1 | 0 |
 | `0x18018eae` | `0x18018eda` | identical | yes | no | `0xea` | 1 | 0 |
+| `0x1801939c` | `0x180193c8` | identical | yes | no | `0x8a` | 1 | 0 |
 | `0x18019440` | `0x1801946c` | tentative | yes | no | `0x2` | 1 | 0 |
 | `0x18019442` | `0x1801946e` | identical | yes | no | `0x84` | 1 | 0 |
 | `0x180194ca` | `0x180194f6` | identical | yes | no | `0x8` | 1 | 0 |
@@ -416,6 +712,9 @@ discontiguous body.
 | `0x1801956c` | `0x18019598` | identical | yes | no | `0x1e` | 1 | 0 |
 | `0x1801958a` | `0x180195b6` | identical | yes | no | `0x6c` | 1 | 0 |
 | `0x180195f6` | `0x18019622` | identical | yes | no | `0x18` | 1 | 0 |
+| `0x1801960e` | `0x1801963a` | identical | yes | no | `0x10` | 1 | 0 |
+| `0x1801961e` | `0x1801964a` | identical | yes | no | `0x10` | 1 | 0 |
+| `0x1801962e` | `0x1801965a` | identical | yes | no | `0x10` | 1 | 0 |
 | `0x1801963e` | `0x1801966a` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x18019648` | `0x18019674` | identical | yes | no | `0xc` | 1 | 0 |
 | `0x18019654` | `0x18019680` | identical | yes | no | `0x10` | 1 | 0 |
@@ -428,86 +727,191 @@ discontiguous body.
 | `0x180196d4` | `0x18019700` | identical | yes | no | `0x18` | 1 | 0 |
 | `0x180196ec` | `0x18019718` | identical | yes | no | `0x12` | 1 | 0 |
 | `0x180196fe` | `0x1801972a` | identical | yes | no | `0x18c` | 1 | 0 |
+| `0x1801988a` | `0x180198b6` | identical | yes | no | `0x68` | 1 | 0 |
+| `0x180198f2` | `0x1801991e` | identical | yes | no | `0x4c` | 1 | 0 |
 | `0x1801993e` | `0x1801996a` | identical | yes | no | `0xbc` | 2 | 0 |
+| `0x180199fc` | `0x18019a28` | identical | yes | no | `0xc6` | 2 | 0 |
 | `0x18019ac4` | `0x18019af0` | identical | yes | no | `0xb0` | 3 | 0 |
-| `0x18019dc2` | `0x18019dee` | identical | yes | no | `0x1a` | 1 | 0 |
+| `0x18019dc2` | `0x18019dee` | tentative | yes | no | `0x1a` | 1 | 0 |
 | `0x18019ddc` | `0x18019e08` | tentative | yes | no | `0x1a` | 1 | 0 |
 | `0x18019df6` | `0x18019e22` | identical | yes | no | `0x1c` | 1 | 0 |
 | `0x18019e12` | `0x18019e3e` | identical | yes | no | `0x18` | 1 | 0 |
-| `0x18019e68` | `0x18019e94` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x18019e40` | `0x18019e6c` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x18019e68` | `0x18019e94` | identical | yes | no | `0x24` | 1 | 0 |
+| `0x18019e8c` | `0x18019eb8` | identical | yes | no | `0x3a` | 1 | 0 |
+| `0x18019ec6` | `0x18019ef2` | identical | yes | no | `0x3a` | 1 | 0 |
+| `0x18019f00` | `0x18019f2c` | identical | yes | no | `0xa` | 1 | 0 |
+| `0x18019f0a` | `0x18019f36` | tentative | yes | no | `0x2` | 1 | 0 |
 | `0x18019f0c` | `0x18019f38` | identical | yes | no | `0x5c` | 1 | 0 |
 | `0x18019f68` | `0x18019f94` | identical | yes | no | `0x70` | 1 | 0 |
+| `0x18019fd8` | `0x1801a004` | identical | yes | no | `0x50` | 1 | 0 |
+| `0x1801a028` | `0x1801a054` | identical | yes | no | `0x5c` | 1 | 0 |
+| `0x1801a084` | `0x1801a0b0` | identical | yes | no | `0x3c` | 1 | 0 |
+| `0x1801a0c0` | `0x1801a0ec` | identical | yes | no | `0x44` | 1 | 0 |
 | `0x1801a168` | `0x1801a194` | identical | yes | no | `0xa` | 1 | 0 |
 | `0x1801a172` | `0x1801a19e` | identical | yes | no | `0x2e` | 2 | 0 |
 | `0x1801a1a2` | `0x1801a1ce` | identical | yes | no | `0x2e` | 2 | 0 |
-| `0x1801a214` | `0x1801a240` | identical | yes | no | `0x42` | 1 | 0 |
+| `0x1801a1d2` | `0x1801a1fe` | identical | yes | no | `0x16` | 1 | 0 |
+| `0x1801a1e8` | `0x1801a214` | identical | yes | no | `0x2c` | 1 | 0 |
+| `0x1801a214` | `0x1801a240` | identical | yes | no | `0x3e` | 1 | 0 |
+| `0x1801a252` | `0x1801a27e` | identical | yes | no | `0x2e` | 1 | 0 |
+| `0x1801a280` | `0x1801a2ac` | identical | yes | no | `0x4e` | 1 | 0 |
+| `0x1801a2ce` | `0x1801a2fa` | identical | yes | no | `0x2a` | 1 | 0 |
+| `0x1801a2f8` | `0x1801a324` | identical | yes | no | `0x2c` | 2 | 0 |
+| `0x1801a9fc` | `0x1801aa28` | identical | yes | no | `0x18` | 1 | 0 |
+| `0x1801aa14` | `0x1801aa40` | identical | yes | no | `0x10` | 1 | 0 |
 | `0x1801aa26` | `0x1801aa52` | identical | yes | no | `0x1c` | 1 | 0 |
+| `0x1801aa42` | `0x1801aa6e` | identical | yes | no | `0x48` | 1 | 0 |
 | `0x1801aad8` | `0x1801ab04` | identical | yes | no | `0x1a` | 1 | 0 |
 | `0x1801aaf2` | `0x1801ab1e` | identical | yes | no | `0x108` | 1 | 0 |
+| `0x1801abfa` | `0x1801ac26` | identical | yes | no | `0x2a` | 1 | 0 |
 | `0x1801ac24` | `0x1801ac50` | identical | yes | no | `0xfa` | 1 | 0 |
 | `0x1801ad1e` | `0x1801ad4a` | identical | yes | no | `0xba` | 1 | 0 |
 | `0x1801add8` | `0x1801ae04` | identical | yes | no | `0xd4` | 1 | 0 |
+| `0x1801aeac` | `0x1801aed8` | identical | yes | no | `0xb0` | 1 | 0 |
+| `0x1801af5c` | `0x1801af88` | identical | yes | no | `0xac` | 1 | 0 |
+| `0x1801b00c` | `0x1801b038` | identical | yes | no | `0x52` | 1 | 0 |
+| `0x1801b07c` | `0x1801b0a8` | tentative | yes | no | `0x22` | 1 | 0 |
+| `0x1801b09e` | `0x1801b0ca` | tentative | yes | no | `0x1a` | 1 | 0 |
 | `0x1801b0b8` | `0x1801b0e4` | identical | yes | no | `0x14` | 1 | 0 |
+| `0x1801b126` | `0x1801b152` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x1801b14e` | `0x1801b17a` | identical | yes | no | `0x28` | 1 | 0 |
+| `0x1801b176` | `0x1801b1a2` | identical | yes | no | `0x38` | 1 | 0 |
+| `0x1801b1ae` | `0x1801b1da` | identical | yes | no | `0x38` | 1 | 0 |
+| `0x1801b1e6` | `0x1801b212` | identical | yes | no | `0x4e` | 1 | 0 |
+| `0x1801b234` | `0x1801b260` | identical | yes | no | `0x4c` | 1 | 0 |
+| `0x1801b280` | `0x1801b2ac` | identical | yes | no | `0x4a` | 1 | 0 |
+| `0x1801b2ca` | `0x1801b2f6` | identical | yes | no | `0xaa` | 1 | 0 |
+| `0x1801b542` | `0x1801b56e` | identical | yes | no | `0xdc` | 1 | 0 |
+| `0x1801b61e` | `0x1801b64a` | identical | yes | no | `0x130` | 3 | 0 |
+| `0x1801b74e` | `0x1801b77a` | identical | yes | no | `0x40` | 1 | 0 |
+| `0x1801b792` | `0x1801b7be` | tentative | yes | no | `0x1a` | 1 | 0 |
+| `0x1801b7ac` | `0x1801b7d8` | tentative | yes | no | `0x1a` | 1 | 0 |
 
 ## Addresses that must no longer be assumed equal
 
 Every relocated pairing, every tentative pairing, and every function
 without a counterpart.
 
-### Candidate A — 2 entries
+### Candidate A — 7 entries
 
 | vendor | installed | reason |
 |---|---|---|
+| `0x00000fce` | `0x00000fce` | tentative match only; the correspondence is not proven |
+| `0x000014d2` | `0x000014d2` | tentative match only; the correspondence is not proven |
+| `0x000014d4` | `0x000014d4` | tentative match only; the correspondence is not proven |
+| `0x000014d8` | `0x000014d8` | tentative match only; the correspondence is not proven |
 | `0x00003704` | `0x00003704` | tentative match only; the correspondence is not proven |
 | `0x00003884` | `0x00003884` | tentative match only; the correspondence is not proven |
+| `0x000040b4` | `0x000040b4` | tentative match only; the correspondence is not proven |
 
-### Candidate B — 275 entries
+### Candidate B — 535 entries
 
 | vendor | installed | reason |
 |---|---|---|
+| `0x18001fbe` | `0x18001fbe` | tentative match only; the correspondence is not proven |
+| `0x18004a7e` | `0x18004a7e` | tentative match only; the correspondence is not proven |
 | `0x180057d2` | `0x180057fe` | identical match, relocated |
+| `0x18005a5c` | `0x18005a88` | structural match, relocated |
 | `0x18005eac` | `0x18005ed8` | identical match, relocated |
 | `0x18006024` | `0x18006050` | identical match, relocated |
+| `0x180060ea` | `0x18006116` | identical match, relocated |
+| `0x18006196` | `0x180061c2` | structural match, relocated |
 | `0x18006800` | `0x1800682c` | identical match, relocated |
+| `0x1800687e` | `0x180068aa` | structural match, relocated |
+| `0x180068e8` | `0x18006914` | identical match, relocated |
 | `0x18006956` | `0x18006982` | structural match, relocated |
+| `0x180069e2` | `0x18006a0e` | structural match, relocated |
 | `0x18006a90` | `0x18006abc` | identical match, relocated |
 | `0x18006aa8` | `0x18006ad4` | structural match, relocated |
+| `0x18006ade` | `0x18006b0a` | identical match, relocated |
+| `0x18006b0e` | `0x18006b3a` | identical match, relocated |
 | `0x18006c9a` | `0x18006cc6` | identical match, relocated |
 | `0x18006d10` | `0x18006d3c` | identical match, relocated |
 | `0x18006f4e` | `0x18006f7a` | identical match, relocated |
 | `0x18006fb4` | `0x18006fe0` | identical match, relocated |
+| `0x18007004` | `0x18007030` | structural match, relocated |
+| `0x18007b7c` | `0x18007ba8` | identical match, relocated |
+| `0x18007b88` | `0x18007bb4` | identical match, relocated |
 | `0x18007ba0` | `0x18007bcc` | identical match, relocated |
+| `0x18007c84` | `0x18007cb0` | identical match, relocated |
 | `0x18007d78` | `0x18007da4` | identical match, relocated |
+| `0x18007de0` | `0x18007e0c` | identical match, relocated |
+| `0x18007e0c` | `0x18007e38` | structural match, relocated |
+| `0x18008724` | `0x18008750` | structural match, relocated |
+| `0x180087c8` | `0x180087f4` | identical match, relocated |
+| `0x18008848` | `0x18008874` | identical match, relocated |
 | `0x180088c8` | `0x180088f4` | identical match, relocated |
 | `0x180088d2` | `0x180088fe` | identical match, relocated |
+| `0x180088ea` | `0x18008916` | structural match, relocated |
 | `0x1800897c` | `0x180089a8` | identical match, relocated |
 | `0x180089be` | `0x180089ea` | identical match, relocated |
 | `0x180089d6` | `0x18008a02` | structural match, relocated |
 | `0x18008a4a` | `0x18008a76` | structural match, relocated |
+| `0x18008afa` | `0x18008b26` | identical match, relocated |
 | `0x18008f1e` | `0x18008f4a` | identical match, relocated |
 | `0x18008f9c` | `0x18008fc8` | identical match, relocated |
+| `0x18008fec` | `0x18009018` | identical match, relocated |
 | `0x18009016` | `0x18009042` | identical match, relocated |
+| `0x1800902e` | `0x1800905a` | identical match, relocated |
+| `0x18009040` | `0x1800906c` | identical match, relocated |
 | `0x18009096` | `0x180090c2` | identical match, relocated |
+| `0x180090ce` | `0x180090fa` | identical match, relocated |
 | `0x18009102` | `0x1800912e` | identical match, relocated |
 | `0x180091c4` | `0x180091f0` | identical match, relocated |
+| `0x180091f6` | `0x18009222` | identical match, relocated |
 | `0x180092f0` | `0x1800931c` | identical match, relocated |
 | `0x1800937e` | `0x180093aa` | identical match, relocated |
+| `0x180093cc` | `0x180093f8` | identical match, relocated |
+| `0x180094c2` | `0x180094ee` | identical match, relocated |
 | `0x180094ca` | `0x180094f6` | identical match, relocated |
+| `0x180095a8` | `0x180095d4` | identical match, relocated |
+| `0x180095b6` | `0x180095e2` | identical match, relocated |
 | `0x180096da` | `0x18009706` | identical match, relocated |
 | `0x1800983c` | `0x18009868` | identical match, relocated |
+| `0x180098e2` | `0x1800990e` | identical match, relocated |
+| `0x1800998e` | `0x180099ba` | identical match, relocated |
+| `0x18009a38` | `0x18009a64` | identical match, relocated |
+| `0x18009a82` | `0x18009aae` | identical match, relocated |
+| `0x18009b1e` | `0x18009b4a` | identical match, relocated |
+| `0x18009c24` | `0x18009c50` | identical match, relocated |
 | `0x18009d28` | `0x18009d54` | identical match, relocated |
 | `0x18009e40` | `0x18009e6c` | identical match, relocated |
+| `0x18009f2a` | `0x18009f56` | identical match, relocated |
+| `0x1800a158` | `0x1800a184` | identical match, relocated |
+| `0x1800a17a` | `0x1800a1a6` | identical match, relocated |
+| `0x1800a220` | `0x1800a24c` | identical match, relocated |
 | `0x1800a51e` | `0x1800a54a` | identical match, relocated |
+| `0x1800a604` | `0x1800a630` | identical match, relocated |
+| `0x1800a67a` | `0x1800a6a6` | identical match, relocated |
+| `0x1800a6fe` | `0x1800a72a` | identical match, relocated |
+| `0x1800a83c` | `0x1800a868` | identical match, relocated |
+| `0x1800a8ee` | `0x1800a91a` | identical match, relocated |
 | `0x1800a934` | `0x1800a960` | identical match, relocated |
+| `0x1800a9da` | `0x1800aa06` | identical match, relocated |
 | `0x1800aa84` | `0x1800aab0` | identical match, relocated |
+| `0x1800aab0` | `0x1800aadc` | identical match, relocated |
 | `0x1800ab78` | `0x1800aba4` | identical match, relocated |
+| `0x1800af50` | `0x1800af7c` | identical match, relocated |
 | `0x1800b07e` | `0x1800b0aa` | identical match, relocated |
+| `0x1800b25a` | `0x1800b286` | identical match, relocated |
+| `0x1800b2b6` | `0x1800b2e2` | identical match, relocated |
+| `0x1800b344` | `0x1800b370` | identical match, relocated |
 | `0x1800b654` | `0x1800b680` | identical match, relocated |
 | `0x1800b6d8` | `0x1800b704` | identical match, relocated |
 | `0x1800b7be` | `0x1800b7ea` | identical match, relocated |
+| `0x1800b7fc` | `0x1800b828` | identical match, relocated |
+| `0x1800b85c` | `0x1800b888` | identical match, relocated |
+| `0x1800be76` | `0x1800bea2` | identical match, relocated |
+| `0x1800be82` | `0x1800beae` | identical match, relocated |
 | `0x1800bf28` | `0x1800bf54` | identical match, relocated |
+| `0x1800bf72` | `0x1800bf9e` | identical match, relocated |
 | `0x1800c048` | `0x1800c074` | identical match, relocated |
 | `0x1800c106` | `0x1800c132` | identical match, relocated |
+| `0x1800c14e` | `0x1800c17a` | identical match, relocated |
+| `0x1800c158` | `0x1800c184` | identical match, relocated |
+| `0x1800c16a` | `0x1800c196` | identical match, relocated |
+| `0x1800c174` | `0x1800c1a0` | identical match, relocated |
 | `0x1800c188` | `0x1800c1b4` | identical match, relocated |
 | `0x1800c3b0` | `0x1800c3dc` | identical match, relocated |
 | `0x1800c472` | `0x1800c49e` | identical match, relocated |
@@ -522,12 +926,29 @@ without a counterpart.
 | `0x1800ca9c` | `0x1800cac8` | identical match, relocated |
 | `0x1800cae4` | `0x1800cb10` | identical match, relocated |
 | `0x1800caf4` | `0x1800cb20` | identical match, relocated |
+| `0x1800cc8a` | `0x1800ccb6` | identical match, relocated |
+| `0x1800cca6` | `0x1800ccd2` | identical match, relocated |
 | `0x1800ce1e` | `0x1800ce4a` | structural match, relocated |
 | `0x1800cf4c` | `0x1800cf78` | identical match, relocated |
+| `0x1800cf6a` | `0x1800cf96` | tentative match, relocated |
 | `0x1800cf6c` | `0x1800cf98` | identical match, relocated |
+| `0x1800cffe` | `0x1800d02a` | identical match, relocated |
+| `0x1800d020` | `0x1800d04c` | identical match, relocated |
+| `0x1800d02e` | `0x1800d05a` | identical match, relocated |
+| `0x1800d168` | `0x1800d194` | identical match, relocated |
+| `0x1800d17e` | `0x1800d1aa` | identical match, relocated |
+| `0x1800d1ca` | `0x1800d1f6` | identical match, relocated |
+| `0x1800d24a` | `0x1800d276` | identical match, relocated |
+| `0x1800d290` | `0x1800d2bc` | identical match, relocated |
+| `0x1800d30c` | `0x1800d338` | identical match, relocated |
+| `0x1800d614` | `0x1800d640` | identical match, relocated |
+| `0x1800d706` | `0x1800d732` | identical match, relocated |
 | `0x1800d814` | `0x1800d840` | identical match, relocated |
+| `0x1800d872` | `0x1800d89e` | identical match, relocated |
 | `0x1800d8a4` | `0x1800d8d0` | identical match, relocated |
 | `0x1800d8e8` | `0x1800d914` | identical match, relocated |
+| `0x1800d93c` | `0x1800d968` | identical match, relocated |
+| `0x1800d964` | `0x1800d990` | identical match, relocated |
 | `0x1800d99c` | `0x1800d9c8` | tentative match, relocated |
 | `0x1800d99e` | `0x1800d9ca` | tentative match, relocated |
 | `0x1800d9a0` | `0x1800d9cc` | tentative match, relocated |
@@ -535,14 +956,28 @@ without a counterpart.
 | `0x1800da1c` | `0x1800da48` | identical match, relocated |
 | `0x1800da52` | `0x1800da7e` | identical match, relocated |
 | `0x1800da72` | `0x1800da9e` | identical match, relocated |
+| `0x1800da98` | `0x1800dac4` | identical match, relocated |
+| `0x1800dabe` | `0x1800daea` | identical match, relocated |
+| `0x1800dae4` | `0x1800db10` | identical match, relocated |
+| `0x1800dafa` | `0x1800db26` | identical match, relocated |
+| `0x1800db10` | `0x1800db3c` | identical match, relocated |
+| `0x1800db26` | `0x1800db52` | identical match, relocated |
+| `0x1800db3c` | `0x1800db68` | identical match, relocated |
+| `0x1800db62` | `0x1800db8e` | identical match, relocated |
+| `0x1800db88` | `0x1800dbb4` | identical match, relocated |
+| `0x1800dbb8` | `0x1800dbe4` | identical match, relocated |
 | `0x1800dbde` | `0x1800dc0a` | identical match, relocated |
+| `0x1800dc14` | `0x1800dc40` | identical match, relocated |
 | `0x1800dc40` | `0x1800dc6c` | identical match, relocated |
+| `0x1800dc66` | `0x1800dc92` | identical match, relocated |
 | `0x1800e246` | `0x1800e272` | identical match, relocated |
 | `0x1800e252` | `0x1800e27e` | identical match, relocated |
 | `0x1800e27c` | `0x1800e2a8` | identical match, relocated |
 | `0x1800e298` | `0x1800e2c4` | identical match, relocated |
 | `0x1800e2b4` | `0x1800e2e0` | identical match, relocated |
 | `0x1800e2d0` | `0x1800e2fc` | identical match, relocated |
+| `0x1800e2f4` | `0x1800e320` | identical match, relocated |
+| `0x1800e318` | `0x1800e344` | identical match, relocated |
 | `0x1800e33c` | `0x1800e368` | identical match, relocated |
 | `0x1800e37c` | `0x1800e3a8` | identical match, relocated |
 | `0x1800e39c` | `0x1800e3c8` | identical match, relocated |
@@ -551,38 +986,82 @@ without a counterpart.
 | `0x1800e4a4` | `0x1800e4d0` | identical match, relocated |
 | `0x1800e4be` | `0x1800e4ea` | identical match, relocated |
 | `0x1800e622` | `0x1800e64e` | identical match, relocated |
+| `0x1800e6aa` | `0x1800e6d6` | identical match, relocated |
+| `0x1800e74a` | `0x1800e776` | identical match, relocated |
 | `0x1800e7c2` | `0x1800e7ee` | identical match, relocated |
+| `0x1800e80a` | `0x1800e836` | identical match, relocated |
+| `0x1800ea0a` | `0x1800ea36` | identical match, relocated |
+| `0x1800eabe` | `0x1800eaea` | identical match, relocated |
+| `0x1800eaee` | `0x1800eb1a` | identical match, relocated |
 | `0x1800eb4e` | `0x1800eb7a` | structural match, relocated |
 | `0x1800ebfc` | `0x1800ec28` | structural match, relocated |
+| `0x1800ec40` | `0x1800ec6c` | identical match, relocated |
+| `0x1800ecb6` | `0x1800ece2` | identical match, relocated |
+| `0x1800ece2` | `0x1800ed0e` | identical match, relocated |
+| `0x1800ed74` | `0x1800eda0` | identical match, relocated |
 | `0x1800ed80` | `0x1800edac` | identical match, relocated |
+| `0x1800edec` | `0x1800ee18` | identical match, relocated |
+| `0x1800ee1c` | `0x1800ee48` | identical match, relocated |
+| `0x1800ee32` | `0x1800ee5e` | identical match, relocated |
+| `0x1800ee3c` | `0x1800ee68` | identical match, relocated |
 | `0x1800ee46` | `0x1800ee72` | identical match, relocated |
+| `0x1800ef58` | `0x1800ef84` | identical match, relocated |
 | `0x1800f0b8` | `0x1800f0e4` | identical match, relocated |
+| `0x1800f3b4` | `0x1800f3e0` | structural match, relocated |
+| `0x1800f448` | `0x1800f474` | identical match, relocated |
+| `0x1800f4c6` | `0x1800f4f2` | structural match, relocated |
+| `0x1800f546` | `0x1800f572` | structural match, relocated |
+| `0x1800f630` | `0x1800f65c` | structural match, relocated |
+| `0x1800f6ba` | `0x1800f6e6` | structural match, relocated |
+| `0x1800f6ee` | `0x1800f71a` | identical match, relocated |
 | `0x1800f7d2` | `0x1800f7fe` | identical match, relocated |
+| `0x1800f91c` | `0x1800f948` | identical match, relocated |
+| `0x1800fa50` | `0x1800fa7c` | identical match, relocated |
 | `0x1800fb82` | `0x1800fbae` | identical match, relocated |
 | `0x1800fb8c` | `0x1800fbb8` | structural match, relocated |
+| `0x1800fbac` | `0x1800fbd8` | structural match, relocated |
 | `0x1800fbd6` | `0x1800fc02` | identical match, relocated |
 | `0x1800fbf6` | `0x1800fc22` | identical match, relocated |
+| `0x1800fc16` | `0x1800fc42` | identical match, relocated |
+| `0x1800fc3e` | `0x1800fc6a` | identical match, relocated |
+| `0x1800fc5a` | `0x1800fc86` | identical match, relocated |
 | `0x1800fd20` | `0x1800fd4c` | structural match, relocated |
 | `0x1800ff7e` | `0x1800ffaa` | identical match, relocated |
 | `0x180100d6` | `0x18010102` | structural match, relocated |
 | `0x1801011c` | `0x18010148` | identical match, relocated |
+| `0x180101e2` | `0x1801020e` | identical match, relocated |
+| `0x180103f4` | `0x18010420` | identical match, relocated |
 | `0x180104aa` | `0x180104d6` | identical match, relocated |
+| `0x180105e0` | `0x1801060c` | identical match, relocated |
+| `0x18010602` | `0x1801062e` | identical match, relocated |
+| `0x1801062c` | `0x18010658` | identical match, relocated |
+| `0x18010650` | `0x1801067c` | identical match, relocated |
+| `0x18010692` | `0x180106be` | identical match, relocated |
+| `0x1801069e` | `0x180106ca` | identical match, relocated |
 | `0x18010740` | `0x1801076c` | identical match, relocated |
 | `0x18010764` | `0x18010790` | tentative match, relocated |
 | `0x18010770` | `0x1801079c` | identical match, relocated |
 | `0x18010784` | `0x180107b0` | identical match, relocated |
 | `0x18010824` | `0x18010850` | identical match, relocated |
+| `0x18010874` | `0x180108a0` | identical match, relocated |
 | `0x180109b8` | `0x180109e4` | identical match, relocated |
 | `0x180109ec` | `0x18010a18` | identical match, relocated |
+| `0x18010a18` | `0x18010a44` | identical match, relocated |
 | `0x18010a90` | `0x18010abc` | identical match, relocated |
 | `0x18010e08` | `0x18010e34` | identical match, relocated |
 | `0x18011014` | `0x18011040` | identical match, relocated |
 | `0x18011234` | `0x18011260` | identical match, relocated |
 | `0x18011440` | `0x1801146c` | identical match, relocated |
 | `0x18011664` | `0x18011690` | identical match, relocated |
+| `0x18011806` | `0x18011832` | tentative match, relocated |
 | `0x18011828` | `0x18011854` | identical match, relocated |
+| `0x1801185a` | `0x18011886` | identical match, relocated |
+| `0x180118b0` | `0x180118dc` | identical match, relocated |
+| `0x180118d4` | `0x18011900` | identical match, relocated |
+| `0x18011968` | `0x18011994` | identical match, relocated |
 | `0x18011a00` | `0x18011a2c` | identical match, relocated |
 | `0x18011aca` | `0x18011af6` | identical match, relocated |
+| `0x18011b92` | `0x18011bbe` | identical match, relocated |
 | `0x18011cca` | `0x18011cf6` | identical match, relocated |
 | `0x18011cd6` | `0x18011d02` | identical match, relocated |
 | `0x18011ce2` | `0x18011d0e` | tentative match, relocated |
@@ -594,7 +1073,18 @@ without a counterpart.
 | `0x18012004` | `0x18012030` | identical match, relocated |
 | `0x180120dc` | `0x18012108` | identical match, relocated |
 | `0x18012114` | `0x18012140` | identical match, relocated |
-| `0x18012522` | `0x1801254e` | identical match, relocated |
+| `0x1801219e` | `0x180121ca` | identical match, relocated |
+| `0x180121d2` | `0x180121fe` | identical match, relocated |
+| `0x18012222` | `0x1801224e` | identical match, relocated |
+| `0x18012248` | `0x18012274` | identical match, relocated |
+| `0x180122fe` | `0x1801232a` | identical match, relocated |
+| `0x1801233e` | `0x1801236a` | identical match, relocated |
+| `0x18012360` | `0x1801238c` | identical match, relocated |
+| `0x1801237c` | `0x180123a8` | identical match, relocated |
+| `0x180123be` | `0x180123ea` | identical match, relocated |
+| `0x18012402` | `0x1801242e` | identical match, relocated |
+| `0x18012424` | `0x18012450` | identical match, relocated |
+| `0x18012522` | `0x1801254e` | tentative match, relocated |
 | `0x18012544` | `0x18012570` | tentative match, relocated |
 | `0x1801255e` | `0x1801258a` | tentative match, relocated |
 | `0x18012570` | `0x1801259c` | identical match, relocated |
@@ -602,13 +1092,23 @@ without a counterpart.
 | `0x1801263c` | `0x18012668` | identical match, relocated |
 | `0x180126a6` | `0x180126d2` | identical match, relocated |
 | `0x18012712` | `0x1801273e` | identical match, relocated |
+| `0x1801286c` | `0x18012898` | identical match, relocated |
+| `0x18012890` | `0x180128bc` | identical match, relocated |
 | `0x180128ce` | `0x180128fa` | identical match, relocated |
 | `0x180128f4` | `0x18012920` | identical match, relocated |
+| `0x18012a62` | `0x18012a8e` | identical match, relocated |
 | `0x18012aa6` | `0x18012ad2` | identical match, relocated |
+| `0x18012ae0` | `0x18012b0c` | identical match, relocated |
+| `0x18012b9a` | `0x18012bc6` | identical match, relocated |
+| `0x18012c36` | `0x18012c62` | identical match, relocated |
+| `0x18012cce` | `0x18012cfa` | identical match, relocated |
 | `0x18012d40` | `0x18012d6c` | identical match, relocated |
 | `0x18012da2` | `0x18012dce` | identical match, relocated |
 | `0x18012dc8` | `0x18012df4` | identical match, relocated |
 | `0x18012eb4` | `0x18012ee0` | identical match, relocated |
+| `0x18012ed4` | `0x18012f00` | identical match, relocated |
+| `0x18012ee8` | `0x18012f14` | identical match, relocated |
+| `0x18012fa4` | `0x18012fd0` | identical match, relocated |
 | `0x18012ffa` | `0x18013026` | identical match, relocated |
 | `0x1801307e` | `0x180130aa` | identical match, relocated |
 | `0x1801313a` | `0x18013166` | identical match, relocated |
@@ -616,21 +1116,37 @@ without a counterpart.
 | `0x18013246` | `0x18013272` | identical match, relocated |
 | `0x18013250` | `0x1801327c` | identical match, relocated |
 | `0x1801330c` | `0x18013338` | identical match, relocated |
+| `0x1801334e` | `0x1801337a` | identical match, relocated |
+| `0x180133ac` | `0x180133d8` | identical match, relocated |
+| `0x180133c4` | `0x180133f0` | identical match, relocated |
+| `0x180133ec` | `0x18013418` | identical match, relocated |
+| `0x18013492` | `0x180134be` | identical match, relocated |
+| `0x18013502` | `0x1801352e` | identical match, relocated |
 | `0x18013752` | `0x1801377e` | identical match, relocated |
+| `0x18013758` | `0x18013784` | identical match, relocated |
 | `0x180137a0` | `0x180137cc` | identical match, relocated |
 | `0x180137ea` | `0x18013816` | identical match, relocated |
+| `0x18013814` | `0x18013840` | identical match, relocated |
+| `0x1801385e` | `0x1801388a` | identical match, relocated |
 | `0x18013890` | `0x180138bc` | identical match, relocated |
+| `0x180138f2` | `0x1801391e` | identical match, relocated |
 | `0x1801395c` | `0x18013988` | identical match, relocated |
 | `0x1801397a` | `0x180139a6` | identical match, relocated |
 | `0x180139e0` | `0x18013a0c` | identical match, relocated |
+| `0x18013a2c` | `0x18013a58` | identical match, relocated |
 | `0x18013a32` | `0x18013a5e` | identical match, relocated |
 | `0x18013a48` | `0x18013a74` | identical match, relocated |
 | `0x18013aaa` | `0x18013ad6` | identical match, relocated |
 | `0x18013b40` | `0x18013b6c` | identical match, relocated |
 | `0x18013b52` | `0x18013b7e` | identical match, relocated |
+| `0x18013bb2` | `0x18013bde` | identical match, relocated |
+| `0x18013c32` | `0x18013c5e` | identical match, relocated |
+| `0x18013cec` | `0x18013d18` | identical match, relocated |
 | `0x18013dce` | `0x18013dfa` | identical match, relocated |
+| `0x18013ea0` | `0x18013ecc` | identical match, relocated |
 | `0x18013f5c` | `0x18013f88` | identical match, relocated |
 | `0x18013f76` | `0x18013fa2` | identical match, relocated |
+| `0x18013f8a` | `0x18013fb6` | identical match, relocated |
 | `0x18014430` | `0x1801445c` | identical match, relocated |
 | `0x18014478` | `0x180144a4` | identical match, relocated |
 | `0x18014554` | `0x18014580` | identical match, relocated |
@@ -645,27 +1161,51 @@ without a counterpart.
 | `0x1801515e` | `0x1801518a` | identical match, relocated |
 | `0x18015310` | `0x1801533c` | identical match, relocated |
 | `0x180155bc` | `0x180155e8` | identical match, relocated |
+| `0x180155fe` | `0x1801562a` | identical match, relocated |
 | `0x18015670` | `0x1801569c` | identical match, relocated |
+| `0x180156a6` | `0x180156d2` | identical match, relocated |
 | `0x18015720` | `0x1801574c` | identical match, relocated |
 | `0x180158b2` | `0x180158de` | identical match, relocated |
 | `0x18015924` | `0x18015950` | identical match, relocated |
+| `0x18015952` | `0x1801597e` | identical match, relocated |
 | `0x180159b0` | `0x180159dc` | identical match, relocated |
 | `0x18015c58` | `0x18015c84` | identical match, relocated |
+| `0x18015cb6` | `0x18015ce2` | identical match, relocated |
+| `0x18015ea2` | `0x18015ece` | identical match, relocated |
+| `0x18015eb6` | `0x18015ee2` | identical match, relocated |
+| `0x18015eee` | `0x18015f1a` | identical match, relocated |
+| `0x18015efc` | `0x18015f28` | identical match, relocated |
 | `0x18015f26` | `0x18015f52` | identical match, relocated |
 | `0x18016056` | `0x18016082` | identical match, relocated |
 | `0x180160d8` | `0x18016104` | structural match, relocated |
 | `0x18016202` | `0x1801622e` | identical match, relocated |
+| `0x18016284` | `0x180162b0` | tentative match, relocated |
+| `0x18016288` | `0x180162b4` | tentative match, relocated |
+| `0x1801628c` | `0x180162b8` | tentative match, relocated |
 | `0x18016290` | `0x180162bc` | identical match, relocated |
 | `0x1801642c` | `0x18016458` | identical match, relocated |
+| `0x180164d2` | `0x180164fe` | tentative match, relocated |
 | `0x180164d6` | `0x18016502` | identical match, relocated |
 | `0x18016558` | `0x18016584` | identical match, relocated |
 | `0x180166f0` | `0x1801671c` | identical match, relocated |
+| `0x18016774` | `0x180167a0` | tentative match, relocated |
 | `0x18016778` | `0x180167a4` | identical match, relocated |
 | `0x180167fc` | `0x18016828` | identical match, relocated |
+| `0x18016908` | `0x18016934` | identical match, relocated |
 | `0x18016b50` | `0x18016b7c` | identical match, relocated |
 | `0x18016b62` | `0x18016b8e` | identical match, relocated |
 | `0x18016c1c` | `0x18016c48` | identical match, relocated |
+| `0x18016c64` | `0x18016c90` | identical match, relocated |
+| `0x18016c86` | `0x18016cb2` | identical match, relocated |
+| `0x18016cd8` | `0x18016d04` | identical match, relocated |
+| `0x18016e3c` | `0x18016e68` | identical match, relocated |
+| `0x18016f00` | `0x18016f2c` | identical match, relocated |
+| `0x18016f42` | `0x18016f6e` | identical match, relocated |
+| `0x180170f4` | `0x18017120` | identical match, relocated |
+| `0x18017156` | `0x18017182` | identical match, relocated |
+| `0x18017166` | `0x18017192` | identical match, relocated |
 | `0x18017184` | `0x180171b0` | identical match, relocated |
+| `0x180172b4` | `0x180172e0` | identical match, relocated |
 | `0x180172c4` | `0x180172f0` | identical match, relocated |
 | `0x180174f0` | `0x1801751c` | identical match, relocated |
 | `0x180174f6` | `0x18017522` | identical match, relocated |
@@ -674,6 +1214,9 @@ without a counterpart.
 | `0x18017636` | `0x18017662` | identical match, relocated |
 | `0x18017646` | `0x18017672` | identical match, relocated |
 | `0x1801764c` | `0x18017678` | identical match, relocated |
+| `0x180177f0` | `0x1801781c` | tentative match, relocated |
+| `0x180177f2` | `0x1801781e` | tentative match, relocated |
+| `0x180177f4` | `0x18017820` | tentative match, relocated |
 | `0x180177f6` | `0x18017822` | identical match, relocated |
 | `0x18017830` | `0x1801785c` | identical match, relocated |
 | `0x18017848` | `0x18017874` | identical match, relocated |
@@ -682,25 +1225,43 @@ without a counterpart.
 | `0x180178d2` | `0x180178fe` | identical match, relocated |
 | `0x18017952` | `0x1801797e` | identical match, relocated |
 | `0x18017a14` | `0x18017a40` | identical match, relocated |
+| `0x18017a20` | `0x18017a4c` | identical match, relocated |
 | `0x18017a94` | `0x18017ac0` | identical match, relocated |
 | `0x18017a9e` | `0x18017aca` | identical match, relocated |
 | `0x18017ada` | `0x18017b06` | identical match, relocated |
 | `0x18017af4` | `0x18017b20` | identical match, relocated |
 | `0x18017df8` | `0x18017e24` | identical match, relocated |
+| `0x18017e26` | `0x18017e52` | identical match, relocated |
+| `0x18017e7e` | `0x18017eaa` | identical match, relocated |
 | `0x18017f32` | `0x18017f5e` | identical match, relocated |
+| `0x18017f54` | `0x18017f80` | identical match, relocated |
 | `0x18017f6e` | `0x18017f9a` | identical match, relocated |
 | `0x18018044` | `0x18018070` | identical match, relocated |
 | `0x18018056` | `0x18018082` | identical match, relocated |
 | `0x180181d8` | `0x18018204` | identical match, relocated |
 | `0x18018454` | `0x18018480` | identical match, relocated |
 | `0x1801848a` | `0x180184b6` | identical match, relocated |
+| `0x18018678` | `0x180186a4` | tentative match, relocated |
+| `0x1801867a` | `0x180186a6` | identical match, relocated |
+| `0x180186a8` | `0x180186d4` | identical match, relocated |
+| `0x180186d8` | `0x18018704` | identical match, relocated |
+| `0x18018708` | `0x18018734` | identical match, relocated |
 | `0x18018738` | `0x18018764` | identical match, relocated |
 | `0x180188c4` | `0x180188f0` | identical match, relocated |
+| `0x1801894c` | `0x18018978` | identical match, relocated |
+| `0x18018966` | `0x18018992` | identical match, relocated |
 | `0x1801896a` | `0x18018996` | identical match, relocated |
+| `0x180189fc` | `0x18018a28` | identical match, relocated |
+| `0x18018a7e` | `0x18018aaa` | identical match, relocated |
+| `0x18018ac4` | `0x18018af0` | identical match, relocated |
+| `0x18018ad0` | `0x18018afc` | identical match, relocated |
+| `0x18018af6` | `0x18018b22` | identical match, relocated |
+| `0x18018b8c` | `0x18018bb8` | identical match, relocated |
 | `0x18018baa` | `0x18018bd6` | identical match, relocated |
 | `0x18018c4a` | `0x18018c76` | identical match, relocated |
 | `0x18018e50` | `0x18018e7c` | identical match, relocated |
 | `0x18018eae` | `0x18018eda` | identical match, relocated |
+| `0x1801939c` | `0x180193c8` | identical match, relocated |
 | `0x18019440` | `0x1801946c` | tentative match, relocated |
 | `0x18019442` | `0x1801946e` | identical match, relocated |
 | `0x180194ca` | `0x180194f6` | identical match, relocated |
@@ -708,6 +1269,9 @@ without a counterpart.
 | `0x1801956c` | `0x18019598` | identical match, relocated |
 | `0x1801958a` | `0x180195b6` | identical match, relocated |
 | `0x180195f6` | `0x18019622` | identical match, relocated |
+| `0x1801960e` | `0x1801963a` | identical match, relocated |
+| `0x1801961e` | `0x1801964a` | identical match, relocated |
+| `0x1801962e` | `0x1801965a` | identical match, relocated |
 | `0x1801963e` | `0x1801966a` | identical match, relocated |
 | `0x18019648` | `0x18019674` | identical match, relocated |
 | `0x18019654` | `0x18019680` | identical match, relocated |
@@ -720,61 +1284,131 @@ without a counterpart.
 | `0x180196d4` | `0x18019700` | identical match, relocated |
 | `0x180196ec` | `0x18019718` | identical match, relocated |
 | `0x180196fe` | `0x1801972a` | identical match, relocated |
+| `0x1801988a` | `0x180198b6` | identical match, relocated |
+| `0x180198f2` | `0x1801991e` | identical match, relocated |
 | `0x1801993e` | `0x1801996a` | identical match, relocated |
+| `0x180199fc` | `0x18019a28` | identical match, relocated |
 | `0x18019ac4` | `0x18019af0` | identical match, relocated |
-| `0x18019dc2` | `0x18019dee` | identical match, relocated |
+| `0x18019dc2` | `0x18019dee` | tentative match, relocated |
 | `0x18019ddc` | `0x18019e08` | tentative match, relocated |
 | `0x18019df6` | `0x18019e22` | identical match, relocated |
 | `0x18019e12` | `0x18019e3e` | identical match, relocated |
+| `0x18019e40` | `0x18019e6c` | identical match, relocated |
 | `0x18019e68` | `0x18019e94` | identical match, relocated |
+| `0x18019e8c` | `0x18019eb8` | identical match, relocated |
+| `0x18019ec6` | `0x18019ef2` | identical match, relocated |
+| `0x18019f00` | `0x18019f2c` | identical match, relocated |
+| `0x18019f0a` | `0x18019f36` | tentative match, relocated |
 | `0x18019f0c` | `0x18019f38` | identical match, relocated |
 | `0x18019f68` | `0x18019f94` | identical match, relocated |
+| `0x18019fd8` | `0x1801a004` | identical match, relocated |
+| `0x1801a028` | `0x1801a054` | identical match, relocated |
+| `0x1801a084` | `0x1801a0b0` | identical match, relocated |
+| `0x1801a0c0` | `0x1801a0ec` | identical match, relocated |
 | `0x1801a168` | `0x1801a194` | identical match, relocated |
 | `0x1801a172` | `0x1801a19e` | identical match, relocated |
 | `0x1801a1a2` | `0x1801a1ce` | identical match, relocated |
+| `0x1801a1d2` | `0x1801a1fe` | identical match, relocated |
+| `0x1801a1e8` | `0x1801a214` | identical match, relocated |
 | `0x1801a214` | `0x1801a240` | identical match, relocated |
+| `0x1801a252` | `0x1801a27e` | identical match, relocated |
+| `0x1801a280` | `0x1801a2ac` | identical match, relocated |
+| `0x1801a2ce` | `0x1801a2fa` | identical match, relocated |
+| `0x1801a2f8` | `0x1801a324` | identical match, relocated |
+| `0x1801a9fc` | `0x1801aa28` | identical match, relocated |
+| `0x1801aa14` | `0x1801aa40` | identical match, relocated |
 | `0x1801aa26` | `0x1801aa52` | identical match, relocated |
+| `0x1801aa42` | `0x1801aa6e` | identical match, relocated |
 | `0x1801aad8` | `0x1801ab04` | identical match, relocated |
 | `0x1801aaf2` | `0x1801ab1e` | identical match, relocated |
+| `0x1801abfa` | `0x1801ac26` | identical match, relocated |
 | `0x1801ac24` | `0x1801ac50` | identical match, relocated |
 | `0x1801ad1e` | `0x1801ad4a` | identical match, relocated |
 | `0x1801add8` | `0x1801ae04` | identical match, relocated |
+| `0x1801aeac` | `0x1801aed8` | identical match, relocated |
+| `0x1801af5c` | `0x1801af88` | identical match, relocated |
+| `0x1801b00c` | `0x1801b038` | identical match, relocated |
+| `0x1801b07c` | `0x1801b0a8` | tentative match, relocated |
+| `0x1801b09e` | `0x1801b0ca` | tentative match, relocated |
 | `0x1801b0b8` | `0x1801b0e4` | identical match, relocated |
+| `0x1801b126` | `0x1801b152` | identical match, relocated |
+| `0x1801b14e` | `0x1801b17a` | identical match, relocated |
+| `0x1801b176` | `0x1801b1a2` | identical match, relocated |
+| `0x1801b1ae` | `0x1801b1da` | identical match, relocated |
+| `0x1801b1e6` | `0x1801b212` | identical match, relocated |
+| `0x1801b234` | `0x1801b260` | identical match, relocated |
+| `0x1801b280` | `0x1801b2ac` | identical match, relocated |
+| `0x1801b2ca` | `0x1801b2f6` | identical match, relocated |
+| `0x1801b542` | `0x1801b56e` | identical match, relocated |
+| `0x1801b61e` | `0x1801b64a` | identical match, relocated |
+| `0x1801b74e` | `0x1801b77a` | identical match, relocated |
+| `0x1801b792` | `0x1801b7be` | tentative match, relocated |
+| `0x1801b7ac` | `0x1801b7d8` | tentative match, relocated |
 
 ## Changed functions, ranked for review
 
-### Candidate A — 0 changed
-
-Nothing changed: every body is byte-identical.
-
-### Candidate B — 24 changed
+### Candidate A — 1 changed
 
 | vendor | installed | confidence | size | differing bytes |
 |---|---|---|---|---|
+| `0x000040b4` | `0x000040b4` | tentative | `0x8` | 2 |
+
+### Candidate B — 52 changed
+
+| vendor | installed | confidence | size | differing bytes |
+|---|---|---|---|---|
+| `0x18001fbe` | `0x18001fbe` | tentative | `0x1e7e` | n/a |
+| `0x18004a7e` | `0x18004a7e` | tentative | `0xd10` | n/a |
 | `0x18000d56` | `0x18000d56` | structural | `0xf46` | 204 |
+| `0x18006196` | `0x180061c2` | structural | `0x5f0` | 16 |
+| `0x18005a5c` | `0x18005a88` | structural | `0x412` | 10 |
 | `0x18000bb8` | `0x18000bb8` | structural | `0xda` | 9 |
+| `0x18000a1a` | `0x18000a1a` | structural | `0x56` | 6 |
 | `0x18000a70` | `0x18000a70` | structural | `0x68` | 5 |
+| `0x1800417e` | `0x1800417e` | structural | `0x1e4` | 4 |
+| `0x1800f3b4` | `0x1800f3e0` | structural | `0x1d6` | 4 |
+| `0x1800439a` | `0x1800439a` | structural | `0xfe` | 4 |
+| `0x18000108` | `0x18000108` | structural | `0x80` | 4 |
+| `0x1800f4c6` | `0x1800f4f2` | structural | `0x80` | 4 |
 | `0x18000b28` | `0x18000b28` | structural | `0x70` | 4 |
+| `0x180001d2` | `0x180001d2` | structural | `0x68` | 4 |
+| `0x18007e0c` | `0x18007e38` | structural | `0x7fa` | 3 |
 | `0x1800075a` | `0x1800075a` | structural | `0x28a` | 3 |
 | `0x18000aec` | `0x18000aec` | structural | `0x3c` | 3 |
 | `0x1800fb8c` | `0x1800fbb8` | structural | `0x20` | 3 |
 | `0x1800ce1e` | `0x1800ce4a` | structural | `0x12e` | 2 |
+| `0x18007004` | `0x18007030` | structural | `0xce` | 2 |
+| `0x18000136` | `0x18000136` | structural | `0x9c` | 2 |
+| `0x180088ea` | `0x18008916` | structural | `0x92` | 2 |
+| `0x1800f546` | `0x1800f572` | structural | `0x8a` | 2 |
+| `0x1800f630` | `0x1800f65c` | structural | `0x8a` | 2 |
 | `0x18004498` | `0x18004498` | structural | `0x60` | 2 |
 | `0x18001f6e` | `0x18001f6e` | structural | `0x4e` | 2 |
 | `0x18000584` | `0x18000584` | structural | `0x42` | 2 |
 | `0x18006aa8` | `0x18006ad4` | structural | `0x36` | 2 |
+| `0x180000e4` | `0x180000e4` | structural | `0x24` | 2 |
+| `0x1800464e` | `0x1800464e` | structural | `0x20` | 2 |
 | `0x180100d6` | `0x18010102` | structural | `0x24a` | 1 |
-| `0x180046a0` | `0x180046a0` | structural | `0x15c` | 1 |
+| `0x18008724` | `0x18008750` | structural | `0x1a0` | 1 |
+| `0x180046a0` | `0x180046a0` | structural | `0x158` | 1 |
 | `0x180160d8` | `0x18016104` | structural | `0x12a` | 1 |
 | `0x18000466` | `0x18000466` | structural | `0x11e` | 1 |
+| `0x180005fa` | `0x180005fa` | structural | `0xb8` | 1 |
 | `0x18008a4a` | `0x18008a76` | structural | `0xb0` | 1 |
 | `0x1800eb4e` | `0x1800eb7a` | structural | `0x9a` | 1 |
 | `0x18006956` | `0x18006982` | structural | `0x8c` | 1 |
 | `0x180089d6` | `0x18008a02` | structural | `0x74` | 1 |
+| `0x18000c92` | `0x18000c92` | structural | `0x6e` | 1 |
+| `0x1800687e` | `0x180068aa` | structural | `0x6a` | 1 |
+| `0x180069e2` | `0x18006a0e` | structural | `0x68` | 1 |
 | `0x1800ebfc` | `0x1800ec28` | structural | `0x44` | 1 |
 | `0x1800fd20` | `0x1800fd4c` | structural | `0x3e` | 1 |
+| `0x180040dc` | `0x180040dc` | structural | `0x36` | 1 |
 | `0x180005c6` | `0x180005c6` | structural | `0x34` | 1 |
+| `0x1800f6ba` | `0x1800f6e6` | structural | `0x34` | 1 |
+| `0x1800fbac` | `0x1800fbd8` | structural | `0x2a` | 1 |
 | `0x18004164` | `0x18004164` | structural | `0x1a` | 1 |
+| `0x1800463e` | `0x1800463e` | structural | `0x10` | 1 |
 
 ## Raw tool output
 
@@ -786,26 +1420,32 @@ PAIR app_a
 VENDOR_PROGRAM vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
 INSTALLED_PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
 BASE 0x00000000 FLASH_BASE 0x11000
-COUNTS vendor=80 installed=80
-TIERS identical=78 structural=0 tentative=2 unmatched=0
-CHANGED 0 of 80 pairings
+COUNTS vendor=101 installed=101
+TIERS identical=94 structural=0 tentative=7 unmatched=0
+CHANGED 1 of 101 pairings
 MOVED 0
-DATA_REGIONS 106 bytes=131 unaligned_gaps=0
-DISCONTIGUOUS_BODIES vendor=15 installed=15 of 80/80 — body bytes and gaps come from the real ranges, not entry..entry+size
-UNCOVERED_SPANS vendor=70 installed=70 aligned=True
+DATA_REGIONS 105 bytes=129 unaligned_gaps=0
+DISCONTIGUOUS_BODIES vendor=16 installed=16 of 101/101 — body bytes and gaps come from the real ranges, not entry..entry+size
+UNCOVERED_SPANS vendor=78 installed=78 compared=78 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
 DOMINANT_SHIFT 0x0 (+0 bytes), measured from the identical and structural matches only
-REVIEW_RANKING showing 0 of 0
-DATA_RANGES showing 106 of 106; the complete list is in the JSON
-MUST_NOT_ASSUME_EQUAL 2
+REVIEW_RANKING showing 1 of 1
+  tentative  vendor=0x000040b4 installed=0x000040b4 size=0x8 differing_bytes=2 :: scored 0.905 with a 0.905 lead over the next candidate
+DATA_RANGES showing 105 of 105; the complete list is in the JSON
+MUST_NOT_ASSUME_EQUAL 7
+  vendor 0x00000fce -> 0x00000fce: tentative match only; the correspondence is not proven
+  vendor 0x000014d2 -> 0x000014d2: tentative match only; the correspondence is not proven
+  vendor 0x000014d4 -> 0x000014d4: tentative match only; the correspondence is not proven
+  vendor 0x000014d8 -> 0x000014d8: tentative match only; the correspondence is not proven
   vendor 0x00003704 -> 0x00003704: tentative match only; the correspondence is not proven
   vendor 0x00003884 -> 0x00003884: tentative match only; the correspondence is not proven
-RESULT matched=80 unmatched=0
-LIMITATION Data regions are the spans no real body range covers, paired in address order, which is only valid because both sides produced the same span count. A paired span whose sides differ in length is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary.
+  vendor 0x000040b4 -> 0x000040b4: tentative match only; the correspondence is not proven
+RESULT matched=101 unmatched=0
+LIMITATION Data regions are the spans no real body range covers, keyed by the matched function that precedes each span rather than by list index, so the pairing survives one side gaining or losing a span. A span with no counterpart key, or a paired span whose sides differ in length, is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary or against the wrong region.
 LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
 LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.
-UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
-UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
-UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+UNRESOLVED Any ROM or first-stage condition ahead of the bootloader is unexamined.
+UNRESOLVED What makes address 0 writable is not established. The bootloader's BootHandoff routine copies 0x10000 bytes from the selected entry to address 0 and then requests a system reset, so a RAM or remap window must be aliased there, but the register that arranges it is unidentified (log 101).
+UNRESOLVED Which physical keys produce the recovery scan pattern that FUN_000029d4 matches is not established; only the RAM buffer and the matched values are known (log 101).
 ```
 
 The individual data spans are omitted from this block for length; the complete list is in `vendor-to-installed-functions-app-a.json`.
@@ -818,85 +1458,191 @@ PAIR app_b
 VENDOR_PROGRAM vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
 INSTALLED_PROGRAM installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
 BASE 0x18000000 FLASH_BASE 0x21000
-COUNTS vendor=293 installed=293
-TIERS identical=260 structural=24 tentative=9 unmatched=0
-CHANGED 24 of 293 pairings
-MOVED 275
-DATA_REGIONS 847 bytes=977 unaligned_gaps=1
-DISCONTIGUOUS_BODIES vendor=61 installed=61 of 293/293 — body bytes and gaps come from the real ranges, not entry..entry+size
-UNCOVERED_SPANS vendor=229 installed=229 aligned=True
+COUNTS vendor=573 installed=573
+TIERS identical=494 structural=50 tentative=29 unmatched=0
+CHANGED 52 of 573 pairings
+MOVED 533
+DATA_REGIONS 632 bytes=738 unaligned_gaps=19
+DISCONTIGUOUS_BODIES vendor=104 installed=104 of 573/573 — body bytes and gaps come from the real ranges, not entry..entry+size
+UNCOVERED_SPANS vendor=262 installed=262 compared=244 unpaired_or_mismatched=19 fully_compared=False — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
 DOMINANT_SHIFT 0x2c (+44 bytes), measured from the identical and structural matches only
-REVIEW_RANKING showing 24 of 24
+REVIEW_RANKING showing 52 of 52
+  tentative  vendor=0x18001fbe installed=0x18001fbe size=0x1e7e differing_bytes=n/a :: scored 1.000 with a 0.650 lead over the next candidate
+  tentative  vendor=0x18004a7e installed=0x18004a7e size=0xd10 differing_bytes=n/a :: scored 0.939 with a 0.595 lead over the next candidate
   structural vendor=0x18000d56 installed=0x18000d56 size=0xf46 differing_bytes=204 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x18006196 installed=0x180061c2 size=0x5f0 differing_bytes=16 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x18005a5c installed=0x18005a88 size=0x412 differing_bytes=10 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18000bb8 installed=0x18000bb8 size=0xda differing_bytes=9 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x18000a1a installed=0x18000a1a size=0x56 differing_bytes=6 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000a70 installed=0x18000a70 size=0x68 differing_bytes=5 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800417e installed=0x1800417e size=0x1e4 differing_bytes=4 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800f3b4 installed=0x1800f3e0 size=0x1d6 differing_bytes=4 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x1800439a installed=0x1800439a size=0xfe differing_bytes=4 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x18000108 installed=0x18000108 size=0x80 differing_bytes=4 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800f4c6 installed=0x1800f4f2 size=0x80 differing_bytes=4 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18000b28 installed=0x18000b28 size=0x70 differing_bytes=4 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x180001d2 installed=0x180001d2 size=0x68 differing_bytes=4 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x18007e0c installed=0x18007e38 size=0x7fa differing_bytes=3 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800075a installed=0x1800075a size=0x28a differing_bytes=3 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000aec installed=0x18000aec size=0x3c differing_bytes=3 :: same instruction shape with scalars and addresses masked
   structural vendor=0x1800fb8c installed=0x1800fbb8 size=0x20 differing_bytes=3 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800ce1e installed=0x1800ce4a size=0x12e differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x18007004 installed=0x18007030 size=0xce differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x18000136 installed=0x18000136 size=0x9c differing_bytes=2 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x180088ea installed=0x18008916 size=0x92 differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x1800f546 installed=0x1800f572 size=0x8a differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x1800f630 installed=0x1800f65c size=0x8a differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18004498 installed=0x18004498 size=0x60 differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18001f6e installed=0x18001f6e size=0x4e differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18000584 installed=0x18000584 size=0x42 differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18006aa8 installed=0x18006ad4 size=0x36 differing_bytes=2 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x180000e4 installed=0x180000e4 size=0x24 differing_bytes=2 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800464e installed=0x1800464e size=0x20 differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180100d6 installed=0x18010102 size=0x24a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
-  structural vendor=0x180046a0 installed=0x180046a0 size=0x15c differing_bytes=1 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x18008724 installed=0x18008750 size=0x1a0 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x180046a0 installed=0x180046a0 size=0x158 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180160d8 installed=0x18016104 size=0x12a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18000466 installed=0x18000466 size=0x11e differing_bytes=1 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x180005fa installed=0x180005fa size=0xb8 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x18008a4a installed=0x18008a76 size=0xb0 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800eb4e installed=0x1800eb7a size=0x9a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18006956 installed=0x18006982 size=0x8c differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x180089d6 installed=0x18008a02 size=0x74 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x18000c92 installed=0x18000c92 size=0x6e differing_bytes=1 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800687e installed=0x180068aa size=0x6a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x180069e2 installed=0x18006a0e size=0x68 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800ebfc installed=0x1800ec28 size=0x44 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x1800fd20 installed=0x1800fd4c size=0x3e differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x180040dc installed=0x180040dc size=0x36 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x180005c6 installed=0x180005c6 size=0x34 differing_bytes=1 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x1800f6ba installed=0x1800f6e6 size=0x34 differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
+  structural vendor=0x1800fbac installed=0x1800fbd8 size=0x2a differing_bytes=1 :: same instruction shape with scalars and addresses masked, relocated
   structural vendor=0x18004164 installed=0x18004164 size=0x1a differing_bytes=1 :: same instruction shape with scalars and addresses masked
-DATA_RANGES showing 847 of 847; the complete list is in the JSON
-UNALIGNED_GAP vendor 0x180047f8..0x180057d2 (0xfda) vs installed 0x180047f8..0x180057fe (0x1006) — lengths differ, not compared
-MUST_NOT_ASSUME_EQUAL 275
+  structural vendor=0x1800463e installed=0x1800463e size=0x10 differing_bytes=1 :: same instruction shape with scalars and addresses masked
+DATA_RANGES showing 632 of 632; the complete list is in the JSON
+UNALIGNED_GAP vendor 0x180029b2..0x180029d8 (0x26) vs installed 0x180025c0..0x180025c4 (0x4) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18002a52..0x18002a54 (0x2) vs installed 0x180029b2..0x180029d8 (0x26) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18002c24..0x18002c2a (0x6) vs installed 0x18002a52..0x18002a54 (0x2) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18002e34..0x18002e64 (0x30) vs installed 0x18002c24..0x18002c2a (0x6) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x1800329e..0x18003310 (0x72) vs installed 0x18002e34..0x18002e64 (0x30) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x1800354a..0x1800354c (0x2) vs installed 0x1800329e..0x18003310 (0x72) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x1800370e..0x18003768 (0x5a) vs installed 0x1800354a..0x1800354c (0x2) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18003a90..0x18003a98 (0x8) vs installed 0x1800370e..0x18003768 (0x5a) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18003ae0..0x18003ae6 (0x6) vs installed 0x18003a90..0x18003a98 (0x8) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18003ba2..0x18003c00 (0x5e) vs installed 0x18003ae0..0x18003ae6 (0x6) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18003c72..0x18003c74 (0x2) vs installed 0x18003ba2..0x18003c00 (0x5e) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18003cca..0x18003cd2 (0x8) vs installed 0x18003c72..0x18003c74 (0x2) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18003df8..0x18003dfe (0x6) vs installed 0x18003cca..0x18003cd2 (0x8) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18004002..0x18004078 (0x76) vs installed 0x18003df8..0x18003dfe (0x6) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18004002..0x18004002 (0x0) vs installed 0x18004002..0x18004078 (0x76) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18004da8..0x18004ddc (0x34) vs installed 0x18004da6..0x18004dd8 (0x32) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18005204..0x18005218 (0x14) vs installed 0x180051f6..0x18005210 (0x1a) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x18005670..0x18005694 (0x24) vs installed 0x18005690..0x180056b4 (0x24) — lengths differ, not compared
+UNALIGNED_GAP vendor 0x180056fa..0x180056fc (0x2) vs installed 0x180056fa..0x180056fc (0x2) — lengths differ, not compared
+MUST_NOT_ASSUME_EQUAL 535
+  vendor 0x18001fbe -> 0x18001fbe: tentative match only; the correspondence is not proven
+  vendor 0x18004a7e -> 0x18004a7e: tentative match only; the correspondence is not proven
   vendor 0x180057d2 -> 0x180057fe: identical match, relocated
+  vendor 0x18005a5c -> 0x18005a88: structural match, relocated
   vendor 0x18005eac -> 0x18005ed8: identical match, relocated
   vendor 0x18006024 -> 0x18006050: identical match, relocated
+  vendor 0x180060ea -> 0x18006116: identical match, relocated
+  vendor 0x18006196 -> 0x180061c2: structural match, relocated
   vendor 0x18006800 -> 0x1800682c: identical match, relocated
+  vendor 0x1800687e -> 0x180068aa: structural match, relocated
+  vendor 0x180068e8 -> 0x18006914: identical match, relocated
   vendor 0x18006956 -> 0x18006982: structural match, relocated
+  vendor 0x180069e2 -> 0x18006a0e: structural match, relocated
   vendor 0x18006a90 -> 0x18006abc: identical match, relocated
   vendor 0x18006aa8 -> 0x18006ad4: structural match, relocated
+  vendor 0x18006ade -> 0x18006b0a: identical match, relocated
+  vendor 0x18006b0e -> 0x18006b3a: identical match, relocated
   vendor 0x18006c9a -> 0x18006cc6: identical match, relocated
   vendor 0x18006d10 -> 0x18006d3c: identical match, relocated
   vendor 0x18006f4e -> 0x18006f7a: identical match, relocated
   vendor 0x18006fb4 -> 0x18006fe0: identical match, relocated
+  vendor 0x18007004 -> 0x18007030: structural match, relocated
+  vendor 0x18007b7c -> 0x18007ba8: identical match, relocated
+  vendor 0x18007b88 -> 0x18007bb4: identical match, relocated
   vendor 0x18007ba0 -> 0x18007bcc: identical match, relocated
+  vendor 0x18007c84 -> 0x18007cb0: identical match, relocated
   vendor 0x18007d78 -> 0x18007da4: identical match, relocated
+  vendor 0x18007de0 -> 0x18007e0c: identical match, relocated
+  vendor 0x18007e0c -> 0x18007e38: structural match, relocated
+  vendor 0x18008724 -> 0x18008750: structural match, relocated
+  vendor 0x180087c8 -> 0x180087f4: identical match, relocated
+  vendor 0x18008848 -> 0x18008874: identical match, relocated
   vendor 0x180088c8 -> 0x180088f4: identical match, relocated
   vendor 0x180088d2 -> 0x180088fe: identical match, relocated
+  vendor 0x180088ea -> 0x18008916: structural match, relocated
   vendor 0x1800897c -> 0x180089a8: identical match, relocated
   vendor 0x180089be -> 0x180089ea: identical match, relocated
   vendor 0x180089d6 -> 0x18008a02: structural match, relocated
   vendor 0x18008a4a -> 0x18008a76: structural match, relocated
+  vendor 0x18008afa -> 0x18008b26: identical match, relocated
   vendor 0x18008f1e -> 0x18008f4a: identical match, relocated
   vendor 0x18008f9c -> 0x18008fc8: identical match, relocated
+  vendor 0x18008fec -> 0x18009018: identical match, relocated
   vendor 0x18009016 -> 0x18009042: identical match, relocated
+  vendor 0x1800902e -> 0x1800905a: identical match, relocated
+  vendor 0x18009040 -> 0x1800906c: identical match, relocated
   vendor 0x18009096 -> 0x180090c2: identical match, relocated
+  vendor 0x180090ce -> 0x180090fa: identical match, relocated
   vendor 0x18009102 -> 0x1800912e: identical match, relocated
   vendor 0x180091c4 -> 0x180091f0: identical match, relocated
+  vendor 0x180091f6 -> 0x18009222: identical match, relocated
   vendor 0x180092f0 -> 0x1800931c: identical match, relocated
   vendor 0x1800937e -> 0x180093aa: identical match, relocated
+  vendor 0x180093cc -> 0x180093f8: identical match, relocated
+  vendor 0x180094c2 -> 0x180094ee: identical match, relocated
   vendor 0x180094ca -> 0x180094f6: identical match, relocated
+  vendor 0x180095a8 -> 0x180095d4: identical match, relocated
+  vendor 0x180095b6 -> 0x180095e2: identical match, relocated
   vendor 0x180096da -> 0x18009706: identical match, relocated
   vendor 0x1800983c -> 0x18009868: identical match, relocated
+  vendor 0x180098e2 -> 0x1800990e: identical match, relocated
+  vendor 0x1800998e -> 0x180099ba: identical match, relocated
+  vendor 0x18009a38 -> 0x18009a64: identical match, relocated
+  vendor 0x18009a82 -> 0x18009aae: identical match, relocated
+  vendor 0x18009b1e -> 0x18009b4a: identical match, relocated
+  vendor 0x18009c24 -> 0x18009c50: identical match, relocated
   vendor 0x18009d28 -> 0x18009d54: identical match, relocated
   vendor 0x18009e40 -> 0x18009e6c: identical match, relocated
+  vendor 0x18009f2a -> 0x18009f56: identical match, relocated
+  vendor 0x1800a158 -> 0x1800a184: identical match, relocated
+  vendor 0x1800a17a -> 0x1800a1a6: identical match, relocated
+  vendor 0x1800a220 -> 0x1800a24c: identical match, relocated
   vendor 0x1800a51e -> 0x1800a54a: identical match, relocated
+  vendor 0x1800a604 -> 0x1800a630: identical match, relocated
+  vendor 0x1800a67a -> 0x1800a6a6: identical match, relocated
+  vendor 0x1800a6fe -> 0x1800a72a: identical match, relocated
+  vendor 0x1800a83c -> 0x1800a868: identical match, relocated
+  vendor 0x1800a8ee -> 0x1800a91a: identical match, relocated
   vendor 0x1800a934 -> 0x1800a960: identical match, relocated
+  vendor 0x1800a9da -> 0x1800aa06: identical match, relocated
   vendor 0x1800aa84 -> 0x1800aab0: identical match, relocated
+  vendor 0x1800aab0 -> 0x1800aadc: identical match, relocated
   vendor 0x1800ab78 -> 0x1800aba4: identical match, relocated
+  vendor 0x1800af50 -> 0x1800af7c: identical match, relocated
   vendor 0x1800b07e -> 0x1800b0aa: identical match, relocated
+  vendor 0x1800b25a -> 0x1800b286: identical match, relocated
+  vendor 0x1800b2b6 -> 0x1800b2e2: identical match, relocated
+  vendor 0x1800b344 -> 0x1800b370: identical match, relocated
   vendor 0x1800b654 -> 0x1800b680: identical match, relocated
   vendor 0x1800b6d8 -> 0x1800b704: identical match, relocated
   vendor 0x1800b7be -> 0x1800b7ea: identical match, relocated
+  vendor 0x1800b7fc -> 0x1800b828: identical match, relocated
+  vendor 0x1800b85c -> 0x1800b888: identical match, relocated
+  vendor 0x1800be76 -> 0x1800bea2: identical match, relocated
+  vendor 0x1800be82 -> 0x1800beae: identical match, relocated
   vendor 0x1800bf28 -> 0x1800bf54: identical match, relocated
+  vendor 0x1800bf72 -> 0x1800bf9e: identical match, relocated
   vendor 0x1800c048 -> 0x1800c074: identical match, relocated
   vendor 0x1800c106 -> 0x1800c132: identical match, relocated
+  vendor 0x1800c14e -> 0x1800c17a: identical match, relocated
+  vendor 0x1800c158 -> 0x1800c184: identical match, relocated
+  vendor 0x1800c16a -> 0x1800c196: identical match, relocated
+  vendor 0x1800c174 -> 0x1800c1a0: identical match, relocated
   vendor 0x1800c188 -> 0x1800c1b4: identical match, relocated
   vendor 0x1800c3b0 -> 0x1800c3dc: identical match, relocated
   vendor 0x1800c472 -> 0x1800c49e: identical match, relocated
@@ -911,12 +1657,29 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x1800ca9c -> 0x1800cac8: identical match, relocated
   vendor 0x1800cae4 -> 0x1800cb10: identical match, relocated
   vendor 0x1800caf4 -> 0x1800cb20: identical match, relocated
+  vendor 0x1800cc8a -> 0x1800ccb6: identical match, relocated
+  vendor 0x1800cca6 -> 0x1800ccd2: identical match, relocated
   vendor 0x1800ce1e -> 0x1800ce4a: structural match, relocated
   vendor 0x1800cf4c -> 0x1800cf78: identical match, relocated
+  vendor 0x1800cf6a -> 0x1800cf96: tentative match, relocated
   vendor 0x1800cf6c -> 0x1800cf98: identical match, relocated
+  vendor 0x1800cffe -> 0x1800d02a: identical match, relocated
+  vendor 0x1800d020 -> 0x1800d04c: identical match, relocated
+  vendor 0x1800d02e -> 0x1800d05a: identical match, relocated
+  vendor 0x1800d168 -> 0x1800d194: identical match, relocated
+  vendor 0x1800d17e -> 0x1800d1aa: identical match, relocated
+  vendor 0x1800d1ca -> 0x1800d1f6: identical match, relocated
+  vendor 0x1800d24a -> 0x1800d276: identical match, relocated
+  vendor 0x1800d290 -> 0x1800d2bc: identical match, relocated
+  vendor 0x1800d30c -> 0x1800d338: identical match, relocated
+  vendor 0x1800d614 -> 0x1800d640: identical match, relocated
+  vendor 0x1800d706 -> 0x1800d732: identical match, relocated
   vendor 0x1800d814 -> 0x1800d840: identical match, relocated
+  vendor 0x1800d872 -> 0x1800d89e: identical match, relocated
   vendor 0x1800d8a4 -> 0x1800d8d0: identical match, relocated
   vendor 0x1800d8e8 -> 0x1800d914: identical match, relocated
+  vendor 0x1800d93c -> 0x1800d968: identical match, relocated
+  vendor 0x1800d964 -> 0x1800d990: identical match, relocated
   vendor 0x1800d99c -> 0x1800d9c8: tentative match, relocated
   vendor 0x1800d99e -> 0x1800d9ca: tentative match, relocated
   vendor 0x1800d9a0 -> 0x1800d9cc: tentative match, relocated
@@ -924,14 +1687,28 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x1800da1c -> 0x1800da48: identical match, relocated
   vendor 0x1800da52 -> 0x1800da7e: identical match, relocated
   vendor 0x1800da72 -> 0x1800da9e: identical match, relocated
+  vendor 0x1800da98 -> 0x1800dac4: identical match, relocated
+  vendor 0x1800dabe -> 0x1800daea: identical match, relocated
+  vendor 0x1800dae4 -> 0x1800db10: identical match, relocated
+  vendor 0x1800dafa -> 0x1800db26: identical match, relocated
+  vendor 0x1800db10 -> 0x1800db3c: identical match, relocated
+  vendor 0x1800db26 -> 0x1800db52: identical match, relocated
+  vendor 0x1800db3c -> 0x1800db68: identical match, relocated
+  vendor 0x1800db62 -> 0x1800db8e: identical match, relocated
+  vendor 0x1800db88 -> 0x1800dbb4: identical match, relocated
+  vendor 0x1800dbb8 -> 0x1800dbe4: identical match, relocated
   vendor 0x1800dbde -> 0x1800dc0a: identical match, relocated
+  vendor 0x1800dc14 -> 0x1800dc40: identical match, relocated
   vendor 0x1800dc40 -> 0x1800dc6c: identical match, relocated
+  vendor 0x1800dc66 -> 0x1800dc92: identical match, relocated
   vendor 0x1800e246 -> 0x1800e272: identical match, relocated
   vendor 0x1800e252 -> 0x1800e27e: identical match, relocated
   vendor 0x1800e27c -> 0x1800e2a8: identical match, relocated
   vendor 0x1800e298 -> 0x1800e2c4: identical match, relocated
   vendor 0x1800e2b4 -> 0x1800e2e0: identical match, relocated
   vendor 0x1800e2d0 -> 0x1800e2fc: identical match, relocated
+  vendor 0x1800e2f4 -> 0x1800e320: identical match, relocated
+  vendor 0x1800e318 -> 0x1800e344: identical match, relocated
   vendor 0x1800e33c -> 0x1800e368: identical match, relocated
   vendor 0x1800e37c -> 0x1800e3a8: identical match, relocated
   vendor 0x1800e39c -> 0x1800e3c8: identical match, relocated
@@ -940,38 +1717,82 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x1800e4a4 -> 0x1800e4d0: identical match, relocated
   vendor 0x1800e4be -> 0x1800e4ea: identical match, relocated
   vendor 0x1800e622 -> 0x1800e64e: identical match, relocated
+  vendor 0x1800e6aa -> 0x1800e6d6: identical match, relocated
+  vendor 0x1800e74a -> 0x1800e776: identical match, relocated
   vendor 0x1800e7c2 -> 0x1800e7ee: identical match, relocated
+  vendor 0x1800e80a -> 0x1800e836: identical match, relocated
+  vendor 0x1800ea0a -> 0x1800ea36: identical match, relocated
+  vendor 0x1800eabe -> 0x1800eaea: identical match, relocated
+  vendor 0x1800eaee -> 0x1800eb1a: identical match, relocated
   vendor 0x1800eb4e -> 0x1800eb7a: structural match, relocated
   vendor 0x1800ebfc -> 0x1800ec28: structural match, relocated
+  vendor 0x1800ec40 -> 0x1800ec6c: identical match, relocated
+  vendor 0x1800ecb6 -> 0x1800ece2: identical match, relocated
+  vendor 0x1800ece2 -> 0x1800ed0e: identical match, relocated
+  vendor 0x1800ed74 -> 0x1800eda0: identical match, relocated
   vendor 0x1800ed80 -> 0x1800edac: identical match, relocated
+  vendor 0x1800edec -> 0x1800ee18: identical match, relocated
+  vendor 0x1800ee1c -> 0x1800ee48: identical match, relocated
+  vendor 0x1800ee32 -> 0x1800ee5e: identical match, relocated
+  vendor 0x1800ee3c -> 0x1800ee68: identical match, relocated
   vendor 0x1800ee46 -> 0x1800ee72: identical match, relocated
+  vendor 0x1800ef58 -> 0x1800ef84: identical match, relocated
   vendor 0x1800f0b8 -> 0x1800f0e4: identical match, relocated
+  vendor 0x1800f3b4 -> 0x1800f3e0: structural match, relocated
+  vendor 0x1800f448 -> 0x1800f474: identical match, relocated
+  vendor 0x1800f4c6 -> 0x1800f4f2: structural match, relocated
+  vendor 0x1800f546 -> 0x1800f572: structural match, relocated
+  vendor 0x1800f630 -> 0x1800f65c: structural match, relocated
+  vendor 0x1800f6ba -> 0x1800f6e6: structural match, relocated
+  vendor 0x1800f6ee -> 0x1800f71a: identical match, relocated
   vendor 0x1800f7d2 -> 0x1800f7fe: identical match, relocated
+  vendor 0x1800f91c -> 0x1800f948: identical match, relocated
+  vendor 0x1800fa50 -> 0x1800fa7c: identical match, relocated
   vendor 0x1800fb82 -> 0x1800fbae: identical match, relocated
   vendor 0x1800fb8c -> 0x1800fbb8: structural match, relocated
+  vendor 0x1800fbac -> 0x1800fbd8: structural match, relocated
   vendor 0x1800fbd6 -> 0x1800fc02: identical match, relocated
   vendor 0x1800fbf6 -> 0x1800fc22: identical match, relocated
+  vendor 0x1800fc16 -> 0x1800fc42: identical match, relocated
+  vendor 0x1800fc3e -> 0x1800fc6a: identical match, relocated
+  vendor 0x1800fc5a -> 0x1800fc86: identical match, relocated
   vendor 0x1800fd20 -> 0x1800fd4c: structural match, relocated
   vendor 0x1800ff7e -> 0x1800ffaa: identical match, relocated
   vendor 0x180100d6 -> 0x18010102: structural match, relocated
   vendor 0x1801011c -> 0x18010148: identical match, relocated
+  vendor 0x180101e2 -> 0x1801020e: identical match, relocated
+  vendor 0x180103f4 -> 0x18010420: identical match, relocated
   vendor 0x180104aa -> 0x180104d6: identical match, relocated
+  vendor 0x180105e0 -> 0x1801060c: identical match, relocated
+  vendor 0x18010602 -> 0x1801062e: identical match, relocated
+  vendor 0x1801062c -> 0x18010658: identical match, relocated
+  vendor 0x18010650 -> 0x1801067c: identical match, relocated
+  vendor 0x18010692 -> 0x180106be: identical match, relocated
+  vendor 0x1801069e -> 0x180106ca: identical match, relocated
   vendor 0x18010740 -> 0x1801076c: identical match, relocated
   vendor 0x18010764 -> 0x18010790: tentative match, relocated
   vendor 0x18010770 -> 0x1801079c: identical match, relocated
   vendor 0x18010784 -> 0x180107b0: identical match, relocated
   vendor 0x18010824 -> 0x18010850: identical match, relocated
+  vendor 0x18010874 -> 0x180108a0: identical match, relocated
   vendor 0x180109b8 -> 0x180109e4: identical match, relocated
   vendor 0x180109ec -> 0x18010a18: identical match, relocated
+  vendor 0x18010a18 -> 0x18010a44: identical match, relocated
   vendor 0x18010a90 -> 0x18010abc: identical match, relocated
   vendor 0x18010e08 -> 0x18010e34: identical match, relocated
   vendor 0x18011014 -> 0x18011040: identical match, relocated
   vendor 0x18011234 -> 0x18011260: identical match, relocated
   vendor 0x18011440 -> 0x1801146c: identical match, relocated
   vendor 0x18011664 -> 0x18011690: identical match, relocated
+  vendor 0x18011806 -> 0x18011832: tentative match, relocated
   vendor 0x18011828 -> 0x18011854: identical match, relocated
+  vendor 0x1801185a -> 0x18011886: identical match, relocated
+  vendor 0x180118b0 -> 0x180118dc: identical match, relocated
+  vendor 0x180118d4 -> 0x18011900: identical match, relocated
+  vendor 0x18011968 -> 0x18011994: identical match, relocated
   vendor 0x18011a00 -> 0x18011a2c: identical match, relocated
   vendor 0x18011aca -> 0x18011af6: identical match, relocated
+  vendor 0x18011b92 -> 0x18011bbe: identical match, relocated
   vendor 0x18011cca -> 0x18011cf6: identical match, relocated
   vendor 0x18011cd6 -> 0x18011d02: identical match, relocated
   vendor 0x18011ce2 -> 0x18011d0e: tentative match, relocated
@@ -983,7 +1804,18 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x18012004 -> 0x18012030: identical match, relocated
   vendor 0x180120dc -> 0x18012108: identical match, relocated
   vendor 0x18012114 -> 0x18012140: identical match, relocated
-  vendor 0x18012522 -> 0x1801254e: identical match, relocated
+  vendor 0x1801219e -> 0x180121ca: identical match, relocated
+  vendor 0x180121d2 -> 0x180121fe: identical match, relocated
+  vendor 0x18012222 -> 0x1801224e: identical match, relocated
+  vendor 0x18012248 -> 0x18012274: identical match, relocated
+  vendor 0x180122fe -> 0x1801232a: identical match, relocated
+  vendor 0x1801233e -> 0x1801236a: identical match, relocated
+  vendor 0x18012360 -> 0x1801238c: identical match, relocated
+  vendor 0x1801237c -> 0x180123a8: identical match, relocated
+  vendor 0x180123be -> 0x180123ea: identical match, relocated
+  vendor 0x18012402 -> 0x1801242e: identical match, relocated
+  vendor 0x18012424 -> 0x18012450: identical match, relocated
+  vendor 0x18012522 -> 0x1801254e: tentative match, relocated
   vendor 0x18012544 -> 0x18012570: tentative match, relocated
   vendor 0x1801255e -> 0x1801258a: tentative match, relocated
   vendor 0x18012570 -> 0x1801259c: identical match, relocated
@@ -991,13 +1823,23 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x1801263c -> 0x18012668: identical match, relocated
   vendor 0x180126a6 -> 0x180126d2: identical match, relocated
   vendor 0x18012712 -> 0x1801273e: identical match, relocated
+  vendor 0x1801286c -> 0x18012898: identical match, relocated
+  vendor 0x18012890 -> 0x180128bc: identical match, relocated
   vendor 0x180128ce -> 0x180128fa: identical match, relocated
   vendor 0x180128f4 -> 0x18012920: identical match, relocated
+  vendor 0x18012a62 -> 0x18012a8e: identical match, relocated
   vendor 0x18012aa6 -> 0x18012ad2: identical match, relocated
+  vendor 0x18012ae0 -> 0x18012b0c: identical match, relocated
+  vendor 0x18012b9a -> 0x18012bc6: identical match, relocated
+  vendor 0x18012c36 -> 0x18012c62: identical match, relocated
+  vendor 0x18012cce -> 0x18012cfa: identical match, relocated
   vendor 0x18012d40 -> 0x18012d6c: identical match, relocated
   vendor 0x18012da2 -> 0x18012dce: identical match, relocated
   vendor 0x18012dc8 -> 0x18012df4: identical match, relocated
   vendor 0x18012eb4 -> 0x18012ee0: identical match, relocated
+  vendor 0x18012ed4 -> 0x18012f00: identical match, relocated
+  vendor 0x18012ee8 -> 0x18012f14: identical match, relocated
+  vendor 0x18012fa4 -> 0x18012fd0: identical match, relocated
   vendor 0x18012ffa -> 0x18013026: identical match, relocated
   vendor 0x1801307e -> 0x180130aa: identical match, relocated
   vendor 0x1801313a -> 0x18013166: identical match, relocated
@@ -1005,21 +1847,37 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x18013246 -> 0x18013272: identical match, relocated
   vendor 0x18013250 -> 0x1801327c: identical match, relocated
   vendor 0x1801330c -> 0x18013338: identical match, relocated
+  vendor 0x1801334e -> 0x1801337a: identical match, relocated
+  vendor 0x180133ac -> 0x180133d8: identical match, relocated
+  vendor 0x180133c4 -> 0x180133f0: identical match, relocated
+  vendor 0x180133ec -> 0x18013418: identical match, relocated
+  vendor 0x18013492 -> 0x180134be: identical match, relocated
+  vendor 0x18013502 -> 0x1801352e: identical match, relocated
   vendor 0x18013752 -> 0x1801377e: identical match, relocated
+  vendor 0x18013758 -> 0x18013784: identical match, relocated
   vendor 0x180137a0 -> 0x180137cc: identical match, relocated
   vendor 0x180137ea -> 0x18013816: identical match, relocated
+  vendor 0x18013814 -> 0x18013840: identical match, relocated
+  vendor 0x1801385e -> 0x1801388a: identical match, relocated
   vendor 0x18013890 -> 0x180138bc: identical match, relocated
+  vendor 0x180138f2 -> 0x1801391e: identical match, relocated
   vendor 0x1801395c -> 0x18013988: identical match, relocated
   vendor 0x1801397a -> 0x180139a6: identical match, relocated
   vendor 0x180139e0 -> 0x18013a0c: identical match, relocated
+  vendor 0x18013a2c -> 0x18013a58: identical match, relocated
   vendor 0x18013a32 -> 0x18013a5e: identical match, relocated
   vendor 0x18013a48 -> 0x18013a74: identical match, relocated
   vendor 0x18013aaa -> 0x18013ad6: identical match, relocated
   vendor 0x18013b40 -> 0x18013b6c: identical match, relocated
   vendor 0x18013b52 -> 0x18013b7e: identical match, relocated
+  vendor 0x18013bb2 -> 0x18013bde: identical match, relocated
+  vendor 0x18013c32 -> 0x18013c5e: identical match, relocated
+  vendor 0x18013cec -> 0x18013d18: identical match, relocated
   vendor 0x18013dce -> 0x18013dfa: identical match, relocated
+  vendor 0x18013ea0 -> 0x18013ecc: identical match, relocated
   vendor 0x18013f5c -> 0x18013f88: identical match, relocated
   vendor 0x18013f76 -> 0x18013fa2: identical match, relocated
+  vendor 0x18013f8a -> 0x18013fb6: identical match, relocated
   vendor 0x18014430 -> 0x1801445c: identical match, relocated
   vendor 0x18014478 -> 0x180144a4: identical match, relocated
   vendor 0x18014554 -> 0x18014580: identical match, relocated
@@ -1034,27 +1892,51 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x1801515e -> 0x1801518a: identical match, relocated
   vendor 0x18015310 -> 0x1801533c: identical match, relocated
   vendor 0x180155bc -> 0x180155e8: identical match, relocated
+  vendor 0x180155fe -> 0x1801562a: identical match, relocated
   vendor 0x18015670 -> 0x1801569c: identical match, relocated
+  vendor 0x180156a6 -> 0x180156d2: identical match, relocated
   vendor 0x18015720 -> 0x1801574c: identical match, relocated
   vendor 0x180158b2 -> 0x180158de: identical match, relocated
   vendor 0x18015924 -> 0x18015950: identical match, relocated
+  vendor 0x18015952 -> 0x1801597e: identical match, relocated
   vendor 0x180159b0 -> 0x180159dc: identical match, relocated
   vendor 0x18015c58 -> 0x18015c84: identical match, relocated
+  vendor 0x18015cb6 -> 0x18015ce2: identical match, relocated
+  vendor 0x18015ea2 -> 0x18015ece: identical match, relocated
+  vendor 0x18015eb6 -> 0x18015ee2: identical match, relocated
+  vendor 0x18015eee -> 0x18015f1a: identical match, relocated
+  vendor 0x18015efc -> 0x18015f28: identical match, relocated
   vendor 0x18015f26 -> 0x18015f52: identical match, relocated
   vendor 0x18016056 -> 0x18016082: identical match, relocated
   vendor 0x180160d8 -> 0x18016104: structural match, relocated
   vendor 0x18016202 -> 0x1801622e: identical match, relocated
+  vendor 0x18016284 -> 0x180162b0: tentative match, relocated
+  vendor 0x18016288 -> 0x180162b4: tentative match, relocated
+  vendor 0x1801628c -> 0x180162b8: tentative match, relocated
   vendor 0x18016290 -> 0x180162bc: identical match, relocated
   vendor 0x1801642c -> 0x18016458: identical match, relocated
+  vendor 0x180164d2 -> 0x180164fe: tentative match, relocated
   vendor 0x180164d6 -> 0x18016502: identical match, relocated
   vendor 0x18016558 -> 0x18016584: identical match, relocated
   vendor 0x180166f0 -> 0x1801671c: identical match, relocated
+  vendor 0x18016774 -> 0x180167a0: tentative match, relocated
   vendor 0x18016778 -> 0x180167a4: identical match, relocated
   vendor 0x180167fc -> 0x18016828: identical match, relocated
+  vendor 0x18016908 -> 0x18016934: identical match, relocated
   vendor 0x18016b50 -> 0x18016b7c: identical match, relocated
   vendor 0x18016b62 -> 0x18016b8e: identical match, relocated
   vendor 0x18016c1c -> 0x18016c48: identical match, relocated
+  vendor 0x18016c64 -> 0x18016c90: identical match, relocated
+  vendor 0x18016c86 -> 0x18016cb2: identical match, relocated
+  vendor 0x18016cd8 -> 0x18016d04: identical match, relocated
+  vendor 0x18016e3c -> 0x18016e68: identical match, relocated
+  vendor 0x18016f00 -> 0x18016f2c: identical match, relocated
+  vendor 0x18016f42 -> 0x18016f6e: identical match, relocated
+  vendor 0x180170f4 -> 0x18017120: identical match, relocated
+  vendor 0x18017156 -> 0x18017182: identical match, relocated
+  vendor 0x18017166 -> 0x18017192: identical match, relocated
   vendor 0x18017184 -> 0x180171b0: identical match, relocated
+  vendor 0x180172b4 -> 0x180172e0: identical match, relocated
   vendor 0x180172c4 -> 0x180172f0: identical match, relocated
   vendor 0x180174f0 -> 0x1801751c: identical match, relocated
   vendor 0x180174f6 -> 0x18017522: identical match, relocated
@@ -1063,6 +1945,9 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x18017636 -> 0x18017662: identical match, relocated
   vendor 0x18017646 -> 0x18017672: identical match, relocated
   vendor 0x1801764c -> 0x18017678: identical match, relocated
+  vendor 0x180177f0 -> 0x1801781c: tentative match, relocated
+  vendor 0x180177f2 -> 0x1801781e: tentative match, relocated
+  vendor 0x180177f4 -> 0x18017820: tentative match, relocated
   vendor 0x180177f6 -> 0x18017822: identical match, relocated
   vendor 0x18017830 -> 0x1801785c: identical match, relocated
   vendor 0x18017848 -> 0x18017874: identical match, relocated
@@ -1071,25 +1956,43 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x180178d2 -> 0x180178fe: identical match, relocated
   vendor 0x18017952 -> 0x1801797e: identical match, relocated
   vendor 0x18017a14 -> 0x18017a40: identical match, relocated
+  vendor 0x18017a20 -> 0x18017a4c: identical match, relocated
   vendor 0x18017a94 -> 0x18017ac0: identical match, relocated
   vendor 0x18017a9e -> 0x18017aca: identical match, relocated
   vendor 0x18017ada -> 0x18017b06: identical match, relocated
   vendor 0x18017af4 -> 0x18017b20: identical match, relocated
   vendor 0x18017df8 -> 0x18017e24: identical match, relocated
+  vendor 0x18017e26 -> 0x18017e52: identical match, relocated
+  vendor 0x18017e7e -> 0x18017eaa: identical match, relocated
   vendor 0x18017f32 -> 0x18017f5e: identical match, relocated
+  vendor 0x18017f54 -> 0x18017f80: identical match, relocated
   vendor 0x18017f6e -> 0x18017f9a: identical match, relocated
   vendor 0x18018044 -> 0x18018070: identical match, relocated
   vendor 0x18018056 -> 0x18018082: identical match, relocated
   vendor 0x180181d8 -> 0x18018204: identical match, relocated
   vendor 0x18018454 -> 0x18018480: identical match, relocated
   vendor 0x1801848a -> 0x180184b6: identical match, relocated
+  vendor 0x18018678 -> 0x180186a4: tentative match, relocated
+  vendor 0x1801867a -> 0x180186a6: identical match, relocated
+  vendor 0x180186a8 -> 0x180186d4: identical match, relocated
+  vendor 0x180186d8 -> 0x18018704: identical match, relocated
+  vendor 0x18018708 -> 0x18018734: identical match, relocated
   vendor 0x18018738 -> 0x18018764: identical match, relocated
   vendor 0x180188c4 -> 0x180188f0: identical match, relocated
+  vendor 0x1801894c -> 0x18018978: identical match, relocated
+  vendor 0x18018966 -> 0x18018992: identical match, relocated
   vendor 0x1801896a -> 0x18018996: identical match, relocated
+  vendor 0x180189fc -> 0x18018a28: identical match, relocated
+  vendor 0x18018a7e -> 0x18018aaa: identical match, relocated
+  vendor 0x18018ac4 -> 0x18018af0: identical match, relocated
+  vendor 0x18018ad0 -> 0x18018afc: identical match, relocated
+  vendor 0x18018af6 -> 0x18018b22: identical match, relocated
+  vendor 0x18018b8c -> 0x18018bb8: identical match, relocated
   vendor 0x18018baa -> 0x18018bd6: identical match, relocated
   vendor 0x18018c4a -> 0x18018c76: identical match, relocated
   vendor 0x18018e50 -> 0x18018e7c: identical match, relocated
   vendor 0x18018eae -> 0x18018eda: identical match, relocated
+  vendor 0x1801939c -> 0x180193c8: identical match, relocated
   vendor 0x18019440 -> 0x1801946c: tentative match, relocated
   vendor 0x18019442 -> 0x1801946e: identical match, relocated
   vendor 0x180194ca -> 0x180194f6: identical match, relocated
@@ -1097,6 +2000,9 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x1801956c -> 0x18019598: identical match, relocated
   vendor 0x1801958a -> 0x180195b6: identical match, relocated
   vendor 0x180195f6 -> 0x18019622: identical match, relocated
+  vendor 0x1801960e -> 0x1801963a: identical match, relocated
+  vendor 0x1801961e -> 0x1801964a: identical match, relocated
+  vendor 0x1801962e -> 0x1801965a: identical match, relocated
   vendor 0x1801963e -> 0x1801966a: identical match, relocated
   vendor 0x18019648 -> 0x18019674: identical match, relocated
   vendor 0x18019654 -> 0x18019680: identical match, relocated
@@ -1109,33 +2015,73 @@ MUST_NOT_ASSUME_EQUAL 275
   vendor 0x180196d4 -> 0x18019700: identical match, relocated
   vendor 0x180196ec -> 0x18019718: identical match, relocated
   vendor 0x180196fe -> 0x1801972a: identical match, relocated
+  vendor 0x1801988a -> 0x180198b6: identical match, relocated
+  vendor 0x180198f2 -> 0x1801991e: identical match, relocated
   vendor 0x1801993e -> 0x1801996a: identical match, relocated
+  vendor 0x180199fc -> 0x18019a28: identical match, relocated
   vendor 0x18019ac4 -> 0x18019af0: identical match, relocated
-  vendor 0x18019dc2 -> 0x18019dee: identical match, relocated
+  vendor 0x18019dc2 -> 0x18019dee: tentative match, relocated
   vendor 0x18019ddc -> 0x18019e08: tentative match, relocated
   vendor 0x18019df6 -> 0x18019e22: identical match, relocated
   vendor 0x18019e12 -> 0x18019e3e: identical match, relocated
+  vendor 0x18019e40 -> 0x18019e6c: identical match, relocated
   vendor 0x18019e68 -> 0x18019e94: identical match, relocated
+  vendor 0x18019e8c -> 0x18019eb8: identical match, relocated
+  vendor 0x18019ec6 -> 0x18019ef2: identical match, relocated
+  vendor 0x18019f00 -> 0x18019f2c: identical match, relocated
+  vendor 0x18019f0a -> 0x18019f36: tentative match, relocated
   vendor 0x18019f0c -> 0x18019f38: identical match, relocated
   vendor 0x18019f68 -> 0x18019f94: identical match, relocated
+  vendor 0x18019fd8 -> 0x1801a004: identical match, relocated
+  vendor 0x1801a028 -> 0x1801a054: identical match, relocated
+  vendor 0x1801a084 -> 0x1801a0b0: identical match, relocated
+  vendor 0x1801a0c0 -> 0x1801a0ec: identical match, relocated
   vendor 0x1801a168 -> 0x1801a194: identical match, relocated
   vendor 0x1801a172 -> 0x1801a19e: identical match, relocated
   vendor 0x1801a1a2 -> 0x1801a1ce: identical match, relocated
+  vendor 0x1801a1d2 -> 0x1801a1fe: identical match, relocated
+  vendor 0x1801a1e8 -> 0x1801a214: identical match, relocated
   vendor 0x1801a214 -> 0x1801a240: identical match, relocated
+  vendor 0x1801a252 -> 0x1801a27e: identical match, relocated
+  vendor 0x1801a280 -> 0x1801a2ac: identical match, relocated
+  vendor 0x1801a2ce -> 0x1801a2fa: identical match, relocated
+  vendor 0x1801a2f8 -> 0x1801a324: identical match, relocated
+  vendor 0x1801a9fc -> 0x1801aa28: identical match, relocated
+  vendor 0x1801aa14 -> 0x1801aa40: identical match, relocated
   vendor 0x1801aa26 -> 0x1801aa52: identical match, relocated
+  vendor 0x1801aa42 -> 0x1801aa6e: identical match, relocated
   vendor 0x1801aad8 -> 0x1801ab04: identical match, relocated
   vendor 0x1801aaf2 -> 0x1801ab1e: identical match, relocated
+  vendor 0x1801abfa -> 0x1801ac26: identical match, relocated
   vendor 0x1801ac24 -> 0x1801ac50: identical match, relocated
   vendor 0x1801ad1e -> 0x1801ad4a: identical match, relocated
   vendor 0x1801add8 -> 0x1801ae04: identical match, relocated
+  vendor 0x1801aeac -> 0x1801aed8: identical match, relocated
+  vendor 0x1801af5c -> 0x1801af88: identical match, relocated
+  vendor 0x1801b00c -> 0x1801b038: identical match, relocated
+  vendor 0x1801b07c -> 0x1801b0a8: tentative match, relocated
+  vendor 0x1801b09e -> 0x1801b0ca: tentative match, relocated
   vendor 0x1801b0b8 -> 0x1801b0e4: identical match, relocated
-RESULT matched=293 unmatched=0
-LIMITATION Data regions are the spans no real body range covers, paired in address order, which is only valid because both sides produced the same span count. A paired span whose sides differ in length is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary.
+  vendor 0x1801b126 -> 0x1801b152: identical match, relocated
+  vendor 0x1801b14e -> 0x1801b17a: identical match, relocated
+  vendor 0x1801b176 -> 0x1801b1a2: identical match, relocated
+  vendor 0x1801b1ae -> 0x1801b1da: identical match, relocated
+  vendor 0x1801b1e6 -> 0x1801b212: identical match, relocated
+  vendor 0x1801b234 -> 0x1801b260: identical match, relocated
+  vendor 0x1801b280 -> 0x1801b2ac: identical match, relocated
+  vendor 0x1801b2ca -> 0x1801b2f6: identical match, relocated
+  vendor 0x1801b542 -> 0x1801b56e: identical match, relocated
+  vendor 0x1801b61e -> 0x1801b64a: identical match, relocated
+  vendor 0x1801b74e -> 0x1801b77a: identical match, relocated
+  vendor 0x1801b792 -> 0x1801b7be: tentative match, relocated
+  vendor 0x1801b7ac -> 0x1801b7d8: tentative match, relocated
+RESULT matched=573 unmatched=0
+LIMITATION Data regions are the spans no real body range covers, keyed by the matched function that precedes each span rather than by list index, so the pairing survives one side gaining or losing a span. A span with no counterpart key, or a paired span whose sides differ in length, is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary or against the wrong region.
 LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
 LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.
-UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
-UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
-UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+UNRESOLVED Any ROM or first-stage condition ahead of the bootloader is unexamined.
+UNRESOLVED What makes address 0 writable is not established. The bootloader's BootHandoff routine copies 0x10000 bytes from the selected entry to address 0 and then requests a system reset, so a RAM or remap window must be aliased there, but the register that arranges it is unidentified (log 101).
+UNRESOLVED Which physical keys produce the recovery scan pattern that FUN_000029d4 matches is not established; only the RAM buffer and the matched values are known (log 101).
 ```
 
 The individual data spans are omitted from this block for length; the complete list is in `vendor-to-installed-functions-app-b.json`.

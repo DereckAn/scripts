@@ -1,0 +1,276 @@
+{
+  "bootloader_matches_expected": true,
+  "bootloader_sha256": "c244aef0a92424cc92354a8cebd312be3098780d1ec062e05e5d5333e38d870c",
+  "checks": [
+    {
+      "name": "the mirrored bootloader copy is the analysed image \u2014 c244aef0a92424cc92354a8cebd312be3098780d1ec062e05e5d5333e38d870c",
+      "ok": true
+    },
+    {
+      "name": "the image's SN_FWIN entry pointer equals the bootloader's constant \u2014 0x60011000 vs 0x60011000",
+      "ok": true
+    },
+    {
+      "name": "the word-sum region the bootloader checks is the application region \u2014 0x10000..0x7c000 vs 0x10000..0x7c000",
+      "ok": true
+    },
+    {
+      "name": "the fixed handoff copy window lies inside the application region \u2014 0x11000..0x21000 inside 0x10000..0x7c000",
+      "ok": true
+    },
+    {
+      "name": "record slot 0 begins at the copy window's start \u2014 0x11000 vs 0x11000",
+      "ok": true
+    },
+    {
+      "name": "record slot 0 fits inside the copy window \u2014 0x168ac <= 0x21000",
+      "ok": true
+    },
+    {
+      "name": "the handoff routine is the analysed 0x50-byte block \u2014 1e4183918235efcdd7a0ded8055742bc9e51015e8da874f4604dd6861df7dee8",
+      "ok": true
+    },
+    {
+      "name": "the RAM bootloader-entry magic is printable ASCII \u2014 b' s s'",
+      "ok": true
+    },
+    {
+      "name": "integrity: backup SNC7320A magic",
+      "ok": true
+    },
+    {
+      "name": "integrity: backup SN_BCFG magic",
+      "ok": true
+    },
+    {
+      "name": "integrity: backup bootloader pointer",
+      "ok": true
+    },
+    {
+      "name": "integrity: backup declared size",
+      "ok": true
+    },
+    {
+      "name": "integrity: backup slot0 -> SN_FWIN",
+      "ok": true
+    },
+    {
+      "name": "integrity: backup slot1 empty",
+      "ok": true
+    },
+    {
+      "name": "integrity: SN_FWIN magic",
+      "ok": true
+    },
+    {
+      "name": "integrity: SN_FWIN CRC-enable gate nonzero",
+      "ok": true
+    },
+    {
+      "name": "integrity: entry equals record[0] address",
+      "ok": true
+    },
+    {
+      "name": "integrity: record ranges inside application region",
+      "ok": true
+    },
+    {
+      "name": "integrity: entry pointer equals the bootloader constant",
+      "ok": true
+    },
+    {
+      "name": "integrity: policy: entry record lies inside the fixed handoff copy window",
+      "ok": true
+    },
+    {
+      "name": "integrity: record[0] checksum",
+      "ok": true
+    },
+    {
+      "name": "integrity: record[1] checksum",
+      "ok": true
+    },
+    {
+      "name": "integrity: entry initial-SP in observed RAM ranges",
+      "ok": true
+    },
+    {
+      "name": "integrity: entry reset vector is Thumb and within record[0] length",
+      "ok": true
+    },
+    {
+      "name": "integrity: application word-sum",
+      "ok": true
+    },
+    {
+      "name": "integrity: bootloader_mirror word-sum",
+      "ok": true
+    },
+    {
+      "name": "integrity: application word-sum recomputes \u2014 stored 0x2d7486db vs computed 0x2d7486db",
+      "ok": true
+    },
+    {
+      "name": "integrity: bootloader_mirror word-sum recomputes \u2014 stored 0xfb665ae3 vs computed 0xfb665ae3",
+      "ok": true
+    }
+  ],
+  "gates": [
+    {
+      "blocks_boot_when": "the combination is held at power-on",
+      "evidence": "polls the scan buffer at 0x18012ac8 up to 100 times, enabling and disabling interrupts around a scan tick each time, and returns 1 once the pattern (+0x0 == 0xa0 and +0x10 == 0x100) has held for 31 consecutive samples: the counter starts at zero and the cmp r5,#0x1e at 0x2a20 is tested before the increment, so the return happens on the 31st match",
+      "function": "FUN_000029d4",
+      "kind": "environment",
+      "name": "recovery key combination",
+      "order": 1,
+      "requirement": "must return 0"
+    },
+    {
+      "blocks_boot_when": "the image declares any other entry address",
+      "evidence": "a literal-pool word in the orchestrator, compared with the value FUN_00002af0 returned from the container scan",
+      "function": "iVar2 == DAT_00007f98 (0x60011000)",
+      "kind": "image",
+      "name": "selected entry equals the bootloader's constant",
+      "order": 2,
+      "requirement": "the SN_FWIN entry pointer must be exactly 0x60011000"
+    },
+    {
+      "blocks_boot_when": "the application set the magic and reset",
+      "evidence": "reads 0x20000ffc and compares it with 0x73207320; when equal it clears the word and returns 1, so the flag is one-shot",
+      "function": "FUN_00002a44",
+      "kind": "environment",
+      "name": "software bootloader-entry flag",
+      "order": 3,
+      "requirement": "must return 0"
+    },
+    {
+      "blocks_boot_when": "the stored guard word does not equal the sum",
+      "evidence": "sums every 32-bit word of 0x10000..0x7c000 in 0x1000-byte pages and requires the final word to equal the sum; an all-0xff first page also fails",
+      "function": "FUN_000026d0(0x6c000)",
+      "kind": "image",
+      "name": "application-region word-sum",
+      "order": 4,
+      "requirement": "must return 0"
+    }
+  ],
+  "handoff": {
+    "copy_destination": 0,
+    "copy_length": 65536,
+    "entry_parked_in": "*(uint32_t *)0xe000ed08 + 0x1c",
+    "entry_parked_in_basis": "vector slot 7, the first Reserved slot, of the table VTOR points at when FUN_00007fa8 runs. The runtime value of VTOR is not a static property of the image, so no fixed address is claimed.",
+    "mechanism": "copy then system reset, not a branch",
+    "reset_request": "AIRCR = (AIRCR & 0x700) | 0x05fa0000 + 4, i.e. VECTKEY with SYSRESETREQ, preserving PRIGROUP",
+    "routine_length": 80,
+    "routine_program_offset": 52732,
+    "routine_runtime_address": 402718720
+  },
+  "image_sha256": "fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b",
+  "literals": {
+    "backup_container": {
+      "program_address": 11020,
+      "role": "DAT_00002b0c, the second container FUN_00002af0 falls back to",
+      "value": 1611005952
+    },
+    "ram_entry_flag_pointer": {
+      "program_address": 10848,
+      "role": "DAT_00002a60, the RAM word FUN_00002a44 reads",
+      "value": 536875004
+    },
+    "ram_entry_magic": {
+      "program_address": 10852,
+      "role": "DAT_00002a64, the magic FUN_00002a44 looks for in RAM",
+      "value": 1931506464
+    },
+    "recovery_scan_buffer": {
+      "program_address": 10816,
+      "role": "DAT_00002a40, the RAM scan buffer FUN_000029d4 polls",
+      "value": 402729672
+    },
+    "selected_entry_constant": {
+      "program_address": 32664,
+      "role": "DAT_00007f98, the value the selected entry must equal before the jump",
+      "value": 1610682368
+    },
+    "systick_reload": {
+      "program_address": 32668,
+      "role": "DAT_00007f9c, the reload the service loop programs when no image is booted",
+      "value": 162000
+    },
+    "vtor_pointer": {
+      "program_address": 32688,
+      "role": "DAT_00007fb0, the register FUN_00007fa8 writes the entry into",
+      "value": 3758157064
+    },
+    "word_sum_base": {
+      "program_address": 10108,
+      "role": "DAT_0000277c, the base FUN_000026d0 sums from",
+      "value": 1610678272
+    }
+  },
+  "negatives": [
+    {
+      "basis": "Searched the 0xf000-byte bootloader at every byte offset for the 32-bit constants 0x428a2f98, 0x6a09e667, 0x67452301, 0xefcdab89, 0xd76aa478, 0x5a827999, 0xedb88320, 0x04c11db7, 0x1021, 0x8408, 0x63636363 and 0x9e3779b9. Only 0xedb88320 at program 0xc78c and 0x8408 at 0xc76c are present, both accounted for by the CRC engine of log 75.",
+      "finding": "no cryptographic constant found",
+      "strength": "a search over a fixed constant list. It does not exclude a check whose constants are computed rather than stored."
+    },
+    {
+      "basis": "Extracted every ASCII run of five or more printable bytes and matched them against ver/sign/rsa/sha/key/auth/roll/devi case variants. The only hits are USB HID descriptor text and '[BLD] CRC Verify PASS!!'.",
+      "finding": "no version, signature, key, auth or rollback string found",
+      "strength": "a search over strings. A numeric version or rollback comparison would leave no string at all, so this says nothing about one."
+    },
+    {
+      "basis": "The only USB identity words in the bootloader are 0x0b05 and 0x1b7f, its own vendor and bootloader product IDs, and none of the four gates decompiled for this phase reads an identity.",
+      "finding": "no device-ID gate found in the accept expression",
+      "strength": "complete for the four gates, which were read in full. Call paths elsewhere in the bootloader were not exhaustively traced."
+    },
+    {
+      "basis": "The accept expression in FUN_00007ec8 is the four gates listed above and nothing else, and none of the four reads stored configuration.",
+      "finding": "no configuration-dependent gate found",
+      "strength": "complete for the accept expression, silent about the rest of the bootloader."
+    }
+  ],
+  "ok": true,
+  "rules": [
+    {
+      "confidence": "proven",
+      "evidence": "orchestrator gate 2, a constant comparison against DAT_00007f98",
+      "name": "entry pointer is fixed",
+      "requirement": "SN_FWIN +0x10 must be exactly 0x60011000. The entry image cannot be relocated."
+    },
+    {
+      "confidence": "policy \u2014 no control-flow dependency demonstrated",
+      "evidence": "BootHandoff, scatter-loaded from bootloader program 0xcdfc to 0x18010000, called as (0, entry, 0x10000). The absence of a length test is what makes this a policy rather than a rule.",
+      "name": "POLICY: keep the entry image inside the copied window",
+      "requirement": "0x10000 bytes are copied from the entry address to 0x0 regardless of the record length. No bootloader branch tests whether the record fits: a longer record would simply have its tail left uncopied. Keeping the image inside the window is therefore a conservative policy for a builder, not a recovered bootloader requirement."
+    },
+    {
+      "confidence": "proven",
+      "evidence": "orchestrator gate 4; base and length both read from bootloader constants rather than assumed",
+      "name": "application word-sum must be correct",
+      "requirement": "the final word of the application region must equal the 32-bit sum of every preceding word in it."
+    },
+    {
+      "confidence": "proven",
+      "evidence": "log 75 decompile, confirmed by log 95",
+      "name": "every active record's chunked-CRC sum must be correct",
+      "requirement": "FUN_0000511c scans all eight record slots and verifies each slot whose length is nonzero."
+    },
+    {
+      "confidence": "proven",
+      "evidence": "log 75 decompile",
+      "name": "the entry image's initial SP must be in RAM",
+      "requirement": "FUN_00005240 dereferences the entry pointer and requires the first word to fall in an observed RAM range."
+    },
+    {
+      "confidence": "proven",
+      "evidence": "log 75 decompile",
+      "name": "SN_FWIN magic and the container chain must be intact",
+      "requirement": "FUN_00008000 walks the boot-priority table, checks the SN_FWIN magic and only then validates the entry and records."
+    }
+  ],
+  "unresolved": [
+    "What makes address 0 writable is not established from these bytes. BootHandoff copies there and then resets, so a RAM or remap window must be aliased at 0, but the register that arranges it is not identified.",
+    "The recovery scan pattern (+0x0 == 0xa0, +0x10 == 0x100) is read from a RAM buffer the bootloader's own scan tick fills. Which physical keys produce it is not established.",
+    "Any ROM or first-stage condition ahead of this bootloader is still unexamined."
+  ]
+}

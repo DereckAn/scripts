@@ -79,12 +79,26 @@ WORD_SUM_REGIONS = (
 
 SP_RANGES = ((0x18000000, 0x18040000), (0x20000000, 0x20001000))
 
+# Proven in log 101 from the bootloader's own literal pool: the orchestrator
+# compares the selected entry against this constant before jumping, and the
+# handoff copies exactly this many bytes from it to address 0.
+BOOT_ENTRY_CONSTANT = 0x60011000
+BOOT_HANDOFF_COPY_LENGTH = 0x10000
+
 # Carried through every report so a passing run is never read as "this boots".
+# The two boot-gate unknowns that used to sit here were resolved in log 101:
+# FUN_000029d4 is a recovery key-combination poll and the top-level comparison
+# is against the constant 0x60011000. What remains is genuinely open.
 UNRESOLVED = (
-    "FUN_000029d4 is not decompiled; its role in the boot path is unknown.",
-    "The top-level comparison applied to the selected entry value before the "
-    "jump is not recovered, so the caller's accept/reject rule is unknown.",
-    "Any ROM/first-stage conditions ahead of the bootloader are unexamined.",
+    "Any ROM or first-stage condition ahead of the bootloader is unexamined.",
+    "What makes address 0 writable is not established. The bootloader's "
+    "BootHandoff routine copies 0x10000 bytes from the selected entry to "
+    "address 0 and then requests a system reset, so a RAM or remap window must "
+    "be aliased there, but the register that arranges it is unidentified "
+    "(log 101).",
+    "Which physical keys produce the recovery scan pattern that FUN_000029d4 "
+    "matches is not established; only the RAM buffer and the matched values "
+    "are known (log 101).",
 )
 
 
@@ -429,6 +443,25 @@ def validate(view):
     checks.append(Check("record ranges inside application region", all(
         lo <= record.flash_off and record.length > 0 and record.flash_end <= hi
         for record in layout.records)))
+
+    # Log 101: the orchestrator will not jump unless the entry pointer equals
+    # BOOT_ENTRY_CONSTANT exactly. That one is a real control-flow dependency.
+    checks.append(Check("entry pointer equals the bootloader constant",
+                        layout.fwin.entry_ptr == BOOT_ENTRY_CONSTANT))
+
+    # The handoff then copies a fixed BOOT_HANDOFF_COPY_LENGTH window from that
+    # constant. No bootloader branch tests whether the entry record fits inside
+    # it: a longer record would simply have its tail left uncopied. So this is a
+    # *conservative builder policy*, not a recovered requirement, and log 103
+    # downgraded it from "proven". It is prefixed so no reader mistakes it for a
+    # bootloader rule.
+    window_lo = BOOT_ENTRY_CONSTANT - FLASH_BASE
+    window_hi = window_lo + BOOT_HANDOFF_COPY_LENGTH
+    entry_record = layout.records[0]
+    checks.append(Check(
+        "policy: entry record lies inside the fixed handoff copy window",
+        window_lo <= entry_record.flash_off
+        and entry_record.flash_end <= window_hi))
 
     for record in layout.records:
         computed = chunked_crc_sum(view, record.flash_off, record.length)

@@ -32,13 +32,19 @@ CONTAINERS = {
 EXPECTED_CONTAINER_SIZE = 0x10000
 SP_RANGES = ((0x18000000, 0x18040000), (0x20000000, 0x20001000))
 
-# Recorded so a passing run is never read as "this image boots".
+# Recorded so a passing run is never read as "this image boots". The two
+# boot-gate unknowns that used to sit here were resolved in log 101.
 UNRESOLVED = (
-    "FUN_000029d4 is not decompiled; its role in the boot path is unknown.",
-    "The top-level comparison applied to the selected entry value before the "
-    "jump is not recovered, so the caller's accept/reject rule is unknown.",
-    "Any ROM/first-stage conditions ahead of the bootloader are unexamined.",
+    "Any ROM or first-stage condition ahead of the bootloader is unexamined.",
+    "What makes address 0 writable is not established, although the bootloader "
+    "copies the entry window there and resets (log 101).",
+    "Which physical keys produce the recovery scan pattern FUN_000029d4 "
+    "matches is not established (log 101).",
 )
+
+# Proven in log 101 from the bootloader's literal pool.
+BOOT_ENTRY_CONSTANT = 0x60011000
+BOOT_HANDOFF_COPY_LENGTH = 0x10000
 
 
 def available(data, image_base, flash_off, size):
@@ -95,6 +101,16 @@ def known_boot_checks(data, image_base=0):
         lo < sp <= hi for lo, hi in SP_RANGES)
     checks["entry reset vector is Thumb and within record[0] length"] = (
         bool(reset & 1) and (reset & ~1) < records[0][2])
+    checks["entry pointer equals the bootloader constant"] = (
+        entry == BOOT_ENTRY_CONSTANT)
+    # A conservative builder policy, not a bootloader requirement: no branch
+    # tests this, and a longer record would simply be truncated by the copy
+    # (log 103).
+    window = BOOT_ENTRY_CONSTANT - FLASH_BASE
+    checks["policy: entry record lies inside the fixed handoff copy window"] = (
+        window <= records[0][1] - FLASH_BASE
+        and records[0][1] - FLASH_BASE + records[0][2]
+        <= window + BOOT_HANDOFF_COPY_LENGTH)
     return present_containers, skipped_containers, records, checks
 
 

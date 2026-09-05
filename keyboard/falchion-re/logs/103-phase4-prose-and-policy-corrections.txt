@@ -1,0 +1,261 @@
+ASUS ROG Falchion Ace HFX — Phase 4/5 follow-up corrections (round two)
+Date: 2026-09-04 America/Mexico_City
+Status: offline only; no device was accessed. Corrects log 102, which is
+left unedited, and the Phase 4 prose it did not reach.
+
+WHY THIS LOG EXISTS
+Review of the previous round left five items outstanding. Two of them are
+about the audit trail itself: log 102 contains two commands that failed with
+SyntaxError while the NOTE beneath each one asserted a result the command
+never produced. Those commands are re-run correctly here.
+
+SAFETY
+No /dev/hidraw access, no USB or sysfs inspection, no bootloader entry, no
+probe or backup tool run, no sudo, no package install, no network access,
+and no unlock/erase/program/reset/SPI construction. No Ghidra project was
+written. Both evidence binaries are unchanged.
+
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+ITEM 4 — the two broken commands in log 102, re-run correctly
+Both failed for the same reason: a doubled %% escape left over from an
+outer format string that was never applied. Log 102 lines 103 and 189.
+$ grep -nE 'SyntaxError' logs/102-phase4-and-phase5-review-corrections.txt
+  103:  SyntaxError: invalid syntax
+  189:  SyntaxError: invalid syntax
+  [exit 0]
+  NOTE the two failures, preserved in log 102 as published
+
+Re-run 1 — the words around the vector table's upper bound:
+$ python3 - <<'PY'
+import struct
+path = ('ghidra/imports/installed_app_a_slot0'
+        '_flash11000_dst00000000_len058ac_f093979a.bin')
+data = open(path, 'rb').read()
+for off in (0x118, 0x11c, 0x120, 0x124, 0x138, 0x13c, 0x140, 0x144):
+    word, = struct.unpack_from('<I', data, off)
+    print('offset 0x%03x = 0x%08x' % (off, word))
+PY
+  offset 0x118 = 0x000014df
+  offset 0x11c = 0x000014df
+  offset 0x120 = 0x000014df
+  offset 0x124 = 0x00000000
+  offset 0x138 = 0x00000000
+  offset 0x13c = 0x00000ad1
+  offset 0x140 = 0xf802f000
+  offset 0x144 = 0xf8c0f000
+  [exit 0]
+  NOTE 0x13c is the last word before code and holds a plausible Thumb pointer; 0x140 is the branch the reset path takes. This is the evidence log 102's NOTE claimed but did not produce.
+
+Re-run 2 — classify_address over the probe addresses:
+$ python3 - <<'PY'
+import sys
+sys.path.insert(0, 'tool')
+import map_hardware_interfaces as mh
+runtime = ((0x18000000, 0x1801e380), (0x1801e380, 0x18036168))
+for address in (0x18000010, 0x1801f000, 0x18037224, 0x40100000,
+                0x08000000, 0x10000000, 0x60021000, 0xe000ed0c):
+    kind, _basis = mh.classify_address(address, 0x18000000, 0x1e380, runtime)
+    print('0x%08x -> %s' % (address, kind))
+PY
+  0x18000010 -> program
+  0x1801f000 -> runtime-ram
+  0x18037224 -> unknown
+  0x40100000 -> unknown
+  0x08000000 -> unknown
+  0x10000000 -> unknown
+  0x60021000 -> flash-window
+  0xe000ed0c -> arm-core
+  [exit 0]
+  NOTE 0x18037224 is past the proven runtime end and is not called RAM; the unidentified spaces are 'unknown'. Again, the result log 102 asserted without producing it.
+
+ITEM 1 — the Phase 4 prose is regenerated
+report_phase4.py carried its prose as a static block, so the earlier
+corrections reached the embedded tool output but not the surrounding text.
+It still said 30 samples, 'None exist', 'VTOR + 0x1c', and stated flatly
+that the application runs from address zero.
+$ grep -cE '30 consecutive|definitively|VTOR \+ 0x1c' notes/boot-acceptance-conditions.md
+  0
+  [exit 1]
+  NOTE zero occurrences now
+
+$ grep -n '31 consecutive samples' notes/boot-acceptance-conditions.md | head -n 2
+  187:    evidence: polls the scan buffer at 0x18012ac8 up to 100 times, enabling and disabling interrupts around a scan tick each time, and returns 1 once the pattern (+0x0 == 0xa0 and +0x10 == 0x100) has held for 31 consecutive samples: the counter starts at zero and the cmp r5,#0x1e at 0x2a20 is tested before the increment, so the return happens on the 31st match
+  [exit 0]
+
+$ grep -n 'dereferences VTOR' notes/boot-acceptance-conditions.md
+  75:dereferences VTOR **before** adding the offset: the entry lands at
+  [exit 0]
+
+$ sed -n '/^\*\*Observed:\*\*/,/^- \*\*Strongly supported/p' notes/boot-acceptance-conditions.md
+  **Observed:** the bootloader copies a fixed 64 KiB window from the entry
+  address to address 0 and then requests a system reset. That much is in the
+  instructions.
+
+  **Not established:** what executes after that reset. Address 0 must be backed by
+  writable storage for the copy to mean anything, but the register or strap that
+  aliases a RAM or remap window there is unidentified, and any ROM or first-stage
+  behaviour ahead of the bootloader is unexamined. So "the application runs from
+  address zero" is an *inference*, not a recovered fact, and log 103 downgraded
+  the earlier wording that stated it flatly.
+
+  What the handoff does settle, and what it only supports:
+
+  - **Settled:** the SN_FWIN record's `+0xc` word is not a load destination. The
+    destination is the constant `0` in the orchestrator's call, and
+    `FUN_0000511c` never reads `+0xc`.
+  - **Settled:** the `0xff` fill from `0x168ac` to `0x21000` is inside the copied
+    window, because the copy length is fixed at `0x10000` regardless of record
+    slot 0's `0x58ac`.
+  - **Strongly supported, not proven:** that Candidate A is linked at base `0`
+  [exit 0]
+  NOTE execution at address zero is now stated as an inference gated on the unresolved alias, with the two things the handoff does settle kept separate from the one it only supports
+
+$ sed -n '/^## Searches that returned nothing/,/^- \*\*no cryptographic/p' notes/boot-acceptance-conditions.md
+  ## Searches that returned nothing
+
+  The plan asked for additional hashes, signatures, monotonic versions, rollback
+  rules, device IDs and configuration-dependent gates. **These are search results,
+  not proofs of absence** — log 103 corrected the earlier "None exist". A
+  constant-and-string search cannot establish that no check exists: constants can
+  be computed rather than stored, and a numeric comparison leaves no string at
+  all. What was searched, and how far each result reaches, is listed in the tool
+  output below. In summary, no indicator was found by these searches:
+
+  - **no cryptographic constant found** among the twelve searched at every byte
+  [exit 0]
+  NOTE the negatives are scoped
+
+ITEM 2 — the 64 KiB fit is downgraded to a builder policy
+No bootloader branch tests whether the entry record fits inside the copied
+window: a longer record would simply have its tail left uncopied. So there
+is no control-flow dependency to call it a requirement.
+$ python3 tool/analyze_boot_acceptance.py | grep -A 3 'POLICY: keep the entry image'
+    [policy — no control-flow dependency demonstrated] POLICY: keep the entry image inside the copied window
+      0x10000 bytes are copied from the entry address to 0x0 regardless of the record length. No bootloader branch tests whether the record fits: a longer record would simply have its tail left uncopied. Keeping the image inside the window is therefore a conservative policy for a builder, not a recovered bootloader requirement.
+      evidence: BootHandoff, scatter-loaded from bootloader program 0xcdfc to 0x18010000, called as (0, entry, 0x10000). The absence of a length test is what makes this a policy rather than a rule.
+    [proven] application word-sum must be correct
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py | grep -i 'policy:'
+    PASS policy: entry record lies inside the fixed handoff copy window
+  [exit 0]
+  NOTE the check name now carries the 'policy:' prefix in both analyzers, so no reader mistakes it for a recovered rule
+
+$ python3 - <<'PY'
+import sys
+sys.path.insert(0, 'tool')
+import analyze_boot_acceptance as ba, falchion_image as fi
+result = ba.analyze(fi.ImageView(open('dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin','rb').read(), 0x10000))
+for rule in result.rules:
+    print('%-58s %s' % (rule.name[:58], rule.confidence))
+PY
+  entry pointer is fixed                                     proven
+  POLICY: keep the entry image inside the copied window      policy — no control-flow dependency demonstrated
+  application word-sum must be correct                       proven
+  every active record's chunked-CRC sum must be correct      proven
+  the entry image's initial SP must be in RAM                proven
+  SN_FWIN magic and the container chain must be intact       proven
+  [exit 0]
+  NOTE five proven rules and one policy, each labelled
+
+ITEM 3 — reset-reachable, not reset-path
+Call-graph reachability from the Reset vector is not proof that a function
+runs during initialisation. The field and the prose now say what they
+measure.
+$ python3 - <<'PY'
+import json, subprocess
+payload = json.loads(subprocess.run(
+    ['python3', 'tool/map_hardware_interfaces.py', '--json'],
+    capture_output=True, text=True).stdout)
+rows = [r for p in payload['programs'] for b in p['blocks']
+        for r in b['registers']]
+print('register rows:', len(rows))
+print('rows with reset_reachable_write_values:',
+      sum(1 for r in rows if 'reset_reachable_write_values' in r))
+print('rows still carrying the old initialization_values key:',
+      sum(1 for r in rows if 'initialization_values' in r))
+PY
+  register rows: 960
+  rows with reset_reachable_write_values: 960
+  rows still carrying the old initialization_values key: 0
+  [exit 0]
+
+$ grep -n 'reachability, not proof' tool/map_hardware_interfaces.py | head -n 2
+  [exit 0]
+
+ITEM 5 — the 80-slot vector interpretation is an inference
+$ python3 tool/map_hardware_interfaces.py | grep '^VECTOR_TABLE_CONFIDENCE'
+  VECTOR_TABLE_CONFIDENCE strongly inferred — The table is bounded by the first code address, which is where the reset path's own branch target sits, and the last slot below that bound holds a Thumb pointer to a callerless function — exactly the shape of a vector-only handler. Two independent facts line up: the bound falls on a 16 + 64 boundary, and the highest NVIC enable word the software touches is ISER1, which covers IRQ32..IRQ63. But no exact IRQ-count source is available: the SNC7320-series product brief is series-level and carries no SNC73270 register map, and nothing in these bytes states the implemented interrupt count. A table of fewer than 64 external slots followed by unrelated data would look the same from the image alone.
+  [exit 0]
+  NOTE strongly inferred, with the two corroborating facts and the reason no exact count is available stated inline
+
+EXIT GATE
+$ python3 tool/report_phase4.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/report_phase5.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 tool/report_phase3.py --check | tail -n 1
+  RESULT reports_current=True stale=0
+  [exit 0]
+
+$ python3 -m py_compile tool/*.py
+  [exit 0]
+  NOTE every tool compiles
+
+$ python3 tool/analyze_boot_structures.py | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=20 containers_skipped=0
+  [exit 0]
+
+$ python3 tool/analyze_boot_structures.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=14 containers_skipped=1
+  [exit 0]
+
+$ python3 tool/falchion_image.py 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin' --base 0x10000 | grep -E '^RESULT'
+  RESULT known_checks_ok=True checks_run=18 containers_skipped=1 word_sums_skipped=1
+  [exit 0]
+
+$ python3 tool/analyze_boot_acceptance.py | grep -E '^RESULT'
+  RESULT image_rules_ok=True checks_run=28 gates=4 rules=6
+  RESULT_MEANING image_rules_ok covers only the two IMAGE gates and the integrity checks they rest on. The two environmental gates cannot be evaluated from an image at all, so this is never a statement that the bootloader would accept this image, let alone that it would run.
+  [exit 0]
+
+$ timeout 900 python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool" 2>&1 | grep -E '^(Ran |OK|FAILED)'
+  OK: 3 identical passes; wrote /tmp/tmpmi0ot3v2/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpzian92bg/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmpaaafcywn/dump.bin
+  OK: 3 identical passes; wrote /tmp/tmp2pqq6srp/dump.bin
+  Ran 406 tests in 2.872s
+  OK
+  [exit 0]
+
+$ sha256sum dumps/vendor/M605_V01_00_58.bin 'dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin'
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  [exit 0]
+
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+  [exit 0]
+
+$ git diff --check; git diff --cached --check
+  [exit 0]
+  NOTE no output from either means no whitespace errors
+
+RESULT
+All five outstanding items are fixed. The Phase 4 prose reports 31 samples,
+scopes its negatives, renders the handoff as *(VTOR) + 0x1c, and no longer
+claims execution at address zero while the alias remains unresolved. The
+64 KiB fit is a labelled builder policy rather than a proven requirement.
+Reset-reachable language replaces reset-path throughout. The two broken
+log-102 commands are re-run here with the results they were supposed to
+show. And the 80-slot table is labelled strongly inferred, with the absence
+of an exact IRQ-count source stated. Both evidence hashes are unchanged and
+no device was accessed.

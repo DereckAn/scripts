@@ -157,9 +157,9 @@ COVERAGE 0x71000..0x7c000 (0xb000) fill=data unclaimed by any parsed structure
   PASS every active record byte is covered by an extracted slice — slot 0 0x11000..0x168ac; slot 1 0x21000..0x3f780
   PASS every extracted byte round-trips to its source range
 RESULT extraction_ok=True checks_run=9 slices=3 runtime_ranges=3
-UNRESOLVED FUN_000029d4 is not decompiled; its role in the boot path is unknown.
-UNRESOLVED The top-level comparison applied to the selected entry value before the jump is not recovered, so the caller's accept/reject rule is unknown.
-UNRESOLVED Any ROM/first-stage conditions ahead of the bootloader are unexamined.
+UNRESOLVED Any ROM or first-stage condition ahead of the bootloader is unexamined.
+UNRESOLVED What makes address 0 writable is not established. The bootloader's BootHandoff routine copies 0x10000 bytes from the selected entry to address 0 and then requests a system reset, so a RAM or remap window must be aliased there, but the register that arranges it is unidentified (log 101).
+UNRESOLVED Which physical keys produce the recovery scan pattern that FUN_000029d4 matches is not established; only the RAM buffer and the matched values are known (log 101).
 UNRESOLVED The SN_FWIN record word at +0xc is not read by FUN_0000511c, so calling it a RAM destination is an assumption, not recovered behavior.
 UNRESOLVED The decompressed RAM range is located and sized by the region table, but its contents are not reconstructed here, so its runtime bytes are mapped rather than known.
 UNRESOLVED The separately documented RAM image at flash 0x74000..0x7c000 (log 43) is reachable from no SN_FWIN record and no scatter region on this path, so how it is loaded is not established by this extraction.

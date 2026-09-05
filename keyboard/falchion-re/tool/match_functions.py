@@ -162,9 +162,26 @@ class MatchReport:
     header: dict
 
     @property
-    def spans_aligned(self):
+    def span_counts_equal(self):
+        """Only that the two sides produced the same number of spans.
+
+        This is deliberately *not* called "aligned": equal counts say nothing
+        about whether the spans correspond. Use `spans_fully_compared` for that.
+        """
         return (self.span_counts is not None
                 and self.span_counts[0] == self.span_counts[1])
+
+    @property
+    def spans_compared(self):
+        return None if self.span_counts is None else self.span_counts[2]
+
+    @property
+    def spans_fully_compared(self):
+        """True only when every span on both sides was safely paired."""
+        if self.span_counts is None:
+            return False
+        return (self.span_counts[0] == self.span_counts[1] == self.span_counts[2]
+                and not self.unaligned_gaps)
 
 
 def parse_inventory(text):
@@ -406,38 +423,92 @@ def uncovered_spans(base, length, records):
     return tuple(span for span in spans if span[1] > span[0])
 
 
-def changed_data_regions(vendor_bytes, installed_bytes, base, flash_base,
-                         vendor_records, installed_records):
-    """Compare the spans no function body covers, paired in address order.
+def anchor_keys(spans, anchors):
+    """Key each uncovered span by the matched function that precedes it.
 
-    Gaps are derived from the union of the *real* body ranges on each side, so a
-    discontiguous body's holes are treated as data rather than as code. The k-th
-    uncovered span on one side is paired with the k-th on the other; that only
-    holds if both sides produced the same number of spans, which the caller
-    checks and reports. A paired span whose two sides differ in length is
-    reported as unaligned and its bytes are not compared, so nothing is diffed
-    across an insertion boundary.
+    Pairing spans by list index looks safe when both sides produce the same
+    number of spans, but it drifts as soon as one side gains or loses a span in
+    the middle — the counts still agree while the k-th spans describe different
+    regions. Keying by the preceding matched function makes the pairing
+    referential instead of positional.
+
+    The key alone is not trusted: the caller additionally requires the span to
+    sit at the same distance past its anchor and to have the same length on both
+    sides, so a mispaired span is skipped rather than compared. Returns
+    key -> (lo, hi, distance_past_anchor).
+
+    `anchors` is a list of (end_address, identity) for matched functions, using
+    an identity that means the same thing in both images.
+    """
+    ordered = sorted(anchors)
+    keyed = {}
+    counts = {}
+    for lo, hi in spans:
+        identity = None
+        anchor_end = None
+        for end, candidate in ordered:
+            if end <= lo:
+                identity, anchor_end = candidate, end
+            else:
+                break
+        ordinal = counts.get(identity, 0)
+        counts[identity] = ordinal + 1
+        distance = lo if anchor_end is None else lo - anchor_end
+        keyed[(identity, ordinal)] = (lo, hi, distance)
+    return keyed
+
+
+def changed_data_regions(vendor_bytes, installed_bytes, base, flash_base,
+                         vendor_records, installed_records, matches):
+    """Compare the spans no real body range covers, paired by their anchors.
+
+    Gaps come from the complement of the union of the *real* body ranges, so a
+    discontiguous body's holes count as data rather than code. Each span is then
+    keyed by the matched function that precedes it, and only spans sharing a key
+    are compared. A key present on one side only, or a paired span whose two
+    sides differ in length, is reported rather than compared, so nothing is
+    diffed across an insertion boundary or against the wrong region.
     """
     if vendor_bytes is None or installed_bytes is None:
         return (), (), None
     left_spans = uncovered_spans(base, len(vendor_bytes), vendor_records)
     right_spans = uncovered_spans(base, len(installed_bytes), installed_records)
     counts = (len(left_spans), len(right_spans))
-    if counts[0] != counts[1]:
-        return (), (), counts
+
+    vendor_anchors, installed_anchors = [], []
+    for match in matches:
+        if match.vendor is None or match.installed is None:
+            continue
+        identity = match.vendor.entry
+        vendor_anchors.append((match.vendor.extent[1], identity))
+        installed_anchors.append((match.installed.extent[1], identity))
+    left_keyed = anchor_keys(left_spans, vendor_anchors)
+    right_keyed = anchor_keys(right_spans, installed_anchors)
 
     regions, unaligned = [], []
-    for (vendor_lo, vendor_hi), (installed_lo, installed_hi) in zip(
-            left_spans, right_spans):
-        if vendor_hi - vendor_lo != installed_hi - installed_lo:
+    compared = 0
+    for key in sorted(set(left_keyed) | set(right_keyed),
+                      key=lambda item: (item[0] is None, item)):
+        left = left_keyed.get(key)
+        right = right_keyed.get(key)
+        if left is None or right is None:
+            lo, hi, _distance = left or right
+            unaligned.append(UnalignedGap(lo, hi, lo, hi) if left is not None
+                             else UnalignedGap(lo, lo, lo, hi))
+            continue
+        vendor_lo, vendor_hi, vendor_distance = left
+        installed_lo, installed_hi, installed_distance = right
+        if (vendor_hi - vendor_lo != installed_hi - installed_lo
+                or vendor_distance != installed_distance):
             unaligned.append(UnalignedGap(vendor_lo, vendor_hi,
                                           installed_lo, installed_hi))
             continue
-        left = vendor_bytes[vendor_lo - base:vendor_hi - base]
-        right = installed_bytes[installed_lo - base:installed_hi - base]
+        compared += 1
+        first = vendor_bytes[vendor_lo - base:vendor_hi - base]
+        second = installed_bytes[installed_lo - base:installed_hi - base]
         start = None
-        for index in range(len(left)):
-            if left[index] != right[index]:
+        for index in range(len(first)):
+            if first[index] != second[index]:
                 if start is None:
                     start = index
             elif start is not None:
@@ -453,7 +524,9 @@ def changed_data_regions(vendor_bytes, installed_bytes, base, flash_base,
                 installed_lo + start, installed_hi,
                 flash_base + (vendor_lo - base) + start,
                 flash_base + (vendor_hi - base)))
-    return tuple(regions), tuple(unaligned), counts
+    regions.sort(key=lambda item: item.vendor_lo)
+    unaligned.sort(key=lambda item: item.vendor_lo)
+    return tuple(regions), tuple(unaligned), (counts[0], counts[1], compared)
 
 
 def build_report(program, vendor_text, installed_text, base, flash_base,
@@ -468,7 +541,8 @@ def build_report(program, vendor_text, installed_text, base, flash_base,
                                         left, right))
         for left, right, confidence, score, reason in raw)
     regions, unaligned, span_counts = changed_data_regions(
-        vendor_bytes, installed_bytes, base, flash_base, vendor, installed)
+        vendor_bytes, installed_bytes, base, flash_base, vendor, installed,
+        matches)
     return MatchReport(
         program=program, vendor_count=len(vendor), installed_count=len(installed),
         matches=matches, data_regions=regions, unaligned_gaps=unaligned,
@@ -535,9 +609,11 @@ def to_dict(report):
                                  "vendor": report.discontiguous[0]},
         "dominant_shift": report.dominant_shift,
         "uncovered_span_counts": (None if report.span_counts is None else
-                                  {"installed": report.span_counts[1],
+                                  {"compared": report.span_counts[2],
+                                   "installed": report.span_counts[1],
                                    "vendor": report.span_counts[0]}),
-        "uncovered_spans_aligned": report.spans_aligned,
+        "uncovered_span_counts_equal": report.span_counts_equal,
+        "uncovered_spans_fully_compared": report.spans_fully_compared,
         "unaligned_gaps": [
             {"installed_hi": gap.installed_hi, "installed_length": gap.installed_length,
              "installed_lo": gap.installed_lo, "vendor_hi": gap.vendor_hi,
@@ -620,10 +696,14 @@ def report_lines(report, top=25):
         out.append("UNCOVERED_SPANS not computed (no image bytes supplied)")
     else:
         out.append(f"UNCOVERED_SPANS vendor={report.span_counts[0]} "
-                   f"installed={report.span_counts[1]} aligned="
-                   f"{report.spans_aligned}"
-                   + ("" if report.spans_aligned else
-                      " — counts differ, so no gap was compared"))
+                   f"installed={report.span_counts[1]} "
+                   f"compared={report.spans_compared} "
+                   f"unpaired_or_mismatched={len(report.unaligned_gaps)} "
+                   f"fully_compared={report.spans_fully_compared} "
+                   "— a span is compared only when its anchor key, its distance "
+                   "past that anchor and its length all agree on both sides. "
+                   "Equal counts alone would prove nothing, so they are not "
+                   "reported as alignment.")
     out.append("DOMINANT_SHIFT " + (
         "none" if report.dominant_shift is None
         else f"0x{report.dominant_shift:x} ({report.dominant_shift:+d} bytes), "
@@ -668,10 +748,12 @@ def report_lines(report, top=25):
                f"{len(report.matches) - counts.get('unmatched', 0)} "
                f"unmatched={counts.get('unmatched', 0)}")
     out.append("LIMITATION Data regions are the spans no real body range covers, "
-               "paired in address order, which is only valid because both sides "
-               "produced the same span count. A paired span whose sides differ "
-               "in length is reported as unaligned and not compared, so bytes "
-               "are never diffed across an insertion boundary.")
+               "keyed by the matched function that precedes each span rather "
+               "than by list index, so the pairing survives one side gaining or "
+               "losing a span. A span with no counterpart key, or a paired span "
+               "whose sides differ in length, is reported as unaligned and not "
+               "compared, so bytes are never diffed across an insertion "
+               "boundary or against the wrong region.")
     out.append("LIMITATION Confidence tiers describe evidence strength, not "
                "correctness. A tentative pairing is a lead for manual review, "
                "not an established correspondence.")

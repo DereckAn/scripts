@@ -1237,6 +1237,257 @@ The scatter/load map itself stands unaltered, as do the function counts, the
 is relocation. 303 offline tests pass, both evidence hashes are unchanged, and no
 device was accessed.
 
+## 2026-09-03 — Step 6 Phase 5: hardware and runtime interface map (log 100)
+
+Executed at the owner's direction with Phase 4 still undone. Phase 5 does not
+depend on it — Phase 4 resolves the bootloader's accept/reject rules, this phase
+maps the application's hardware interfaces — but Phase 6's strategy choice and
+Phase 7's builder rules will still need it.
+
+The first thing this phase found was a hole in the analysis itself. A raw binary
+import gives Ghidra no reason to treat a vector-table word as a code reference,
+so every handler that nothing calls was left undisassembled and absent from the
+function list. Reachability out of the vector table therefore came back empty for
+all 80 entry-image functions. `FalchionSeedVectors.java` now creates functions at
+handler addresses read from each release's *own* table, and both releases were
+seeded so the two sides stay comparable. The analysed function set grew from 80
+to 97 per entry image and from 293 to 530 per application.
+
+With that in place the map is substantive. The table is 73 slots at `0x0..0x124`,
+16 ARMv7-M core vectors plus 57 external interrupts, bounded by the default
+handler `0x14df` with the first code at `0x140`. All six fault vectors plus
+SVCall, PendSV and SysTick are populated. Eight external interrupts carry
+non-default handlers: IRQ3 in the entry image and seven in the application, so
+the entry image owns the table while the application owns most of the handlers.
+
+The written values say more than the addresses do. Software enables exactly IRQ6
+and IRQ38 through the NVIC enable registers, and those are two of the slots the
+table populates — two independent parts of the image agreeing. NMI writes AIRCR
+with VECTKEY and SYSRESETREQ, so it requests a system reset. SysTick writes ICSR
+PENDSVSET and the application writes it fourteen more times, which with a
+populated PendSV vector is the shape of a preemptive scheduler. HardFault reads
+CFSR, MMFAR and BFAR rather than merely hanging. Two identical unnamed blocks
+take a `0x5afa` magic key on the reset path. A reset-path register is programmed
+with record slot 1's flash address. And the unnamed block at `0x40100000` is the
+one IRQ6 serves, touched from both the handler and the initialiser the entry
+image calls.
+
+What the phase refuses to do is name anything. Without a SNC73270 reference
+manual, four of the plan's seven areas — USB, GPIO and scan, Hall-effect and ADC,
+RGB — plus the nonvolatile write path are reported not-covered rather than
+guessed at. The exit gate is still answered: the dependency map says, by stated
+rule, that the ARM core blocks and the reset-path vendor blocks must be replaced,
+that `0x45000000` and `0x40100000` cannot be judged until their services are
+identified, and that reading the flash window is not a platform service.
+
+Two honesty items. The register list is a lower bound, since an access is
+reported only where constant propagation resolved its base register. And
+FINDINGS' record of Candidate B's entry at `0x1800023a` is not corroborated by
+any literal in either release's Candidate A; the only non-vector cross-image code
+pointers are `0x18016e69` and `0x18016f2d`. That contradiction is recorded, not
+resolved.
+
+Seeding also forced Phase 3 to be regenerated, and doing so exposed a real flaw
+in it: data spans were paired by list index, guarded only by both sides having
+equal span counts. With the larger function set the counts still matched while
+the k-th spans described different regions, so the pairing drifted silently.
+Spans are now keyed by the matched function that precedes them and compared only
+when the anchor key, the distance past that anchor and the length all agree.
+Regenerated, Candidate A is 97/97 with nothing unmatched, zero differing
+function-body bytes and exactly log 96's 131 data bytes with every span pairing
+cleanly; Candidate B is 530/530 with nothing unmatched, still shifted `+0x2c`,
+with an aligned change of 1,073 bytes against 101,112 raw — though 20 spans could
+not be paired safely, making that a lower bound. That also corrects logs 98 and
+99: record slot 1's 44 bytes of growth are distributed across function bodies and
+several spans, not the single insertion those logs reported. The earlier reading
+was an artifact of the shallower function set.
+
+337 offline tests pass, both evidence hashes are unchanged, the pre-existing
+Ghidra project was not opened, and no device was accessed. Phase 4 remains undone
+and Phase 6 was not started; the work was left uncommitted.
+
+## 2026-09-03 — Step 6 Phase 4: boot-acceptance checks resolved (log 101)
+
+Run after Phase 5, at the owner's direction. The two unknowns that had been
+carried in every report's UNRESOLVED list since log 84 are now closed, and
+neither turned out to be what the framing implied.
+
+The bootloader was read out of the installed dump's mirrored copy rather than the
+vendor file, so the analysed bytes are ones log 100 proved are on the device —
+and the slice hashes to `c244aef0…`, the same value the existing project's
+`bootloader_primary.bin` carries. Two provenances, one byte range.
+
+`FUN_000029d4` is a **recovery key-combination poll**. It settles the scan for a
+hundred ticks, then polls up to a hundred more, and returns 1 — blocking the
+boot — once the RAM buffer at `0x18012ac8` has shown `+0x0 == 0xa0` and
+`+0x10 == 0x100` for thirty consecutive samples. It is not an integrity check at
+all, so a custom image has nothing to satisfy there.
+
+The top-level comparison was simply an unread literal. `DAT_00007f98` is
+`0x60011000`, so the SN_FWIN `+0x10` entry pointer must equal that constant
+exactly and the entry image cannot be relocated. That is the hardest builder rule
+recovered so far, and it came out of one word in the literal pool.
+
+Reading the orchestrator carefully also turned up a gate nobody had named.
+`FUN_00002a44` reads `0x20000ffc`, compares it with `0x73207320` — the bytes
+`" s s"` — and clears the word when it matches. A one-shot, software-requested
+bootloader-entry flag, which lines up with the reset-only entry report from logs
+87 and 88: the application sets the magic and resets, and the bootloader then
+stays in its updater.
+
+The biggest surprise was the handoff. It is not a branch. `FUN_00007fa8` parks
+the entry in `VTOR + 0x1c`, and then a fifty-byte routine the bootloader
+scatter-loads to RAM `0x18010000` masks interrupts, copies a fixed 64 KiB from
+the entry address to **address 0**, writes AIRCR with VECTKEY and SYSRESETREQ,
+and spins until the reset lands. The application runs from address zero after
+that reset. Three things that had been inference are now fact: Candidate A is
+linked at 0 because it really runs there; the record's `+0xc` word is not a load
+destination, since the destination is a constant in the call and the verifier
+never reads `+0xc`; and the `0xff` fill up to `0x21000` is inside the copied
+window because the copy length is fixed regardless of the record length.
+
+The search the plan asked for came back empty in a useful way. There is no
+cryptographic constant anywhere in the bootloader — only the reflected CRC-32 and
+CRC-16 polynomials the recovered CRC engine already explains — no version,
+signature, key, authentication or rollback string, no device-ID gate, and no
+configuration-dependent gate. The accept expression is four gates and nothing
+else.
+
+Two checks were proven well enough to add: the entry pointer must equal the
+bootloader constant, and the fixed handoff window must lie inside the application
+region. Both are now enforced in `falchion_image.validate` and
+`analyze_boot_structures.known_boot_checks`, whose check counts move to 20 and 14
+and supersede log 92's. The two boot-gate items left every UNRESOLVED list.
+
+What is still open is narrower than before: what makes address 0 writable, which
+physical keys produce the recovery pattern, and anything in a ROM or first stage
+ahead of this bootloader. And because two of the four gates are environmental,
+satisfying every image rule is necessary rather than sufficient — it means the
+bootloader will copy the image to address 0 and reset into it, not that the image
+then works.
+
+373 offline tests pass, both evidence hashes are unchanged, the pre-existing
+Ghidra project was not opened, and no device was accessed. Phase 6 was not
+started and the work was left uncommitted.
+
+## 2026-09-04 — Phase 4 and Phase 5 corrections after review (log 102)
+
+Independent review raised three blockers and seven further findings against the
+two phases. All ten are fixed; logs 100 and 101 stay as published.
+
+The worst was that Phase 4's verdict did not execute the rules it reported. The
+analyzer parsed the image and checked the layout constants, then computed
+`acceptance_ok` from those alone — it never verified the record checksums, the
+application word-sum, the entry SP or the container chain. Flipping one
+application byte left the verdict True while Phase 1 validation failed. Every
+`falchion_image.validate` check is now folded in, taking the count from 8 to 28,
+and the verdict is renamed `image_rules_ok` with an explicit meaning line,
+because two of the four gates are environmental and cannot be judged from an
+image at all.
+
+The second blocker was a misread instruction. `FUN_00007fa8` is `ldr r1,[ptr];
+ldr r1,[r1]; str r0,[r1,#0x1c]` — it dereferences VTOR *before* adding the
+offset, so the entry lands at `*(VTOR) + 0x1c`, slot 7 of whatever table VTOR
+points at. Log 101's concrete `0xe000ed24` was wrong, and worse, that address is
+SCB SHCSR. The destination is now recorded symbolically, since its value depends
+on VTOR at runtime rather than on the image.
+
+The third was an invented rule. Phase 5 truncated the vector table at the last
+slot holding the repeated fill value, but ARMv7-M vector tables have no
+terminator. Bounded instead by the first code address, the table is 80 slots at
+`0x0..0x140` — 16 core plus 64 external, ending exactly where code begins — and
+that recovers `IRQ63` at offset `0x13c`, holding `0x00000ad1`, a Thumb pointer to
+the callerless function at `0x00000ad0`. Nine external interrupts are live, not
+eight, and the extra root feeds reachability.
+
+Seven smaller findings followed. The Phase 4 negatives claimed "None exist" when
+a constant-and-string search cannot prove an absence; each now states what was
+searched and how far it reaches. Phase 5 is declared a first pass rather than a
+completed phase, with its exit gate only partly met — it classifies address
+spaces and the gate asks about services. Classification moved from 1 MiB block
+bases to individual addresses, so an unidentified space is `unknown` rather than
+`vendor-mmio`, a block with several kinds says `mixed`, and the single access at
+`0x18037224`, past the proven runtime end of `0x18036168`, is no longer called
+RAM. The recovery threshold is 31 consecutive samples, not 30: the counter starts
+at zero and `cmp r5,#0x1e` is tested before the increment. The handoff-window
+check compared two constants against two constants and could never fail, so it
+was replaced with the image-dependent form. Every register row now carries a
+confidence, the basis for its kind, and initialisation values kept separate from
+the aggregate of everything ever stored. And `uncovered_spans_aligned`, which
+meant only "the two counts are equal" while 19 of Candidate B's spans could not
+be paired, is replaced by `uncovered_span_counts_equal` and
+`uncovered_spans_fully_compared`.
+
+Both Phase 4 resolutions survive: the recovery poll and the `0x60011000` entry
+constant, along with the third gate, the word-sum base and the copy-then-reset
+handoff. So do Phase 5's ARM-core findings. 382 offline tests pass, both evidence
+hashes are unchanged, and no device was accessed.
+
+## 2026-09-04 — Round-two corrections and Phase 5A (logs 103, 104)
+
+Five items were still open from the previous review. The worst was structural:
+`report_phase4.py` carried its prose as a static block, so the earlier
+corrections had reached the tool output embedded in the note but not the text
+around it. It still said thirty samples, "None exist", `VTOR + 0x1c`, and stated
+flatly that the application runs from address zero. All four are fixed, and the
+last one matters most: the copy and the reset are observed, but what executes
+afterwards depends on an address-0 alias nobody has identified, so that is now
+written as an inference with the two things the handoff *does* settle kept
+separate from the one it only supports.
+
+The 64 KiB entry-record fit is no longer called a bootloader requirement. No
+branch tests it — a longer record would simply have its tail left uncopied — so
+it is a builder policy, prefixed `policy:` in both analyzers. Reset-path
+language became reset-*reachable* throughout, because reaching a function from
+the Reset vector in a call graph is not proof it runs during initialisation. The
+80-slot vector table is labelled strongly inferred, with its two corroborating
+facts and the absence of any exact IRQ-count source stated inline. And log 102's
+two commands that died with `SyntaxError` while their NOTEs asserted results they
+never produced are re-run correctly in log 103; log 102 stays as published.
+
+Then Phase 5A. Ghidra cannot follow a call through a pointer table, which is the
+whole reason only 51 of 530 application functions had a context — and every later
+subphase inherits that, since a function with no context cannot be placed in a
+task or an interrupt. The new detector reports a candidate only as part of a run
+of at least three Thumb pointers at a constant stride targeting an even address
+at or above the image's first code address. That floor is load-bearing: the first
+cut lacked it and dutifully reported targets like `0x00000004`.
+
+Five tables came out. The entry image has an eight-element array of 16-byte
+structures whose slots all carry the same handler `0x00000a0c`, plus a
+three-element 24-byte array with three distinct handlers. The application has
+dispatch arrays of 26, 6 and 12 pointers. Two facts make them evidence rather
+than coincidence: 25 of the 44 application entries were already known functions,
+and the vendor tables sit at exactly `-0x2c` from the installed ones, the
+relocation Phase 3 measured by an unrelated method.
+
+Seeding the 22 new targets in both releases took the function counts to 101 and
+573, symmetrically. Table entries are now reachability roots in their own right,
+since entry through a table is a mechanism the call graph cannot see, and
+**application reachability rose from 51 to 138 of 573** with contexts that name
+which table a function is entered from.
+
+It did not close. 435 functions are still unreached and flash-resident tables are
+exhausted, so what remains is a RAM-installed callback, a table inside the
+decompressed region Phase 3 mapped but never reconstructed, or computed dispatch.
+Reconstructing that region is the named next step and is testable offline.
+
+Two other things were recorded. The SNC7320-series product brief is now a
+series-level reference, owner-supplied and deliberately not fetched so that every
+log's "no network access" assertion stays true; it may raise a prior but may not
+assign a register identity. And the dual-core question got a real answer: one core
+runs everything on the recovered path, because the bootloader copies and resets
+rather than launching anything and Candidate A scatter-loads Candidate B into the
+same vector table. The genuine second-core candidate is the RAM image at flash
+`0x74000..0x7c000` with its own vector table and reset vector, reachable from no
+record and no scatter region — and neither analysed image touches `0x18038000`,
+so nothing that would start it has been found. Hypothesis with a named blocker,
+not a finding.
+
+Phase 5 is **not complete** and is not declared so. 5B through 5G are not
+started. 406 offline tests pass, both evidence hashes are unchanged, and no
+device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
@@ -1250,6 +1501,16 @@ The investigation deliberately records mistakes and superseded interpretations:
 | “No USB bootloader” | Narrowed to no DFU/bootloader interface in normal mode |
 | `CandidateB_Entry` label | Corrected to evidence-bounded `CandidateB_Start_Function`; runtime base later resolved separately |
 | Raw `51 21` byte hit | Identified as an instruction constant, not a command table |
+| "None exist" for the Phase 4 negatives | Restated as scoped search results; a constant-and-string search cannot prove an absence (logs 102, 103) |
+| Application "runs from address zero" | Observed: a copy and a reset. What executes after depends on an unidentified address-0 alias, so it is an inference (log 103) |
+| 64 KiB entry-record fit called proven | No branch tests it; a longer record is truncated. It is a builder policy (log 103) |
+| "reset-path writes" | Renamed reset-*reachable*: call-graph reachability is not proof of execution during init (log 103) |
+| Vector table truncated at a fill value | ARMv7-M tables have no terminator; bounded by the first code address the table is 80 slots and `IRQ63` is live (log 102) |
+| Handoff destination `0xe000ed24` | `FUN_00007fa8` dereferences VTOR first, so the entry goes to `*(VTOR) + 0x1c`; `0xe000ed24` is SCB SHCSR (log 102) |
+| Recovery threshold of 30 samples | The counter is tested before it increments, so the return happens on the 31st match (log 102) |
+| Phase 4 `acceptance_ok` | Did not execute the integrity rules it reported; renamed `image_rules_ok` and now folds in every validation check (log 102) |
+| Unidentified spaces called `vendor-mmio` | Classified per address now; an unidentified space stays `unknown` (log 102) |
+| Boot gates framed as incomplete unknowns | `FUN_000029d4` is a recovery key-combination poll and the top-level comparison is against the constant `0x60011000`; a third gate `FUN_00002a44` was also recovered (log 101) |
 | SN_FWIN record-table “zero terminator” | `FUN_0000511c` scans a fixed eight slots and gates only on a nonzero length; slot 2 is an inactive hole, not a terminator (log 95) |
 | First binary-pointer search | Shell escaping was malformed; log 50 was regenerated byte-safely |
 | Generic STM32 recipes | Removed; not valid evidence for SNC73270 |

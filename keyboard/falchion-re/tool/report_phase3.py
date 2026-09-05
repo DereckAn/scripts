@@ -213,7 +213,11 @@ def correspondence_markdown(reports):
     report_a, report_b = reports["a"], reports["b"]
     body_a, data_a, total_a = totals(report_a)
     body_b, data_b, total_b = totals(report_b)
-    gap = report_b.unaligned_gaps[0]
+    gaps = report_b.unaligned_gaps
+    gap_delta = sum(gap.installed_length - gap.vendor_length for gap in gaps)
+    size_delta = sum(match.installed.size - match.vendor.size
+                     for match in report_b.matches
+                     if match.vendor is not None and match.installed is not None)
     lines = [
         "# Vendor 1.00.58 to installed 1.59 function correspondence",
         "",
@@ -261,35 +265,66 @@ def correspondence_markdown(reports):
         "change is:",
         "",
         "| program | function-body bytes | data-span bytes | aligned total | "
-        "raw total (log 96) |",
-        "|---|---|---|---|---|",
+        "spans compared | raw total (log 96) |",
+        "|---|---|---|---|---|---|",
         f"| Candidate A | {body_a} | {data_a} | **{total_a}** | "
+        f"{report_a.spans_compared}/{report_a.span_counts[0]} | "
         f"{RAW_DIFFERING_BYTES['a']:,} |",
         f"| Candidate B | {body_b} | {data_b} | **{total_b}** | "
+        f"{report_b.spans_compared}/{report_b.span_counts[0]} | "
         f"{RAW_DIFFERING_BYTES['b']:,} |",
         "",
-        "Candidate A did not move, so its aligned total matches log 96 exactly, and",
-        "every one of those bytes turns out to be data rather than instructions.",
-        "Candidate B is shifted by `0x2c` after one insertion point, so almost all",
-        "of its raw differing bytes are the relocation, not a change in content.",
+        "Candidate A did not move, every one of its spans compares cleanly, its",
+        "aligned total matches log 96 exactly, and every changed byte turns out to",
+        "be data rather than an instruction. Candidate B is relocated by `0x2c`, so",
+        "almost all of its raw differing bytes are the relocation rather than a",
+        f"change in content — but {report_b.span_counts[0] - report_b.spans_compared} "
+        "of its spans could not be paired safely, so its aligned",
+        "total is a **lower bound**, not a complete count.",
         "",
-        "## The insertion site",
+        "## Where record slot 1's 44 bytes of growth sit",
         "",
-        "Exactly one paired span in Candidate B has different lengths on the two",
-        "sides:",
+        "The growth is **distributed, not a single insertion**. Under the "
+        "vector-seeded",
+        "analysis the accounting is:",
         "",
-        f"- vendor `0x{gap.vendor_lo:08x}..0x{gap.vendor_hi:08x}` "
-        f"(`0x{gap.vendor_length:x}` bytes)",
-        f"- installed `0x{gap.installed_lo:08x}..0x{gap.installed_hi:08x}` "
-        f"(`0x{gap.installed_length:x}` bytes)",
-        f"- difference: **+{gap.installed_length - gap.vendor_length} bytes**",
+        f"- matched function bodies grow by **{size_delta} bytes** in total "
+        f"across {sum(1 for m in report_b.matches if m.vendor and m.installed and m.installed.size != m.vendor.size)} pairings;",
+        f"- the spans no function body covers contribute a net "
+        f"**{gap_delta:+d} bytes** across {len(gaps)} spans whose two sides "
+        f"differ in length;",
+        f"- record slot 1 grew by 44 bytes overall "
+        f"(`0x1e754` to `0x1e780`).",
         "",
-        "That is the whole of record slot 1's growth, and it lands in a span that no",
-        "function body covers. The tool reports the span as unaligned and does not",
-        "compare its bytes, because comparing across an insertion boundary would",
-        "manufacture differences.",
+        "Those figures do not sum exactly to 44: a pairing whose two bodies have",
+        "different range shapes is not byte-compared, and function extents can",
+        "overlap, so the two accountings are not a partition of the image. The 44",
+        "is the reliable total; the split is indicative.",
         "",
-        "No claim is made here about *what* those 44 bytes are.",
+        "**This corrects logs 98 and 99**, which reported the growth as one 44-byte",
+        "insertion in a single data gap at vendor `0x180047f8`. That was an artifact",
+        "of the shallower function set: before the vector handlers were seeded, a",
+        "large unanalysed region read as one uncovered span. With 530 functions per",
+        "side instead of 293 the same bytes resolve into code and several smaller",
+        "spans.",
+        "",
+        "No claim is made here about *what* the added bytes are.",
+        "",
+        "### Spans that could not be compared",
+        "",
+        "| vendor | installed | vendor length | installed length |",
+        "|---|---|---|---|",
+    ] + [
+        f"| `0x{gap.vendor_lo:08x}..0x{gap.vendor_hi:08x}` | "
+        f"`0x{gap.installed_lo:08x}..0x{gap.installed_hi:08x}` | "
+        f"`0x{gap.vendor_length:x}` | `0x{gap.installed_length:x}` |"
+        for gap in gaps
+    ] + [
+        "",
+        "A span is compared only when its anchor key, its distance past that",
+        "anchor and its length all agree on both sides. Anything else is listed",
+        "here and left uncompared, so no byte is ever diffed against the wrong",
+        "region.",
         "",
         "## Complete mapping",
         "",
