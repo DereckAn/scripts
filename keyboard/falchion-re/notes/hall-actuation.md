@@ -15,7 +15,7 @@ key id 0x00 or 0xd3  -> skipped before any comparison
 
 | stage | status |
 |---|---|
-| acquisition | unresolved |
+| acquisition | observed — the second execution context (log 119) |
 | calibration | unresolved |
 | filtering | unresolved |
 | position_travel | unresolved — the bytes are already scaled |
@@ -37,7 +37,8 @@ key id 0x00 or 0xd3  -> skipped before any comparison
 | the setting is clamped: below 2 -> 0, 2..4 -> value-2, 5 or more -> 3 | observed | listing |
 | a second branch reports travel/5 with the key id rather than a binary state | strongly-inferred | decompiler |
 | the comparison runs on the every-eighth-tick branch of IRQ38's prescaler | strongly-inferred | xref |
-| the producer of the travel bytes is NOT RECOVERED | unresolved | xref |
+| the producer of the travel bytes IS RECOVERED — it is the second execution context, writing through a pointer the application hands it in a mailbox record | observed | listing |
+| recovering the producer does NOT make it reproducible | unresolved | xref |
 | no MMIO block in either image has an ADC shape | observed | xref |
 | no calibration table, baseline/min/max array or filter is recovered | unresolved | decompiler |
 | no raw-to-travel conversion, sensor polarity, voltage bound, noise margin or physical distance is claimed | unresolved | decompiler |
@@ -70,7 +71,8 @@ NOT ESTABLISHED and not establishable from static code: sensor polarity, voltage
 - PASS — every finding carries a confidence from the closed set
 - PASS — every finding says what it was verified against
 - PASS — the threshold and geometry claims are listing-verified
-- PASS — acquisition, calibration and physical units stay unresolved
+- PASS — calibration and physical units stay unresolved
+- PASS — recovering the acquisition did not make it reproducible
 - PASS — no physical interpretation is recorded
 - PASS — the model authorises no hardware action
 - PASS — a travel byte at the threshold actuates

@@ -139,10 +139,17 @@
       "verified_against": "xref"
     },
     {
-      "confidence": "unresolved",
+      "confidence": "observed",
       "key": "acquisition",
-      "kind_basis": "the buffer address 0x180344f4 appears in no aligned word of any image and in no register; it is reached only by dereferencing the pointer cell at 0x1801ed6c, and no traced function writes the bytes from a hardware register",
-      "statement": "the producer of the travel bytes is NOT RECOVERED",
+      "kind_basis": "log 119 traced the whole path: FUN_1803a6c4 in the 0x18038000 image stores travel bytes with `strb.w rX,[pointer,#0x35c]`, where the pointer is *(0x1801ed6c) delivered in record field +4 of opcode 0x0d. This SUPERSEDES the earlier finding that no traced function writes the bytes, which was correct for the two analysed images and could not see the third",
+      "statement": "the producer of the travel bytes IS RECOVERED \u2014 it is the second execution context, writing through a pointer the application hands it in a mailbox record",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "unresolved",
+      "key": "acquisition_not_reproducible",
+      "kind_basis": "the converter's registers are unnamed, its input and output carry no units, and the per-key reference and scale values the normalisation subtracts and multiplies by are written by something not yet traced. A replacement consumes the contract; it cannot reimplement the acquisition",
+      "statement": "recovering the producer does NOT make it reproducible",
       "verified_against": "xref"
     },
     {
@@ -172,7 +179,7 @@
     "recovered": null
   },
   "pipeline": {
-    "acquisition": "unresolved",
+    "acquisition": "observed \u2014 the second execution context (log 119)",
     "calibration": "unresolved",
     "comparison": "observed",
     "filtering": "unresolved",

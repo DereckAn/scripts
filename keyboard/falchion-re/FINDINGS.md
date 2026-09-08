@@ -2310,6 +2310,145 @@ different name" is an expectation, not a result. The installed adapter's
 primary-bootloader word-sum stays unavailable, and every boot-structure
 unresolved item from log 101 rides along in the manifests.
 
+### The second execution context: what it owns (log 118)
+
+The `0x18038000` image is imported and analysed. Log 113 found what *starts* it
+and recorded what it *owns* as unresolved; that boundary is now drawn rather
+than guessed. This is Path-B evidence-gate work — it changes no decision.
+
+**The image did not change between releases.** Across flash `0x74000..0x7bfff`
+the two releases differ in exactly **four bytes**, and all four are the
+application region's additive word-sum at logical `0x7bffc`, which merely falls
+inside the range. The code is identical, and the image's real extent ends at
+`0x7bffb` — the last word is a container field, not part of the image.
+
+**It is a service payload, not an application.** Its reset handler reads VTOR,
+loads SP from it, runs one init function and falls into an endless loop. No
+scheduler, no task table, no USB, no storage. Its 73-entry vector table has 57
+external slots, 56 of which share one default handler; exactly one external
+interrupt, **IRQ3**, has its own.
+
+**The handshake is one field of a ring buffer, and both halves are recovered.**
+
+| address | role | owner |
+|---|---|---|
+| `0x20000000` | head index | the client |
+| `0x20000004` | tail index | the second context |
+| `0x20000008` | 8 records of `0x2c` bytes | shared |
+
+The server at `0x1803af90` writes `0x12345678` to the head word **once**, as a
+server-is-up signal, before that word becomes the head index — which is why the
+application waits for it and then writes zero. It dispatches record byte 0
+through a 16-entry `tbb` table, 10 opcodes implemented. The client is
+entry-image `0x1b7c`, inside the `0x1854..0x20be` block Ghidra had never
+disassembled. **A doorbell paired with a matching poll in a different image** is
+exactly the shape `notes/dual-core-question.md` previously recorded as missing.
+
+**Three MMIO windows are its alone.** A set difference against the application's
+and entry image's own census: `0x40040000` (98 accesses, all from one init
+function), `0x40018000` and `0x4001c000` appear in its census and in neither of
+theirs.
+
+**A real converter loop exists**, 240 iterations of write-16-bits, strobe,
+read-16-bits-back over `0x40018000` / `0x4001b000` / `0x40019000`. The register
+addresses are **fixed** — the index varies the data, not the address — so this
+is a muxed converter interface and *not* a per-channel bank. `0x40022000` is
+**not** used as a bank here: one register, one bit-15 clear.
+
+**The Hall gate is narrowed, not closed**, and both halves matter:
+
+| | |
+|---|---|
+| pointer+`0x35c` | 150 bytes, the travel array — **not touched** |
+| pointer+`0x3f2` | 150 bytes, the adjacent array — `memset` to `0xff` at init |
+| pointer+`0x72c` | five interleaved groups of `uint16` — **read** by opcode `0x0f` |
+
+A per-channel converter loop is now recovered, which no image had before. It
+does not fill the travel array: its results terminate in an in-image array whose
+address is referenced from three literal-pool slots, all internal. The log-110
+aligned-word search, **re-run including this image**, still finds `0x18034850`
+in no aligned word anywhere. A test forbids the phrases "gate falls", "gate is
+closed" and "producer is recovered", with a companion so it cannot pass
+vacuously.
+
+**A scope correction to log 114.** This image writes `0x5afa0000` to `+0` and
+re-arms `0x5afa55aa` at `+0xc` of **both** watchdog blocks — log 114's
+reset-path disable idiom. Log 114 said block `0x40009000` is touched once in the
+"whole firmware"; that was scoped to the two analysed images. The
+must-neutralize classification is strengthened, not changed.
+
+**Still unresolved.** Concurrency is not shown — two contexts and a ring buffer
+are established, two cores running at once are not, and the client *spins*,
+which a coroutine on one core would also do. 484 of 837 accesses have an
+unresolved base, so every negative is a "not resolved". Function bodies cover
+`0x3570` of `0x7ffc` bytes. No peripheral is named.
+
+### The Hall acquisition gate is closed (log 119)
+
+Both sides of the mailbox are traced, and **per-key sample data crosses**. The
+producer that Phase 5D could not find is the second execution context, and the
+path from a hardware conversion to the actuation comparison is now complete.
+
+**How the application hands over its own memory.** `FUN_18000136`, called from
+`CandidateB_Main` at boot, sends opcode `0x0d` with record field `+4` set to
+`*(0x1801ed6c)` = `0x180344f4` — the base of the structure that *contains* the
+travel array. The second context saves it and can then write any offset of it,
+so delivery never needs a response record.
+
+| offset | writer | direction |
+|---|---|---|
+| `+0x1e4` | client `0x1acc`, opcode `0x0b` | app → second |
+| `+0x27a` | client `0x1a36`, opcode `0x07` | app → second |
+| `+0x2c6` | `FUN_1803a6c4`, 75 uint16 | second → app |
+| `+0x35c` | `FUN_1803a6c4`, 75 bytes — **the travel array**, `0x18034850` | second → app |
+| `+0x3f2` | `FUN_1803901c`, 75 uint16 raw samples | second → app |
+| `+0x72c` | client `0x1b7c`, opcode `0x0f` | app → second |
+
+Log 118 could only say the init `memset` landed on "the array immediately after
+the travel array". That array is now identified: `+0x3f2` is the **raw sample
+array**, and `0xffff` is the sentinel the normaliser tests for.
+
+**The pipeline**, every link cited: a 240-iteration write-strobe-readback
+converter loop → an in-image staging array with a two-field XOR validity check →
+24 unrolled stores of raw samples into `pointer+0x3f2` → normalisation, where
+`(reference[key] − sample) × 1279 × scale[key] >> 21` is clamped at `0x4ff` and
+indexed into a byte table → 75 travel bytes written to `pointer+0x35c` →
+`FUN_18004a7e`'s `travel >= 100`.
+
+**The table identifies itself on three independent properties.** It is exactly
+**1280 bytes**, which is the clamp bound plus one; it is **monotonic
+non-decreasing**; and its range is **0..200**, exactly twice log 110's actuation
+threshold. Log 110 recovered `travel >= 100` without knowing the scale — the
+scale is 0..200, with actuation at the midpoint.
+
+**The cadence.** Log 109's every-tick `/8` job calls veneer `0x4044`, whose
+target `0x180049a4` — four bytes Ghidra never disassembled — is `b.w 0x1801be22`,
+the sample client's veneer. So the samples are fetched **immediately before**
+veneer `0x4062` runs the actuation comparison, in the same job. IRQ38 divided by
+8, observed. **The absolute rate is still unresolved**; a ratio is not a
+frequency, and a test forbids wording that turns one into the other.
+
+**Why it was never found, and why log 110 was not wrong.** The producer is in
+neither analysed image, and the buffer's address is stored in *no* image because
+the second context receives it at run time in a mailbox record. Log 110's
+negative still holds today, including for the second-context image.
+
+**What this does not mean.** The gate is satisfied by **inheriting vendor code**.
+A replacement application does not implement the acquisition; it hands over a
+pointer and consumes what appears. On Path B's own measure this converts an
+unknown into a dependency, and the ADR now carries a check that says so. The
+service moves from `unresolved` to **must-neutralize**, not to must-implement.
+
+**A long-standing orphan is explained.** `FUN_18008c16` — among log 106's
+largest callerless functions and explicitly left unexplained by log 109 — is the
+caller of the sample requester. What calls *it* is still not recovered.
+
+**Superseded, not deleted.** Four checks that asserted the acquisition was
+unresolved are replaced by checks that keep their real job: calibration and
+physical units stay unresolved, the acquisition is recorded as **recovered but
+not reproducible**, the service is never omittable, and a resolved service may
+carry an evidence boundary only to name a surviving residue.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

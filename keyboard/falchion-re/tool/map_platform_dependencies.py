@@ -271,14 +271,65 @@ FINDINGS = (
             "ram18038000+0x4 is 0x180381c1",
             "bytes"),
     Finding("second_context_ownership", "multicore",
-            "what the second context OWNS is not established",
+            "the second context owns a converter interface and one MMIO "
+            "block; whether it owns the Hall ACQUISITION is still not "
+            "established",
             "unresolved",
-            "the start is recovered and the handshake is recovered, but no "
-            "evidence assigns USB, the Hall acquisition or storage to it. It "
-            "is a strong candidate for the Phase 5D acquisition boundary "
-            "precisely because that producer was never found in either "
-            "analysed image — but a candidate is not a finding",
+            "log 118 imported and analysed the image, so the boundary is now "
+            "drawn instead of guessed. RESOLVED: it is a 16-opcode command "
+            "server on an 8-slot ring at 0x20000008; it owns 0x40040000, "
+            "0x40018000 and 0x4001c000, which the application and entry image "
+            "never touch; it runs a 240-iteration write-strobe-readback loop "
+            "over 0x40018000/0x40019000/0x4001b000. STILL UNRESOLVED: that "
+            "loop's results terminate in an in-image array, its only write "
+            "into application RAM is a 150-byte memset at pointer+0x3f2 — the "
+            "150 bytes immediately AFTER the travel array at pointer+0x35c, "
+            "not the array — and the travel array's address still appears in "
+            "no aligned word of any image including this one. So it remains a "
+            "candidate owner of the acquisition, and a candidate is not a "
+            "finding",
             "xref"),
+    Finding("second_context_command_server", "multicore",
+            "the handshake is one field of a ring buffer, and both halves of "
+            "the protocol are recovered",
+            "observed",
+            "0x20000000 is the head index and 0x20000004 the tail; records are "
+            "eight slots of 0x2c bytes at 0x20000008. The server at "
+            "0x1803af90 writes the token to the head word once as a "
+            "server-is-up signal, then spins while head == tail and dispatches "
+            "record byte 0 through a 16-entry tbb table. The client at "
+            "entry-image 0x1b7c fills a record, advances the head modulo 8 and "
+            "spins until the tail catches up",
+            "listing"),
+    Finding("second_context_exclusive_mmio", "multicore",
+            "three MMIO windows belong to the second context alone",
+            "observed",
+            "a set difference of its FalchionPeripheralMap census against the "
+            "application's and the entry image's own census: 0x40040000 (98 "
+            "accesses, all from one init function), 0x40018000 and 0x4001c000 "
+            "appear in its census and in neither of theirs. 484 of its "
+            "accesses have an unresolved base, so this bounds what it is shown "
+            "to touch and not what it can touch",
+            "xref"),
+    Finding("second_context_disables_both_watchdogs", "multicore",
+            "the second context runs the same reset-path watchdog disable on "
+            "both blocks",
+            "observed",
+            "its init function writes 0x5afa0000 to 0x40008000+0 and "
+            "0x40009000+0 and re-arms the key 0x5afa55aa at +0xc of each — the "
+            "exact idiom log 114 step 5 recorded for entry-image FUN_00001216. "
+            "Log 114's sentence that block 0x40009000 is touched once in the "
+            "whole firmware was scoped to the two analysed images",
+            "xref"),
+    Finding("second_image_identical_across_releases", "multicore",
+            "the second-context image is byte-identical in 1.00.58 and 1.59",
+            "observed",
+            "over flash 0x74000..0x7bfff the two releases differ in exactly "
+            "four bytes, and all four are the application region's additive "
+            "word-sum field at logical 0x7bffc, which falls inside the range. "
+            "The code did not change between releases, and the image's real "
+            "extent ends at 0x7bffb",
+            "bytes"),
     Finding("no_rom_service_identified", "multicore",
             "no ROM call was identified",
             "unresolved",
@@ -340,22 +391,30 @@ SERVICES = (
              "log 109 step 4: the prescaler ladder"),
             "observed"),
     Service("hall_acquisition", "per-key Hall sample acquisition",
-            "unresolved",
-            "THE LARGEST BLOCKER. Phase 5D recovered the comparison that turns "
-            "a travel byte into a key bit, but not the producer of those "
-            "bytes. Without it a prototype has no input at all, so this is a "
-            "blocker and not an omission.",
-            ("log 110 step 4: the travel buffer's address appears in no "
-             "aligned word of any image",
-             "log 110 step 3: every 0x40000000 access is 32-bit; no converter "
-             "shape exists in either census"),
-            "unresolved",
-            evidence_boundary="no function in either analysed image writes the "
-            "per-key travel array from a hardware register, and the buffer is "
-            "reachable only by dereferencing a pointer cell that something "
-            "fills at runtime. The producer is outside the analysed set. The "
-            "second execution context at 0x18038000 is a CANDIDATE owner and "
-            "is not evidence."),
+            "must-neutralize",
+            "RECOVERED IN LOG 119, AND NOT REPRODUCIBLE. The producer is the "
+            "second execution context, and the whole path is now traced: a "
+            "240-iteration converter loop, delivery of 75 uint16 samples into "
+            "application RAM at pointer+0x3f2, normalisation against per-key "
+            "reference and scale values, a 1280-entry travel curve, and 75 "
+            "travel bytes written straight into the array at pointer+0x35c. A "
+            "replacement application does NOT implement this: it hands the "
+            "second context a pointer and consumes what appears. That is why "
+            "the class is must-neutralize rather than must-implement — the "
+            "obligation is to reproduce the mailbox contract, not the "
+            "acquisition.",
+            ("log 119: the end-to-end path, every link cited",
+             "log 119: the travel curve's length equals the clamp bound, it is "
+             "monotonic, and its maximum is twice the actuation threshold",
+             "log 110 step 4: why it was never found — the buffer's address is "
+             "in no image because it arrives at run time in a mailbox record"),
+            "observed",
+            evidence_boundary="the CONTRACT is recovered; the SILICON is not. "
+            "The converter's registers are unnamed, its input and output carry "
+            "no units, and the per-key reference and scale values the "
+            "normalisation uses are written by something not yet traced. A "
+            "replacement can satisfy the mailbox side; it cannot reimplement "
+            "the acquisition, and nothing here says it could."),
     Service("key_state", "key-state generation from travel bytes",
             "must-implement",
             "the comparison, the hold band and the bitmap update are recovered "
@@ -524,6 +583,22 @@ def to_dict():
             "start_register": START_REGISTER,
             "start_routine_entry_image": START_ROUTINE,
             "token_offset_in_second_image": HANDSHAKE_TOKEN_IN_IMAGE,
+            # Recovered in log 118 by importing and analysing the image.
+            "ring_head": 0x20000000,
+            "ring_tail": 0x20000004,
+            "ring_records": 0x20000008,
+            "ring_depth": 8,
+            "ring_record_size": 0x2C,
+            "opcode_count": 16,
+            "client_entry_image": 0x1B7C,
+            "server_second_image": 0x1803AF90,
+            "exclusive_windows": [0x40040000, 0x40018000, 0x4001C000],
+            "converter_strobe": 0x4001B000,
+            "converter_data_out": 0x40018000,
+            "converter_data_in": 0x40019000,
+            "converter_iterations": 0xF0,
+            "app_ram_memset_offset": 0x3F2,
+            "travel_array_offset": 0x35C,
         },
         "prototype": {
             "blockers": [
@@ -543,7 +618,10 @@ def to_dict():
                                    "reset clears both, the /8 tick feeds "
                                    "0x40008000, and NMI acknowledges it and "
                                    "resets after one strike (log 114)",
-                "Hall acquisition": "BLOCKED — the producer is not recovered",
+                "Hall acquisition": "SATISFIED BY THE SECOND CONTEXT — the "
+                                    "producer is recovered (log 119); a "
+                                    "replacement consumes it rather than "
+                                    "reimplementing it",
                 "key-state generation": "recovered and executable",
                 "USB keyboard-IN": "recovered end to end",
             },
@@ -628,10 +706,20 @@ def verify():
           all(service.classification != "may-omit"
               for service in SERVICES if not service.safe_idle_proven),
           "RGB is the case this rule exists for")
-    check("the Hall acquisition is recorded as a blocker, not an omission",
+    # Was: "the Hall acquisition is recorded as a blocker, not an omission".
+    # Log 119 recovered the producer end to end, so the blocker check would
+    # now be asserting something false. It is REPLACED, not deleted: the
+    # service must still never be may-omit, and it must still name the
+    # boundary that survives (the contract is recovered, the silicon is not).
+    check("the Hall acquisition is never recorded as omittable",
           next(service for service in SERVICES
                if service.key == "hall_acquisition").classification
-          == "unresolved")
+          in ("unresolved", "must-implement", "must-neutralize"))
+    check("the Hall acquisition still names an evidence boundary after "
+          "log 119 closed the gate",
+          len(next(service for service in SERVICES
+                   if service.key == "hall_acquisition").evidence_boundary) > 60,
+          "the contract is recovered; the silicon is not")
     check("the gate reads the five upstream models rather than restating them",
           len(payload["upstream_models"]) == len(UPSTREAM_MODELS),
           ", ".join(payload["upstream_models"]))
@@ -739,8 +827,8 @@ def report_lines():
         "LIMITATION No reset-reachable write is called an initialisation "
         "requirement here solely because of graph reachability: each "
         "must-implement service names a consumer that fails without it.",
-        "LIMITATION Three services are UNRESOLVED. That is a blocking state, "
-        "not permission to omit them.",
+        f"LIMITATION {len(blockers())} services are UNRESOLVED. That is a "
+        "blocking state, not permission to omit them.",
     ]
     return out
 

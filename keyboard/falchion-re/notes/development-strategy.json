@@ -53,12 +53,12 @@
   "phase_b_gates": [
     {
       "evidence": [
-        "log 110 step 4: the buffer's address appears in no aligned word of any image and is reached only through a runtime-filled pointer",
-        "log 113: classified unresolved, a blocker rather than an omission"
+        "log 119: the end-to-end path with every link cited, and a test that reopens the gate if any link is broken",
+        "log 110 step 4: why it was never found \u2014 the buffer's address is in no image because it arrives at run time in a mailbox record"
       ],
       "key": "hall_acquisition",
       "name": "the Hall acquisition boundary",
-      "what_would_satisfy_it": "A recovered producer for the per-key travel bytes: some function, in some image, that fills that array from hardware. Until then a replacement application cannot read a keypress at all, so it cannot be a keyboard. THIS IS THE LARGEST GATE."
+      "what_would_satisfy_it": "SATISFIED by log 119, and it was THE LARGEST GATE. The producer is the second execution context: a 240-iteration converter loop, delivery of 75 raw samples into application RAM, normalisation against per-key reference and scale values, a 1280-entry travel curve, and 75 travel bytes written straight into the array the actuation comparison reads \u2014 on IRQ38 divided by 8, immediately before that comparison. WHAT THIS CHANGES FOR PATH B IS NARROWER THAN IT LOOKS: a replacement application does not implement the acquisition, it hands the second context a pointer and consumes what appears. So the gate is satisfied by INHERITING vendor code, which is precisely what Path B exists to avoid. The converter's registers are still unnamed and its values still carry no units."
     },
     {
       "evidence": [

@@ -30,13 +30,27 @@ class GateRules(unittest.TestCase):
                 self.assertGreater(len(service.evidence_boundary), 60,
                                    service.key)
 
-    def test_a_resolved_service_needs_no_boundary(self):
-        """The boundary field is for what is missing, not decoration."""
+    def test_a_resolved_service_carries_a_boundary_only_to_name_a_residue(self):
+        """The boundary field is for what is missing, not decoration.
+
+        REFINED by log 119 rather than dropped. The original rule was that
+        only an unresolved service may carry a boundary. That broke when the
+        Hall acquisition became resolved while a real residual limit survived
+        — the contract is recovered, the silicon is not — and deleting the
+        boundary to satisfy the rule would have thrown away the caveat that
+        matters most. So the rule now allows a boundary on a resolved
+        service, but keeps its teeth: at most one may do so, and its text
+        must be substantive, so boundaries cannot be sprinkled as hedging.
+        """
         resolved = [s for s in pd.SERVICES
                     if s.classification != "unresolved"]
         self.assertTrue(resolved)
-        for service in resolved:
-            self.assertEqual(service.evidence_boundary, "", service.key)
+        with_boundary = [s for s in resolved if s.evidence_boundary]
+        self.assertLessEqual(len(with_boundary), 1,
+                             [s.key for s in with_boundary])
+        for service in with_boundary:
+            self.assertEqual(service.key, "hall_acquisition")
+            self.assertGreater(len(service.evidence_boundary), 60)
 
     def test_may_omit_requires_a_proven_safe_idle_state(self):
         for service in pd.SERVICES:
@@ -56,10 +70,21 @@ class GateRules(unittest.TestCase):
         self.assertFalse(rgb.safe_idle_proven)
         self.assertIn("polarity", rgb.evidence_boundary)
 
-    def test_the_hall_acquisition_is_a_blocker(self):
+    def test_the_hall_acquisition_is_recovered_but_not_reproducible(self):
+        """SUPERSEDED by log 119, and kept rather than deleted.
+
+        This asserted the acquisition was a blocker. Log 119 recovered the
+        producer end to end, so the old assertion is now false. What must
+        still hold is the part that protects a replacement: the service is
+        never omittable, and it still names the boundary that survived —
+        the contract is recovered, the silicon is not.
+        """
         hall, = [s for s in pd.SERVICES if s.key == "hall_acquisition"]
-        self.assertEqual(hall.classification, "unresolved")
-        self.assertIn("BLOCKER", hall.rationale.upper())
+        self.assertNotEqual(hall.classification, "may-omit")
+        self.assertEqual(hall.classification, "must-neutralize")
+        self.assertIn("NOT REPRODUCIBLE", hall.rationale.upper())
+        self.assertGreater(len(hall.evidence_boundary), 60)
+        self.assertIn("silicon", hall.evidence_boundary.lower())
 
     def test_every_service_cites_evidence(self):
         for service in pd.SERVICES:
@@ -213,9 +238,12 @@ class Prototype(unittest.TestCase):
         self.assertEqual(len(payload["minimum_from_the_plan"]),
                          len(payload["status"]))
 
-    def test_the_hall_requirement_is_reported_blocked(self):
+    def test_the_hall_requirement_is_no_longer_reported_blocked(self):
+        """Superseded by log 119; the status must name what satisfies it."""
         status = pd.to_dict()["prototype"]["status"]
-        self.assertIn("BLOCKED", status["Hall acquisition"])
+        self.assertNotIn("BLOCKED", status["Hall acquisition"])
+        self.assertIn("SECOND CONTEXT", status["Hall acquisition"].upper())
+        self.assertIn("log 119", status["Hall acquisition"])
 
     def test_the_clock_requirement_reports_its_gap(self):
         status = pd.to_dict()["prototype"]["status"]
@@ -254,10 +282,14 @@ class Upstream(unittest.TestCase):
         self.assertEqual(rgb.classification, "unresolved")
 
     def test_the_gate_agrees_with_the_upstream_hall_model(self):
+        """The gate and the model must move together, or one is stale."""
         upstream = pd.load_upstream()["hall-actuation.json"]
-        self.assertEqual(upstream["pipeline"]["acquisition"], "unresolved")
+        self.assertIn("observed", upstream["pipeline"]["acquisition"])
+        self.assertIn("log 119", upstream["pipeline"]["acquisition"])
         hall, = [s for s in pd.SERVICES if s.key == "hall_acquisition"]
-        self.assertEqual(hall.classification, "unresolved")
+        self.assertEqual(hall.classification, "must-neutralize")
+        # Calibration did NOT move, and the gate must not pretend it did.
+        self.assertEqual(upstream["pipeline"]["calibration"], "unresolved")
 
     def test_the_gate_agrees_with_the_upstream_persistence_model(self):
         upstream = pd.load_upstream()["nonvolatile-writes.json"]

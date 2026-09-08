@@ -2097,6 +2097,149 @@ structure. Without those, a validator that only ever passes would prove nothing.
 759 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-08 — The second execution context, imported and analysed (log 118)
+
+One step, against Path B's first two evidence gates. Not a step-6 phase: it
+changes no decision and authorises nothing live. Nothing committed or staged.
+
+Log 113 found what starts the `0x18038000` image and left what it *owns*
+unresolved. It is imported now, and the boundary is drawn instead of guessed.
+
+The first thing the import produced was a correction. The installed dump covers
+the same flash range, so the two releases can be compared directly, and they
+differ in four bytes — all four the application's word-sum field, which merely
+falls inside the range. The image is byte-identical across releases and its real
+extent ends four bytes earlier than the range does. That reads as maintained
+firmware that needed no change, not as a stale factory leftover.
+
+The image is a service payload: reset reads VTOR, runs one init function, and
+falls into an endless loop. No scheduler, no USB, no storage. One external
+interrupt of fifty-seven has its own handler.
+
+The interesting work was the mailbox. The shared word log 113 found turns out to
+be one field of a ring buffer — head, tail, eight records of forty-four bytes —
+and the token is written once as a server-is-up signal before that same word
+starts being used as the head index, which is why the application waits on it
+and then writes zero. The client side was hiding in an 0x86a-byte block of the
+entry image that Ghidra had never disassembled because nothing reaches it, the
+same block that holds the start routine log 113 had to validate by hand. Two
+independently written halves that agree on the ring depth, the record size and
+the field layout. That is a doorbell paired with a matching poll in a *different*
+image, which is precisely the shape the dual-core note recorded as missing.
+
+Then the part I had to be careful about. This image was the leading candidate
+owner of the Hall acquisition, and it does contain a real converter loop — 240
+iterations of write, strobe, read back. That is a producer of exactly the kind
+Path B's largest gate asks for, and no image had one before. It would have been
+easy, and wrong, to write that the gate falls.
+
+It does not. The loop's results terminate in an in-image array. The one write
+this image makes into application RAM is a 150-byte memset at pointer+0x3f2 —
+and the travel array is 150 bytes at pointer+0x35c, so 0x35c plus 0x96 is 0x3f2
+and the memset covers the array immediately *after* the travel array, not the
+travel array. The log-110 aligned-word search, re-run with this image included
+for the first time, still finds the travel array's address nowhere. So the gate
+is narrowed, not closed, and a unit test now refuses the phrases that would say
+otherwise, with a companion test so the refusal cannot pass vacuously.
+
+Two smaller corrections came out of it. Log 114 said one watchdog block is
+touched exactly once in the whole firmware; that was scoped to the two analysed
+images, and this one disables both blocks on its own init path — which
+strengthens the must-neutralize reading rather than disturbing it. And a first
+seeding run reported success with exit 0 while creating nothing, because zsh
+does not word-split an unquoted variable and all twelve arguments arrived as
+one. Recorded because it looked like it had worked.
+
+The dependency map gains four findings and rewrites one. Ownership stays
+`unresolved` and the test forbidding its promotion still passes, but its basis
+now splits what is resolved from what is not instead of restating the question.
+The classification is unchanged: six must-implement, three must-neutralize, five
+may-omit, three unresolved.
+
+793 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — Both sides of the mailbox, and the Hall gate closes (log 119)
+
+One step, against Path B's first evidence gate. Not a step-6 phase: it changes
+no decision. Nothing committed or staged.
+
+Log 118 left one question open — whether per-key sample data crosses the
+mailbox. It does, and tracing it closed the largest gate in the investigation.
+
+The clients were the way in. Six functions in the entry image's unanalysed
+block share a critical-section bracket and an identical record discipline: take
+the head, write an opcode, advance modulo eight, spin until the tail catches up.
+There is no status field; the tail index *is* the completion signal. None of the
+six has an aligned-word reference anywhere, which is why they had never been
+found — they are reached through veneers that encode the address in `movw`
+immediates, exactly like the start routine log 113 had to validate by hand. I
+encoded the instruction and searched for it rather than decoding every halfword
+pair, because a wrong encoding finds nothing while a wrong decoder invents
+plausible addresses, and I checked the branch decoder against a target Ghidra
+had resolved itself.
+
+Then the pointer. `FUN_18000136`, called from main at boot, sends opcode `0x0d`
+with record field +4 set to the *dereferenced* travel pointer cell. The
+application hands the second context the base of the very structure that holds
+the travel array. Everything else follows: the second context does not need to
+send anything back, it just writes the fields.
+
+And it does. Twenty-four stores put raw samples at `pointer+0x3f2` — the array
+log 118 could only describe as "immediately after the travel array" — and three
+stores put travel bytes at `pointer+0x35c`, which is `0x18034850` exactly. In
+between sits the normalisation: subtract a per-key reference, scale, shift,
+clamp at `0x4ff`, index a byte table.
+
+The table is what convinced me. It is exactly 1280 bytes — the clamp bound plus
+one — monotonic non-decreasing, and it tops out at 200. Log 110 recovered
+`travel >= 100` a long time ago without knowing what scale that threshold lived
+on. It is the midpoint. Three independent properties agreeing is not a
+coincidence I am willing to argue against.
+
+The cadence fell out of log 109's own chain. Veneer `0x4044`'s target is four
+bytes Ghidra never disassembled; they are a `b.w` straight into the sample
+client's veneer. So the fetch runs immediately before the actuation comparison,
+in the same `/8` job, in the order log 109 already listed. The absolute rate is
+still unknown and a test now forbids any wording that would quietly turn the
+ratio into a frequency.
+
+Log 110 was never wrong. Its negative — the buffer address appears in no aligned
+word of any image — is still true today, including for the second-context image.
+The address is in no image because it arrives at run time in a mailbox record.
+That was a complete and correct answer to the question it could ask.
+
+I was careful about what closing the gate means, because the temptation is to
+read it as progress. It is satisfied by *inheriting vendor code*. A replacement
+hands over a pointer and consumes what appears; it cannot reimplement a
+converter whose registers are unnamed and whose values carry no units. So the
+service moves to must-neutralize rather than must-implement, and the ADR gained
+a check requiring it to say the gate is satisfied by inheritance.
+
+Log 118's anti-promotion guard had to change shape rather than survive intact.
+It banned the words "gate is closed" outright, which was right when the path was
+incomplete and would be the wrong instrument now. It is replaced by a live one:
+the status is computed from eight backing facts, and four tests break one fact
+each and require the conclusion to reopen. A conclusion that cannot be falsified
+by breaking its own evidence is not a conclusion.
+
+Four checks elsewhere asserted the acquisition was unresolved. They were correct
+for the images they could see and are now false, so they were replaced rather
+than deleted, each keeping the job it was actually doing — calibration and
+physical units stay unresolved, and the acquisition is recorded as recovered but
+*not reproducible*. One rule was refined rather than dropped: "a resolved
+service needs no boundary" broke because the Hall service became resolved while
+a real residual limit survived, and deleting the boundary to satisfy the rule
+would have discarded the caveat that matters most.
+
+Regenerating the entry image's inventory also exposed an asymmetry I had created
+in log 118 by seeding one release and not the other. The fix was symmetry, not
+suppression: the same prologues are byte-identical in the vendor image, so they
+were seeded there too, and Phase 3's pairings rose from 114 to 144.
+
+828 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

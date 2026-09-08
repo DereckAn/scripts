@@ -21,7 +21,7 @@ ranges rather than `entry..entry+size`.
 
 | program | vendor | installed | identical | structural | tentative | unmatched | discontiguous bodies | shift |
 |---|---|---|---|---|---|---|---|---|
-| Candidate A | 114 | 114 | 102 | 2 | 10 | 0 | 19/19 | `0x0` |
+| Candidate A | 144 | 144 | 129 | 5 | 10 | 0 | 26/26 | `0x0` |
 | Candidate B | 616 | 616 | 531 | 56 | 29 | 0 | 110/110 | `0x2c` |
 
 Both programs have the same function count in both releases and nothing
@@ -35,7 +35,7 @@ change is:
 
 | program | function-body bytes | data-span bytes | aligned total | spans compared | raw total (log 96) |
 |---|---|---|---|---|---|
-| Candidate A | 5 | 126 | **131** | 85/85 | 131 |
+| Candidate A | 9 | 122 | **131** | 95/95 | 131 |
 | Candidate B | 378 | 695 | **1073** | 256/274 | 101,112 |
 
 Candidate A did not move, every one of its spans compares cleanly, its
@@ -104,7 +104,7 @@ differ in bytes, or that one side has no counterpart. `ranges` is the
 number of address ranges in the body, so anything above 1 is a
 discontiguous body.
 
-### Candidate A — 114 pairings
+### Candidate A — 144 pairings
 
 | vendor | installed | confidence | moved | changed | size | ranges | differing bytes |
 |---|---|---|---|---|---|---|---|
@@ -129,6 +129,7 @@ discontiguous body.
 | `0x00000654` | `0x00000654` | identical | no | no | `0x30` | 1 | 0 |
 | `0x00000684` | `0x00000684` | identical | no | no | `0x10` | 1 | 0 |
 | `0x00000694` | `0x00000694` | identical | no | no | `0x1c` | 1 | 0 |
+| `0x000006b0` | `0x000006b0` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x0000075c` | `0x0000075c` | identical | no | no | `0x3a` | 1 | 0 |
 | `0x00000796` | `0x00000796` | tentative | no | no | `0x2` | 1 | 0 |
 | `0x000007d4` | `0x000007d4` | identical | no | no | `0x2a` | 1 | 0 |
@@ -167,19 +168,48 @@ discontiguous body.
 | `0x00001540` | `0x00001540` | identical | no | no | `0x20` | 1 | 0 |
 | `0x00001560` | `0x00001560` | identical | no | no | `0x38` | 1 | 0 |
 | `0x0000165c` | `0x0000165c` | identical | no | no | `0x30` | 1 | 0 |
+| `0x00001786` | `0x00001786` | identical | no | no | `0x38` | 1 | 0 |
+| `0x000017be` | `0x000017be` | identical | no | no | `0x22` | 1 | 0 |
 | `0x000017e0` | `0x000017e0` | identical | no | no | `0x28` | 1 | 0 |
 | `0x00001808` | `0x00001808` | identical | no | no | `0x4c` | 1 | 0 |
+| `0x0000188c` | `0x0000188c` | structural | no | yes | `0x1e` | 2 | 2 |
+| `0x000018a0` | `0x000018a0` | structural | no | yes | `0x18` | 2 | 1 |
+| `0x000018ae` | `0x000018ae` | identical | no | no | `0x4a` | 1 | 0 |
+| `0x000018f8` | `0x000018f8` | structural | no | yes | `0x42` | 2 | 1 |
+| `0x000019d4` | `0x000019d4` | identical | no | no | `0x62` | 1 | 0 |
+| `0x00001a36` | `0x00001a36` | identical | no | no | `0x52` | 1 | 0 |
+| `0x00001a88` | `0x00001a88` | identical | no | no | `0x44` | 1 | 0 |
+| `0x00001acc` | `0x00001acc` | identical | no | no | `0x6c` | 1 | 0 |
+| `0x00001b38` | `0x00001b38` | identical | no | no | `0x44` | 1 | 0 |
+| `0x00001b7c` | `0x00001b7c` | identical | no | no | `0x50` | 1 | 0 |
+| `0x00001be0` | `0x00001be0` | identical | no | no | `0x4c` | 1 | 0 |
+| `0x00001c40` | `0x00001c40` | identical | no | no | `0x14` | 1 | 0 |
+| `0x00001c54` | `0x00001c54` | identical | no | no | `0x14` | 1 | 0 |
+| `0x00001ca0` | `0x00001ca0` | identical | no | no | `0x6` | 1 | 0 |
+| `0x00001ca6` | `0x00001ca6` | identical | no | no | `0x32` | 1 | 0 |
+| `0x00001cd8` | `0x00001cd8` | identical | no | no | `0x30` | 1 | 0 |
+| `0x00001d08` | `0x00001d08` | identical | no | no | `0x1b2` | 2 | 0 |
+| `0x00001ebc` | `0x00001ebc` | identical | no | no | `0x64` | 2 | 0 |
+| `0x00001f28` | `0x00001f28` | identical | no | no | `0x18` | 1 | 0 |
+| `0x00001f50` | `0x00001f50` | identical | no | no | `0x82` | 1 | 0 |
+| `0x00002052` | `0x00002052` | identical | no | no | `0x38` | 2 | 0 |
+| `0x00002070` | `0x00002070` | identical | no | no | `0x20` | 1 | 0 |
+| `0x00002090` | `0x00002090` | identical | no | no | `0x1c` | 1 | 0 |
+| `0x000020ac` | `0x000020ac` | identical | no | no | `0x12` | 1 | 0 |
 | `0x000020be` | `0x000020be` | identical | no | no | `0x2e` | 1 | 0 |
+| `0x00002130` | `0x00002130` | identical | no | no | `0x18` | 1 | 0 |
 | `0x00002148` | `0x00002148` | identical | no | no | `0x24` | 1 | 0 |
 | `0x0000216c` | `0x0000216c` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x000021b0` | `0x000021b0` | identical | no | no | `0x18` | 1 | 0 |
 | `0x000021c8` | `0x000021c8` | identical | no | no | `0x1a` | 1 | 0 |
 | `0x000021e2` | `0x000021e2` | identical | no | no | `0x18` | 1 | 0 |
+| `0x000021fa` | `0x000021fa` | identical | no | no | `0x4` | 1 | 0 |
 | `0x000021fe` | `0x000021fe` | identical | no | no | `0x14` | 1 | 0 |
 | `0x000024dc` | `0x000024dc` | identical | no | no | `0x30` | 1 | 0 |
 | `0x0000253a` | `0x0000253a` | identical | no | no | `0x2e` | 1 | 0 |
 | `0x0000262a` | `0x0000262a` | identical | no | no | `0x8a` | 1 | 0 |
 | `0x000026b4` | `0x000026b4` | identical | no | no | `0x64` | 1 | 0 |
+| `0x00002718` | `0x00002718` | identical | no | no | `0x9a` | 3 | 0 |
 | `0x000027bc` | `0x000027bc` | identical | no | no | `0x7e` | 2 | 0 |
 | `0x00002842` | `0x00002842` | identical | no | no | `0x2c` | 1 | 0 |
 | `0x0000286e` | `0x0000286e` | identical | no | no | `0x22` | 1 | 0 |
@@ -1443,13 +1473,16 @@ without a counterpart.
 
 ## Changed functions, ranked for review
 
-### Candidate A — 3 changed
+### Candidate A — 6 changed
 
 | vendor | installed | confidence | size | differing bytes |
 |---|---|---|---|---|
 | `0x000040b4` | `0x000040b4` | tentative | `0x8` | 2 |
 | `0x00000516` | `0x00000516` | structural | `0x6e` | 2 |
+| `0x0000188c` | `0x0000188c` | structural | `0x1e` | 2 |
+| `0x000018f8` | `0x000018f8` | structural | `0x42` | 1 |
 | `0x00000580` | `0x00000580` | structural | `0x1e` | 1 |
+| `0x000018a0` | `0x000018a0` | structural | `0x18` | 1 |
 
 ### Candidate B — 58 changed
 
@@ -1524,19 +1557,22 @@ PAIR app_a
 VENDOR_PROGRAM vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
 INSTALLED_PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
 BASE 0x00000000 FLASH_BASE 0x11000
-COUNTS vendor=114 installed=114
-TIERS identical=102 structural=2 tentative=10 unmatched=0
-CHANGED 3 of 114 pairings
+COUNTS vendor=144 installed=144
+TIERS identical=129 structural=5 tentative=10 unmatched=0
+CHANGED 6 of 144 pairings
 MOVED 0
-DATA_REGIONS 103 bytes=126 unaligned_gaps=0
-DISCONTIGUOUS_BODIES vendor=19 installed=19 of 114/114 — body bytes and gaps come from the real ranges, not entry..entry+size
-UNCOVERED_SPANS vendor=85 installed=85 compared=85 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
+DATA_REGIONS 100 bytes=122 unaligned_gaps=0
+DISCONTIGUOUS_BODIES vendor=26 installed=26 of 144/144 — body bytes and gaps come from the real ranges, not entry..entry+size
+UNCOVERED_SPANS vendor=95 installed=95 compared=95 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
 DOMINANT_SHIFT 0x0 (+0 bytes), measured from the identical and structural matches only
-REVIEW_RANKING showing 3 of 3
+REVIEW_RANKING showing 6 of 6
   tentative  vendor=0x000040b4 installed=0x000040b4 size=0x8 differing_bytes=2 :: scored 0.905 with a 0.905 lead over the next candidate
   structural vendor=0x00000516 installed=0x00000516 size=0x6e differing_bytes=2 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x0000188c installed=0x0000188c size=0x1e differing_bytes=2 :: same instruction shape with scalars and addresses masked
+  structural vendor=0x000018f8 installed=0x000018f8 size=0x42 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x00000580 installed=0x00000580 size=0x1e differing_bytes=1 :: same instruction shape with scalars and addresses masked
-DATA_RANGES showing 103 of 103; the complete list is in the JSON
+  structural vendor=0x000018a0 installed=0x000018a0 size=0x18 differing_bytes=1 :: same instruction shape with scalars and addresses masked
+DATA_RANGES showing 100 of 100; the complete list is in the JSON
 MUST_NOT_ASSUME_EQUAL 10
   vendor 0x0000057a -> 0x0000057a: tentative match only; the correspondence is not proven
   vendor 0x0000057e -> 0x0000057e: tentative match only; the correspondence is not proven
@@ -1548,7 +1584,7 @@ MUST_NOT_ASSUME_EQUAL 10
   vendor 0x00003704 -> 0x00003704: tentative match only; the correspondence is not proven
   vendor 0x00003884 -> 0x00003884: tentative match only; the correspondence is not proven
   vendor 0x000040b4 -> 0x000040b4: tentative match only; the correspondence is not proven
-RESULT matched=114 unmatched=0
+RESULT matched=144 unmatched=0
 LIMITATION Data regions are the spans no real body range covers, keyed by the matched function that precedes each span rather than by list index, so the pairing survives one side gaining or losing a span. A span with no counterpart key, or a paired span whose sides differ in length, is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary or against the wrong region.
 LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
 LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.

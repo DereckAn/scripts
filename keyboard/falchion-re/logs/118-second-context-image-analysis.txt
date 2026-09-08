@@ -1,0 +1,521 @@
+LOG 118 — THE SECOND EXECUTION CONTEXT: IMPORT AND ANALYSIS
+Date: 2026-09-08
+Scope: ONE step. Path-B evidence-gate work against gates 1 and 2. This is NOT a
+step-6 phase, it changes no decision and it authorises nothing live. Nothing was
+committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary was
+opened for writing and both hashes are unchanged below. No historical log and
+not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE QUESTION. Log 113 step 4 found what STARTS the 0x18038000 image and recorded
+what it OWNS as unresolved. This step imports the image and answers that.
+
+
+================================================================================
+STEP 1 — THE IMPORT, AND A CORRECTION TO THE IMAGE'S EXTENT
+================================================================================
+The slice was verified against the preserved dump before anything else:
+
+  sha256 0c718c523ef24e0794831fce89d41ce77775155cc9c3b91dbbad9da52114cee6
+  ghidra/imports/ram_image_18038000.bin == vendor BIN [0x74000:0x7c000]   True
+
+A CORRECTION THE COMPARISON FORCED. The installed 1.59 dump covers the same
+range, so the two releases can be compared directly. They differ in FOUR bytes:
+
+  differing bytes between the two images: 4 of 0x8000
+  first 0x7ffc  last 0x7fff
+
+Those four bytes are flash 0x7bffc..0x7bfff — the APPLICATION REGION'S ADDITIVE
+WORD-SUM, which simply falls inside this range.
+
+  vendor    word-sum 0x5d27c5a9
+  installed word-sum 0x2d7486db
+
+SO THE SECOND-CONTEXT IMAGE IS BYTE-IDENTICAL IN 1.00.58 AND 1.59, and its real
+extent is 0x74000..0x7bffb, not 0x74000..0x7bfff. Two consequences worth
+stating: the code did not change across a release, which is what maintained
+firmware that needed no change looks like and not what a stale factory leftover
+looks like; and any future integrity work must not treat that last word as part
+of the image.
+
+THE IMPORT, into the ignored ghidra/project-step6. The pre-existing
+falchion-hfx project was NOT opened.
+
+  JAVA_HOME=/usr/lib/jvm/java-21-openjdk XDG_CONFIG_HOME=/tmp/falchion-ghidra-config \
+  XDG_CACHE_HOME=/tmp/falchion-ghidra-cache XDG_DATA_HOME=/tmp/falchion-ghidra-data \
+    ghidra-analyzeHeadless "$PWD/ghidra/project-step6" step6 \
+      -import "$PWD/ghidra/imports/ram_image_18038000.bin" \
+      -processor ARM:LE:32:Cortex -loader BinaryLoader -loader-baseAddr 0x18038000
+  INFO  REPORT: Import succeeded (HeadlessAnalyzer)                    [exit 0]
+
+THE VECTOR TABLE, decoded in full from the bytes rather than sampled. It is 73
+entries, not the 64 a first look suggests: the handler words stop at index 72
+and zeros follow, so reporting 64 would have invented nine slots and reporting
+128 would have invented fifty-five.
+
+  entries 73   external slots 57
+  initial SP 0x1803e458        reset 0x180381c1
+  default handler 0x180381f7 occupies 56 of the 57 external slots
+
+  live handlers, i.e. every slot that is neither zero nor the default:
+    Reset       0x180381c1      NMI         0x180381e9
+    HardFault   0x18038be1      MemManage   0x1803970d
+    BusFault    0x180381eb      UsageFault  0x180381ed
+    SVCall      0x180381ef      DebugMonitor 0x180381f1
+    PendSV      0x180381f3      SysTick     0x18039b7d
+    IRQ3        0x180381d7   <- THE ONLY EXTERNAL INTERRUPT WITH ITS OWN HANDLER
+
+Twelve distinct handlers were seeded and the program re-analysed:
+
+  RESULT created=12 existing=0 skipped=0
+  (a first attempt reported skipped=1 reason=unparseable_address: zsh does not
+   word-split an unquoted variable, so all twelve pairs arrived as one argument.
+   Recorded because the run LOOKED successful — exit 0 — and produced nothing.)
+
+  ghidra-analyzeHeadless ... -process ram_image_18038000.bin
+  INFO  REPORT: Analysis succeeded                                     [exit 0]
+
+THE FUNCTION INVENTORY, in the same format as the other four slices so the
+existing tooling can consume it:
+
+  ghidra-analyzeHeadless ... -process ram_image_18038000.bin -readOnly -noanalysis \
+    -scriptPath "$PWD/ghidra/scripts" -postScript FalchionFunctionInventory.java
+  -> ghidra/inventories/ram18038000.txt
+  RESULT functions=69
+  function bodies cover 0x3570 of 0x7ffc bytes
+
+WHAT THE RESET PATH STARTS. Not an application.
+
+  180381c0  movw r0,#0xed08 / movt r0,#0xe000   ; VTOR
+  180381c8  ldr r0,[r0,#0x0]
+  180381ca  ldr.w sp,[r0,#0x0]                  ; SP from the table
+  180381ce  ldr r0,[0x18038204]                 ; = 0x18039c25
+  180381d0  blx r0                              ; the init function
+  180381d2  ldr r0,[0x18038208]                 ; = 0x18038141
+  180381d4  bx r0                               ; -> 0x18038140
+
+0x18038140 falls through to FUN_180381a0, which makes three calls and then
+enters FUN_1803af90 and never returns. There is no scheduler, no task table, no
+USB code and no storage code. It is a SERVICE PAYLOAD. It does have fault
+handlers with printf-style diagnostics:
+
+  "CPU\sreg:\sSCB->BFAR\s=\s0x%08X,Caused\sby\sopcode\saddress:\s0x%08X"
+
+
+================================================================================
+STEP 2 — THE MMIO CENSUS, AND WHAT IT OWNS
+================================================================================
+Censused exactly as map_hardware_interfaces does for the other slices:
+
+  ghidra-analyzeHeadless ... -postScript FalchionPeripheralMap.java
+  RESULT accesses=353 unresolved=484 functions=69
+
+484 UNRESOLVED AGAINST 353 RESOLVED. Every negative below is bounded by that
+ratio and is written as "not resolved", never as "does not happen".
+
+WINDOWS, at 256-byte granularity, with the application's and entry image's own
+census as the comparison. "OWN" means the window appears in this image's census
+and in NEITHER of theirs.
+
+    OWN    0x00001000    1 accesses (r1/w0)   app=0
+    shared 0x0800ff00    2 accesses (r2/w0)   app=1
+    shared 0x10000000    1 accesses (r1/w0)   app=1
+    shared 0x20000000   37 accesses (r24/w13) app=21
+    shared 0x20000f00    1 accesses (r1/w0)   app=2
+    shared 0x40008000    4 accesses (r0/w4)   app=4
+    shared 0x40009000    4 accesses (r0/w4)   app=4
+    OWN    0x40018000   12 accesses (r3/w9)   app=0
+    shared 0x40019000   10 accesses (r7/w3)   app=7
+    shared 0x4001b000   54 accesses (r3/w51)  app=14
+    OWN    0x4001c000   18 accesses (r9/w9)   app=0
+    shared 0x40022000   11 accesses (r6/w5)   app=41
+    shared 0x4002f000    3 accesses (r0/w3)   app=3
+    OWN    0x40040000   98 accesses (r53/w45) app=0
+    shared 0x45000000   70 accesses (r49/w21) app=78
+    shared 0x45000100    5 accesses (r1/w4)   app=7
+    shared 0x45000300    2 accesses (r1/w1)   app=2
+    shared 0x60000800    4 accesses           app=2
+    OWN    0x60011000    1 accesses (r1/w0)   app=0
+    shared 0xe000e400    2 accesses           app=1
+    shared 0xe000ed00   13 accesses           app=32
+
+  0x40040000 is the strongest ownership claim: 98 accesses, ALL from one init
+  function (0x1803b24c), and the application and entry image never touch it. Its
+  writes are single write-then-read pairs of values like 0x40404040, 0x0f0f0f0f,
+  0x000700f0 and 0xffff00f0 — nibble-per-field configuration words. The block is
+  NOT NAMED.
+
+THE SHAPE QUESTIONS THE PLAN ASKS, answered one at a time and negatives kept.
+
+  AN ADC-SHAPED WINDOW? A trio is present, but not the shape the question
+  describes. FUN_1803ae58 and FUN_1803af28 both run this loop 0xf0 = 240 times:
+
+        1803af46  str r4,[r2,#0x0]           ; r2 = 0x4001b000, r4 = 0x7c   STROBE HIGH
+        1803af52  ldrh.w r3,[r1,r0,lsl #0x1] ; the i'th 16-bit source word
+        1803af56  str r3,[r6,#0x0]           ; r6 = 0x40018000              DATA OUT
+        1803af58  str r5,[r2,#0x0]           ; r5 = 0                       STROBE LOW
+        1803af5a  ldr r3,[r7,#0x0]           ; r7 = 0x40019000              DATA IN
+        1803af5c  strh.w r3,[r12,r0,lsl #0x1]; r12 = 0x1803c828             RESULT[i]
+        1803af62  cmp r0,#0xf0
+
+  That is a control/data trio with a start strobe and a per-index readback — but
+  THE REGISTER ADDRESSES ARE FIXED. The index varies the DATA, not the address.
+  So it is a muxed converter interface and NOT a per-channel register bank, and
+  saying "an ADC bank at a stride" would be wrong.
+
+  THE 0x40022000 PER-CHANNEL BANK? NO. Exactly ONE register in that window is
+  touched, 0x40022000 itself, and the only write idiom is a bit-15 clear:
+
+        1803afd4  ldr r0,[0x1803b220]        ; = 0x40022000
+        1803afd6  ldr r1,[r0,#0x0]
+        1803afd8  bic r1,r1,#0x8000
+        1803afdc  str r1,[r0,#0x0]
+
+  No stride, no channel select. (The application touches that window 41 times;
+  this image does not use it as a bank.)
+
+  DMA DESCRIPTORS? None resolved. No descriptor-shaped structure and no window
+  carrying the source/destination/count triple a DMA engine needs. Bounded by
+  the 484 unresolved accesses.
+
+  THE FLASH/SPI CONTROLLER? Two registers in the flash window, 0x60000880 read
+  and 0x60000884 written with 1, from the fault handler and one other function.
+  NO ERASE AND NO PROGRAM SEQUENCE WAS RECOVERED, and none was looked for.
+
+A CORRECTION TO LOG 114'S SCOPE. This image writes the watchdog magic-key idiom
+to BOTH blocks on its init path:
+
+  0x40008000  write 0x5afa0000    0x4000800c  write 0x5afa55aa
+  0x40009000  write 0x5afa0000    0x4000900c  write 0x5afa55aa
+
+That is exactly log 114 step 5's "reset-path disable: key 0x5afa55aa -> +0xc ;
+0x5afa0000 -> +0". Log 114 wrote that block 0x40009000 "is therefore touched
+exactly once in the WHOLE FIRMWARE". That sentence was scoped to the two
+analysed images; the second context disables both blocks as well. The
+classification is unaffected — it strengthens the must-neutralize reading, since
+the vendor's own second context disables them rather than inheriting them.
+
+
+================================================================================
+STEP 3 — CROSS-CONTEXT REFERENCES, AND THE LOG-110 SEARCH RE-RUN
+================================================================================
+Aligned-word search across the entry image, the application, the bootloader
+mirror, the reconstructed region and — for the first time — this image.
+
+  value        name                        found in
+  0x18034850   travel array                NOWHERE
+  0x180344f4   travel buffer base          region1 +0x9ec
+  0x1801ed6c   travel pointer cell         entry_installed +0x1bd0
+                                           app_installed +0x3dc, +0x4da8, +0x5f48 (9)
+  0x18023410   key-state bitmap            app_installed +0x4db8, +0x5f08, +0x6368
+  0x20000000   mailbox base                app_installed +0x154b8, app_vendor +0x1548c
+  0x20000008   mailbox records             entry +0x1bcc (both releases)
+                                           app +0x3d8, +0x8f54
+                                           second_context +0x321c
+  0x12345678   handshake token             app +0x3f4, second_context +0x3214
+  0x18038000   second-context RAM base     entry +0x2004 (both releases)
+  0x60074000   second-context flash source entry +0x2000, app +0x3f0
+  0x180381c1   its own reset vector        second_context +0x4
+  0x45000100   the start register          bootloader +0x56c8, +0x7da4
+
+THE LOG-110 SEARCH RE-RUN, INCLUDING THIS IMAGE: the travel array address
+0x18034850 STILL APPEARS IN NO ALIGNED WORD OF ANY IMAGE. Log 110's negative
+survives the one image that could have overturned it. A unit test pins this, so
+if the address ever does appear the conclusion must be rewritten rather than
+quietly kept.
+
+A CROSS-CHECK THAT VALIDATES THE POINTER CELL. The entry image's literal pool
+holds 0x1801ed6c in the installed release and 0x1801ed40 in the vendor release —
+a delta of exactly 0x2c, the measured relocation. The cell is the same object in
+both, which is what makes the log-110 identification safe to build on.
+
+THE BRIDGE, and it was hiding in unanalysed code. Entry-image offsets 0x1bcc and
+0x1bd0 are ADJACENT literal-pool words holding the mailbox record array and the
+travel pointer cell. No function covered them: 0x1854..0x20be is an 0x86a-byte
+block Ghidra never disassembled because nothing reaches it — the same block that
+holds the start routine at 0x1f50 log 113 had to validate by hand. Twenty-one
+push prologues in that block were seeded and the entry image re-analysed.
+
+
+================================================================================
+STEP 4 — THE HANDSHAKE FROM THIS SIDE, AND THE MAILBOX PROTOCOL
+================================================================================
+WHAT WRITES THE TOKEN, ON WHAT CONDITION. Unconditionally, as the very first act
+of the service loop:
+
+  1803af90  mov.w r4,#0x20000000
+  1803af94  ldr r0,[0x1803b214]        ; 0x1803b214 = 0x12345678, image +0x3214
+  1803af96  str r0,[r4,#0x0]           ; *(0x20000000) = the token
+  1803af98  bl 0x1803aa1c
+  1803af9c  ldr r1,[0x1803b218]        ; = 0x1803c4b4
+  1803af9e  ldr r6,[0x1803b21c]        ; = 0x20000008
+  1803afa0  str r0,[r1,#0x0]
+  1803afa2  ldr r0,[r4,#0x4]           ; tail
+  1803afa4  ldr r1,[r4,#0x0]           ; head
+  1803afa6  cmp r0,r1
+  1803afa8  beq 0x1803afa2             ; SPIN WHILE EMPTY
+  1803afaa  ldr r0,[r4,#0x4]
+  1803afac  add.w r1,r0,r0, lsl #0x1   ; r0*3
+  1803afb0  add.w r0,r1,r0, lsl #0x3   ; r0*11
+  1803afb4  add.w r5,r6,r0, lsl #0x2   ; r5 = 0x20000008 + index*0x2c
+  1803afb8  ldrb r0,[r5,#0x0]          ; the opcode byte
+  1803afba  cmp r0,#0x10
+  1803afbc  bcs.w 0x1803b1f0           ; >= 0x10 -> clear the record
+  1803afc0  tbb [pc,r0]
+
+There is no condition on the token write. It is a ONE-TIME server-is-up signal
+written to the word that afterwards serves as the head index — which is why the
+application's side (log 113) waits for it and then writes zero.
+
+SO 0x20000000 IS NOT A FLAG. IT IS A RING BUFFER:
+
+  0x20000000   head index, advanced by the client
+  0x20000004   tail index, advanced by this image
+  0x20000008   8 records of 0x2c bytes -> 0x20000008..0x20000167
+  record byte 0   the opcode
+  record word +4  a pointer into application RAM, saved by the init opcode
+
+THE COMMAND SET, decoded from the tbb byte table at 0x1803afc4:
+
+  opcode  target      opcode  target
+  0x00    0x1803b1b0  0x08    0x1803b17e -> FUN_18038970
+  0x01    0x1803b144  0x09    0x1803b1b0
+  0x02    0x1803b12c  0x0a    0x1803b1b0
+  0x03    0x1803b156  0x0b    0x1803b194 -> FUN_18039a64
+  0x04    0x1803b1b0  0x0c    0x1803b1b2 -> FUN_1803901c
+  0x05    0x1803b1b0  0x0d    0x1803afd4    the init/configure handler
+  0x06    0x1803b1b0  0x0e    0x1803b1ac -> FUN_1803a968
+  0x07    0x1803b168  0x0f    0x1803b1aa -> FUN_18038b1c
+
+  10 of 16 implemented; 0x1803b1b0 is the fallback, which zeroes the record.
+
+THE CLIENT, entry-image 0x1b7c, previously undisassembled:
+
+  00001b7c  push {r4,lr}
+  00001b7e  ldr r4,[0x00001bd0]        ; = 0x1801ed6c, the travel pointer cell
+  00001b82  ldr r0,[r4,#0x0]           ; the runtime-filled pointer
+  00001b84  addw r0,r0,#0x72c
+  00001b88  bl 0x0000262a              ; fill pointer+0x72c
+  00001b90  mov.w r0,#0x20000000
+  00001b94  ldr r1,[r0,#0x0]           ; head
+  00001b96  add.w r2,r1,r1, lsl #0x1
+  00001b9a  add.w r1,r2,r1, lsl #0x3   ; head*11
+  00001b9e  ldr r2,[0x00001bcc]        ; = 0x20000008
+  00001ba0  add.w r1,r2,r1, lsl #0x2   ; record address
+  00001ba4  movs r2,#0xf
+  00001ba6  str r1,[r4,#0x4]           ; remember it at 0x1801ed70
+  00001ba8  strb r2,[r1,#0x0]          ; OPCODE 0x0f
+  00001bac  adds r1,r1,#0x1
+  00001bae  cmp r1,#0x8                ; ring modulo 8
+  00001bba  str r1,[r0,#0x0]           ; publish the head
+  00001bbc  ldr r1,[r0,#0x4]
+  00001bbe  ldr r2,[r0,#0x0]
+  00001bc0  cmp r1,r2
+  00001bc2  bne 0x1803bbc              ; wait for the tail to catch up
+
+Two independently written halves that agree on the ring depth, the record size,
+the base and the field layout. That is the doorbell-and-poll pair in DIFFERENT
+images that notes/dual-core-question.md previously recorded as missing.
+
+WHAT OPCODE 0x0f DOES — the decisive handler:
+
+  FUN_18038b1c:
+    N     = *(0x1803c4a4)
+    src   = *(0x1803c4ac)              ; the pointer the init opcode saved
+    for i in 0..N:
+        *(u16*)(0x1803c51c + i*2) = *(u16*)(src + (i      )*2 + 0x72c)
+        *(u16*)(0x1803c53a + i*2) = *(u16*)(src + (i +   N)*2 + 0x72c)
+        *(u16*)(0x1803c558 + i*2) = *(u16*)(src + (i + 2*N)*2 + 0x72c)
+        *(u16*)(0x1803c576 + i*2) = *(u16*)(src + (i + 3*N)*2 + 0x72c)
+        *(u16*)(0x1803c594 + i*2) = *(u16*)(src + (i + 4*N)*2 + 0x72c)
+    FUN_18039eb4(); FUN_1803ae58()     ; then the 240-iteration converter loop
+
+FIVE interleaved groups, and the five destination arrays are 0x1e = 30 bytes
+apart, i.e. 15 uint16 each. FIVE GROUPS OF FIFTEEN is the same shape as the Hall
+model's `for group in range(5)` over 15 positions (log 110 step 6). And +0x72c
+is exactly where the entry-image client wrote. The two sides agree.
+
+HOW THE SERVER LEARNS THE POINTER — from the init opcode's record:
+
+  1803afe4  ldr r7,[0x1803b224]        ; = 0x1803c4ac
+  1803afe6  ldr r0,[r5,#0x4]           ; record word +4
+  1803afe8  str r0,[r7,#0x0]           ; saved
+
+WHAT IT WRITES BACK INTO APPLICATION RAM — one thing, in the init handler:
+
+  1803b0cc  ldr r0,[r7,#0x0]           ; the saved pointer
+  1803b0ce  movs r2,#0xff
+  1803b0d0  movs r1,#0x96
+  1803b0d2  addw r0,r0,#0x3f2
+  1803b0d6  bl 0x18038308
+
+FUN_18038308 is a byte-replicating memset — `and r3,r2,#0xff / orr r2,r3,r3 lsl
+8 / orr r2,r2,r2 lsl 16` — with the signature memset(dst, len, value). So the
+call is memset(pointer + 0x3f2, 0x96, 0xff): 150 bytes set to 0xff.
+
+AND THAT IS THE WHOLE OF ITS WRITE ACCESS TO APPLICATION RAM.
+
+
+================================================================================
+STEP 5 — THE ANSWERS, WITH CONFIDENCE AND BASIS
+================================================================================
+IS THIS A SECOND CORE'S PAYLOAD, AND WHAT DOES THE RESET PATH START?
+  A SERVICE PAYLOAD — a command server, not a full application and not a driver
+  in the usual sense. Confidence OBSERVED, basis listing (step 1).
+
+DOES IT PRODUCE OR TRANSPORT PER-KEY ANALOG READINGS?
+  IT TRANSPORTS AND CONVERTS THEM, AND IT DOES NOT DELIVER THEM BACK.
+  Confidence OBSERVED, basis listing plus census (step 4).
+
+DOES ANYTHING IN IT WRITE THE TRAVEL ARRAY OR THE PER-KEY BITMAP?
+  NO. The single write into application RAM is memset(pointer+0x3f2, 150, 0xff).
+  The travel array is at pointer+0x35c and is 150 bytes, so 0x35c + 0x96 = 0x3f2
+  and the memset covers the 150 bytes IMMEDIATELY AFTER the travel array — the
+  adjacent array, not the array. The key bitmap 0x18023410 is referenced nowhere
+  in this image. Confidence OBSERVED, basis listing and aligned-word search.
+
+WHAT DOES IT OWN THAT THE APPLICATION DOES NOT?
+  0x40040000 outright, plus 0x40018000 and 0x4001c000. Confidence OBSERVED,
+  basis a census set difference (step 2).
+
+WHERE DOES ITS DATA FLOW TERMINATE?
+  IN ITS OWN RAM. The 240 results go to 0x1803c828, whose address is referenced
+  from exactly three literal-pool slots, all inside this image, and read by one
+  further in-image function. Confidence STRONGLY-INFERRED, basis aligned-word
+  search — strongly-inferred and not observed because 484 unresolved accesses
+  mean an unseen write through a runtime pointer cannot be excluded.
+
+DOES THIS SETTLE THE DUAL-CORE QUESTION?
+  THE MECHANISM, YES. THE SILICON, NO. Confidence STRONGLY-INFERRED. Nothing
+  shows the application still executing while this image runs, and the client
+  SPINS, which a coroutine on one core would also do.
+
+
+================================================================================
+STEP 6 — DID THE HALL GATE MOVE?
+================================================================================
+NARROWED, NOT CLOSED. Both halves stated, because collapsing either way would
+be a misreport and this was the most tempting place in the whole investigation
+to overclaim.
+
+WHAT MOVED. A hardware acquisition loop IS now recovered, in this image: 240
+iterations of write-16-bits, strobe, read-16-bits-back, over a fixed register
+trio. Before this step no per-channel converter loop had been found in ANY
+image, and Path B's largest gate asked for exactly that kind of producer.
+
+WHAT DID NOT MOVE. That loop does not fill the travel array. Its results
+terminate in-image, its only application-RAM write is the adjacent array, and
+0x18034850 still appears in no aligned word anywhere.
+
+THE BOUNDARY, MORE PRECISE THAN BEFORE. Log 113 said "no evidence assigns the
+Hall acquisition to it". It is now possible to say where the line runs:
+
+  pointer+0x35c   150 bytes   the travel array          NOT touched by this image
+  pointer+0x3f2   150 bytes   adjacent array            memset to 0xff by opcode 0x0d
+  pointer+0x72c   5*N u16     the app -> server buffer  READ by opcode 0x0f
+
+The second context reads a five-group table out of application RAM, drives a
+converter with it, keeps the results, and initialises one adjacent array. The
+producer of the travel bytes themselves is still unrecovered.
+
+A unit test refuses the phrases "gate falls", "gate is closed", "producer is
+recovered" and "fills the travel array" anywhere in the claims, with a companion
+test so the detector cannot pass vacuously.
+
+
+================================================================================
+STEP 7 — THE TOOL, THE MODEL AND THE TESTS
+================================================================================
+Added tool/map_second_context.py, which builds one data model and emits both
+notes/second-context.json and notes/second-context.md from it, with --json,
+--write and --check. Everything it reports is computed: the vector table's
+extent, the tbb dispatch table, the census set difference and the aligned-word
+searches are decoded from bytes, not transcribed from this log.
+
+$ python3 tool/map_second_context.py
+  RESULT second_context_ok=True checks=29
+
+Added tool/test_map_second_context.py — 34 tests in two groups. The Evidence
+group skips rather than passes when the preserved dumps or the Ghidra census are
+absent, matching test_map_hardware_interfaces.
+
+  FAIL-CLOSED, each demonstrated rather than asserted:
+    a missing source                     -> SecondContextError
+    a wrong source hash                  -> SecondContextError "allowlist"
+    a missing census                     -> SecondContextError
+    a census with no RESULT line         -> SecondContextError "RESULT"
+    bodies() raising                     -> main() returns 1, no traceback
+    a corrupted token word               -> verify() reports a FAILING check
+    a census claiming an app-RAM access  -> verify() reports a FAILING check
+
+  The last two are the anti-vacuity pair: the two checks that carry the most
+  weight in this log are shown to be capable of failing.
+
+THE DEPENDENCY MAP. tool/map_platform_dependencies.py's multicore area gains
+four findings and rewrites one. `second_context_ownership` STAYS "unresolved" —
+the existing test that forbids promoting it still passes — but its basis now
+draws the boundary instead of restating the question, splitting RESOLVED from
+STILL UNRESOLVED explicitly. New: second_context_command_server,
+second_context_exclusive_mmio, second_context_disables_both_watchdogs,
+second_image_identical_across_releases.
+
+  $ python3 tool/map_platform_dependencies.py
+    RESULT gate_ok=True checks=20 blockers=3
+
+The classification is UNCHANGED: 6 must-implement, 3 must-neutralize, 5
+may-omit, 3 unresolved. The Hall acquisition is still a blocker. This step
+sharpened a boundary; it did not move a service between classes.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_second_context.py tool/test_map_second_context.py \
+    tool/map_platform_dependencies.py                                  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 793 tests   OK                                                   [exit 0]
+  (759 before this step; +34 in tool/test_map_second_context.py)
+$ ten existing --check scripts plus the new one   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                    all OK               [exit 0]
+$ git diff --check                                clean                [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - 484 of 837 accesses have an unresolved base. Every negative here is a
+    "not resolved", not a "does not happen".
+  - No peripheral is named. Strobe, data-out and data-in are roles read off an
+    instruction sequence, not identifications.
+  - CONCURRENCY IS NOT SHOWN. Two contexts and a ring buffer are established;
+    two cores running at once are not.
+  - The producer of the travel bytes at pointer+0x35c is still unrecovered.
+  - What the 240-channel conversion physically drives and measures is not
+    established, and the values it writes come from an in-image table by default.
+  - 0x45000100 bit 15 (the start) and 0x40022000 bit 15 (cleared by the init
+    opcode) are the same idiom on two unidentified registers.
+  - Function bodies cover 0x3570 of 0x7ffc bytes. Over half the image is not
+    attributed to a function, and no claim is made about what is there.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - No decision was changed and nothing live was authorised. Path B's gates are
+    not declared passed; one of them is more precisely described.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

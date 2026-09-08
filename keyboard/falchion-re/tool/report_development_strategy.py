@@ -171,13 +171,22 @@ class Gate:
 
 PATH_B_GATES = (
     Gate("hall_acquisition", "the Hall acquisition boundary",
-         "A recovered producer for the per-key travel bytes: some function, in "
-         "some image, that fills that array from hardware. Until then a "
-         "replacement application cannot read a keypress at all, so it cannot "
-         "be a keyboard. THIS IS THE LARGEST GATE.",
-         ("log 110 step 4: the buffer's address appears in no aligned word of "
-          "any image and is reached only through a runtime-filled pointer",
-          "log 113: classified unresolved, a blocker rather than an omission")),
+         "SATISFIED by log 119, and it was THE LARGEST GATE. The producer is "
+         "the second execution context: a 240-iteration converter loop, "
+         "delivery of 75 raw samples into application RAM, normalisation "
+         "against per-key reference and scale values, a 1280-entry travel "
+         "curve, and 75 travel bytes written straight into the array the "
+         "actuation comparison reads — on IRQ38 divided by 8, immediately "
+         "before that comparison. WHAT THIS CHANGES FOR PATH B IS NARROWER "
+         "THAN IT LOOKS: a replacement application does not implement the "
+         "acquisition, it hands the second context a pointer and consumes "
+         "what appears. So the gate is satisfied by INHERITING vendor code, "
+         "which is precisely what Path B exists to avoid. The converter's "
+         "registers are still unnamed and its values still carry no units.",
+         ("log 119: the end-to-end path with every link cited, and a test "
+          "that reopens the gate if any link is broken",
+          "log 110 step 4: why it was never found — the buffer's address is "
+          "in no image because it arrives at run time in a mailbox record")),
     Gate("second_context_ownership", "what the second execution context owns",
          "An analysis of the 0x18038000 image, which is preserved and has "
          "never been imported. It is started at boot and waited for, and it "
@@ -379,6 +388,14 @@ def verify():
           all(len(gate.what_would_satisfy_it) > 80 for gate in PATH_B_GATES))
     check("the Hall acquisition is named the largest gate",
           "LARGEST GATE" in next(
+              gate for gate in PATH_B_GATES
+              if gate.key == "hall_acquisition").what_would_satisfy_it)
+    # Added with log 119: satisfying the gate must not be reported as
+    # progress towards Path B's actual goal, because it is satisfied by
+    # inheriting vendor code rather than by being able to replace it.
+    check("closing the Hall gate is not reported as removing the "
+          "vendor-derived dependency",
+          "INHERITING vendor code" in next(
               gate for gate in PATH_B_GATES
               if gate.key == "hall_acquisition").what_would_satisfy_it)
     check("every target and gate cites at least one log",

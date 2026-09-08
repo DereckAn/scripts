@@ -1,0 +1,417 @@
+LOG 119 — BOTH SIDES OF THE MAILBOX, AND WHERE THE SAMPLES GO
+Date: 2026-09-08
+Scope: ONE step. Path-B evidence-gate work against gate 1. It changes no
+decision and authorises nothing live. Nothing was committed, staged or
+unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary
+was opened for writing and both hashes are unchanged below. No historical log
+and not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE QUESTION. Log 118 recovered the ring buffer and proved the second context
+writes into application RAM through an application-supplied pointer, but could
+not say whether PER-KEY SAMPLE DATA crosses. It does. This log traces both
+sides and the Hall acquisition gate closes.
+
+
+================================================================================
+STEP 1 — THE CLIENT BLOCK, DISASSEMBLED
+================================================================================
+Log 118 seeded 21 push prologues in the entry image's 0x1854..0x20be block.
+Regenerating its inventory shows 24 functions there, six of which share the
+same helper pair (0x1786 / 0x17be, a critical-section bracket) and the same
+shape. Those six are the mailbox clients.
+
+THE RECORD DISCIPLINE, identical in all six and in the application's sender:
+
+    head    = *(0x20000000)
+    record  = 0x20000008 + head * 0x2c        ; head*11 then <<2
+    *(0x1801ed70) = record                    ; the client stashes it
+    record[0] = <opcode>
+    head    = (head + 1 < 8) ? head + 1 : 0   ; ring modulo 8
+    *(0x20000000) = head                      ; RING THE DOORBELL
+    do {} while (*(0x20000004) != *(0x20000000))   ; POLL FOR COMPLETION
+
+So a record is claimed by taking the current head, the doorbell is the head
+store, and completion is the tail catching up. There is no status field: the
+tail index IS the completion signal. RECORD LAYOUT as used: byte 0 opcode,
+word +4 a pointer, word +8 a mode argument. Bytes +0xc..+0x2b are not written
+by any recovered client.
+
+THE OPCODE EACH CLIENT SENDS is read back out of its own instruction bytes by
+the tool rather than transcribed, and checked against the table below:
+
+    0x19d4  ->  0x01, 0x02 or 0x0c   chosen at run time from two region flags
+    0x1a36  ->  0x07                 memcpy(pointer+0x27a, src, len) first
+    0x1a88  ->  0x08                 no payload
+    0x1acc  ->  0x0b                 fills pointer+0x1e4, 5*count packed bytes
+    0x1b38  ->  0x0e                 no payload
+    0x1b7c  ->  0x0f                 memcpy(pointer+0x72c, src, len) first
+
+0x19d4's choice is real branching, not three clients: it sends 0x01 normally,
+0x02 when the byte at 0x1801e845 is 1 (and clears it), and overwrites the
+opcode with 0x0c when the word at 0x1801e810 is not 1.
+
+
+================================================================================
+STEP 2 — EVERY CALL SITE, AND HOW THEY ARE REACHED
+================================================================================
+None of the six has an aligned-word reference anywhere. They are reached the
+way log 113 found the start routine reached: through veneers that encode the
+address in movw/movt IMMEDIATES, which no word search can see.
+
+The tool encodes `movw rD,#(client|1)` and searches, rather than decoding every
+halfword pair — a wrong encoding finds nothing, whereas a wrong decoder invents
+plausible addresses. It is self-tested against log 113's hand-validated bytes
+`41 f6 51 7c` for 0x1f51, recovered before this tool existed.
+
+    client 0x19d4  ->  veneer 0x1801be22        client 0x1a36  ->  0x1801bea4
+    client 0x1a88  ->  veneer 0x1801bec2        client 0x1acc  ->  0x1801be0e
+    client 0x1b38  ->  veneer 0x1801beb8        client 0x1b7c  ->  0x1801beae
+    (start 0x1f50  ->  veneer 0x1801bd96, log 113's, reproduced here)
+
+All six live in the same veneer block as the start routine's. The branch
+decoder that finds their callers is checked against a target Ghidra itself
+resolved — the `bl` at 0x180049b4 — so a decoding error shows up as a mismatch
+rather than as a believable wrong address.
+
+  op   handler              client       call sites
+  0x01 FUN_1803901c         0x19d4       FUN_180047f8, FUN_180049a8,
+  0x02 FUN_1803901c         0x19d4         FUN_18006914, FUN_1800ee72
+  0x0c FUN_1803901c         0x19d4
+  0x03 FUN_180388c8         none found   ---
+  0x07 FUN_18038a4c         0x1a36       FUN_1800ef84, FUN_1800f474
+  0x08 FUN_18038970         0x1a88       FUN_1800f71a
+  0x0b FUN_18039a64         0x1acc       FUN_18001fbe
+  0x0d FUN_1803af90 inline  0x18000136   CandidateB_Main
+  0x0e FUN_1803a968         0x1b38       FUN_1800f474
+  0x0f FUN_18038b1c         0x1b7c       FUN_1800f0e4
+
+13 call sites, 9 of the 10 implemented opcodes accounted for. OPCODE 0x03 HAS A
+HANDLER AND NO RECOVERED CLIENT, and that is left as a gap rather than guessed.
+
+A LONG-STANDING ORPHAN IS EXPLAINED. FUN_180049a8's only caller is
+FUN_18008c16 — the 197-instruction callerless function log 106 listed among its
+largest orphans and log 109 step 5 explicitly left unexplained ("FUN_18008c16
+remains unexplained by this chain"). It is the sample requester's caller. What
+calls FUN_18008c16 is still not recovered.
+
+
+================================================================================
+STEP 3 — THE POINTER: THE APPLICATION SHARES ITS OWN STRUCTURE
+================================================================================
+YES, AND IT IS THE WHOLE MECHANISM.
+
+FUN_18000136, called from CandidateB_Main at boot, sends opcode 0x0d:
+
+    18000138  ldr r2,[0x180003d4]      ; = 0x1801ed70, the stash slot
+    1800013a  mov.w r1,#0x20000000
+    18000156  ldr r4,[0x180003d8]      ; = 0x20000008, the record array
+    1800015c  mov.w r4,#0xd
+    18000162  strb r4,[r3,#0x0]        ; OPCODE 0x0d
+    18000164  ldr r3,[0x180003dc]      ; = 0x1801ed6c, THE POINTER CELL
+    18000168  ldr r3,[r3,#0x0]         ; DEREFERENCE IT
+    1800016a  str r3,[r4,#0x4]         ; record+4 = *(0x1801ed6c)
+    ...       record+8 = 4, 5 or 6     ; the mode the handler switches on
+
+  *(0x1801ed6c) = 0x180344f4, read from the region's initialised image.
+
+So the application hands the second context THE BASE OF ITS OWN STRUCTURE. The
+second context saves it at 0x1803c4ac (log 118 step 4) and can thereafter write
+any offset of it. DELIVERY DOES NOT NEED A RESPONSE RECORD, and the evidence
+shows it does not use one.
+
+THE STRUCTURE, with the writer of each field and the direction:
+
+  +0x1e4   client 0x1acc, opcode 0x0b                   app    -> second
+  +0x27a   client 0x1a36, opcode 0x07                   app    -> second
+  +0x2c6   FUN_1803a6c4, 75 uint16, the clamped raw     second -> app
+  +0x35c   FUN_1803a6c4, 75 bytes  == 0x18034850        second -> app
+             THE TRAVEL ARRAY (log 110 step 4)
+  +0x3f2   FUN_1803901c, 75 uint16 raw samples;         second -> app
+             memset to 0xff by opcode 0x0d
+  +0x72c   client 0x1b7c, opcode 0x0f                   app    -> second
+
+Log 118 recorded the memset at +0x3f2 as landing on "the array immediately
+after the travel array" and could say nothing more. It is now identified: +0x3f2
+is the RAW SAMPLE ARRAY, 75 uint16 = the 150 bytes memset to 0xffff, and 0xffff
+is the sentinel FUN_1803a6c4 tests for. The init opcode marks every sample
+invalid before the first conversion.
+
+
+================================================================================
+STEP 4 — THE SAMPLES: THEY CROSS, BY DIRECT WRITE
+================================================================================
+Scanning the second-context image for wide load/stores using each offset:
+
+  24 x  strh.w rX,[rY,#0x3f2]     all inside FUN_1803901c
+   3 x  strb.w rX,[rY,#0x35c]     all inside FUN_1803a6c4
+
+FUN_1803901c is the handler for opcodes 0x01, 0x02 and 0x0c. Its store base is
+the saved pointer:
+
+    18039096  ldr.w r12,[r4,#0x4]        ; r12 = *(0x1803c4ac) = the app pointer
+    1803909c  ldrh.w r6,[r5,r0,lsl #0x1] ; a staged in-image value
+    180390a0  lsrs r5,r6,#0x8            ; split into two fields
+    180390a8  ldrb.w r9,[r1,r7]          ; a validity table
+    180390b4  eor.w r8,r8,r9             ; XOR check
+    180390b8  cmp r8,r5
+    180390bc  orr.eq.w r5,r7,r6, lsl #0x8   ; accept
+    180390c0  mov.ne r5,r3                  ; else substitute a default
+    180390c2  add.w r6,r12,r0, lsl #0x1
+    180390c6  strh.w r5,[r6,#0x3f2]      ; INTO APPLICATION RAM
+
+FUN_1803901c also calls FUN_1803ae58 (the 240-iteration converter loop),
+FUN_18039710 and FUN_1803a6c4. One handler runs the whole pipeline.
+
+FUN_1803a6c4 is where the travel bytes are produced:
+
+    1803a6d0  ldr.w r0,[r8,#0x0]         ; the app pointer
+    1803a6d8  addw r5,r0,#0x3f2          ; the raw sample array
+    ...
+    1803a812  ldrh.w r3,[r10,r4,lsl #0x1]   ; per-key reference value
+    1803a816  subs r0,r3,r0                 ; delta = reference - sample
+    1803a81e  ldr.w r3,[r3,r4,lsl #0x2]     ; per-key 32-bit scale
+    1803a822  rsb r12,r0,r0, lsl #0x8       ; delta*255
+    1803a826  add.w r0,r12,r0, lsl #0xa     ; + delta*1024  => delta*1279
+    1803a82a  muls r0,r3
+    1803a82c  lsrs r3,r0,#0x15              ; >> 21
+    1803a82e  cmp.w r3,#0x500
+    1803a832  bcc 0x1803a848
+    1803a844  movw r3,#0x4ff               ; CLAMP
+    1803a848  ldr r0,[0x1803a95c]           ; = 0x1803be86, a byte table
+    1803a84e  ldrb r0,[r0,r3]               ; travel = TABLE[clamped]
+    1803a850  strh.w r3,[r2,#0x2c6]         ; keep the clamped raw
+    1803a854  strb.w r0,[r1,#0x35c]         ; THE TRAVEL BYTE
+
+THE TABLE IDENTIFIES ITSELF, on three independent properties that would each
+have to be a coincidence:
+
+  length            1280 bytes = 0x500 = EXACTLY the clamp bound plus one
+  monotonic         non-decreasing across all 1280 entries
+  range             0..200, and 200 is EXACTLY twice log 110's actuation
+                    threshold of 100
+  sampled/64        0 49 74 95 108 119 129 137 145 151 158 162 167 171 175
+                    180 184 188 193 199
+
+A concave travel curve from a normalised analog delta to a 0..200 travel value
+with actuation at the midpoint. Log 110 recovered `travel >= 100` without
+knowing the scale; the scale is 0..200.
+
+The other two stores at +0x35c are the clear paths: 0x1803a72e zeroes 75 travel
+bytes and 75 halfwords at +0x2c6, and 0x1803a7d0 clears one key's entry.
+
+THE PER-KEY BITMAP AT 0x18023410 IS NOT WRITTEN BY THE SECOND CONTEXT. It is
+written by the APPLICATION's FUN_180049a8 — the same function that requests the
+samples. The address appears in no aligned word or immediate of the second
+context. The division is clean: the second context owns travel bytes, the
+application owns key state.
+
+
+================================================================================
+STEP 5 — TIMING: IT RUNS ON THE /8 JOB, JUST BEFORE THE COMPARISON
+================================================================================
+Log 109 step 5 recorded the every-tick job's /8 branch as a run of veneer calls
+and named their targets. Veneer 0x4044's target is 0x180049a5 -> 0x180049a4,
+which Ghidra never disassembled. Its four bytes are `f0 17 ba 3d`:
+
+    180049a4  b.w 0x1801be22
+
+and 0x1801be22 is the veneer for client 0x19d4 — the opcode 0x01/0x02/0x0c
+client. The decoder that produced that target is checked against the `bl` at
+0x180049b4, which Ghidra independently resolved to the same address.
+
+So log 109's chain reads, in order, inside the /8 branch:
+
+    00000500  bl 0x00004058    FUN_180045b6
+    00000504  bl 0x00004044    -> 0x180049a4 -> THE SAMPLE FETCH      <<<
+    00000508  bl 0x00004062    FUN_18004a7e, THE ACTUATION COMPARE    <<<
+    0000050c  bl 0x0000406c    FUN_180057fe
+    00000510  bl 0x00004076    FUN_180061c2, the report builder
+
+THE SAMPLES ARE FETCHED IMMEDIATELY BEFORE THEY ARE COMPARED, in the same job.
+
+  cadence source      IRQ38                        OBSERVED (log 109 step 3)
+  divisor             every 8th tick               OBSERVED (log 109 step 4)
+  ordering            fetch before compare         OBSERVED (this step)
+  absolute rate       ---                          UNRESOLVED
+
+The absolute rate is unchanged and unresolved: the timer that raises IRQ38 is
+still unidentified. A ratio is not a frequency, and a test forbids any wording
+that turns one into the other.
+
+
+================================================================================
+STEP 6 — THE ANSWER, AND THE GATE
+================================================================================
+DOES PER-KEY SAMPLE DATA CROSS? YES. Confidence OBSERVED. Raw 16-bit samples
+cross at pointer+0x3f2 (24 stores) and derived travel bytes cross at
+pointer+0x35c (3 stores).
+
+BY WHICH MECHANISM? DIRECT WRITES through the application-supplied pointer, not
+response records. Confidence OBSERVED.
+
+AT WHAT CADENCE? IRQ38 divided by 8, immediately before the actuation compare.
+Confidence OBSERVED. The absolute rate stays UNRESOLVED.
+
+THE HALL ACQUISITION GATE IS CLOSED. The producer's data path, end to end,
+every link cited:
+
+  1 CONVERSION      FUN_1803ae58/FUN_1803af28, 240 iterations: write a 16-bit
+                    word to 0x40018000, strobe 0x4001b000 with 0x7c then 0,
+                    read 0x40019000, store to in-image 0x1803c828.
+                    [log 118 step 2; this log step 4]
+  2 STAGING         FUN_1803901c reads a derived in-image array at 0x1803c5b2
+                    and validates each entry with a two-field XOR check.
+                    [this log step 4]
+  3 DELIVERY (raw)  FUN_1803901c, 24 sites, strh.w [pointer + key*2, #0x3f2].
+                    [this log steps 3 and 4]
+  4 NORMALISE       FUN_1803a6c4: (reference[key] - sample) * 1279 * scale[key]
+                    >> 21, clamped at 0x4ff, through a 1280-byte monotonic
+                    curve whose maximum is 200.  [this log step 4]
+  5 DELIVERY (travel) strb.w [pointer + key, #0x35c] = 0x18034850, 75 keys.
+                    [this log step 4; log 110 step 4]
+  6 ACTUATION       FUN_18004a7e applies travel >= 100 with a 1..99 hold band.
+                    [log 110 steps 1 and 6]
+  7 CADENCE         veneer 0x4044 -> 0x180049a4 -> the client, immediately
+                    before veneer 0x4062.  [log 109 step 5; this log step 5]
+
+WHY IT WAS NEVER FOUND, and log 110 was not wrong. The producer is in neither
+analysed image, and the buffer's address is stored in NO image because the
+second context receives it at run time in a mailbox record. Log 110's negative
+— "the buffer address appears in no aligned word of any image" — remains true
+today, including for the second-context image. It was a complete and correct
+answer to the question it could ask.
+
+WHAT THIS DOES NOT MEAN, and the ADR now says so. The gate is satisfied by
+INHERITING vendor code. A replacement application does not implement the
+acquisition; it hands the second context a pointer and consumes what appears.
+Path B exists to stop depending on vendor code, and on that measure this is
+not progress — it converts an unknown into a dependency. The converter's
+registers are still unnamed, its values still carry no units, and what writes
+the per-key reference and scale values is still not traced.
+
+
+================================================================================
+STEP 7 — THE TOOL, THE MODEL UPDATES AND THE TESTS
+================================================================================
+Added tool/map_sample_flow.py — one data model, notes/sample-flow.{json,md},
+with --json, --write and --check.
+
+$ python3 tool/map_sample_flow.py
+  RESULT sample_flow_ok=True checks=28
+
+Added tool/test_map_sample_flow.py — 35 tests in three groups.
+
+  FAIL-CLOSED: a missing slice raises; a wrong source hash raises through the
+  shared allowlist; bodies() raising makes main() return 1 without a traceback.
+
+  ANTI-PROMOTION, and the shape has changed. Log 118 BANNED the words "gate is
+  closed" outright, because the path was incomplete. That ban is lifted here
+  because the path IS complete — so a static word ban would now be the wrong
+  guard, and it is replaced by a live one. `path_complete()` is computed from
+  eight backing facts, `hall_gate()` reports CLOSED only when it holds, and
+  four tests break one supporting fact each — the pointer share, the travel
+  delivery, the cadence branch, the curve's monotonicity — and require the
+  status to flip to "still open" AND the checks to go red. A conclusion that
+  cannot be falsified by breaking its own evidence is not a conclusion.
+  A further test forbids any wording that upgrades the ratio to a frequency,
+  with an anti-vacuity companion.
+
+FOUR SUPERSEDED CHECKS, replaced rather than deleted, each keeping the job it
+was actually doing:
+
+  tool/model_hall_actuation.py
+    "acquisition: the producer is NOT RECOVERED / unresolved" -> "IS RECOVERED
+    / observed", plus a NEW finding `acquisition_not_reproducible` that stays
+    unresolved. The check "acquisition, calibration and physical units stay
+    unresolved" becomes "calibration and physical units stay unresolved" plus
+    "recovering the acquisition did not make it reproducible".
+
+  tool/map_platform_dependencies.py
+    `hall_acquisition` moves from unresolved to must-neutralize — a replacement
+    must reproduce the MAILBOX CONTRACT, not the acquisition. The check "the
+    Hall acquisition is recorded as a blocker" becomes "is never recorded as
+    omittable" plus "still names an evidence boundary after log 119 closed the
+    gate". Blockers fall from 3 to 2 and the LIMITATION line's count is now
+    computed instead of hard-coded, since it had gone stale.
+
+  tool/report_development_strategy.py
+    Path B gate 1 is marked SATISFIED, and a NEW check requires the ADR to say
+    the gate is satisfied by inheriting vendor code — so closing it can never
+    be reported as progress towards Path B's actual goal.
+
+  tool/test_map_platform_dependencies.py
+    "a resolved service needs no boundary" is REFINED, not dropped. It broke
+    because hall_acquisition became resolved while a real residual limit
+    survived, and deleting the boundary to satisfy the rule would have thrown
+    away the caveat that matters most. At most one resolved service may carry
+    a boundary, it must be that one, and the text must be substantive.
+
+AN ASYMMETRY THIS STEP CREATED AND FIXED. Regenerating the installed entry
+image's inventory picked up log 118's 21 seeded functions, giving 144 against
+the vendor image's 114 and breaking Phase 3's cross-release matching. The fix
+is symmetry, not suppression: the same 21 prologues are byte-identical in the
+vendor entry image, they were seeded there too, and both inventories now hold
+144. Phase 3's and Phase 5's generated artefacts were regenerated and their
+pairing count rises from 114 to 144 for Candidate A. The extra functions are
+real code Ghidra had never reached, not invented ones.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_sample_flow.py tool/test_map_sample_flow.py \
+    tool/map_platform_dependencies.py tool/test_map_platform_dependencies.py \
+    tool/model_hall_actuation.py tool/test_model_hall_actuation.py \
+    tool/report_development_strategy.py                                [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 828 tests   OK                                                   [exit 0]
+  (793 before this step; +35 in tool/test_map_sample_flow.py)
+$ the eleven existing --check scripts plus the new one  all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                          all OK         [exit 0]
+$ git diff --check                                      clean          [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THE ABSOLUTE RATE. IRQ38's period is still unknown, so the sample rate is
+    a ratio and not a frequency. Unchanged by this step.
+  - WHAT CALLS FUN_18008c16. It calls the sample requester; its own caller is
+    not recovered. The chain is complete via the tick job's veneer; this second
+    route into it is not.
+  - OPCODE 0x03 has a handler and no recovered client.
+  - PHYSICAL UNITS. The travel byte's scale is 0..200 with actuation at 100.
+    That is a ratio, not a distance, and the converter's input and output carry
+    no units.
+  - THE REFERENCE AND SCALE VALUES the normalisation uses live in the second
+    context's RAM. What writes them is not traced here, so per-key calibration
+    remains unresolved.
+  - 484 of the second context's accesses still have an unresolved base.
+  - THE ACQUISITION IS RECOVERED, NOT REPRODUCIBLE. No register is named. A
+    replacement can satisfy the mailbox side and cannot reimplement the
+    converter.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - No decision was changed. Path A remains the decision; closing gate 1 does
+    not make Path B advisable, and the ADR now records why.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged; log 118's uncommitted work was
+    preserved.
+  - NO DEVICE WAS ACCESSED.

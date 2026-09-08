@@ -1,0 +1,925 @@
+{
+  "cadence": {
+    "absolute_rate": "UNRESOLVED \u2014 the timer that raises IRQ38 is still not identified (log 109 step 3)",
+    "actuation_veneer": "0x4062",
+    "client_veneer": "0x1801be22",
+    "divider": 8,
+    "order": "the sample fetch at 0x4044 runs BEFORE the actuation comparison at 0x4062 in the same /8 branch",
+    "reaches_the_sample_client": true,
+    "sample_veneer": "0x4044",
+    "stub": "0x180049a4",
+    "stub_branch": "b.w",
+    "stub_target": "0x1801be22",
+    "tick_job": "0x04ba",
+    "tick_source": "IRQ38",
+    "veneer_target": "0x180049a5"
+  },
+  "call_sites": [
+    {
+      "client": "0x1f50 (start routine, log 113)",
+      "function": "CandidateB_Main",
+      "kind": "bl",
+      "site": "0x18000246",
+      "veneer": "0x1801bd96"
+    },
+    {
+      "client": "0x1acc",
+      "function": "FUN_18001fbe",
+      "kind": "bl",
+      "site": "0x18003b60",
+      "veneer": "0x1801be0e"
+    },
+    {
+      "client": "0x19d4",
+      "function": "FUN_180047f8",
+      "kind": "b.w",
+      "site": "0x180049a4",
+      "veneer": "0x1801be22"
+    },
+    {
+      "client": "0x19d4",
+      "function": "FUN_180049a8",
+      "kind": "bl",
+      "site": "0x180049b4",
+      "veneer": "0x1801be22"
+    },
+    {
+      "client": "0x19d4",
+      "function": "FUN_18006914",
+      "kind": "bl",
+      "site": "0x18006922",
+      "veneer": "0x1801be22"
+    },
+    {
+      "client": "0x19d4",
+      "function": "FUN_1800ee72",
+      "kind": "bl",
+      "site": "0x1800eeb4",
+      "veneer": "0x1801be22"
+    },
+    {
+      "client": "0x19d4",
+      "function": "FUN_1800ee72",
+      "kind": "bl",
+      "site": "0x1800eecc",
+      "veneer": "0x1801be22"
+    },
+    {
+      "client": "0x1a36",
+      "function": "FUN_1800ef84",
+      "kind": "bl",
+      "site": "0x1800efcc",
+      "veneer": "0x1801bea4"
+    },
+    {
+      "client": "0x1b7c",
+      "function": "FUN_1800f0e4",
+      "kind": "bl",
+      "site": "0x1800f15e",
+      "veneer": "0x1801beae"
+    },
+    {
+      "client": "0x1b7c",
+      "function": "FUN_1800f0e4",
+      "kind": "bl",
+      "site": "0x1800f284",
+      "veneer": "0x1801beae"
+    },
+    {
+      "client": "0x1a36",
+      "function": "FUN_1800f474",
+      "kind": "bl",
+      "site": "0x1800f4ba",
+      "veneer": "0x1801bea4"
+    },
+    {
+      "client": "0x1b38",
+      "function": "FUN_1800f474",
+      "kind": "bl",
+      "site": "0x1800f4be",
+      "veneer": "0x1801beb8"
+    },
+    {
+      "client": "0x1a88",
+      "function": "FUN_1800f71a",
+      "kind": "bl",
+      "site": "0x1800f7d8",
+      "veneer": "0x1801bec2"
+    }
+  ],
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "41f6517c",
+      "label": "the movw decoder reproduces log 113's hand-validated veneer bytes",
+      "ok": true
+    },
+    {
+      "detail": "bl at 0x180049b4 -> 0x1801be22",
+      "label": "the branch decoder agrees with a target Ghidra resolved",
+      "ok": true
+    },
+    {
+      "detail": "6 of 6",
+      "label": "every entry-image client has a cross-image veneer",
+      "ok": true
+    },
+    {
+      "detail": "0x01, 0x02, 0x0c",
+      "label": "client 0x19d4's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "0x07",
+      "label": "client 0x1a36's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "0x08",
+      "label": "client 0x1a88's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "0x0b",
+      "label": "client 0x1acc's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "0x0e",
+      "label": "client 0x1b38's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "0x0f",
+      "label": "client 0x1b7c's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "0x0d",
+      "label": "client 0x18000136's opcode is present in its own bytes",
+      "ok": true
+    },
+    {
+      "detail": "13 sites",
+      "label": "every client veneer has at least one call site",
+      "ok": true
+    },
+    {
+      "detail": "0x1801ed6c",
+      "label": "the sender's literal pool holds the travel pointer cell",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the sender's literal pool holds the mailbox record array",
+      "ok": true
+    },
+    {
+      "detail": "0x18034850",
+      "label": "shared base + 0x35c is exactly log 110's travel array",
+      "ok": true
+    },
+    {
+      "detail": "3 strb.w sites at +0x35c",
+      "label": "the second context stores into the travel array",
+      "ok": true
+    },
+    {
+      "detail": "24 strh.w sites at +0x3f2",
+      "label": "the second context stores raw samples into application RAM",
+      "ok": true
+    },
+    {
+      "detail": "0x18023410",
+      "label": "the second context never references the per-key bitmap",
+      "ok": true
+    },
+    {
+      "detail": "1280 == 0x4ff + 1",
+      "label": "the travel table's length equals the clamp bound",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the travel table is monotonic, as a travel curve must be",
+      "ok": true
+    },
+    {
+      "detail": "200 = 2 x 100",
+      "label": "the table's maximum is exactly twice log 110's actuation threshold",
+      "ok": true
+    },
+    {
+      "detail": "0x4044 -> 0x180049a4 -> 0x1801be22",
+      "label": "the every-tick /8 job reaches the sample client",
+      "ok": true
+    },
+    {
+      "detail": "a ratio is not a frequency",
+      "label": "the absolute rate is still reported as unresolved",
+      "ok": true
+    },
+    {
+      "detail": "7 links",
+      "label": "every link of the producer path is demonstrated",
+      "ok": true
+    },
+    {
+      "detail": "and only because path_complete() holds",
+      "label": "the Hall acquisition gate is reported CLOSED",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and a citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "YES, in both directions of the pipeline. Raw 16-bit samples cross at pointer+0x3f2 and derived travel bytes cross at pointer+0x35c, which is the travel array log 110 identified.",
+      "confidence": "observed",
+      "evidence": [
+        "this log steps 3 and 4",
+        "log 110 step 4"
+      ],
+      "key": "samples_cross",
+      "kind_basis": "24 strh.w stores at offset 0x3f2 and 3 strb.w stores at offset 0x35c, all through the pointer the application supplied in a mailbox record",
+      "question": "Does per-key sample data cross from the second context to the application?"
+    },
+    {
+      "answer": "DIRECT WRITES. No response record carries sample data. The application hands over the base of its own structure in record field +4 of opcode 0x0d, and the second context writes the structure's fields itself.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3"
+      ],
+      "key": "mechanism",
+      "kind_basis": "FUN_18000136's literal pool holds 0x1801ed6c and the record array; the stores use the saved pointer as their base register",
+      "question": "By which mechanism \u2014 response records or direct writes?"
+    },
+    {
+      "answer": "On IRQ38's tick divided by 8, immediately before the actuation comparison in the same job. The absolute rate remains unresolved because the timer that raises IRQ38 is still unidentified.",
+      "confidence": "observed",
+      "evidence": [
+        "log 109 step 5",
+        "this log step 5"
+      ],
+      "key": "cadence",
+      "kind_basis": "the entry image's /8 branch calls veneer 0x4044, whose target tail-branches to the client veneer; the branch decoder is checked against one Ghidra resolved",
+      "question": "At what cadence?"
+    },
+    {
+      "answer": "No. The bitmap is written by the application's FUN_180049a8, which is the function that requests the samples. The second context never references it.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4",
+        "log 118 step 3"
+      ],
+      "key": "bitmap",
+      "kind_basis": "the bitmap address appears in FUN_180049a8's literal pool and in no aligned word or immediate of the second-context image",
+      "question": "Does the second context write the per-key bitmap at 0x18023410?"
+    },
+    {
+      "answer": "YES. Every link from the hardware conversion to the actuation comparison is now demonstrated, and the tool refuses this wording unless all eight backing checks hold.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 6",
+        "log 110",
+        "log 109",
+        "log 118"
+      ],
+      "key": "gate",
+      "kind_basis": "path_complete() is computed from the pointer share, both delivery counts, three properties of the travel curve and the decoded cadence branch",
+      "question": "Is the Hall acquisition gate closable?"
+    },
+    {
+      "answer": "Yes, both of them. FUN_18008c16 \u2014 unexplained since log 106 and still open in log 109 \u2014 calls FUN_180049a8, which is the sample requester. That closes the last of log 106's large orphans.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 106",
+        "log 109 step 5",
+        "this log step 2"
+      ],
+      "key": "orphans",
+      "kind_basis": "Ghidra's inventory records FUN_180049a8's only caller as FUN_18008c16; what calls FUN_18008c16 is still not recovered",
+      "question": "Does this explain the long-standing callerless functions?"
+    }
+  ],
+  "clients": [
+    {
+      "address": "0x19d4",
+      "image": "entry",
+      "note": "opcode chosen at run time from two region flags: 0x01 normally, 0x02 when the flag at 0x1801e845 is 1, 0x0c when the word at 0x1801e810 is not 1",
+      "opcodes": [
+        "0x01",
+        "0x02",
+        "0x0c"
+      ],
+      "request": "none"
+    },
+    {
+      "address": "0x1a36",
+      "image": "entry",
+      "note": "a variable-length upload into the shared structure",
+      "opcodes": [
+        "0x07"
+      ],
+      "request": "memcpy(pointer+0x27a, src, len) when len != 0"
+    },
+    {
+      "address": "0x1a88",
+      "image": "entry",
+      "note": "",
+      "opcodes": [
+        "0x08"
+      ],
+      "request": "none"
+    },
+    {
+      "address": "0x1acc",
+      "image": "entry",
+      "note": "the byte packs three arguments and sets bit 7",
+      "opcodes": [
+        "0x0b"
+      ],
+      "request": "fills pointer+0x1e4 with a packed byte, 5*count entries"
+    },
+    {
+      "address": "0x1b38",
+      "image": "entry",
+      "note": "",
+      "opcodes": [
+        "0x0e"
+      ],
+      "request": "none"
+    },
+    {
+      "address": "0x1b7c",
+      "image": "entry",
+      "note": "the five-group table opcode 0x0f de-interleaves",
+      "opcodes": [
+        "0x0f"
+      ],
+      "request": "memcpy(pointer+0x72c, src, len)"
+    },
+    {
+      "address": "0x18000136",
+      "image": "app",
+      "note": "THE POINTER SHARE. Sent from CandidateB_Main at boot",
+      "opcodes": [
+        "0x0d"
+      ],
+      "request": "record+4 = *(0x1801ed6c); record+8 = 4, 5 or 6"
+    }
+  ],
+  "delivery": {
+    "bitmap_note": "the per-key bitmap at 0x18023410 is written by the APPLICATION (FUN_180049a8), never by the second context",
+    "bitmap_referenced": false,
+    "sample_store_count": 24,
+    "sample_store_function": "FUN_1803901c, the opcode 0x01/0x02/0x0c handler",
+    "sample_stores": [
+      {
+        "address": "0x180390c6",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180390f8",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x1803912c",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039162",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x1803919c",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180391ea",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x1803921e",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039252",
+        "op": "strh",
+        "rn": 0,
+        "rt": 3
+      },
+      {
+        "address": "0x180392aa",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180392dc",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039310",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039348",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039380",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180393c6",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180393fa",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039456",
+        "op": "strh",
+        "rn": 0,
+        "rt": 3
+      },
+      {
+        "address": "0x1803949a",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180394ce",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039502",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039538",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039572",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180395b8",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x180395ec",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      },
+      {
+        "address": "0x18039624",
+        "op": "strh",
+        "rn": 6,
+        "rt": 5
+      }
+    ],
+    "travel_store_count": 3,
+    "travel_store_function": "FUN_1803a6c4, called from FUN_1803901c",
+    "travel_stores": [
+      {
+        "address": "0x1803a72e",
+        "op": "strb",
+        "rn": 2,
+        "rt": 6
+      },
+      {
+        "address": "0x1803a7d0",
+        "op": "strb",
+        "rn": 0,
+        "rt": 6
+      },
+      {
+        "address": "0x1803a854",
+        "op": "strb",
+        "rn": 1,
+        "rt": 0
+      }
+    ]
+  },
+  "disclaimer": "Offline analysis of preserved images. No device was accessed. This changes no decision and authorises nothing live.",
+  "hall_gate": {
+    "gate": "a recovered producer for the per-key travel bytes",
+    "links": [
+      {
+        "citation": "log 118 step 2; this log step 4",
+        "detail": "FUN_1803ae58 and FUN_1803af28 iterate 240 times: write a 16-bit word to 0x40018000, strobe 0x4001b000 with 0x7c then 0, read 0x40019000, store to the in-image array 0x1803c828.",
+        "key": "conversion",
+        "step": "the hardware conversion"
+      },
+      {
+        "citation": "this log step 4",
+        "detail": "FUN_1803901c reads a derived in-image array at 0x1803c5b2 and validates each entry by splitting it into two fields and comparing an XOR against a table, substituting a default when it mismatches.",
+        "key": "staging",
+        "step": "in-image staging and validation"
+      },
+      {
+        "citation": "this log steps 3 and 4",
+        "detail": "FUN_1803901c stores through the application-supplied pointer at 24 unrolled sites: strh.w rX,[pointer + key*2, #0x3f2]. The pointer comes from the saved cell 0x1803c4ac.",
+        "key": "delivery_samples",
+        "step": "delivery of raw samples into application RAM"
+      },
+      {
+        "citation": "this log step 4",
+        "detail": "FUN_1803a6c4 computes delta = reference[key] - sample, scales it by a per-key 32-bit factor, shifts right by 21, clamps at 0x4ff, and indexes a 1280-byte monotonic table at 0x1803be86 whose maximum is 200.",
+        "key": "normalise",
+        "step": "normalisation and the travel curve"
+      },
+      {
+        "citation": "this log step 4; log 110 step 4",
+        "detail": "FUN_1803a6c4 stores the table's output with strb.w rX,[pointer + key, #0x35c], 75 keys, which is 0x18034850 \u2014 log 110's travel array.",
+        "key": "delivery_travel",
+        "step": "delivery of travel bytes into the travel array"
+      },
+      {
+        "citation": "log 110 steps 1 and 6",
+        "detail": "FUN_18004a7e reads the travel bytes and applies travel >= 100 with a 1..99 hold band.",
+        "key": "actuation",
+        "step": "the application's actuation comparison"
+      },
+      {
+        "citation": "log 109 step 5; this log step 5",
+        "detail": "the every-tick job's /8 branch calls veneer 0x4044, which reaches the opcode 0x01/0x02/0x0c client, immediately before veneer 0x4062 runs the actuation comparison. Both ride IRQ38 divided by 8.",
+        "key": "cadence",
+        "step": "the cadence"
+      }
+    ],
+    "mechanism": "DIRECT WRITE through an application-supplied pointer, not a response record",
+    "path_complete": true,
+    "previous_state": "narrowed, not closed (log 118)",
+    "status": "CLOSED",
+    "why_it_was_never_found": "the producer is in neither analysed image, and the buffer's address is stored in no image because the second context receives it at run time in a mailbox record. Log 110's negative was correct and complete for the images it could see."
+  },
+  "opcodes": [
+    {
+      "call_sites": [
+        "FUN_180047f8",
+        "FUN_180049a8",
+        "FUN_18006914",
+        "FUN_1800ee72"
+      ],
+      "client": "0x19d4",
+      "client_image": "entry",
+      "direction": "app -> second, with a reply written into app RAM",
+      "handler": "FUN_1803901c",
+      "opcode": "0x01",
+      "request": "none",
+      "response": "75 uint16 samples at pointer+0x3f2, then FUN_1803a6c4 writes 75 travel bytes at pointer+0x35c and 75 uint16 at pointer+0x2c6"
+    },
+    {
+      "call_sites": [
+        "FUN_180047f8",
+        "FUN_180049a8",
+        "FUN_18006914",
+        "FUN_1800ee72"
+      ],
+      "client": "0x19d4",
+      "client_image": "entry",
+      "direction": "app -> second, with a reply written into app RAM",
+      "handler": "FUN_1803901c",
+      "opcode": "0x02",
+      "request": "none",
+      "response": "as 0x01"
+    },
+    {
+      "call_sites": [],
+      "client": "",
+      "client_image": "",
+      "direction": "app -> second",
+      "handler": "FUN_180388c8",
+      "opcode": "0x03",
+      "request": "",
+      "response": "none recovered"
+    },
+    {
+      "call_sites": [
+        "FUN_1800ef84",
+        "FUN_1800f474"
+      ],
+      "client": "0x1a36",
+      "client_image": "entry",
+      "direction": "app -> second",
+      "handler": "FUN_18038a4c",
+      "opcode": "0x07",
+      "request": "memcpy(pointer+0x27a, src, len) when len != 0",
+      "response": "none recovered"
+    },
+    {
+      "call_sites": [
+        "FUN_1800f71a"
+      ],
+      "client": "0x1a88",
+      "client_image": "entry",
+      "direction": "app -> second",
+      "handler": "FUN_18038970",
+      "opcode": "0x08",
+      "request": "none",
+      "response": "none recovered"
+    },
+    {
+      "call_sites": [
+        "FUN_18001fbe"
+      ],
+      "client": "0x1acc",
+      "client_image": "entry",
+      "direction": "app -> second",
+      "handler": "FUN_18039a64",
+      "opcode": "0x0b",
+      "request": "fills pointer+0x1e4 with a packed byte, 5*count entries",
+      "response": "none recovered"
+    },
+    {
+      "call_sites": [
+        "FUN_180047f8",
+        "FUN_180049a8",
+        "FUN_18006914",
+        "FUN_1800ee72"
+      ],
+      "client": "0x19d4",
+      "client_image": "entry",
+      "direction": "app -> second, with a reply written into app RAM",
+      "handler": "FUN_1803901c",
+      "opcode": "0x0c",
+      "request": "none",
+      "response": "as 0x01"
+    },
+    {
+      "call_sites": [
+        "CandidateB_Main"
+      ],
+      "client": "0x18000136",
+      "client_image": "app",
+      "direction": "app -> second, with a reply written into app RAM",
+      "handler": "FUN_1803af90 inline",
+      "opcode": "0x0d",
+      "request": "record+4 = *(0x1801ed6c); record+8 = 4, 5 or 6",
+      "response": "memset(pointer+0x3f2, 150, 0xff) \u2014 marks all 75 samples invalid"
+    },
+    {
+      "call_sites": [
+        "FUN_1800f474"
+      ],
+      "client": "0x1b38",
+      "client_image": "entry",
+      "direction": "app -> second",
+      "handler": "FUN_1803a968",
+      "opcode": "0x0e",
+      "request": "none",
+      "response": "none recovered"
+    },
+    {
+      "call_sites": [
+        "FUN_1800f0e4"
+      ],
+      "client": "0x1b7c",
+      "client_image": "entry",
+      "direction": "app -> second",
+      "handler": "FUN_18038b1c",
+      "opcode": "0x0f",
+      "request": "memcpy(pointer+0x72c, src, len)",
+      "response": "none recovered"
+    }
+  ],
+  "pointer_share": {
+    "cell_is_in_the_pool": true,
+    "cell_value": "0x180344f4",
+    "consequence": "the second context receives the base of the application's own structure, so every offset of it is writable by the second context. Delivery is therefore capable of being a DIRECT WRITE and does not need a response record.",
+    "fields": [
+      {
+        "direction": "app -> second",
+        "offset": "0x1e4",
+        "written_by": "client 0x1acc (opcode 0x0b)"
+      },
+      {
+        "direction": "app -> second",
+        "offset": "0x27a",
+        "written_by": "client 0x1a36 (opcode 0x07)"
+      },
+      {
+        "detail": "75 uint16, the clamped raw value",
+        "direction": "second -> app",
+        "offset": "0x2c6",
+        "written_by": "FUN_1803a6c4"
+      },
+      {
+        "detail": "75 bytes \u2014 THE TRAVEL ARRAY at 0x18034850",
+        "direction": "second -> app",
+        "offset": "0x35c",
+        "written_by": "FUN_1803a6c4"
+      },
+      {
+        "detail": "75 uint16 raw samples",
+        "direction": "second -> app",
+        "offset": "0x3f2",
+        "written_by": "FUN_1803901c, and memset by opcode 0x0d"
+      },
+      {
+        "direction": "app -> second",
+        "offset": "0x72c",
+        "written_by": "client 0x1b7c (opcode 0x0f)"
+      }
+    ],
+    "matches_log110": true,
+    "opcode": "0x0d",
+    "pointer_cell": "0x1801ed6c",
+    "pool": {
+      "0x180003d0": "0x1801e380",
+      "0x180003d4": "0x1801ed70",
+      "0x180003d8": "0x20000008",
+      "0x180003dc": "0x1801ed6c"
+    },
+    "record_array_in_pool": true,
+    "record_field": "+4",
+    "sender": "FUN_18000136, called from CandidateB_Main",
+    "shared_structure_base": "0x180344f4",
+    "travel_array": "0x18034850"
+  },
+  "source": {
+    "second_context_sha256": "0c718c523ef24e0794831fce89d41ce77775155cc9c3b91dbbad9da52114cee6",
+    "source_hashes": {
+      "installed": "fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b",
+      "vendor": "6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d"
+    }
+  },
+  "summary": {
+    "checks": 28,
+    "failed": 0,
+    "ok": true
+  },
+  "travel_curve": {
+    "actuation_threshold": 100,
+    "address": "0x1803be86",
+    "clamp": "0x4ff",
+    "distinct_values": 197,
+    "first_index_at_threshold": 215,
+    "length": 1280,
+    "length_equals_clamp_bound": true,
+    "maximum": 200,
+    "maximum_is_twice_the_threshold": true,
+    "minimum": 0,
+    "monotonic_non_decreasing": true,
+    "sampled": [
+      0,
+      49,
+      74,
+      95,
+      108,
+      119,
+      129,
+      137,
+      145,
+      151,
+      158,
+      162,
+      167,
+      171,
+      175,
+      180,
+      184,
+      188,
+      193,
+      199
+    ]
+  },
+  "unresolved": [
+    {
+      "detail": "IRQ38's period is still unknown, so the sample rate is a ratio and not a frequency. Unchanged by this step.",
+      "key": "absolute_rate"
+    },
+    {
+      "detail": "FUN_18008c16 calls the sample requester, but what calls FUN_18008c16 is still not recovered. The chain is complete from the tick job's veneer; this second route into it is not.",
+      "key": "fun_18008c16_caller"
+    },
+    {
+      "detail": "Opcode 0x03 has a handler and no recovered client. Two of the sixteen opcodes are implemented with no caller found.",
+      "key": "opcode_03"
+    },
+    {
+      "detail": "The converter's input and output carry no units. The travel byte's scale is 0..200 with actuation at 100, which is a ratio, not a distance.",
+      "key": "physical_units"
+    },
+    {
+      "detail": "The per-key reference values and scale factors the normalisation uses live in the second context's RAM. What writes them is not traced here.",
+      "key": "reference_and_scale_origin"
+    },
+    {
+      "detail": "484 of the second context's accesses still have an unresolved base, so every negative remains a 'not resolved'.",
+      "key": "unresolved_accesses"
+    }
+  ],
+  "veneers": [
+    {
+      "client": "0x19d4",
+      "found": true,
+      "opcodes": [
+        "0x01",
+        "0x02",
+        "0x0c"
+      ],
+      "veneer": "0x1801be22"
+    },
+    {
+      "client": "0x1a36",
+      "found": true,
+      "opcodes": [
+        "0x07"
+      ],
+      "veneer": "0x1801bea4"
+    },
+    {
+      "client": "0x1a88",
+      "found": true,
+      "opcodes": [
+        "0x08"
+      ],
+      "veneer": "0x1801bec2"
+    },
+    {
+      "client": "0x1acc",
+      "found": true,
+      "opcodes": [
+        "0x0b"
+      ],
+      "veneer": "0x1801be0e"
+    },
+    {
+      "client": "0x1b38",
+      "found": true,
+      "opcodes": [
+        "0x0e"
+      ],
+      "veneer": "0x1801beb8"
+    },
+    {
+      "client": "0x1b7c",
+      "found": true,
+      "opcodes": [
+        "0x0f"
+      ],
+      "veneer": "0x1801beae"
+    }
+  ]
+}

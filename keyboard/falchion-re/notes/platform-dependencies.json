@@ -154,9 +154,41 @@
       "area": "multicore",
       "confidence": "unresolved",
       "key": "second_context_ownership",
-      "kind_basis": "the start is recovered and the handshake is recovered, but no evidence assigns USB, the Hall acquisition or storage to it. It is a strong candidate for the Phase 5D acquisition boundary precisely because that producer was never found in either analysed image \u2014 but a candidate is not a finding",
-      "statement": "what the second context OWNS is not established",
+      "kind_basis": "log 118 imported and analysed the image, so the boundary is now drawn instead of guessed. RESOLVED: it is a 16-opcode command server on an 8-slot ring at 0x20000008; it owns 0x40040000, 0x40018000 and 0x4001c000, which the application and entry image never touch; it runs a 240-iteration write-strobe-readback loop over 0x40018000/0x40019000/0x4001b000. STILL UNRESOLVED: that loop's results terminate in an in-image array, its only write into application RAM is a 150-byte memset at pointer+0x3f2 \u2014 the 150 bytes immediately AFTER the travel array at pointer+0x35c, not the array \u2014 and the travel array's address still appears in no aligned word of any image including this one. So it remains a candidate owner of the acquisition, and a candidate is not a finding",
+      "statement": "the second context owns a converter interface and one MMIO block; whether it owns the Hall ACQUISITION is still not established",
       "verified_against": "xref"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "second_context_command_server",
+      "kind_basis": "0x20000000 is the head index and 0x20000004 the tail; records are eight slots of 0x2c bytes at 0x20000008. The server at 0x1803af90 writes the token to the head word once as a server-is-up signal, then spins while head == tail and dispatches record byte 0 through a 16-entry tbb table. The client at entry-image 0x1b7c fills a record, advances the head modulo 8 and spins until the tail catches up",
+      "statement": "the handshake is one field of a ring buffer, and both halves of the protocol are recovered",
+      "verified_against": "listing"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "second_context_exclusive_mmio",
+      "kind_basis": "a set difference of its FalchionPeripheralMap census against the application's and the entry image's own census: 0x40040000 (98 accesses, all from one init function), 0x40018000 and 0x4001c000 appear in its census and in neither of theirs. 484 of its accesses have an unresolved base, so this bounds what it is shown to touch and not what it can touch",
+      "statement": "three MMIO windows belong to the second context alone",
+      "verified_against": "xref"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "second_context_disables_both_watchdogs",
+      "kind_basis": "its init function writes 0x5afa0000 to 0x40008000+0 and 0x40009000+0 and re-arms the key 0x5afa55aa at +0xc of each \u2014 the exact idiom log 114 step 5 recorded for entry-image FUN_00001216. Log 114's sentence that block 0x40009000 is touched once in the whole firmware was scoped to the two analysed images",
+      "statement": "the second context runs the same reset-path watchdog disable on both blocks",
+      "verified_against": "xref"
+    },
+    {
+      "area": "multicore",
+      "confidence": "observed",
+      "key": "second_image_identical_across_releases",
+      "kind_basis": "over flash 0x74000..0x7bfff the two releases differ in exactly four bytes, and all four are the application region's additive word-sum field at logical 0x7bffc, which falls inside the range. The code did not change between releases, and the image's real extent ends at 0x7bffb",
+      "statement": "the second-context image is byte-identical in 1.00.58 and 1.59",
+      "verified_against": "bytes"
     },
     {
       "area": "multicore",
@@ -168,22 +200,36 @@
     }
   ],
   "multicore": {
+    "app_ram_memset_offset": 1010,
+    "client_entry_image": 7036,
+    "converter_data_in": 1073844224,
+    "converter_data_out": 1073840128,
+    "converter_iterations": 240,
+    "converter_strobe": 1073852416,
+    "exclusive_windows": [
+      1074003968,
+      1073840128,
+      1073856512
+    ],
     "handshake_mailbox": 536870912,
     "handshake_token": 305419896,
+    "opcode_count": 16,
+    "ring_depth": 8,
+    "ring_head": 536870912,
+    "ring_record_size": 44,
+    "ring_records": 536870920,
+    "ring_tail": 536870916,
     "second_image_dest": 402882560,
     "second_image_reset_vector": 402883009,
     "second_image_source": 1611087872,
+    "server_second_image": 402894736,
     "start_register": 1157628160,
     "start_routine_entry_image": 8016,
-    "token_offset_in_second_image": 12820
+    "token_offset_in_second_image": 12820,
+    "travel_array_offset": 860
   },
   "prototype": {
     "blockers": [
-      {
-        "boundary": "no function in either analysed image writes the per-key travel array from a hardware register, and the buffer is reachable only by dereferencing a pointer cell that something fills at runtime. The producer is outside the analysed set. The second execution context at 0x18038000 is a CANDIDATE owner and is not evidence.",
-        "key": "hall_acquisition",
-        "name": "per-key Hall sample acquisition"
-      },
       {
         "boundary": "the LED driver is unidentified, so its idle polarity is unknown and no shared clock, pin or controller initialisation could be inspected. Proving safe omission requires identifying the consumer of the 306-byte frame at 0x1802505e.",
         "key": "rgb",
@@ -203,7 +249,7 @@
       "one USB keyboard-IN route"
     ],
     "status": {
-      "Hall acquisition": "BLOCKED \u2014 the producer is not recovered",
+      "Hall acquisition": "SATISFIED BY THE SECOND CONTEXT \u2014 the producer is recovered (log 119); a replacement consumes it rather than reimplementing it",
       "USB keyboard-IN": "recovered end to end",
       "key-state generation": "recovered and executable",
       "reset/clock/RAM": "sequence preserved; FREQUENCY UNRESOLVED",
@@ -256,16 +302,17 @@
       "safe_idle_proven": false
     },
     {
-      "classification": "unresolved",
-      "confidence": "unresolved",
+      "classification": "must-neutralize",
+      "confidence": "observed",
       "evidence": [
-        "log 110 step 4: the travel buffer's address appears in no aligned word of any image",
-        "log 110 step 3: every 0x40000000 access is 32-bit; no converter shape exists in either census"
+        "log 119: the end-to-end path, every link cited",
+        "log 119: the travel curve's length equals the clamp bound, it is monotonic, and its maximum is twice the actuation threshold",
+        "log 110 step 4: why it was never found \u2014 the buffer's address is in no image because it arrives at run time in a mailbox record"
       ],
-      "evidence_boundary": "no function in either analysed image writes the per-key travel array from a hardware register, and the buffer is reachable only by dereferencing a pointer cell that something fills at runtime. The producer is outside the analysed set. The second execution context at 0x18038000 is a CANDIDATE owner and is not evidence.",
+      "evidence_boundary": "the CONTRACT is recovered; the SILICON is not. The converter's registers are unnamed, its input and output carry no units, and the per-key reference and scale values the normalisation uses are written by something not yet traced. A replacement can satisfy the mailbox side; it cannot reimplement the acquisition, and nothing here says it could.",
       "key": "hall_acquisition",
       "name": "per-key Hall sample acquisition",
-      "rationale": "THE LARGEST BLOCKER. Phase 5D recovered the comparison that turns a travel byte into a key bit, but not the producer of those bytes. Without it a prototype has no input at all, so this is a blocker and not an omission.",
+      "rationale": "RECOVERED IN LOG 119, AND NOT REPRODUCIBLE. The producer is the second execution context, and the whole path is now traced: a 240-iteration converter loop, delivery of 75 uint16 samples into application RAM at pointer+0x3f2, normalisation against per-key reference and scale values, a 1280-entry travel curve, and 75 travel bytes written straight into the array at pointer+0x35c. A replacement application does NOT implement this: it hands the second context a pointer and consumes what appears. That is why the class is must-neutralize rather than must-implement \u2014 the obligation is to reproduce the mailbox contract, not the acquisition.",
       "safe_idle_proven": false
     },
     {
@@ -454,11 +501,11 @@
     ],
     "must-neutralize": [
       "watchdogs",
+      "hall_acquisition",
       "second_context",
       "nmi_reset"
     ],
     "unresolved": [
-      "hall_acquisition",
       "rgb",
       "clock_frequency"
     ]

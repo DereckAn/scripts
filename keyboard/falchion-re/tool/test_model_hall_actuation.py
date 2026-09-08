@@ -164,12 +164,25 @@ class EdgeDetector(unittest.TestCase):
 
 class Honesty(unittest.TestCase):
 
-    def test_the_acquisition_stays_unresolved(self):
+    def test_the_acquisition_is_recovered_but_not_reproducible(self):
+        """SUPERSEDED by log 119, and kept rather than deleted.
+
+        This asserted the acquisition stays unresolved. It was correct for
+        the two analysed images and could not see the third. Log 119 traced
+        the producer end to end, so the assertion is now false — but the
+        honesty this test existed to enforce still has a job: recovering the
+        producer did NOT make it reproducible, and that must stay unresolved.
+        """
         finding, = [item for item in ha.FINDINGS
                     if item.key == "acquisition"]
-        self.assertEqual(finding.confidence, "unresolved")
-        self.assertIn("NOT RECOVERED", finding.statement)
-        self.assertEqual(ha.to_dict()["pipeline"]["acquisition"], "unresolved")
+        self.assertEqual(finding.confidence, "observed")
+        self.assertIn("IS RECOVERED", finding.statement)
+        self.assertIn("log 119", finding.kind_basis)
+        self.assertIn("SUPERSEDES", finding.kind_basis)
+        residue, = [item for item in ha.FINDINGS
+                    if item.key == "acquisition_not_reproducible"]
+        self.assertEqual(residue.confidence, "unresolved")
+        self.assertIn("log 119", ha.to_dict()["pipeline"]["acquisition"])
 
     def test_calibration_and_filtering_stay_unresolved(self):
         pipeline = ha.to_dict()["pipeline"]

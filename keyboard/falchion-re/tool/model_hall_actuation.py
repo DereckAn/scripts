@@ -196,12 +196,25 @@ FINDINGS = (
             "0x4062, inside the branch gated by that job's own /8 counter",
             "xref"),
     Finding("acquisition",
-            "the producer of the travel bytes is NOT RECOVERED",
+            "the producer of the travel bytes IS RECOVERED — it is the second "
+            "execution context, writing through a pointer the application "
+            "hands it in a mailbox record",
+            "observed",
+            "log 119 traced the whole path: FUN_1803a6c4 in the 0x18038000 "
+            "image stores travel bytes with `strb.w rX,[pointer,#0x35c]`, "
+            "where the pointer is *(0x1801ed6c) delivered in record field +4 "
+            "of opcode 0x0d. This SUPERSEDES the earlier finding that no "
+            "traced function writes the bytes, which was correct for the two "
+            "analysed images and could not see the third",
+            "listing"),
+    Finding("acquisition_not_reproducible",
+            "recovering the producer does NOT make it reproducible",
             "unresolved",
-            "the buffer address 0x180344f4 appears in no aligned word of any "
-            "image and in no register; it is reached only by dereferencing "
-            "the pointer cell at 0x1801ed6c, and no traced function writes "
-            "the bytes from a hardware register",
+            "the converter's registers are unnamed, its input and output "
+            "carry no units, and the per-key reference and scale values the "
+            "normalisation subtracts and multiplies by are written by "
+            "something not yet traced. A replacement consumes the contract; "
+            "it cannot reimplement the acquisition",
             "xref"),
     Finding("no_adc_block",
             "no MMIO block in either image has an ADC shape",
@@ -390,7 +403,7 @@ def to_dict():
             "recovered": None,
         },
         "pipeline": {
-            "acquisition": "unresolved",
+            "acquisition": "observed — the second execution context (log 119)",
             "calibration": "unresolved",
             "filtering": "unresolved",
             "position_travel": "unresolved — the bytes are already scaled",
@@ -422,11 +435,19 @@ def verify():
               for item in FINDINGS
               if item.key in ("threshold", "hold_band", "skipped_ids",
                               "geometry", "actuation_clamp")))
-    check("acquisition, calibration and physical units stay unresolved",
+    # Was: "acquisition, calibration and physical units stay unresolved".
+    # Log 119 recovered the acquisition, so that check would now assert
+    # something false. Calibration and physical units are STILL unresolved,
+    # and so is the reproducibility of the acquisition — which is the part
+    # that actually matters for a replacement.
+    check("calibration and physical units stay unresolved",
           all(next(item for item in FINDINGS if item.key == key).confidence
               == "unresolved"
-              for key in ("acquisition", "no_calibration",
-                          "no_physical_units")))
+              for key in ("no_calibration", "no_physical_units")))
+    check("recovering the acquisition did not make it reproducible",
+          next(item for item in FINDINGS
+               if item.key == "acquisition_not_reproducible").confidence
+          == "unresolved")
     check("no physical interpretation is recorded",
           to_dict()["physical_interpretation"]["recovered"] is None)
     check("the model authorises no hardware action",

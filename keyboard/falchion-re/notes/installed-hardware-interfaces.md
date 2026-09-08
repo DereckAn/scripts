@@ -137,7 +137,7 @@ its own basis and confidence.
 ### Candidate A (entry image)
 
 - slice `installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin` at base `0x00000000`
-- 114 functions, 101 reached from a vector root, 13 unreached
+- 144 functions, 101 reached from a vector root, 43 unreached
 - 206 accesses with a resolved base; 363 unresolved
 
 Unresolved reasons: `base_lr_unknown` 3, `base_r0_unknown` 72, `base_r1_unknown` 41, `base_r2_unknown` 17, `base_r3_unknown` 7, `base_r4_unknown` 105, `base_r5_unknown` 16, `base_r6_unknown` 3, `base_r7_unknown` 1, `base_r8_unknown` 6, `base_r9_unknown` 3, `register_offset` 43, `stack_relative` 46.
@@ -543,7 +543,7 @@ DATA_POINTERS 48 entry-image words point into application RAM outside the code r
 
 IMAGE Candidate A (entry image)
   slice=installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
-  base=0x00000000 functions=114 reached=101 unreached=13
+  base=0x00000000 functions=144 reached=101 unreached=43
   roots=24 vector/entry: BusFault@0x000014d2, DebugMonitor@0x000014d8, HardFault@0x000010ae, IRQ3@0x000014be, IRQ63@0x00000ad0, MemManage@0x00000fce, NMI@0x000020be, PendSV@0x0000032c, Reset@0x000014a8, SVCall@0x000002e8, SysTick@0x000017e0, UsageFault@0x000014d4, task OEM_MAIN_SERVICE_TASK created at 0x1800007e@0x00000498
   table roots: table@0x00001404, table@0x00005680
   documented entry roots: none
@@ -552,7 +552,7 @@ IMAGE Candidate A (entry image)
   roots naming no function: 0x00004018 (table@0x00005680)
   ROOT_BLOCKS which hardware each newly seeded root can reach:
     task OEM_MAIN_SERVICE_TASK created at 0x1800007e -> 0x18000000(runtime-ram)
-  unreached_with_no_caller=10 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
+  unreached_with_no_caller=30 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
   resolved_accesses=206
   unresolved_accesses=base_lr_unknown=3, base_r0_unknown=72, base_r1_unknown=41, base_r2_unknown=17, base_r3_unknown=7, base_r4_unknown=105, base_r5_unknown=16, base_r6_unknown=3, base_r7_unknown=1, base_r8_unknown=6, base_r9_unknown=3, register_offset=43, stack_relative=46
   BLOCK 0x08000000 unknown registers=1 accesses=1 contexts=IRQ63,Reset
