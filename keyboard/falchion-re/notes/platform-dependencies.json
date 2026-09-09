@@ -236,7 +236,7 @@
         "name": "RGB / LampArray lighting"
       },
       {
-        "boundary": "no crystal value, PLL multiplier or divider with a stated unit appears in the recovered code, and no register map exists for the blocks the sequence writes. Any Hz figure would have to come from the silicon or from measurement, neither of which this project has.",
+        "boundary": "no crystal value, PLL multiplier or divider with a stated unit appears in the recovered code, and no register map exists for the blocks the sequence writes. REFINED BY LOG 127: the project now does have a measurement, and one derived period follows from it \u2014 log 126 measured the device's report grid in the slow state and log 127 found the tick job running the report stage every eighth tick there. The number and its confidence are recorded in notes/polling-rate-reader.json, deliberately NOT here: this map must not become the place a frequency is claimed. One derived period is not the clock configuration \u2014 the crystal, the PLL and the reset sequence's registers are still unrecovered, so this service stays unresolved.",
         "key": "clock_frequency",
         "name": "the actual clock configuration"
       }
@@ -492,7 +492,7 @@
         "log 113 step 1: no constant in the chain carries a unit",
         "log 109: the tick's ratios are known, its period is not"
       ],
-      "evidence_boundary": "no crystal value, PLL multiplier or divider with a stated unit appears in the recovered code, and no register map exists for the blocks the sequence writes. Any Hz figure would have to come from the silicon or from measurement, neither of which this project has.",
+      "evidence_boundary": "no crystal value, PLL multiplier or divider with a stated unit appears in the recovered code, and no register map exists for the blocks the sequence writes. REFINED BY LOG 127: the project now does have a measurement, and one derived period follows from it \u2014 log 126 measured the device's report grid in the slow state and log 127 found the tick job running the report stage every eighth tick there. The number and its confidence are recorded in notes/polling-rate-reader.json, deliberately NOT here: this map must not become the place a frequency is claimed. One derived period is not the clock configuration \u2014 the crystal, the PLL and the reset sequence's registers are still unrecovered, so this service stays unresolved.",
       "key": "clock_frequency",
       "name": "the actual clock configuration",
       "rationale": "the reset sequence is preserved as a call chain, but no frequency is established. A prototype can copy the sequence; it cannot reason about timing.",

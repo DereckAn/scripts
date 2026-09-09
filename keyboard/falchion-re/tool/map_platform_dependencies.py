@@ -583,9 +583,17 @@ SERVICES = (
             "unresolved",
             evidence_boundary="no crystal value, PLL multiplier or divider "
             "with a stated unit appears in the recovered code, and no register "
-            "map exists for the blocks the sequence writes. Any Hz figure "
-            "would have to come from the silicon or from measurement, neither "
-            "of which this project has."),
+            "map exists for the blocks the sequence writes. REFINED BY LOG "
+            "127: the project now does have a measurement, and one derived "
+            "period follows from it — log 126 measured the device's report "
+            "grid in the slow state and log 127 found the tick job running the "
+            "report stage every eighth tick there. The number and its "
+            "confidence are recorded in notes/polling-rate-reader.json, "
+            "deliberately NOT here: this map must not become the place a "
+            "frequency is claimed. One derived period is not the clock "
+            "configuration — the crystal, the PLL and the reset sequence's "
+            "registers are still unrecovered, so this service stays "
+            "unresolved."),
 )
 
 

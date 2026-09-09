@@ -2785,12 +2785,126 @@ to carry the flag, so the marking discriminates instead of blanket-gating. Log
 1089 offline tests pass, both evidence hashes are unchanged, the capture is
 unchanged, and no device was accessed.
 
+## 2026-09-09 — The reader was one grep away (log 127)
+
+One step. Offline; authorises nothing; no frame constructed; **nothing patched**;
+nothing committed or staged. Logs 124 and 126 were left untouched.
+
+Log 126 ended with a clean negative: the polling-rate multiplier at
+`0x1801e736` had six writers and no reader, by an aligned-word search, a
+displacement search and a movw/movt search, each shown non-blind. All three were
+correct. All three were looking for the wrong byte shape.
+
+`0x1801e736` is `0x1801e734 + 2`, and `0x1801e734` is the key-state struct log
+109 recorded twelve report-range functions loading from a literal pool. A reader
+that says `ldrb rX,[base,#2]` leaves **no literal equal to the address**. And
+the answer was already sitting in `ghidra/peripherals/`, a set of Ghidra exports
+that have been in this repository since log 100 and that resolve `base+offset`
+into a target:
+
+    $ grep "target=0x1801e736" ghidra/peripherals/*.txt
+      dir=read instr=180053c4 func=18004a7e base=r0@0x1801e734  off=2
+      dir=read instr=180054ac func=18004a7e base=r12@0x1801e734 off=2
+      dir=read instr=18005534 func=18004a7e base=r0@0x1801e734  off=2
+      dir=read instr=180055a2 func=18004a7e base=r12@0x1801e734 off=2
+
+Four reads, one function: **`FUN_18004a7e`, the actuation compare** — the
+function logs 110 and 119 had already placed in the tick chain. Log 126 asked
+"where does the constant appear?"; the right question was "what does the census
+say about the address?". Two searches, the same evidence, opposite outcomes, and
+the difference was one file nobody had thought to grep.
+
+**What the multiplier is for.** Not a divisor, not a loop bound, not a timer
+reload value, not a mailbox argument — the four candidates that were on the
+table. All four read sites multiply it by ten, multiply that by a per-key byte
+parameter, and compare the product against a per-key counter incremented once
+per tick-job invocation. It is a **scale factor that keeps a stored timeout
+constant in real time when the tick rate changes.** Which immediately says the
+tick rate must change — and the multiplier is not what changes it.
+
+**The period is set in the other image.** `FUN_000004ba`, the entry image's tick
+job, reads the profile block's rate field *directly* and bypasses its own
+divide-by-eight:
+
+         4d6: ldrb.w r0,[r0,#0x4f8]  ; the polling-rate field
+         4da: and    r1,r0,#0xf      ; the index
+         4e0: cmp    r1,#0x3         ; <-- the bypass test
+         4e2: beq    0x4fc           ;     index 3 -> run EVERY tick
+         4ec: cmp    r1,#0x8         ; <-- the divide-by-eight
+
+A two-way branch. Index 3 runs the actuation compare and the report builder on
+every tick; every other index runs them every eighth. The sample fetch is called
+on *both* paths, so **Hall acquisition is never slowed by the polling rate** —
+only the decision and report stage is. The tick job is byte-identical in both
+firmware releases, and the vendor application carries the same four reads at the
+independently measured relocation of the struct.
+
+**And that puts a period on IRQ38, which this project has been unable to do
+since log 109.** The trap is to read the fast state: at index 3 log 126 measured
+a 125 µs report grid, and the host polls EP `0x81` every 125 µs anyway, so that
+number proves nothing. The **slow** state is the informative one. Log 126
+measured a 1 ms grid at index 0 — 85% of gaps within 50 µs of a millisecond
+multiple against a 10% chance level, on two independent endpoints — and the host
+was polling at 125 µs throughout, so the millisecond can only be the device. The
+gate says index 0 runs the report stage every eighth tick. Eight ticks is one
+millisecond, so **the tick is 125 µs and IRQ38 is 8000 Hz.** The fast state then
+becomes a prediction rather than a fit, and it matches.
+
+Log 124 wrote this down in advance and refused to claim it: `8000/8 = 1000`,
+"three independently recovered numbers line up. THAT IS A CONSISTENCY, NOT A
+MEASUREMENT … It is written down so a future step can test it instead of
+inheriting it as fact." This is that step. It holds — and it is still
+strongly-inferred, not observed, because it assumes the report stage makes at
+most one new report available per invocation. That assumption is the whole gap
+and the model names it.
+
+**The parameter's unit falls out, and it is the corroboration that matters.**
+`multiplier × divisor` is 8 in both reachable states, so the per-key parameter is
+10 ms per unit at either rate. Two unrelated code sites — a gate in the entry
+image and a multiply in the application — agree on one rate model, and neither
+was used to derive the other.
+
+**The owner's question, answered: no.** Patching the handler's two compares to
+accept indices 1 and 2 would *not* give 2000 and 4000 Hz. The gate is a two-way
+branch, so those indices fall through to the divide-by-eight and would still
+report at the 1000 Hz cadence — and the multiplier would become 2 or 4 and
+stretch every per-key timeout by that factor. The device would be worse, in a way
+a user would feel and a wire capture would not show. I nearly answered "yes" from
+the `×10` arithmetic alone, which is generic and would have worked; the entry
+image's gate is what settles it, and it cuts the opposite way.
+
+The intermediate rates need **two sites in two images**: the dispatcher's
+compares *and* the divider selection in the entry image — the image the
+bootloader selects and verifies, a different risk class. But the arithmetic is
+already there: divisor `8 >> index` pairs exactly with the existing multiplier
+`1 << index`, their product is 8 for all four indices, and the parameter stays in
+10 ms units at every rate with no change to the application. **ASUS built the
+scaling for four rates and shipped a two-way gate.** Nothing was patched.
+
+**A check that failed for the right reason and was not loosened.** Refining the
+dependency map's clock boundary broke
+`test_no_frequency_is_claimed_anywhere`, which bans any `<number> Hz` from that
+map's report. The test was right — logs 113 and 124 put it there so the
+dependency map could never become the place a frequency gets claimed. The
+boundary now points at `notes/polling-rate-reader.json` for the number instead of
+stating it, and a new test asserts that division in both directions. The existing
+test was not touched, and `clock_frequency` stays **unresolved**: one derived
+period is not a register map.
+
+1138 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| Log 126's "six writers and no reader" for `0x1801e736` | The reader exists: `FUN_18004a7e`, four sites, reaching it as `key_state+2`. No aligned-word, displacement or movw/movt search can see that shape; the Ghidra peripheral census had already resolved it (log 127) |
+| Log 126's attribution of the sixth writer to `FUN_18007030` | Wrong. `0x18007a1e` lies in code with **no function body**; log 126 mapped it by nearest preceding entry, which fails whenever a literal pool sits far from its owner (log 127) |
+| Logs 110 and 119: "the actuation comparison runs on IRQ38's tick divided by 8" | True at 1000 Hz, false at 8000 Hz, where it runs on every tick. Both logs scoped the claim to "inside the branch gated by that job's own /8 counter" — which is exactly the branch the rate bypasses (log 127) |
+| Log 124's `8000/8 = 1000`, recorded as "a consistency, not a measurement" | Confirmed as a measurement. Log 124 deliberately wrote it down for a future step to test rather than inherit; the test passed (log 127) |
+| "A generic `1 << index` multiplier means 2000 and 4000 Hz would work if the handler accepted them" — my own first reading | Wrong, and the opposite of the truth. The multiplier is generic and would work; the *gate* in the entry image is `cmp r1,#3`, a two-way branch, so indices 1 and 2 would report at 1000 Hz with timeouts 2x and 4x too long (log 127) |
 | My own ad-hoc check "no report lands between a `51 31` write and its `50 55` commit" | **False, and my own error.** A zsh `set -- $iv` does not word-split an unquoted parameter, so every interval was compared against one malformed bound. Fourteen reports do land there; the real blocker for U4 is that no two are *consecutive*, so no inter-report gap lies wholly inside one (log 126) |
 | My own first count of "two enumerations" in the polling-rate capture | One. USBPcap's `--inject-descriptors` synthesis at t=0 looks identical to a real `GET_DESCRIPTOR(device)` by `bRequest` and `bDescriptorType`. The injected set is now kept in the output and asserted strictly larger than the real one (log 126) |
 | Log 125's "profile block `+0x4f8` is the version stamp" | **Refined, not withdrawn.** The halfword is the version stamp *and* carries the polling-rate index in bits 0..3; it is covered by neither of the block's two checksums, which is what makes both readings consistent (log 126) |

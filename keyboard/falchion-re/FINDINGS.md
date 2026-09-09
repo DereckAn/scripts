@@ -2691,6 +2691,12 @@ with the boundary stated inside it.
 
 ### The polling-rate path: no consumer, no units (log 124)
 
+> **Superseded in part by log 127 (see below).** The consumer is
+> `FUN_18004a7e`, reached as `key_state+2` — a shape no aligned-word search can
+> see — and the period is set by a divider bypass in the entry image's tick job.
+> IRQ38 now has a period. Log 124's *prescaler ladder* elimination and its
+> scoping of the negative to the firmware rather than the protocol both stand.
+
 The historical profile carries `performance.pollingRate = "3"` — an index, and
 the block contains nothing else. **Nothing in the preserved images consumes
 it**, and no real units are attached to anything as a result.
@@ -2980,9 +2986,12 @@ nothing. `notes/protocol.md`'s HAL list has carried `GetPollingRate` with no
 opcode since the earliest work; this is it. **Strongly-inferred** — Armoury
 Crate never sent it, so no reply was observed.
 
-**Log 124's residual negative survives one level deeper.** The byte at
-`0x1801e736` has **six writers and no reader** in any preserved image, by three
-independent searches each shown non-blind: an aligned-word search of all
+**Log 124's residual negative survives one level deeper.** *(Resolved by log
+127: the reader is `FUN_18004a7e`, reaching the byte as `key_state+2`, which is
+why none of these three searches could see it. The sixth writer's attribution to
+`FUN_18007030` below is also wrong — that address has no function body.)* The
+byte at `0x1801e736` has **six writers and no reader** in any preserved image, by
+three independent searches each shown non-blind: an aligned-word search of all
 fifteen imported images, a displacement search over every region pointer within
 4095 bytes below it (two apparent hits rejected on inspection — the base is
 adjusted by `adds r5,#0x54` first), and a `movw`/`movt` immediate search. So the
@@ -3021,6 +3030,130 @@ write, and any erase/program/unlock/reset/SPI framing. The full machine-readable
 surface is `notes/polling-rate-protocol.json`, generated with
 `notes/polling-rate-protocol.md` from one data model by
 `tool/map_polling_rate_protocol.py`.
+
+### The polling-rate reader, and a period for IRQ38 (log 127)
+
+Log 126 found six writers of the multiplier byte at `0x1801e736` and no reader.
+**The reader existed.** `0x1801e736` is `0x1801e734 + 2`, and `0x1801e734` is the
+key-state struct log 109 recorded twelve report-range functions loading from a
+literal pool — so a reader saying `ldrb rX,[base,#2]` leaves **no literal equal
+to the address**. Log 126's three searches were all correct and all blind to that
+shape, and it never consulted the Ghidra peripheral census, which resolves
+`base+offset` and has been in the tree since log 100.
+
+| dir | instruction | function | base | off |
+|---|---|---|---|---|
+| read | `0x180053c4` | `FUN_18004a7e` | `0x1801e734` | 2 |
+| read | `0x180054ac` | `FUN_18004a7e` | `0x1801e734` | 2 |
+| read | `0x18005534` | `FUN_18004a7e` | `0x1801e734` | 2 |
+| read | `0x180055a2` | `FUN_18004a7e` | `0x1801e734` | 2 |
+| write | `0x1800117e` `0x18001548` `0x180018f8` `0x18001ece` | `FUN_18000d56` | `0x1801e736` | 0 |
+| write | `0x18002b50` | `FUN_18001fbe` — the `51 31` handler | `0x1801e736` | 0 |
+| write | `0x18007a1e` | **no function body** — a profile-apply path | `0x1801e736` | 0 |
+
+**The multiplier is a scale on a tick-denominated timeout, not a divisor.** All
+four sites are identical:
+
+```
+180053c0  ldrb.w r2,[lr,#0x22]        ; a per-key byte parameter
+180053c4  ldrb   r0,[r0,#0x2]         ; THE MULTIPLIER, 1 << index
+180053ca  add.w  r0,r0,r0,lsl #2      ; x5
+180053ce  lsls   r0,r0,#0x1           ; x2  -> x10
+180053d0  muls   r2,r0,r2             ; parameter x 10 x multiplier
+180053d2  ldr.w  r0,[r12,r4,lsl #2]   ; a per-key 32-bit counter
+180053d6  cmp    r2,r0
+```
+
+and the counter is a tick counter (`adds r3,r3,#0x1` at `0x1800548c`). The
+parameter comes from `0x180202d8 + layer*0xd84 + key*0x20 + 0x22` — `0x361*4 =
+0xd84` is log 125's keymap-bank layer stride and `0x20` its record size, so the
+array is identified rather than assumed. `+0x20`/`+0x22` lie outside the
+`+0x04..+0x1c` range log 125 mapped and **are not named here**.
+
+**The period is set somewhere else entirely: the entry image's tick job.**
+`FUN_000004ba` reads the profile block's rate field directly and bypasses its own
+divide-by-eight:
+
+```
+     4d4: ldr    r0,[pc,#0xe0]   ; -> 0x18021de0, THE PROFILE BLOCK
+     4d6: ldrb.w r0,[r0,#0x4f8]  ; the polling-rate field
+     4da: and    r1,r0,#0xf      ; the index
+     4e0: cmp    r1,#0x3         ; <-- THE BYPASS TEST
+     4e2: beq    0x4fc           ;     index 3 -> run EVERY tick
+     4ec: cmp    r1,#0x8         ; <-- the divide-by-eight
+```
+
+A **two-way branch**, not a ladder and not a table: index 3 → divisor 1,
+everything else → divisor 8. Gated on the rate: `FUN_180045b6`, the actuation
+compare, `FUN_180057fe` and the report builder. **Not** gated: the sample fetch
+(veneer `0x4044` is called on *both* paths, so Hall acquisition is never slowed
+by the polling rate) and `FUN_1800417e`, the 21-byte EP `0x8c` sender. The tick
+job is **byte-identical in both firmware releases**, and the vendor application
+carries the same four reads at `0x1801e70a`, the independently measured
+relocation of the struct.
+
+**IRQ38 = 8000 Hz (125 µs), strongly-inferred.** The informative state is the
+*slow* one: at index 3 the host polls EP `0x81` every 125 µs anyway, so a 125 µs
+grid there proves nothing. At index 0 log 126 measured a **1 ms** grid, which the
+host's polling cannot produce — so the device makes new data available only every
+millisecond, and the gate makes index 0 run the report stage every eighth tick.
+`8 × T = 1 ms → T = 125 µs`. The fast state is then a **prediction** (divisor 1 →
+125 µs) and log 126 measured 125 µs. Confidence is strongly-inferred, not
+observed, because it additionally assumes the report stage makes at most one new
+report available per invocation — that assumption is the whole gap, and it would
+be refuted by a coalescing report stage or a second ungated producer for EP
+`0x81`. **This confirms log 124's `8000/8 = 1000` alignment, which it recorded as
+"a consistency, not a measurement … written down so a future step can test it."**
+
+| index | divisor | multiplier | job period | invocations/unit | real time/unit |
+|---|---|---|---|---|---|
+| 0 | 8 | 1 | 1 ms | 10 | **10 ms** |
+| 3 | 1 | 8 | 125 µs | 80 | **10 ms** |
+
+`multiplier × divisor` is 8 in both reachable states, so the per-key parameter is
+**rate-invariant at 10 ms per unit**. Two unrelated code sites in two different
+images agree on one rate model and neither was used to derive the other — that
+is the corroboration, and it is why the multiplier's purpose is legible at all.
+
+**Would 2000 and 4000 Hz work if the handler's two compares were patched? NO.**
+The gate is `cmp r1,#3`, so indices 1 and 2 fall through to the divide-by-eight
+and would still report at the 1000 Hz cadence — *and* the multiplier would become
+2 or 4, stretching every per-key timeout by that factor. The device would be
+worse, in a way a user would feel and a wire capture would not show. Getting the
+intermediate rates needs **two sites in two images**: the dispatcher's compares
+*and* the divider selection in the **entry** image at `0x4e0`/`0x4ec` — the image
+the bootloader selects and verifies, a materially different risk class.
+
+**The arithmetic is already four-rate capable.** Divisor `8 >> index` pairs
+exactly with the existing multiplier `1 << index`: their product is 8 for all
+four indices, so the parameter stays in 10 ms units at 1000, 2000, 4000 and
+8000 Hz with no change to the application's scaling. Together with log 126's
+four-bit field and its bound of 3, that is the strongest available evidence that
+four rates were designed and two were shipped. No descriptor change would be
+needed — `bInterval` is already 1. **Not verifiable offline:** CPU headroom at
+the intermediate rates. **Nothing was patched.**
+
+**Corrections to the prior record.** Log 124's elimination of the *prescaler
+ladder* stands exactly as written — `FUN_0000042c`'s divisors really are
+immediates; the rate does not change a divisor, it **bypasses a divider** in
+`FUN_000004ba`, a function log 124 did not examine. Log 126's attribution of the
+sixth writer to `FUN_18007030` is **wrong**: `0x18007a1e` is in code with no
+function body, and log 126 mapped it by nearest preceding entry. Logs 110 and 119
+are **refined**: "the actuation comparison runs on IRQ38's tick divided by 8" is
+true at 1000 Hz and false at 8000 Hz, and both logs scoped the claim to "inside
+the branch gated by that job's own /8 counter" — the branch the rate bypasses.
+
+**The dependency map's `clock_frequency` service stays unresolved.** One derived
+period is not a register map: no crystal value, PLL multiplier or divider
+register is recovered. Only its evidence boundary changed, and it deliberately
+does **not** state the number — that map must not become the place a frequency is
+claimed, and the number lives in `notes/polling-rate-reader.json`.
+
+**Still unresolved:** the one-report-per-invocation assumption; the clock
+configuration; the `+0x20`/`+0x22` field names and which HAL feature the timeout
+belongs to (ModTap, Toggle, DKS, SpeedTap); CPU headroom at 2000/4000 Hz; what
+sets `*(0x1801e810)`, the word that gates the whole job; and whether the 10 ms
+parameter is user-facing — no Armoury Crate field has been matched to it.
 
 ### Firmware modification roadmap (offline-first)
 

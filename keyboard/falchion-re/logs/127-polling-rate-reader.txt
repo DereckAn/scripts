@@ -1,0 +1,629 @@
+LOG 127 — THE POLLING-RATE READER, AND A PERIOD FOR IRQ38
+Date: 2026-09-09
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged. NOTHING WAS PATCHED.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction, NO FRAME CONSTRUCTED. The
+2000/4000 Hz question is answered as ANALYSIS; no image was modified and no
+patch was built. Neither evidence binary was opened for writing and both hashes
+are unchanged below. The capture files were not opened at all — this step reads
+log 126's generated model, not its pcap. No historical log and not
+opencode.json were modified. Log 124's and log 126's tools were left untouched.
+NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+THE HEADLINE
+================================================================================
+THE READER IS FUN_18004a7e — THE ACTUATION COMPARE — AND IT WAS ALREADY
+RESOLVED, IN A FILE THAT HAS BEEN IN THIS REPOSITORY SINCE LOG 100.
+
+  $ grep "target=0x1801e736" ghidra/peripherals/*.txt
+    ... dir=read  instr=180053c4 func=18004a7e base=r0@0x1801e734  off=2
+    ... dir=read  instr=180054ac func=18004a7e base=r12@0x1801e734 off=2
+    ... dir=read  instr=18005534 func=18004a7e base=r0@0x1801e734  off=2
+    ... dir=read  instr=180055a2 func=18004a7e base=r12@0x1801e734 off=2
+    ... dir=write instr=1800117e func=18000d56 base=r1@0x1801e736  off=0
+    ... dir=write instr=18001548 func=18000d56 base=r2@0x1801e736  off=0
+    ... dir=write instr=180018f8 func=18000d56 base=r1@0x1801e736  off=0
+    ... dir=write instr=18001ece func=18000d56 base=r1@0x1801e736  off=0
+    ... dir=write instr=18002b50 func=18001fbe base=r1@0x1801e736  off=0
+
+One grep. The prompt's lead was exactly right about WHY log 126 could not see
+them: `base=0x1801e734 off=2`. Every reader uses an immediate offset from the
+key-state struct log 109 recorded twelve report-range functions loading, so NO
+LITERAL EQUAL TO 0x1801e736 EXISTS FOR THEM. Log 126's aligned-word search, its
+displacement search and its movw/movt search were all correct and all blind to
+that shape, and it never consulted the Ghidra peripheral census — the one source
+that resolves base+offset.
+
+AND THE PERIOD IS NOT SET WHERE THE MULTIPLIER IS READ. It is set in the ENTRY
+image, by the tick job, which reads the profile block's rate field DIRECTLY and
+BYPASSES ITS OWN DIVIDE-BY-EIGHT when the index is 3.
+
+CONSEQUENTLY IRQ38 HAS A PERIOD: 125 us, 8000 Hz, strongly-inferred. Log 124
+wrote its `8000/8 = 1000` alignment down as "a consistency, NOT a measurement …
+written down so a future step can test it instead of inheriting it as fact."
+This is that step. It holds.
+
+AND THE ANSWER THE OWNER ASKED FOR IS NO. Patching the handler's two compares
+would NOT give 2000 or 4000 Hz. The gate is `cmp r1,#3` — a two-way branch, not
+a ladder and not a table — so indices 1 and 2 fall through to the divide-by-
+eight and would still report at the 1000 Hz cadence, while the multiplier would
+become 2 or 4 and stretch every per-key timeout by that factor. The full answer,
+including what WOULD be required, is step 6.
+
+
+================================================================================
+STEP 0 — WHAT WAS READ, AND THE ONE METHOD CHANGE THAT MATTERED
+================================================================================
+Sources, all pre-existing and all read-only:
+
+  ghidra/peripherals/*.txt   six exports, 10740 ACCESS records, each carrying
+                             target, width, direction, instruction, function,
+                             BASE and OFFSET. Produced by
+                             FalchionPeripheralMap.java long before log 124.
+  ghidra/inventories/*.txt   function entries and real body ranges.
+  ghidra/imports/*.bin       the fifteen preserved slices, for byte-level
+                             confirmation of every instruction cited.
+  notes/polling-rate-protocol.json   log 126's measurement, read from the model
+                             rather than restated.
+
+THE METHOD CHANGE. Log 126 asked "where does the constant 0x1801e736 appear?".
+The right question was "what does the census say about the ADDRESS 0x1801e736?"
+— because the census has already done the constant propagation that turns
+`base+off` into a target. Two searches, same evidence, opposite outcomes.
+
+A SECOND CORRECTION TO LOG 126, found while checking its writers. It reported
+the sixth write site 0x18007a1e as belonging to FUN_18007030. IT DOES NOT:
+FUN_18007030's body is 0x18007030..0x180070fe, and 0x18007a1e lies in code that
+HAS NO FUNCTION BODY AT ALL. Log 126 mapped the site by nearest preceding entry,
+which is wrong whenever a literal pool sits far from its owner. This step's
+`owner()` takes the SMALLEST containing body and returns None rather than
+guessing, and a test pins both behaviours.
+
+WHY THAT CORRECTION IS LOAD-BEARING RATHER THAN COSMETIC. It is exactly why the
+census shows FIVE writes and log 126 found SIX: the census iterates FUNCTIONS,
+so code Ghidra never assigned to one is invisible to it. NEITHER METHOD IS
+SUFFICIENT ALONE, and the model records both counts with that reason.
+
+
+================================================================================
+STEP 1 — THE READER TABLE
+================================================================================
+$ python3 tool/map_polling_rate_reader.py
+
+  dir      instruction  function              base                 off
+  read    0x180053c4  FUN_18004a7e          r0@0x1801e734          2
+  read    0x180054ac  FUN_18004a7e          r12@0x1801e734         2
+  read    0x18005534  FUN_18004a7e          r0@0x1801e734          2
+  read    0x180055a2  FUN_18004a7e          r12@0x1801e734         2
+  write   0x1800117e  FUN_18000d56          r1@0x1801e736          0
+  write   0x18001548  FUN_18000d56          r2@0x1801e736          0
+  write   0x180018f8  FUN_18000d56          r1@0x1801e736          0
+  write   0x18001ece  FUN_18000d56          r1@0x1801e736          0
+  write   0x18002b50  FUN_18001fbe          r1@0x1801e736          0
+  write   0x18007a1e  NO FUNCTION BODY      literal@0x1801e736     0
+
+THE WRITERS, CLASSIFIED as the prompt asked:
+
+  0x18002b50  FUN_18001fbe   THE COMMAND PATH. Log 126's `51 31` handler.
+  0x18001548  FUN_18000d56   THE RELOAD PATH. Log 126 already showed it reads
+                             profile+0x4f8, masks 0xf and shifts — the same
+                             arithmetic as the command path.
+  0x1800117e  FUN_18000d56   an init/default path
+  0x180018f8  FUN_18000d56   sits immediately before a `50 30` response
+                             (movs r1,#0x30 ; movs r0,#0x50 ; bl 0x18000a70)
+  0x18001ece  FUN_18000d56   the FACTORY DEFAULT path — it is followed by calls
+                             to FUN_1800072c and FUN_18000466, log 125's key
+                             table and keymap default initialisers
+  0x18007a1e  (no function)  a PROFILE-APPLY path, and the third site that
+                             performs the identical expansion:
+                               18007a0c  ldrb.w r0,[r11,#0x4f8]
+                               18007a12  and    r0,r0,#0xf
+                               18007a16  lsls   r6,r0            ; r6 = 1 << index
+                               18007a18  ldr    r0,[pc]  -> 0x1801e736
+                               18007a1e  strb   r6,[r0]
+                             It then calls FUN_1800f7fe (log 125's rapid-trigger
+                             reset) and copies 0x46 bytes — log 125's five
+                             14-byte selectable rows.
+
+So the byte is written from the command, from a reload, from defaults and from a
+profile apply — every path that can change the setting — and read from exactly
+one place.
+
+
+================================================================================
+STEP 2 — WHAT THE READER DOES WITH IT
+================================================================================
+All four sites run the identical arithmetic. Byte-confirmed against the image at
+every address; the tool asserts each halfword and a test breaks if any moves.
+
+  180053c0  f89e 2022   ldrb.w r2,[lr,#0x22]      a per-key BYTE PARAMETER
+  180053c4  7880        ldrb   r0,[r0,#0x2]       THE MULTIPLIER, 1 << index
+  180053ca  eb00 0080   add.w  r0,r0,r0,lsl #2    x5
+  180053ce  0040        lsls   r0,r0,#0x1         x2      -> x10
+  180053d0  4342        muls   r2,r0,r2           parameter x 10 x multiplier
+  180053d2  f85c 0024   ldr.w  r0,[r12,r4,lsl #2] a per-key 32-BIT COUNTER
+  180053d6  4282        cmp    r2,r0              has the counter reached it?
+
+and the counter is a TICK counter, incremented once per invocation:
+
+  18005488  f858 3024   ldr.w  r3,[r8,r4,lsl #2]
+  1800548c  1c5b        adds   r3,r3,#0x1
+  1800548e  f848 3024   str.w  r3,[r8,r4,lsl #2]
+
+The other three sites differ only in register allocation:
+  180054ac  f89c c002 / eb0c 0c8c / ea4f 0c4c / fb01 f10c
+  18005534  7880      / eb00 0080 / 0040      / 4343
+  180055a2  f89c c002 / eb0c 0c8c / ea4f 0c4c / fb00 f00c
+
+SO THE MULTIPLIER IS A SCALE FACTOR ON A TICK-DENOMINATED PER-KEY TIMEOUT. It is
+not a loop bound, not a divisor, not a compare constant, not a timer reload
+value and not a mailbox argument. Those were the five candidates the prompt
+listed; this is the sixth, and it is the one that makes a stored user parameter
+independent of the tick rate.
+
+WHERE THE PARAMETER LIVES, read off the address arithmetic rather than guessed:
+
+  18005492  ldr    r2,[r0,#0x8]           the layer
+  18005494  muls   r2,r1,r2               r1 = 0x361
+  18005496  ldr    r1,[pc]  -> 0x180202d8
+  18005498  add.w  r1,r1,r2,lsl #2        + layer * 0x361 * 4
+  1800549c  add.w  r2,r1,r4,lsl #5        + key * 0x20
+  then [r2,#0x22] is the byte and [r2,#0x20] the paired halfword.
+
+  0x361 * 4 = 0xd84 IS LOG 125'S KEYMAP-BANK LAYER STRIDE, and 0x20 is its
+  per-key record size, and 0x180202d8 is its bank base (log 125: 0x180202d8 +
+  2*0xd84 = 0x18021de0, the profile block). Three independent identities, so the
+  array is identified rather than assumed.
+
+  WHAT IS NOT CLAIMED. Log 125 mapped record fields +0x04..+0x1c. +0x20 and
+  +0x22 fall at offsets 0 and 2 of the record one stride further on, consistent
+  with log 125's record 0 being the bank header — so this is plausibly key+1's
+  record. THIS STEP DOES NOT NAME THE FIELD. A test requires the note to say it
+  does not. On the taken branch the halfword at +0x20 is enqueued into a
+  per-group output ring (`strh.w r3,[r12,r1,lsl #1]` at 0x180054da, with the
+  index at 0x18024000 advanced immediately after), which reads as a hold-time
+  emit — the HAL's ModTap / Toggle / DKS / SpeedTap family — but naming which is
+  beyond this step's evidence and is left open.
+
+
+================================================================================
+STEP 3 — WHERE THE PERIOD IS ACTUALLY SET
+================================================================================
+NOT IN THE APPLICATION AT ALL. In the ENTRY image, in FUN_000004ba — the tick job
+logs 109, 110 and 119 traced. Byte-confirmed:
+
+      4cc  4839        ldr    r0,[pc,#0xe4]    -> *(0x5b4) = 0x1801e810
+      4ce  6800        ldr    r0,[r0]
+      4d0  2801        cmp    r0,#0x1
+      4d2  d10f        bne    0x4f4             not active -> skip the block
+      4d4  4838        ldr    r0,[pc,#0xe0]    -> *(0x5b8) = 0x18021de0
+      4d6  f890 04f8   ldrb.w r0,[r0,#0x4f8]    THE POLLING-RATE FIELD
+      4da  f000 010f   and    r1,r0,#0xf        THE INDEX
+      4de  4837        ldr    r0,[pc,#0xdc]    -> *(0x5bc) = 0x1801e6a4
+      4e0  2903        cmp    r1,#0x3           <<< THE BYPASS TEST
+      4e2  d00b        beq    0x4fc             index 3 -> RUN EVERY TICK
+      4e4  7801        ldrb   r1,[r0]
+      4e6  1c49        adds   r1,r1,#0x1
+      4e8  b2c9        uxtb   r1,r1
+      4ea  7001        strb   r1,[r0]
+      4ec  2908        cmp    r1,#0x8           <<< THE DIVIDE-BY-EIGHT
+      4ee  d005        beq    0x4fc
+      4f0  f003 fda8   bl     0x4044            otherwise: SAMPLE FETCH ONLY
+      4f4  e8bd 4010   pop.w  {r4,lr}
+      4f8  f003 bda9   b.w    0x404e            FUN_1800417e, on every tick
+      4fc  2100        movs   r1,#0x0
+      4fe  7001        strb   r1,[r0]           reset the /8 counter
+      500  f003 fdaa   bl     0x4058            FUN_180045b6
+      504  f003 fd9e   bl     0x4044            the sample fetch
+      508  f003 fdab   bl     0x4062            FUN_18004a7e, ACTUATION COMPARE
+      50c  f003 fdae   bl     0x406c            FUN_180057fe
+      510  f003 fdb1   bl     0x4076            FUN_180061c2, REPORT BUILDER
+      514  e7ee        b      0x4f4
+
+  *(0x5b8) IS THE PROFILE BLOCK — the same 0x18021de0 log 125 recovered and the
+  same one the `51 31` handler writes at 0x18002b38. The entry image reads the
+  setting at its source; the application reads the pre-expanded multiplier from
+  its cache. TWO CONSUMERS, TWO PATHS, ONE SETTING.
+
+  THE DIVISOR TABLE, from a two-way branch and nothing else:
+      index 0 -> 8       index 2 -> 8
+      index 1 -> 8       index 3 -> 1
+
+  THE VENEERS, re-derived from the bytes by a movw/movt/bx decoder in the tool
+  and each checked against the target log 119 resolved independently:
+      0x4044 -> 0x180049a4   the sample fetch
+      0x4058 -> 0x180045b6
+      0x4062 -> 0x18004a7e   THE ACTUATION COMPARE  <- the reader
+      0x406c -> 0x180057fe
+      0x4076 -> 0x180061c2   the report builder
+      0x404e -> 0x1800417e   the 21-byte EP 0x8c sender
+  All six match. The decoder is self-checked on 0x4062, and a fail-closed test
+  requires it to REFUSE ordinary code rather than invent a target.
+
+  WHAT IS GATED AND WHAT IS NOT, which is the design fact a replacement needs:
+      GATED on the rate:  FUN_180045b6, the actuation compare, FUN_180057fe and
+                          the report builder — one block behind one test.
+      NOT GATED:          the sample fetch, called on BOTH paths (0x4f0 and
+                          0x504), so HALL ACQUISITION IS NEVER SLOWED BY THE
+                          POLLING RATE; and FUN_1800417e, a tail call on every
+                          tick either way.
+
+  THE TICK JOB IS BYTE-IDENTICAL IN BOTH RELEASES. Bytes 0x4ba..0x516 of the
+  installed 1.59 entry image and the vendor 1.58 entry image are equal. Both
+  firmwares carry the same gate.
+
+  AND THE VENDOR APPLICATION CARRIES THE SAME FOUR READS, relocated:
+  $ grep "target=0x1801e70a" ghidra/peripherals/vendor_b.txt
+    dir=read instr=1800539a func=18004a7e base=r1@0x1801e708 off=2
+    dir=read instr=18005480 func=18004a7e base=r12@0x1801e708 off=2
+    dir=read instr=18005514 func=18004a7e base=r0@0x1801e708 off=2
+    dir=read instr=18005582 func=18004a7e base=r3@0x1801e708 off=2
+  0x1801e708 is notes/scan-pipeline.md's independently MEASURED relocation of
+  the key-state struct. A coincidence would not survive it.
+
+
+================================================================================
+STEP 4 — THE PERIOD, AND WHY THE SLOW STATE IS THE INFORMATIVE ONE
+================================================================================
+THE TRAP THIS AVOIDS. At index 3 log 126 measured the report grid at 125 us. It
+is tempting to read that as the tick period — and it proves nothing, because the
+host polls EP 0x81 every 125 us anyway (bInterval 1 at high speed, unchanged
+across the whole capture). A 125 us completion grid there is equally explained by
+the host's own schedule.
+
+THE INDEX-0 MEASUREMENT IS THE ONE THAT CANNOT BE EXPLAINED AWAY. Log 126
+measured the grid at 1 ms — 85.1% of inter-report gaps within 50 us of a
+millisecond multiple against a 10% chance level, on EP 0x81, and 82.6% on the
+independent EP 0x8c. The host was polling at 125 us throughout, so a 1 ms grid
+must come from the DEVICE having new data only every millisecond.
+
+  the gate says index 0 runs the report stage EVERY EIGHTH TICK
+  the wire says index 0 makes new data available EVERY 1 ms
+  therefore  8 x T = 1 ms  ->  T = 125 us  ->  IRQ38 = 8000 Hz
+
+AND THE FAST STATE IS THEN A PREDICTION, NOT A FIT. Divisor 1 at 125 us predicts
+a 125 us grid. Log 126 measured 125 us. The tool computes the prediction from the
+derived period and a check requires it to match, so the model cannot be tuned to
+agree.
+
+CONFIDENCE: STRONGLY-INFERRED, and the reason is stated rather than buried. The
+gate and the divisor are read out of the instruction stream — observed. The 1 ms
+device grid is measured on the wire — observed. Combining them additionally
+assumes THE REPORT STAGE MAKES AT MOST ONE NEW REPORT AVAILABLE PER INVOCATION,
+which is not separately proven. That assumption is the whole gap, it is recorded
+in the model as `kind_basis`, and a test forbids upgrading the confidence to
+observed. It WOULD BE REFUTED BY a report stage that coalesced or emitted more
+than one report per invocation, or by a second ungated producer for EP 0x81.
+
+WHAT THIS DOES NOT RESOLVE, stated up front because it is the easy overclaim:
+THE CLOCK CONFIGURATION. No crystal value, no PLL multiplier, no divider
+register is recovered by this step. One derived period is not a register map.
+The dependency map's `clock_frequency` service STAYS UNRESOLVED, and its
+evidence boundary was refined to say so — and deliberately does NOT state the
+number, because that map must not become the place a frequency is claimed. The
+number lives in notes/polling-rate-reader.json. A test asserts both halves.
+
+WHAT DOES NOW HAVE UNITS, for the first time from a measured clock rather than
+by construction:
+
+  IRQ38                    125 us / 8000 Hz          strongly-inferred, here
+  the tick job at index 0  1 ms                      derived
+  the tick job at index 3  125 us                    derived
+  the per-key parameter    10 ms PER UNIT            derived, and RATE-INVARIANT
+
+THE RATE-INVARIANCE IS THE CORROBORATION THAT MATTERS.
+
+  index  divisor  multiplier  job period  invocations/unit  real time/unit
+    0       8         1          1 ms           10             10 ms
+    3       1         8         125 us          80             10 ms
+
+  multiplier x divisor is 8 in both reachable states, so `parameter x 10 x
+  multiplier` job invocations is THE SAME REAL DURATION at either rate. Two
+  unrelated code sites — a gate in the entry image and a multiply in the
+  application — agree on one rate model, and neither was used to derive the
+  other. That is why this reads as the designer's intent rather than as a
+  coincidence, and it is what makes the multiplier's purpose legible at all.
+
+
+================================================================================
+STEP 5 — THE SEARCH, CLOSED
+================================================================================
+A reader can reach 0x1801e736 in exactly three ways: a literal equal to it, a
+nearby literal plus an immediate, or a movw/movt pair. All three are enumerated,
+and each enumeration is shown to find something so its emptiness means
+something.
+
+  the census, all six exports        4 reads + 5 writes. THE ANSWER.
+    boundary                         function-scoped, so it cannot see the sixth
+                                     writer, which has no function body
+  literals equal to 0x1801e736       6 slots, 6 load sites, all six stores
+    boundary                         a [base+2] reader leaves no such literal
+  literals within +/-0x100 of the    9 slots in the application
+    struct base, every image         0 in the entry image
+                                     0 in the second-context RAM image
+  pc-relative loads of those 9       44 sites in 17 functions, plus 4 in code
+                                     with no function body
+    the 4 function-less sites, read  0x18004564 -> +0x50, +0x6
+    by hand                          0x1800457e -> +0x54, then [r5]
+                                     0x180045b6 -> +0x54, then strb [r1,#0x2]
+                                                   = 0x1801e78a
+                                     0x1800602a -> +0x60, +0x30, +0x2c
+                                     NONE reaches +2.
+  movw/movt construction             none, in any image (log 126)
+  the vendor release                 the same 4 reads at 0x1801e70a; the tick
+                                     job byte-identical
+  the second execution context       no literal near the struct, and no
+                                     reference to the profile block anywhere in
+                                     its image
+
+A NOTE ON 0x180045b6, because it closes a loose end. Log 126's displacement scan
+reported two apparent hits and rejected them on inspection, because the base is
+adjusted by `adds r5,#0x54` first and the effective address is 0x1801e78a. Those
+sites are FUN_180045b6 and its sibling — and FUN_180045b6 is veneer 0x4058's
+target, the first call in the gated block. Log 126's rejection was correct and
+the sites are now positively attributed instead of merely dismissed.
+
+LOG 122'S PARAMETER-REGISTER BLIND SPOT DOES NOT APPLY HERE. Both consumers were
+found through bases the census had already resolved, so no parameter-register
+propagation was needed. Branch (a) of the prompt's widening plan — the second
+context — is closed by the literal scan finding nothing anywhere near the struct
+in its image; branch (b) was not needed; branch (c), the reload path's
+neighbourhood, is step 1's writer classification.
+
+
+================================================================================
+STEP 6 — WOULD 2000 AND 4000 Hz WORK?
+================================================================================
+THE QUESTION: the handler at 0x18002b2e accepts only index 0 and 3. If its two
+compares at 0x18002b30 and 0x18002b34 were patched to accept 1 and 2, would 2000
+and 4000 Hz work?
+
+THE ANSWER: NO. And the reason needed the reader's semantics, which is why this
+could not be answered before.
+
+  1. THE PERIOD IS NOT SET BY THE MULTIPLIER. It is set by the gate, and the
+     gate is `cmp r1,#3` — a TWO-WAY BRANCH. Index 1 or 2 fails it and takes the
+     divide-by-eight path, so the report stage would still run at the 1000 Hz
+     cadence. The rate would not change.
+
+  2. AND THE TIMING WOULD BREAK. The multiplier WOULD become 2 or 4, so
+     FUN_18004a7e would scale every per-key timeout to 20 or 40 job invocations
+     per unit while the job period stayed at the 1000 Hz value. Hold and tap
+     timings would come out 2x and 4x too long. The device would be worse than
+     before, in a way a user would feel and a wire capture would not show.
+
+  IF THE MULTIPLIER HAD BEEN AN INDEX INTO A TWO-ENTRY TABLE the answer would
+  also have been no, but for a different reason. It is not: `1 << index` then
+  `x10` is generic arithmetic with no table anywhere. That distinction is what
+  the prompt asked for, and it cuts the opposite way from the obvious reading —
+  the generic multiplier is the part that WOULD work; the gate is the part that
+  would not.
+
+WHAT WOULD ACTUALLY BE REQUIRED, as analysis. NOTHING WAS PATCHED.
+
+  (a) the dispatcher's two compares at 0x18002b30/0x18002b34, so the device
+      accepts the index at all; AND
+  (b) the divider selection in the ENTRY image's tick job at 0x4e0/0x4ec,
+      replaced by a rate-dependent divisor.
+
+  A DIFFERENT IMAGE. (b) is in Candidate A, not the application — so this is a
+  two-image change, not a two-compare change, and Candidate A is the image the
+  bootloader selects and verifies. That is a materially different risk class
+  from patching the application.
+
+  THE ARITHMETIC ALREADY GENERALISES, and this is the genuinely informative part:
+  divisor `8 >> index` pairs exactly with the existing multiplier `1 << index`.
+  Their product is 8 for ALL FOUR indices, so the per-key parameter stays in
+  10 ms units at 1000, 2000, 4000 and 8000 Hz with NO change to the application's
+  scaling. ASUS'S SCALING IS ALREADY FOUR-RATE CAPABLE; only the gate is
+  hardcoded to the two endpoints. That is consistent with log 126's independent
+  finding that the stored field is four bits wide with a bound of 3, and it is
+  the strongest available evidence that four rates were designed and two were
+  shipped.
+
+  NO DESCRIPTOR CHANGE IS NEEDED. EP 0x81's bInterval is already 1 — 125 us at
+  high speed — so the host polls fast enough for any of the four rates without
+  re-enumeration (log 126, wire-confirmed).
+
+  NOT VERIFIABLE OFFLINE: CPU HEADROOM. At 2000 or 4000 Hz the gated stage would
+  run two or four times more often than at 1000. Nothing offline measures whether
+  the actuation compare, FUN_180045b6, FUN_180057fe and the report builder fit in
+  the shortened budget. At 8000 Hz they demonstrably do, which bounds the
+  question but does not answer it for the intermediate rates, since the sample
+  fetch is already running every tick in all cases.
+
+WHAT A CUSTOM FIRMWARE MUST REPRODUCE, from the gate's structure:
+
+  - SAMPLE ON EVERY TICK. Veneer 0x4044 is called on BOTH paths. Hall
+    acquisition is never slowed by the polling rate; only the decision and
+    report stage is. A replacement that gates acquisition changes the sensor
+    behaviour, not just the report rate.
+  - GATE THE COMPARE AND THE REPORT TOGETHER. Veneers 0x4058, 0x4062, 0x406c and
+    0x4076 are one block behind one test. Splitting them changes which stage
+    sees which sample.
+  - LEAVE THE 21-BYTE EP 0x8c SENDER UNGATED. Veneer 0x404e is a tail call on
+    every tick regardless of the rate.
+  - SCALE EVERY TICK-DENOMINATED TIMEOUT BY THE SAME FACTOR, or hold and tap
+    timings move when the user changes the polling rate. The stock firmware does
+    this with one cached byte and a x10.
+  - KEEP bInterval AT 1. The host must poll faster than the fastest rate offered,
+    and the descriptor never changes.
+
+
+================================================================================
+STEP 7 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_polling_rate_reader.py — one data model,
+notes/polling-rate-reader.{json,md}, with --json, --write and --check. It adds
+no dependency: the census and the inventories are text, the images are bytes,
+and the movw/movt and pc-relative-load decoders are about sixty lines of Python.
+An external disassembler was used during exploration to cross-check the
+listings; the tool encodes the result as byte-level assertions instead, so the
+citations cannot rot and the suite needs nothing installed.
+
+$ python3 tool/map_polling_rate_reader.py
+  RESULT polling_rate_reader_ok=True checks=53
+
+Added tool/test_map_polling_rate_reader.py — 49 tests in four groups.
+
+  FAIL-CLOSED, nine tests. A missing slice raises; an address outside a slice
+  raises; a halfword run past the end raises; a missing inventory raises; the
+  VENEER DECODER POINTED AT ORDINARY CODE RAISES rather than inventing a target;
+  a veneer past the end raises; a truncated census line is not accepted; a
+  census line with a bad direction is not accepted; and `owner()` returns None
+  rather than guessing — the exact failure that made log 126 misattribute
+  0x18007a1e.
+
+  THE EVIDENCE, sixteen tests. Exactly four readers, all FUN_18004a7e, all at
+  offset 2 from 0x1801e734; six writers of which five are in the census; the
+  gate reading the profile block the handler writes; the divisor table being
+  two-way; the veneer decoder reproducing a target Ghidra resolved; the sample
+  fetch appearing on BOTH paths; the tick job identical in both releases; IRQ38
+  at 125 us; the fast state PREDICTED and matching; the parameter unit
+  rate-invariant at 10 ms; the threshold array being log 125's keymap bank; and
+  every cited instruction present in the image byte for byte.
+
+  ANTI-VACUITY, eight tests, because the step turns on a search that found
+  nothing being wrong and a search that found something being right.
+    - the census filter finds key_state, +4 and +9, so it is not keyed to one
+      lucky address;
+    - it IS silent for the byte in the second-context and bootloader exports;
+    - the second context carries no literal within 0x100 of the struct, and the
+      SAME scan finds more than fifty in the application;
+    - the entry image carries none either;
+    - the pc-relative-load decoder finds the gate's own three loads and resolves
+      them to 0x5b4, 0x5b8 and 0x5bc — the literals read by hand above;
+    - the vendor release carries the same four reads in the same function;
+    - `owner()` picks the smallest containing body, tested on two sites.
+
+  DISCIPLINE, sixteen tests. Log 124 must be refined and not rewritten, and its
+  OWN MODEL IS ASSERTED STILL TO SAY `irq38_period == UNRESOLVED`; the clock
+  configuration must stay unresolved and the dependency map must still classify
+  `clock_frequency` as unresolved; the dependency map's boundary must point at
+  this model and must NOT itself state a frequency; the period must stay
+  strongly-inferred with its assumption named and a refutation stated; the
+  2000/4000 answer must be NO and must name the second patch site; nothing may
+  be patched; the unnamed record fields must stay unnamed; the document must say
+  no device was accessed; every search step must name a boundary; the JSON must
+  be deterministic; the notes must match; --check must report current.
+
+A CHECK THAT FAILED FOR THE RIGHT REASON, AND WAS NOT LOOSENED. Refining the
+dependency map's clock boundary broke
+test_map_platform_dependencies.test_no_frequency_is_claimed_anywhere, which bans
+any `<number> Hz` from that map's report. The test was RIGHT: log 113 and log 124
+put it there so the dependency map could never become the place a frequency gets
+claimed. The boundary text was rewritten to point at
+notes/polling-rate-reader.json for the number instead of stating it, and a NEW
+test was added here asserting that division of responsibility in both directions
+— the boundary must cite log 127 and this model, and must contain no numeral
+followed by Hz. The existing test was not touched.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_polling_rate_reader.py \
+      tool/test_map_polling_rate_reader.py tool/map_platform_dependencies.py
+                                                                       [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 1138 tests   OK                                                  [exit 0]
+  (1089 before this step; +49 in tool/test_map_polling_rate_reader.py)
+$ the twenty existing --check scripts plus the new one
+                                                   all reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                     all OK               [exit 0]
+$ git diff --check                                 clean                [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS CHANGES IN THE PRIOR RECORD
+================================================================================
+LOG 124 — REFINED, NOT REWRITTEN. Its residual negative, "no consumer of a rate
+index appears in the preserved images", is now ANSWERED. Its `8000/8 = 1000`
+alignment, recorded as "a consistency, not a measurement", is CONFIRMED as a
+measurement. Its elimination of the PRESCALER LADDER stands exactly as written:
+FUN_0000042c's five divisors really are instruction-stream immediates and no
+stored index changes them. The rate does not change a divisor — IT BYPASSES A
+DIVIDER, in FUN_000004ba, a function log 124 did not examine. Log 124's own tool
+and tests are untouched and remain its sealed record.
+
+LOG 126 — TWO CORRECTIONS, BOTH MINE TO MAKE. Its "six writers, no reader"
+stands as a true statement about the three searches it ran; the reader existed
+and the byte shape is why it was invisible. And its attribution of the sixth
+writer to FUN_18007030 is WRONG: 0x18007a1e is in code with no function body.
+
+LOGS 110 AND 119 — REFINED. "The actuation comparison runs on IRQ38's tick
+divided by 8" is true at 1000 Hz and false at 8000 Hz, where it runs on every
+tick. Both logs described the else path, which is the path the device takes at
+its default rate, and both explicitly scoped the claim to "inside the branch
+gated by that job's own /8 counter" — which is precisely the branch the rate
+bypasses.
+
+LOG 125 — ONE FIELD ATTRIBUTED. The per-key byte the multiplier scales lives in
+its keymap bank, at layer*0xd84 + key*0x20 + 0x22, outside the +0x04..+0x1c range
+it mapped. The field is NOT named here.
+
+THE DEPENDENCY MAP — ONE BOUNDARY REFINED, CLASSIFICATION UNCHANGED.
+`clock_frequency` stays unresolved. Its boundary previously read "Any Hz figure
+would have to come from the silicon or from measurement, neither of which this
+project has." The project now HAS a measurement, and the boundary says so while
+pointing at this model for the number.
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THE ONE-REPORT-PER-INVOCATION ASSUMPTION behind IRQ38 = 8000 Hz. Not
+    separately proven. It is the whole difference between strongly-inferred and
+    observed here.
+  - THE CLOCK CONFIGURATION. Crystal, PLL, and the reset sequence's registers
+    are still unrecovered. A derived period is not a register map.
+  - THE +0x20 / +0x22 RECORD FIELDS. Outside log 125's map, and not named. The
+    behaviour on expiry — a halfword enqueued into a per-group ring — reads as a
+    hold-time emit, and which HAL feature it is (ModTap, Toggle, DKS, SpeedTap)
+    is not established.
+  - CPU HEADROOM AT 2000 AND 4000 Hz. Not measurable offline.
+  - WHAT GATES THE WHOLE JOB. *(0x1801e810) must equal 1 or the block is skipped
+    entirely. Twenty-six write sites across five functions set it; its role is
+    not traced here.
+  - THE NINE RAPID WRITES log 126 recorded at t=314.3..318.2 in the capture.
+    Cause still undetermined; nothing here depends on them.
+  - WHETHER THE PARAMETER IS USER-FACING. 10 ms per unit is derived, but no
+    Armoury Crate field has been matched to it. Log 125's three unmatched rows
+    are down to two; this is not a third match.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NOTHING WAS PATCHED. The 2000/4000 answer is analysis. No image was
+    modified, no patch was built, and no candidate image was rebuilt.
+  - It did not access any device, open any hidraw node, or read USB sysfs.
+  - It constructed no frame of any kind, and suggested transmitting none.
+  - It did not open the capture files; log 126's measurement was read from
+    notes/polling-rate-protocol.json.
+  - It did not modify either evidence binary, any historical log, or
+    opencode.json. Logs 124 and 126 were not rewritten and their tools were not
+    edited.
+  - It did not reclassify any dependency-map service. Only one evidence
+    boundary was refined, and `clock_frequency` stays unresolved.
+  - It did not name the +0x20/+0x22 record fields, and it did not identify the
+    HAL feature the timeout belongs to.
+  - It did not identify the clock configuration, and it did not claim to.
+  - The pre-existing ghidra/project falchion-hfx project was never opened; only
+    the existing read-only exports and imported slices were read.
+  - No package was installed.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.
