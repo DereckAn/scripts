@@ -2240,6 +2240,79 @@ were seeded there too, and Phase 3's pairings rose from 114 to 144.
 828 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-08 — Which keys enter recovery, and gate G1 (log 120)
+
+One step, closing risk-plan gate G1 as far as the evidence reaches. Offline;
+authorises nothing. Nothing committed or staged.
+
+The prompt came with a caution I want to record because it turned out to be the
+whole hinge: the application uses a Hall/analog path, but the bootloader's scan
+might be a simple digital read, and whether a user can hold three keys at once
+depends on which. It is not a digital read. The bootloader drives the same
+converter trio the second context uses — same registers, same idiom, same 0x7c
+strobe — from its own copy of the driver, because at that point in the boot
+nothing has started the second context. Every key is its own analog channel, so
+there is no matrix, no ghosting, and the question answers itself: any set of
+keys is simultaneously readable.
+
+Two of the prompt's own premises were wrong and the listings said so. The
+"enable" function is `msr primask,r0`, an interrupt mask bracketing the scan in
+a critical section, not a hardware enable. And the poll has exactly one caller;
+the second site calls the *scan*, not the poll.
+
+The bitmap turned out to be five words of fifteen bits, which is the same 5 × 15
+the application's key map uses — proved here from the packer's own loop bounds
+rather than assumed from the coincidence. The pattern then decodes cleanly: bits
+5 and 7 of word 0, bit 8 of word 4. And because the compare is exact equality
+rather than a mask, it also *requires* twenty-seven other positions released,
+including the key sitting physically between the two pressed ones.
+
+Naming them needed one thing I did not want to skip. The map's values look like
+HID usage IDs, and looking like something proves nothing, so I went and found
+the firmware applying the boot-keyboard modifier rule to them — subtract 0xe0,
+compare against 7, shift a bit into the report's modifier byte. That only makes
+sense if they are usage IDs. After that the names fall out of the published
+table: 8 and 6, with 7 between them that must stay up.
+
+The third key I could not name, and did not. Code 0xe8 is the only non-HID value
+in the map, appears exactly once in both layers, and no recovered path emits it
+to the host — it is outside the modifier range and outside the only other range
+the report builder handles. Its neighbours are Right Control and Right Alt, which
+on this product is where Fn sits. That is a layout inference, so it is recorded
+as strongly-inferred and a test forbids "Fn" from appearing as the answer, with
+an anti-vacuity companion so the ban cannot pass by matching nothing.
+
+The residual I care about more is quieter. The bootloader holds no key map at
+all — I checked for the application's table, for any eight-byte run of it, and
+for a reference to its address, and found none. So the claim that the
+bootloader's group 0 is the application's group 0 is corroborated, not proven.
+The corroboration that actually carries weight is the 'D' variant mask: it
+disables exactly two positions, and both are positions the application treats as
+non-keys. That test depends on the permutation — shuffle the groups and the mask
+lands on real keys — which is why it counts and why the symmetric
+position-14 observation does not.
+
+A pleasant side result: the delay function divides a *measured* core clock by
+one million, which makes its argument microseconds by construction. That is the
+first unit-bearing timing constant this project has recovered, and it holds
+without knowing the clock's numeric value, which is still unknown. So the poll's
+delays total about 200 ms — though each sample also runs a conversion sweep of
+unbounded duration, so I stated 200 ms as a floor and a test forbids quoting it
+as a total.
+
+One of my own checks caught a gap. The first run crashed because layer 1 uses
+two codes I had left out of the usage table. They are the standard Non-US # and
+Non-US backslash usages, so the fix was to add them rather than special-case the
+hole — after which 0xe8 is the only unknown left, which is the right outcome.
+
+G1 is marked PARTIAL, not RESOLVED, and the risk plan now says why: software-only
+recovery has a named, physically holdable combination instead of an unknown one,
+which is a real reduction in risk, but nothing here was exercised and two links
+are inferred. G3 stays a live decision rather than a formality.
+
+865 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

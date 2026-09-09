@@ -1,0 +1,428 @@
+LOG 120 — THE RECOVERY KEY COMBINATION: WHICH PHYSICAL KEYS
+Date: 2026-09-08
+Scope: ONE step, closing risk-plan gate G1 as far as the evidence allows.
+Offline only. It authorises nothing live. Nothing was committed, staged or
+unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary
+was opened for writing and both hashes are unchanged below. No historical log
+and not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE ANSWER IN ONE LINE: the pattern is three keys held — 8, 6, and one key
+whose matrix position is known and whose name is inferred, not recovered —
+with the 7 between the first two deliberately released.
+
+TWO CORRECTIONS TO THE PROMPT'S PREMISE, both from the listings:
+  - FUN_00005272 is `msr primask,r0`. It is an INTERRUPT MASK, not a scan
+    enable. The poll's 1/0 calls bracket the scan in a critical section.
+  - FUN_000029d4 has exactly ONE caller, FUN_00007ec8. FUN_000036fc calls
+    FUN_00002d4a, the SCAN — a second caller of the scan, not of the poll.
+
+NOTE ON THE SLICE. bootloader_primary.bin and the installed mirror already in
+project-step6 are BYTE-IDENTICAL (both sha256 c244aef0a924...), so the
+program already imported is the same bytes and no second import was needed.
+
+
+================================================================================
+STEP 1 — WHAT THE SCAN ACTUALLY SAMPLES
+================================================================================
+This was the question the whole answer turns on, and the answer is not the
+simple one.
+
+FUN_00002d4a is a four-stage wrapper:
+
+    00002d4a  push {r4,lr}
+    00002d4c  bl 0x00002780     ; zero twelve buffers
+    00002d50  bl 0x00007e14     ; -> FUN_000067a4, the conversion sweep
+    00002d54  bl 0x00003b98     ; de-interleave results into five groups
+    00002d58  bl 0x0000350c     ; combine, threshold, pack the bitmap
+    00002d5c  pop {r4,pc}
+
+A census of the bootloader (accesses=1271 unresolved=2707 functions=327)
+attributes to FUN_000067a4:
+
+    0x40018000  write4 x4
+    0x40019000  read4  x3
+    0x4001b000  write4 x6
+
+and its literal pool confirms them:
+
+    0x6868 = 0x4001b000   STROBE
+    0x6870 = 0x40018000   DATA-OUT
+    0x6874 = 0x40019000   DATA-IN
+    0x686c = 0x18012d28   source table
+    0x6878 = 0x18012f08   result array
+
+THOSE ARE THE SAME THREE REGISTERS LOG 119 RECOVERED IN THE SECOND EXECUTION
+CONTEXT, and the loop is the same idiom with the same strobe value:
+
+    000067ca  movs r3,#0x7c
+    000067cc  ldr r4,[0x00006868]
+    000067ce  str r3,[r4,#0x0]          ; STROBE HIGH, 0x7c
+    000067d0  nop x5
+    000067da  ldr r3,[0x0000686c]
+    000067dc  ldrh.w r3,[r3,r0,lsl #0x1]
+    000067e0  ldr r4,[0x00006870]
+    000067e2  str r3,[r4,#0x0]          ; DATA OUT
+    000067e4  movs r3,#0x0
+    000067e8  str r3,[r4,#0x0]          ; STROBE LOW
+    000067ea  ldr r3,[0x00006874]
+    000067ec  ldr r3,[r3,#0x0]          ; DATA IN
+    000067f0  strh.w r3,[r4,r0,lsl #0x1]; RESULT[i]
+    000067f6  cmp r0,#0xd0              ; first tier, 208 — as in log 119
+
+SO THE BOOTLOADER'S SCAN IS THE MUXED ANALOG CONVERTER PATH, NOT DIGITAL GPIO
+AND NOT A ROW/COLUMN MATRIX. The bootloader carries its OWN copy of the driver
+and does not use the second execution context at all — which it could not,
+since nothing has started it at that point in the boot.
+
+That answers the caution this step was set with. Because every key is its own
+analog channel, there is no matrix, no ghosting, and no mutually exclusive
+pair: any set of keys is simultaneously readable.
+
+
+================================================================================
+STEP 2 — THE GEOMETRY, AND WHAT EACH BIT MEANS
+================================================================================
+FUN_00002780 zeroes twelve buffers: five pairs of 0x1e bytes at 0x18012bfc +
+k*0x3c, plus two 0x1e0-byte buffers at 0x18012d28 and 0x18012f08. 0x1e = 30
+bytes = 15 uint16; 0x1e0 = 480 = 240 uint16, the same 240 channels log 119
+found.
+
+FUN_0000350c does three things. First it folds each group buffer into a level
+array, 15 positions at a time, five groups:
+
+    00003512  ldr r2,[0x00003690]        ; group buffer 0 = 0x18012c1a
+    00003514  ldrb.w r1,[r2,r4,lsl #0x1]
+    00003518  ldrh.w r2,[r2,r4,lsl #0x1]
+    0000351c  asrs r0,r2,#0x8
+    0000351e  bl 0x00005820
+    00003522  ldr r1,[0x00003694]        ; level array = 0x18013134
+    00003524  strh.w r0,[r1,r4,lsl #0x1] ; group 0 -> index r4
+    ...       +0xf, +0x1e, +0x2d, +0x3c  ; groups 1..4 at +15 each
+    00003592  cmp r4,#0xf
+
+Second it applies variant masks from the byte at 0x18010b56 (see step 3).
+
+Third it packs the bitmap, and this is where the geometry is fixed:
+
+    0000362a  ldr r0,[0x00003694]
+    0000362c  ldrh.w r0,[r0,r4,lsl #0x1]   ; level[linear]
+    00003630  cbnz r0,0x00003648
+    00003632  movs r0,#0x0                 ; level == 0 -> UP
+    00003636  strb r0,[r1,r4]
+    0000363e  bics r0,r6                   ; clear the bit
+    ...
+    00003648  ldr r0,[0x00003694]
+    0000364e  cmp.w r0,#0x1300
+    00003652  bge 0x0000366a               ; >= 0x1300 -> UP
+    00003654  movs r0,#0x1                 ; else DOWN
+    00003660  orrs r0,r6                   ; set the bit
+    ...
+    0000367e  adds r4,r4,#0x1
+    00003680  adds r7,r7,#0x1
+    00003682  lsls r6,r6,#0x1              ; next bit
+    00003684  cmp r7,#0xf                  ; 15 bits per word
+    00003688  adds r5,r5,#0x1
+    0000368a  cmp r5,#0x5                  ; 5 words
+
+  THE BITMAP AT 0x18012ac8 IS FIVE WORDS OF FIFTEEN BITS.
+  Bit b of word g is linear index g*15 + b.
+  A bit is SET when the level is NON-ZERO AND BELOW 0x1300.
+
+5 x 15 = 75 is the same dimension log 110 proved for the application's key
+map, from independent instruction encodings.
+
+THE PATTERN DECODE:
+
+  word +0x0 == 0xa0  = 0b000000010100000 -> bits 5 and 7 -> group 0
+  word +0x10 == 0x100 = bit 8            -> group 4
+
+  DOWN:      group 0 position 5  (linear 5)
+             group 0 position 7  (linear 7)
+             group 4 position 8  (linear 68)
+
+  AND, BECAUSE THE COMPARE IS EXACT EQUALITY (`cmp r0,#0xa0` / `bne`), every
+  OTHER position in groups 0 and 4 must be RELEASED — 27 positions in total,
+  including group 0 position 6, which sits physically between the two pressed
+  ones.
+
+  Words +0x4, +0x8 and +0xc are NEVER LOADED, so groups 1, 2 and 3 are
+  unconstrained. That is a real property of the gate, not an omission here.
+
+
+================================================================================
+STEP 3 — MAPPING POSITIONS TO PHYSICAL KEYS
+================================================================================
+The bootloader never names a key. The application does, at 0x1801c940 — the
+key map FUN_18004a7e indexes as key_map[layer*75 + group*15 + position], from
+its own pool at 0x18005ad4.
+
+FIRST, PROVE THE VALUES ARE HID USAGE IDs rather than assuming it because they
+look like them. The report builder applies the boot-keyboard modifier rule:
+
+    180063f6  sub.w r0,r2,#0xe0
+    180063fa  cmp r0,#0x7
+    180063fc  bhi 0x18006450        ; outside 0xe0..0xe7 -> ordinary key
+    18006400  and r3,r2,#0x7
+    18006404  movs r0,#0x1
+    18006408  lsls r0,r3            ; 1 << (code & 7)
+    1800640a  orrs r1,r0            ; into the report's modifier byte
+
+That is exactly the USB HID rule that usages 0xE0..0xE7 are the eight
+modifiers in bit order. It only makes sense if the map holds usage IDs.
+
+THE MAP, layer 0, as groups x positions (names from the published HID
+Keyboard/Keypad page 0x07):
+
+  g0: Backspace  =  -  0  9  8  7  6  5  4  3  2  1  Escape  --
+  g1: \  ]  [  P  O  I  U  Y  T  R  E  W  Q  Tab  --
+  g2: Enter  '  ;  L  K  J  H  G  F  D  S  A  CapsLock  --  --
+  g3: Up  RShift  /  .  ,  M  N  B  V  C  X  Z  LShift  (skip)  --
+  g4: Ins  Del  PgUp  PgDn  Right  Down  Left  RCtrl  0xe8  RAlt  Space
+      LAlt  LGUI  LCtrl  --
+
+Group 0 is the number row read RIGHT TO LEFT. The three positions:
+
+  group 0 position 5  -> 0x25 -> HID usage 0x25 -> "8"           OBSERVED
+  group 0 position 7  -> 0x23 -> HID usage 0x23 -> "6"           OBSERVED
+  group 4 position 8  -> 0xe8 -> NOT a HID usage                 UNRESOLVED
+
+  and the one that must be RELEASED between them:
+  group 0 position 6  -> 0x24 -> HID usage 0x24 -> "7"           OBSERVED
+
+THE THIRD KEY, and it is NOT named here. Code 0xe8:
+  - occurs exactly once in the map, at group 4 position 8, in both layers;
+  - is the only non-HID code in either layer (0x32 and 0x64, which appear in
+    layer 1, are the standard Non-US # and Non-US backslash usages);
+  - is outside 0xe0..0xe7, so the modifier rule does not apply to it, and
+    outside 0xe9..0xeb, the only other range the report builder handles — so
+    NO RECOVERED PATH EMITS IT TO THE HOST;
+  - its neighbours in the bottom row are 0xe4 (Right Control) at position 7
+    and 0xe6 (Right Alt) at position 9.
+
+  A key that is never reported to the host and sits between Right Control and
+  Right Alt is, on this product, the Fn key. THAT IS AN INFERENCE FROM LAYOUT
+  AND FROM THE ABSENCE OF AN EMIT PATH, NOT A RECOVERED NAME, and it is
+  recorded as strongly-inferred. A unit test forbids "Fn" from appearing as
+  the answer in the naming claim, with an anti-vacuity companion.
+
+  What would settle it: a recovered consumer of 0xe8 that switches the key
+  map's layer, or a capture showing the key produces no HID traffic while
+  changing other keys' output.
+
+THE VARIANT BYTE. FUN_0000350c forces some positions to 0xffff — which is at
+or above the down ceiling and so always reads as up — depending on the byte at
+0x18010b56:
+
+    0x44 'D'   -> (group 2, position 13) and (group 3, position 13)
+    0x45 'E'   -> (group 1, position 13)
+    not 0x49   -> position 14 of ALL FIVE groups
+    0x49 'I'   -> (group 0, position 14) and (group 4, position 14)
+
+  NONE OF THESE TOUCHES POSITION 5 OR 7 OF GROUP 0, OR POSITION 8 OF GROUP 4.
+  The recovery combination is VARIANT-INDEPENDENT, so the unresolved variant
+  byte does not weaken the answer.
+
+THE RESIDUAL, stated plainly because it is the weakest link in the chain. The
+bootloader holds NO key map: the application's group-0 row does not appear
+anywhere in the bootloader's bytes, no 8-byte run of the map appears, and the
+bootloader never references 0x1801c940. So "bootloader group g == application
+group g" is NOT PROVEN from the images. It is corroborated twice:
+
+  - the 'not 0x49' mask disables position 14 in all five groups, and the
+    application's map has an unused code at position 14 in all five groups.
+    Consistent — but symmetric across groups, so it does not fix the
+    permutation.
+  - the 'D' mask disables exactly (group 2, position 13) and (group 3,
+    position 13), and the application's map holds a skip code at BOTH — 0x00
+    and 0xd3. This one DOES depend on the permutation: had the bootloader's
+    groups been permuted, that mask would land on real keys. Genuine
+    corroboration for groups 2 and 3.
+
+  What would settle it: a recovered table in either image mapping a scan
+  channel to a group index, or an observation of the bitmap with a single
+  known key held.
+
+
+================================================================================
+STEP 4 — WHEN THE POLL MATTERS
+================================================================================
+FUN_00007ec8, the boot orchestrator, in order:
+
+    00007ed6  bl 0x00002af0     ; r4 = the selected entry — CONTAINER SELECTION
+    ...
+    00007efc  bl 0x000029d4     ; THE RECOVERY POLL
+    00007f00  mov r5,r0
+    00007f02  cbnz r5,0x00007f32 ; pattern held -> skip the boot entirely
+    00007f04  ldr r0,[0x00007f98]
+    00007f06  cmp r4,r0          ; the entry-constant gate
+    00007f08  bne 0x00007f32
+    00007f0a  bl 0x00002a44      ; the 0x20000ffc one-shot gate
+    00007f0e  cbnz r0,0x00007f32
+    00007f14  bl 0x000026d0      ; the checksum gate
+    00007f18  cbnz r0,0x00007f32
+    ...       copy 0x10000 bytes and jump
+
+  THE POLL RUNS AFTER CONTAINER SELECTION AND BEFORE ALL THREE REMAINING BOOT
+  GATES. It is the FIRST thing that can block a boot.
+
+THE DELAY UNIT IS ESTABLISHED, and this is the first unit-bearing timing
+constant this project has recovered:
+
+    000048dc  ... bl 0x00004910          ; computes the core clock from the
+                                          ; 0x45000000 block: a 3-bit source
+                                          ; selector at +0xc via tbb, then PLL
+                                          ; fields at +0x4
+    000048ea  ldr r1,[0x0000490c]        ; = 1000000
+    000048ec  udiv r7,r0,r1              ; clock / 1e6
+    000048f0  mul r4,r7,r5               ; * argument
+    ...       busy-loop
+
+  Dividing a MEASURED clock by 1e6 makes the argument MICROSECONDS BY
+  CONSTRUCTION. The unit holds without knowing the clock's numeric value —
+  which is still unresolved. So FUN_00003732(1000) is 1 ms.
+
+THE WINDOW:
+    phase 1   100 samples, results DISCARDED          ~100 ms of delay
+    phase 2   up to 100 samples, pattern matched      ~100 ms of delay
+    match     31 CONSECUTIVE samples (cmp r5,#0x1e then increment)  ~31 ms
+
+  Both loops run unconditionally when no key is held, so EVERY POWER-ON spends
+  this window in the poll.
+
+  THE DELAYS ALONE TOTAL ABOUT 200 ms. Each sample also performs a full
+  conversion sweep whose duration is NOT bounded here, so the true window is
+  LONGER than 200 ms and no total is claimed. A test forbids stating one.
+
+  PRACTICAL CONSEQUENCE: because the first 100 samples are discarded, the
+  combination must ALREADY be held when the poll starts and must remain held
+  into the second phase for at least 31 consecutive samples. In round numbers,
+  hold from power-on through roughly the first fifth of a second.
+
+
+================================================================================
+STEP 5 — IS THE COMBINATION PHYSICALLY HOLDABLE?
+================================================================================
+YES. From the geometry, not from plausibility:
+
+  - the scan is per-key analog, ONE CHANNEL PER KEY. There is no matrix, so no
+    ghosting and no blocking;
+  - the two number-row positions are separate BITS OF ONE WORD, not two ends
+    of one channel, so they are independently readable;
+  - the third is in a different group entirely, at the other end of the board.
+
+  The awkward part looks deliberate: 8 and 6 are two apart with 7 between them,
+  and 7 must stay RELEASED. "Press the outer two of three adjacent keys, plus a
+  key at the bottom right" is easy with two hands and is not something anyone
+  strikes by accident.
+
+
+================================================================================
+STEP 6 — GATE G1
+================================================================================
+PARTIAL, and the tool refuses to say otherwise while either residual stands.
+
+  RESOLVED: what the poll samples (the analog converter, not GPIO); the buffer
+  layout; the exact positions, pressed and released; two of the three key
+  names with a complete chain; the poll's position in the boot order; the
+  timing unit; and physical holdability.
+
+  NOT RESOLVED: the third key's name, and the bootloader-to-application group
+  correspondence.
+
+  CONSEQUENCE FOR THE RISK PLAN, now written into G1: software-only recovery
+  has a named, physically holdable combination instead of an unknown one, and
+  that is a real reduction in risk. It is NOT a verified recovery procedure —
+  nothing here was exercised. G3 remains a live decision, not a formality.
+
+
+================================================================================
+STEP 7 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_recovery_keys.py — one data model, notes/recovery-keys.{json,md},
+with --json, --write and --check.
+
+$ python3 tool/map_recovery_keys.py
+  RESULT recovery_keys_ok=True checks=28
+
+Added tool/test_map_recovery_keys.py — 37 tests in three groups.
+
+  FAIL-CLOSED: a missing slice raises; a wrong bootloader hash raises; a wrong
+  source hash raises through the shared allowlist; bodies() raising makes
+  main() return 1 without a traceback.
+
+  ANTI-PROMOTION, tied to the two residuals:
+    - the gate must report PARTIAL;
+    - group_correspondence must report proven=False and must carry both a
+      residual and a what-would-settle-it;
+    - the corroboration that DEPENDS on the group permutation must exist and
+      hold, so it is evidence and not decoration;
+    - "Fn" must NOT appear in the naming claim, with an anti-vacuity companion;
+    - adding 0xe8 to the usage table must make the unresolved entry disappear,
+      proving the status is computed rather than hard-coded;
+    - no claim may promise a working recovery procedure;
+    - the ~200 ms figure must be stated as a lower bound, not a total.
+
+A CHECK THAT CAUGHT A GAP OF MINE. The first run raised IndexError because
+layer 1 uses codes 0x32 and 0x64, which I had omitted from the usage table.
+They are the standard Non-US # and Non-US backslash usages, so the fix was to
+ADD them rather than special-case the missing entry — after which 0xe8 is the
+only unknown code left, which is the correct outcome.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_recovery_keys.py tool/test_map_recovery_keys.py
+                                                                       [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 865 tests   OK                                                   [exit 0]
+  (828 before this step; +37 in tool/test_map_recovery_keys.py)
+$ the twelve existing --check scripts plus the new one  all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                          all OK         [exit 0]
+$ git diff --check                                      clean          [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THE THIRD KEY'S NAME. Code 0xe8 has a matrix coordinate and no recovered
+    name. Fn is an inference from its neighbours and from having no emit path.
+  - THE GROUP CORRESPONDENCE. The bootloader holds no key map; the identity
+    mapping is corroborated, not proven.
+  - THE ABSOLUTE CLOCK. The delay's unit is microseconds by construction, but
+    the core clock's value is unresolved, so each sample's conversion time is
+    unbounded and the true poll window is longer than the 200 ms of delays.
+  - THE VARIANT BYTE at 0x18010b56 selects a layout ('D', 'E', 'I' or other)
+    and what writes it is not traced. The recovery positions are unmasked
+    under every variant, so the answer does not depend on it.
+  - THE DOWN CEILING. A position counts as down when its level is non-zero and
+    below 0x1300. The level's units are unknown, so no force or travel
+    distance is implied.
+  - THE HISTORICAL LABELS were NOT used. Names here come from the published
+    HID usage table via the firmware's own map, not from this repository's
+    capture-derived labels, which FINDINGS records as not a universal physical
+    layout.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - It did not verify the combination against a device, and it is not a
+    recovery procedure.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

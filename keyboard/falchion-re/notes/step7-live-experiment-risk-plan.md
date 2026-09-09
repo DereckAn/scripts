@@ -77,11 +77,41 @@ the region's integrity fields would then be wrong, this degrades to Case 1
 
 ## 3. Prerequisites — hard gates, all must pass before any flash
 
-- **G1 — physical recovery keys resolved.** Trace `FUN_000029d4` statically
-  (the bootloader is preserved): which GPIO/matrix state it samples, which key
-  positions the pattern corresponds to. This is offline work on existing
-  artifacts. If it cannot be resolved statically, G3 becomes mandatory, not
-  optional, and this plan does not proceed on software recovery alone.
+- **G1 — physical recovery keys resolved. STATUS: PARTIAL (log 120).** The
+  static trace is done; see `notes/recovery-keys.md` for the full chain and
+  `tool/map_recovery_keys.py --check` for its currency.
+
+  *Resolved.* The poll does **not** read GPIO or a row/column matrix — it
+  drives the same muxed analog converter the application's second execution
+  context uses (strobe `0x4001b000`, data-out `0x40018000`, data-in
+  `0x40019000`), with its own copy of the driver. The sampled state is a
+  bitmap of five words of fifteen bits at `0x18012ac8`, and the pattern
+  decodes to exactly three positions held — group 0 positions 5 and 7, group 4
+  position 8 — with every other position in those two groups released and
+  groups 1–3 unread. Two of the three are named through the application's own
+  key map, whose values are proven to be HID usage IDs by the firmware's
+  modifier rule: they are **`8`** and **`6`**, and the key physically between
+  them, **`7`**, must stay released. The poll runs on every boot, after
+  container selection and before every other boot gate; the delays alone are
+  about 200 ms and the unit is established as microseconds.
+
+  *Not resolved, and this is why the gate is PARTIAL, not RESOLVED:*
+  1. the third key is vendor code `0xe8`, which is not a HID usage and is
+     never emitted to the host. Its matrix coordinate is known; its name is
+     only strongly inferred (the Fn position, between Right Control and Right
+     Alt);
+  2. the bootloader holds no key map, so the claim that its group index equals
+     the application's is corroborated — the variant masks land exactly on
+     positions the application treats as non-keys — but not proven.
+
+  *Consequence for this plan.* Software-only recovery now has a named,
+  physically holdable combination rather than an unknown one, and that is a
+  real reduction in risk. It is **not** a verified recovery procedure: nothing
+  here has been exercised, and the two residuals above mean the third key's
+  identity rests on layout inference. **G3 therefore remains a live decision,
+  not a formality.** Treat the combination as a probable recovery route to be
+  confirmed by the owner against the product documentation before it is relied
+  on, not as a proven one.
 - **G2 — artefact frozen.** The exact image to be flashed is named by SHA-256
   and rebuilt once more from source; the rebuild must be byte-identical to the
   reviewed artefact. Any different patch is a new Phase 8, not this plan.

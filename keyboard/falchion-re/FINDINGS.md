@@ -2449,6 +2449,73 @@ physical units stay unresolved, the acquisition is recorded as **recovered but
 not reproducible**, the service is never omittable, and a resolved service may
 carry an evidence boundary only to name a surviving residue.
 
+### The recovery key combination, and gate G1 (log 120)
+
+`FUN_000029d4`'s pattern is decoded to physical keys. Risk-plan gate G1 moves
+from open to **PARTIAL** — resolved in its substance, with two named residuals.
+
+**The scan is not what a bootloader key check usually is.** It drives the same
+muxed analog converter the second execution context uses — strobe
+`0x4001b000`, data-out `0x40018000`, data-in `0x40019000`, the identical
+write-strobe-readback idiom and the identical `0x7c` strobe value — with the
+bootloader carrying its **own copy** of the driver. Not digital GPIO, not a
+row/column matrix. Two smaller corrections came with it: `FUN_00005272` is
+`msr primask,r0`, an interrupt mask rather than a scan enable, and
+`FUN_000029d4` has exactly one caller (`FUN_000036fc` calls the *scan*).
+
+**The bitmap is five words of fifteen bits** at `0x18012ac8`, bit *b* of word
+*g* being linear index `g*15 + b`, set when the level is non-zero and below
+`0x1300`. The bounds are the packer's own `cmp r7,#0xf` and `cmp r5,#0x5`, and
+5 × 15 = 75 matches the dimension log 110 proved independently.
+
+**The pattern decodes to three positions held** — group 0 positions 5 and 7,
+group 4 position 8 — and, because the compare is exact equality, 27 other
+positions released. Words `+0x4`, `+0x8` and `+0xc` are never loaded, so
+groups 1–3 are unconstrained.
+
+**Naming them.** The application's key map at `0x1801c940` is indexed the same
+way, and its values are *proven* to be HID usage IDs by the firmware's own
+modifier rule at `0x180063f6` (`sub #0xe0 / cmp #7 / 1 << n` into the report's
+modifier byte) rather than by resembling them.
+
+| | group | position | code | key |
+|---|---|---|---|---|
+| **DOWN** | 0 | 5 | `0x25` | **8** |
+| **DOWN** | 0 | 7 | `0x23` | **6** |
+| **DOWN** | 4 | 8 | `0xe8` | **unresolved** |
+| must be UP | 0 | 6 | `0x24` | 7 |
+
+**The third key is not named.** `0xe8` is the only non-HID code in the map,
+occurs once in both layers, is outside both ranges the report builder handles
+so **no recovered path emits it to the host**, and its neighbours are Right
+Control and Right Alt. That is the Fn position on this product — an inference
+from layout and from the absence of an emit path, recorded as
+strongly-inferred, with a test forbidding "Fn" as the answer.
+
+**The residual that matters most:** the bootloader holds no key map at all —
+not the app's table, not any 8-byte run of it, and no reference to
+`0x1801c940`. So *bootloader group g = application group g* is corroborated,
+not proven. The corroboration that carries weight is the `'D'` variant mask,
+which disables exactly (2,13) and (3,13) — both positions the application
+treats as non-keys. That one depends on the permutation; had the groups been
+shuffled, it would land on real keys.
+
+**Timing.** The poll runs on **every** boot, after container selection and
+before all three remaining boot gates, so it is the first thing that can block
+a boot. `FUN_000048dc` divides a *measured* core clock by `1000000`, which
+makes its argument **microseconds by construction** — the first unit-bearing
+timing constant recovered in this project, and it holds without knowing the
+clock's value. 100 samples discarded, then up to 100 with 31 consecutive
+required: about **200 ms of delay alone**, plus an unbounded conversion sweep
+per sample, so the true window is longer and no total is claimed.
+
+**Physically holdable.** Because the scan is per-key analog there is no matrix,
+no ghosting and no mutually exclusive pair. The awkwardness looks deliberate:
+the outer two of three adjacent number-row keys, with the middle one released.
+
+**Not a verified recovery procedure.** Nothing here was exercised on hardware,
+and G1 is PARTIAL for the two reasons above. G3 stays a live decision.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
