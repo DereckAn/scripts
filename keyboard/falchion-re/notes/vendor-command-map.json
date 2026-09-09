@@ -1,0 +1,1179 @@
+{
+  "block_d": {
+    "base": "0x1801fef8",
+    "flash_home": "0x340000 + profile*0x1000 (log 125)",
+    "has_usb_writer": false,
+    "reader_functions": [
+      "0x18000d56",
+      "0x180057fe"
+    ],
+    "resolved_accesses": 14,
+    "runtime_reader": "FUN_180057fe reads +0x4 and +0x5 \u2014 and FUN_180057fe is veneer 0x406c, one of the four calls in the rate-gated tick block log 127 mapped. So block D is read on the report path, not just at load time.",
+    "size": "0x3e0",
+    "verdict": "BLOCK D HAS NO USB WRITER. Its only writer is the storage state machine FUN_18000d56, at 0x18001be0. Its fields are NOT decoded here; what is established is that it persists (log 125's flash home), that the storage machine owns it, and that the report path reads two bytes of it.",
+    "writer_functions": [
+      "0x18000d56"
+    ]
+  },
+  "checks": [
+    {
+      "detail": "f898 0001 == f898 0001",
+      "label": "the instruction at 0x180011b8 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "71a0 == 71a0",
+      "label": "the instruction at 0x180011bc is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "4c6c == 4c6c",
+      "label": "the instruction at 0x18001fc2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f109 071c == f109 071c",
+      "label": "the instruction at 0x18001fee is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "e9d9 6007 == e9d9 6007",
+      "label": "the instruction at 0x180020a2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "e9c1 600d == e9c1 600d",
+      "label": "the instruction at 0x180020a6 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2006 == 2006",
+      "label": "the instruction at 0x180020ae is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2012 == 2012",
+      "label": "the instruction at 0x18002250 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f890 04f8 == f890 04f8",
+      "label": "the instruction at 0x18002258 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f000 000f == f000 000f",
+      "label": "the instruction at 0x1800225c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7921 == 7921",
+      "label": "the instruction at 0x18002514 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2906 == 2906",
+      "label": "the instruction at 0x18002516 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2906 == 2906",
+      "label": "the instruction at 0x1800251e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2202 == 2202",
+      "label": "the instruction at 0x1800252c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7002 == 7002",
+      "label": "the instruction at 0x1800252e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7041 == 7041",
+      "label": "the instruction at 0x18002530 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "78a1 == 78a1",
+      "label": "the instruction at 0x18002662 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "29bc == 29bc",
+      "label": "the instruction at 0x18002664 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "289f == 289f",
+      "label": "the instruction at 0x1800266c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2bbc == 2bbc",
+      "label": "the instruction at 0x18002686 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f8a2 30d4 == f8a2 30d4",
+      "label": "the instruction at 0x180026d2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "79b9 == 79b9",
+      "label": "the instruction at 0x18002be4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7923 == 7923",
+      "label": "the instruction at 0x18002be8 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f363 224f == f363 224f",
+      "label": "the instruction at 0x18002bee is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f004 f89f == f004 f89f",
+      "label": "the instruction at 0x18002bfa is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2051 == 2051",
+      "label": "the instruction at 0x180030c4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "8308 == 8308",
+      "label": "the instruction at 0x18003316 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f7fd fb64 == f7fd fb64",
+      "label": "the instruction at 0x180033a4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7008 == 7008",
+      "label": "the instruction at 0x180035dc is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "71cd == 71cd",
+      "label": "the instruction at 0x180035e0 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f44f 71c8 == f44f 71c8",
+      "label": "the instruction at 0x180035e2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "8c13 == 8c13",
+      "label": "the instruction at 0x180054c4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f82c 3011 == f82c 3011",
+      "label": "the instruction at 0x180054da is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "1c49 == 1c49",
+      "label": "the instruction at 0x180054de is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2a52 == 2a52",
+      "label": "the top-level compare for opcode 0x52 is at 0x18001ff2",
+      "ok": true
+    },
+    {
+      "detail": "2a41 == 2a41",
+      "label": "the top-level compare for opcode 0x41 is at 0x18001ffc",
+      "ok": true
+    },
+    {
+      "detail": "2a04 == 2a04",
+      "label": "the top-level compare for opcode 0x04 is at 0x18002002",
+      "ok": true
+    },
+    {
+      "detail": "2a12 == 2a12",
+      "label": "the top-level compare for opcode 0x12 is at 0x18002006",
+      "ok": true
+    },
+    {
+      "detail": "2a22 == 2a22",
+      "label": "the top-level compare for opcode 0x22 is at 0x1800200a",
+      "ok": true
+    },
+    {
+      "detail": "2a25 == 2a25",
+      "label": "the top-level compare for opcode 0x25 is at 0x1800200e",
+      "ok": true
+    },
+    {
+      "detail": "2a43 == 2a43",
+      "label": "the top-level compare for opcode 0x43 is at 0x18002014",
+      "ok": true
+    },
+    {
+      "detail": "2a50 == 2a50",
+      "label": "the top-level compare for opcode 0x50 is at 0x18002018",
+      "ok": true
+    },
+    {
+      "detail": "2a51 == 2a51",
+      "label": "the top-level compare for opcode 0x51 is at 0x1800201c",
+      "ok": true
+    },
+    {
+      "detail": "2ab0 == 2ab0",
+      "label": "the top-level compare for opcode 0xb0 is at 0x18002022",
+      "ok": true
+    },
+    {
+      "detail": "2a53 == 2a53",
+      "label": "the top-level compare for opcode 0x53 is at 0x1800202a",
+      "ok": true
+    },
+    {
+      "detail": "2a54 == 2a54",
+      "label": "the top-level compare for opcode 0x54 is at 0x1800202e",
+      "ok": true
+    },
+    {
+      "detail": "2a71 == 2a71",
+      "label": "the top-level compare for opcode 0x71 is at 0x18002032",
+      "ok": true
+    },
+    {
+      "detail": "2a73 == 2a73",
+      "label": "the top-level compare for opcode 0x73 is at 0x18002038",
+      "ok": true
+    },
+    {
+      "detail": "2ac0 == 2ac0",
+      "label": "the top-level compare for opcode 0xc0 is at 0x18002040",
+      "ok": true
+    },
+    {
+      "detail": "2afa == 2afa",
+      "label": "the top-level compare for opcode 0xfa is at 0x18002044",
+      "ok": true
+    },
+    {
+      "detail": "2afd == 2afd",
+      "label": "the top-level compare for opcode 0xfd is at 0x1800204a",
+      "ok": true
+    },
+    {
+      "detail": "2a4f == 2a4f",
+      "label": "the 0x51 compare for subcommand 0x4f is at 0x18002492",
+      "ok": true
+    },
+    {
+      "detail": "2a23 == 2a23",
+      "label": "the 0x51 compare for subcommand 0x23 is at 0x18002498",
+      "ok": true
+    },
+    {
+      "detail": "2a20 == 2a20",
+      "label": "the 0x51 compare for subcommand 0x20 is at 0x1800249e",
+      "ok": true
+    },
+    {
+      "detail": "b37a == b37a",
+      "label": "the 0x51 compare for subcommand 0x00 is at 0x180024a4",
+      "ok": true
+    },
+    {
+      "detail": "2a0c == 2a0c",
+      "label": "the 0x51 compare for subcommand 0x0c is at 0x180024a6",
+      "ok": true
+    },
+    {
+      "detail": "2a18 == 2a18",
+      "label": "the 0x51 compare for subcommand 0x18 is at 0x180024aa",
+      "ok": true
+    },
+    {
+      "detail": "2a21 == 2a21",
+      "label": "the 0x51 compare for subcommand 0x21 is at 0x180024b0",
+      "ok": true
+    },
+    {
+      "detail": "2a22 == 2a22",
+      "label": "the 0x51 compare for subcommand 0x22 is at 0x180024b4",
+      "ok": true
+    },
+    {
+      "detail": "2a2d == 2a2d",
+      "label": "the 0x51 compare for subcommand 0x2d is at 0x180024be",
+      "ok": true
+    },
+    {
+      "detail": "2a24 == 2a24",
+      "label": "the 0x51 compare for subcommand 0x24 is at 0x180024c8",
+      "ok": true
+    },
+    {
+      "detail": "2a2c == 2a2c",
+      "label": "the 0x51 compare for subcommand 0x2c is at 0x180024cc",
+      "ok": true
+    },
+    {
+      "detail": "2a31 == 2a31",
+      "label": "the 0x51 compare for subcommand 0x31 is at 0x180024d2",
+      "ok": true
+    },
+    {
+      "detail": "2a42 == 2a42",
+      "label": "the 0x51 compare for subcommand 0x42 is at 0x180024d6",
+      "ok": true
+    },
+    {
+      "detail": "2a55 == 2a55",
+      "label": "the 0x51 compare for subcommand 0x55 is at 0x180024dc",
+      "ok": true
+    },
+    {
+      "detail": "2a58 == 2a58",
+      "label": "the 0x51 compare for subcommand 0x58 is at 0x180024f6",
+      "ok": true
+    },
+    {
+      "detail": "2a56 == 2a56",
+      "label": "the 0x51 compare for subcommand 0x56 is at 0x180024fc",
+      "ok": true
+    },
+    {
+      "detail": "2a57 == 2a57",
+      "label": "the 0x51 compare for subcommand 0x57 is at 0x18002500",
+      "ok": true
+    },
+    {
+      "detail": "2a59 == 2a59",
+      "label": "the 0x51 compare for subcommand 0x59 is at 0x1800250a",
+      "ok": true
+    },
+    {
+      "detail": "2a90 == 2a90",
+      "label": "the 0x51 compare for subcommand 0x90 is at 0x1800250e",
+      "ok": true
+    },
+    {
+      "detail": "0x00, 0x0c, 0x18, 0x20, 0x21, 0x22, 0x23, 0x24, 0x2c, 0x2d, 0x31, 0x42, 0x4f, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x90",
+      "label": "the 0x51 family has twenty-four subcommands",
+      "ok": true
+    },
+    {
+      "detail": "24 write-capable",
+      "label": "every 0x51 subcommand is marked owner-approval-required",
+      "ok": true
+    },
+    {
+      "detail": "10 read-only queries",
+      "label": "no 0x12 query is gated \u2014 the marking discriminates",
+      "ok": true
+    },
+    {
+      "detail": "0x00, 0x03, 0x05, 0x07, 0x08, 0x12, 0x13, 0x14, 0x15, 0x16",
+      "label": "the 0x12 family has ten reachable subcommands",
+      "ok": true
+    },
+    {
+      "detail": "static-handler-proven=12, static-located-only=13, wire-proven=9",
+      "label": "the table admits how much is NOT decoded",
+      "ok": true
+    },
+    {
+      "detail": "9 rows",
+      "label": "and the wire-proven rows are the ones a capture exercised",
+      "ok": true
+    },
+    {
+      "detail": "0x180011bc, 0x18001df8",
+      "label": "the profile selection byte has exactly two writers",
+      "ok": true
+    },
+    {
+      "detail": "func 0x18000d56",
+      "label": "both are in the storage state machine, not the dispatcher",
+      "ok": true
+    },
+    {
+      "detail": "97 reads, 0 writes",
+      "label": "the vendor-HID dispatcher never writes it \u2014 the command path is indirect",
+      "ok": true
+    },
+    {
+      "detail": "0x180035dc, 0x180035f0, 0x18003640, 0x1800368a, 0x180037b2, 0x180038ea, 0x180035e0, 0x180035f2, 0x180035fe, 0x1800365a, 0x1800368c",
+      "label": "the macro block DOES have a USB writer, so macros are not device-only",
+      "ok": true
+    },
+    {
+      "detail": "writers ['0x18000d56']",
+      "label": "block D has NO USB writer \u2014 only the storage state machine",
+      "ok": true
+    },
+    {
+      "detail": "4 candidates, none asserted",
+      "label": "the hold timer is described by behaviour and NOT given a HAL name",
+      "ok": true
+    },
+    {
+      "detail": "1 distinct payload",
+      "label": "the rapid burst is nine 51 31 writes of index 0 and nothing else",
+      "ok": true
+    },
+    {
+      "detail": "polling-rate-protocol.json, profile-format.json",
+      "label": "the upstream models are read rather than restated",
+      "ok": true
+    },
+    {
+      "detail": "10740 records",
+      "label": "the census is populated",
+      "ok": true
+    },
+    {
+      "detail": "macro 53, block D 14",
+      "label": "the block-range filter finds accesses in both blocks, so a 'no USB writer' answer is a real absence",
+      "ok": true
+    },
+    {
+      "detail": "17/17",
+      "label": "the vendor release's dispatcher has the same top-level compares",
+      "ok": true
+    },
+    {
+      "detail": "20 unmatched",
+      "label": "HAL names with no opcode are listed rather than guessed at",
+      "ok": true
+    }
+  ],
+  "coverage": {
+    "static-handler-proven": 12,
+    "static-located-only": 13,
+    "wire-proven": 9
+  },
+  "disclaimer": "Offline static analysis of preserved images and pre-existing read-only Ghidra exports. No device was accessed and NO FRAME WAS CONSTRUCTED \u2014 every byte layout here is read out of the dispatcher's own compare and store instructions. This authorises nothing live.",
+  "hal_names_without_an_opcode": [
+    "SetRapidTrigger_AllKey",
+    "SetRapidTrigger_PreKey",
+    "SetDeadZone_AllKey",
+    "SetDeadZone_PreKey",
+    "SetSpeedTap",
+    "SwitchSpeedTap",
+    "ResetSpeedTap",
+    "ChangeKey_DKS",
+    "ChangeKey_ModTap",
+    "ChangeKey_Toggle",
+    "WriteMacroFlash",
+    "WriteMacroFlash_SupportFn",
+    "SetLeverMode",
+    "SetLeverSwitch",
+    "SetLeverChange",
+    "GetLeverMode",
+    "SetKeyLog",
+    "GetKeyStats",
+    "Reset",
+    "IsDefaultProfile"
+  ],
+  "hold_timer": {
+    "behaviour": "a per-key PRESS-AND-HOLD timer that emits a stored 16-bit code once the key has been held for the stored duration. That is a dual-role key: one code on tap, another on hold.",
+    "behaviour_confidence": "strongly-inferred",
+    "evidence": "0x180054c4 ldrh r3,[r2,#0x20]; 0x180054d0 ldr -> 0x18024000; 0x180054da strh.w r3,[r12,r1,lsl #1]; 0x180054de adds r1,r1,#1",
+    "hal_candidates": [
+      "ChangeKey_ModTap",
+      "ChangeKey_Toggle",
+      "ChangeKey_DKS",
+      "SetSpeedTap"
+    ],
+    "hal_match": null,
+    "hal_match_confidence": "hypothesis \u2014 the behaviour is a hold-to-emit timer, which fits all four of those names. Nothing here distinguishes them, so NO NAME IS ASSIGNED.",
+    "on_expiry": "the halfword at +0x20 is APPENDED to a per-layer output ring at 0x18024000 + layer*600, and the ring's index is incremented",
+    "paired_value": "the halfword at the same record +0x20",
+    "ring_capacity": "600 bytes per layer = 300 halfwords; 75 keys x 8 is the same 600, so the stride is per-key-times-eight. Whether the ring is per layer or per scan group is NOT established.",
+    "scaling": "threshold x 10 x (1 << rate index) tick-job invocations = threshold x 10 ms, rate-invariant (log 127)",
+    "threshold": "keymap bank + layer*0xd84 + key*0x20 + 0x22, one byte"
+  },
+  "macro_block": {
+    "base": "0x180225fc",
+    "entry_size": "NOT ESTABLISHED. 400 bytes is the cleared extent, not a proven record count or stride.",
+    "has_usb_writer": true,
+    "reader_functions": [
+      "0x18000d56",
+      "0x18001fbe",
+      "0x18005a88",
+      "0x180061c2",
+      "0x18007da4",
+      "0x18007e38"
+    ],
+    "resolved_accesses": 53,
+    "size": "0x664",
+    "structure": "the dispatcher's write at 0x180035dc stores one byte at +0 and one at +7, then clears 0x190 = 400 bytes from +8. So the block opens with an eight-byte header and a 400-byte body. The code immediately above filters HID usages 0x39, 0x47, 0x53, 0xe2 and 0xe8 \u2014 Caps Lock, Scroll Lock, Num Lock, Left Alt and log 120's vendor code \u2014 down a different path, which is a recording filter rather than a playback one.",
+    "usb_write_sites": [
+      "0x180035dc",
+      "0x180035f0",
+      "0x18003640",
+      "0x1800368a",
+      "0x180037b2",
+      "0x180038ea",
+      "0x180035e0",
+      "0x180035f2",
+      "0x180035fe",
+      "0x1800365a",
+      "0x1800368c"
+    ],
+    "verdict": "MACROS ARE NOT DEVICE-ONLY. A USB path writes this block. Which 0x51 subcommand reaches 0x180035dc is not established \u2014 the site lies in the dispatcher body past 0x18003310, and this step did not resolve the branch.",
+    "writer_functions": [
+      "0x18000d56",
+      "0x18001fbe",
+      "0x180040dc",
+      "0x18007bcc",
+      "0x18007da4",
+      "0x18007e38"
+    ]
+  },
+  "never_send": [
+    {
+      "frame": "50 55",
+      "why": "the persistent commit (log 126)"
+    },
+    {
+      "frame": "51 xx, every subcommand in this table",
+      "why": "the configuration write family; twenty-four subcommands, most with unestablished semantics"
+    },
+    {
+      "frame": "52 / 41 / 43 / 53 / 54 / 71 / 73 / b0 / c0 / fa / fd",
+      "why": "top-level opcodes located but not decoded at all"
+    },
+    {
+      "frame": "any erase / program / unlock / reset / SPI framing",
+      "why": "the bootloader protocol of logs 81/82/87/88"
+    }
+  ],
+  "opcodes": [
+    {
+      "compare_at": "0x18001ff2",
+      "decoded": false,
+      "handler": "0x180028e0",
+      "opcode": "0x52"
+    },
+    {
+      "compare_at": "0x18001ffc",
+      "decoded": false,
+      "handler": "0x180028e2",
+      "opcode": "0x41"
+    },
+    {
+      "compare_at": "0x18002002",
+      "decoded": false,
+      "handler": "0x18002052",
+      "opcode": "0x04"
+    },
+    {
+      "compare_at": "0x18002006",
+      "decoded": true,
+      "handler": "0x18002066",
+      "opcode": "0x12"
+    },
+    {
+      "compare_at": "0x1800200a",
+      "decoded": false,
+      "handler": "0x180020e4",
+      "opcode": "0x22"
+    },
+    {
+      "compare_at": "0x1800200e",
+      "decoded": false,
+      "handler": "0x180022be",
+      "opcode": "0x25"
+    },
+    {
+      "compare_at": "0x18002014",
+      "decoded": false,
+      "handler": "0x180020e8",
+      "opcode": "0x43"
+    },
+    {
+      "compare_at": "0x18002018",
+      "decoded": false,
+      "handler": "0x18002110",
+      "opcode": "0x50"
+    },
+    {
+      "compare_at": "0x1800201c",
+      "decoded": true,
+      "handler": "0x1800248e",
+      "opcode": "0x51"
+    },
+    {
+      "compare_at": "0x18002022",
+      "decoded": false,
+      "handler": "0x180039ea",
+      "opcode": "0xb0"
+    },
+    {
+      "compare_at": "0x1800202a",
+      "decoded": false,
+      "handler": "0x18002112",
+      "opcode": "0x53"
+    },
+    {
+      "compare_at": "0x1800202e",
+      "decoded": false,
+      "handler": "0x18002114",
+      "opcode": "0x54"
+    },
+    {
+      "compare_at": "0x18002032",
+      "decoded": false,
+      "handler": "0x18003954",
+      "opcode": "0x71"
+    },
+    {
+      "compare_at": "0x18002038",
+      "decoded": false,
+      "handler": "0x18003a2e",
+      "opcode": "0x73"
+    },
+    {
+      "compare_at": "0x18002040",
+      "decoded": false,
+      "handler": "0x18002116",
+      "opcode": "0xc0"
+    },
+    {
+      "compare_at": "0x18002044",
+      "decoded": false,
+      "handler": "0x18003a70",
+      "opcode": "0xfa"
+    },
+    {
+      "compare_at": "0x1800204a",
+      "decoded": false,
+      "handler": "0x180040a4",
+      "opcode": "0xfd"
+    }
+  ],
+  "profile_switch": {
+    "answer": "THERE IS A USB COMMAND, AND IT IS INDIRECT. The selection byte has exactly two writers, both in the storage state machine FUN_18000d56; the vendor-HID dispatcher NEVER writes it, in any of its 13 accesses. `51 00` posts opcode 2 and the requested profile into the storage request struct at +0x84/+0x85, and FUN_18000d56 reads that byte at 0x180011b8 and stores it to the selection byte at 0x180011bc. So the answer is neither 'a command writes it' nor 'Fn-key only' \u2014 it is a queued request consumed by the state machine.",
+    "byte": "0x1801e6d6",
+    "dispatcher_writes": 0,
+    "not_established": "which branch of FUN_18000d56 a switch takes, and therefore whether one switch invocation reaches 0x1800153a specifically. Only that both the write and the reload live in that one function.",
+    "reader_count": 97,
+    "sequence": [
+      "host sends 51 00 xx xx <profile>, profile accepted 0..5 with 6 folded to 0",
+      "handler 0x18002514 stores 2 at REQSTRUCT+0x84 and the profile at +0x85, and only when +0x84 is not already 2",
+      "FUN_18000d56 consumes the request: 0x180011b8 reads +0x85, 0x180011bc writes device header +6",
+      "the same state machine holds the profile-apply writes of the polling-rate multiplier (0x1800117c, 0x18001548, 0x180018f8, 0x18001ece \u2014 log 127), so a switch re-derives the cached rate"
+    ],
+    "wire_readback": "12 00 reply byte 6 returns the same byte, with an internal 0 reported as 6.",
+    "writers": [
+      {
+        "func": "0x18000d56",
+        "instr": "0x180011bc"
+      },
+      {
+        "func": "0x18000d56",
+        "instr": "0x18001df8"
+      }
+    ]
+  },
+  "queries_12": [
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x1800209a; 0x180020a2 ldrd from 0x1801e6d0; 0x180020a6 strd into the payload; 0x180020ae movs #6",
+      "handler": "0x1800209a",
+      "kind": "query",
+      "meaning": "DEVICE HEADER READ. Requires bytes 2-3 to be zero, then copies EIGHT BYTES from the device header at 0x1801e6d0 into the reply payload. Reply byte 6 is the CURRENT PROFILE, with an internal 0 reported as 6. The capture's reply 59 00 01 00 06 00 03 00 therefore reads: firmware 1.59 in the first two bytes and PROFILE 3 in byte 6 \u2014 which independently agrees with notes/ac-profile3-decoded.json being profile 3.",
+      "owner_approval_required": false,
+      "subcommand": "0x00",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x180020be; movs r1,#3; length r6 = 1",
+      "handler": "0x180020be",
+      "kind": "query",
+      "meaning": "echo only, one payload byte, unchanged from the request.",
+      "owner_approval_required": false,
+      "subcommand": "0x03",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x180020ca ldr [r0,#0xc]; 0x180020ce strb into the payload",
+      "handler": "0x180020ca",
+      "kind": "query",
+      "meaning": "returns one byte from 0x1801ee90+0xc and one constant 0xff. NEVER SENT by Armoury Crate in the capture.",
+      "owner_approval_required": false,
+      "subcommand": "0x05",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x180020ea strb r6,[r4,#4]; 0x18001fd6 movs r6,#1",
+      "handler": "0x180020ea",
+      "kind": "query",
+      "meaning": "returns the constant 1 in payload byte 0. The handler stores r6, which the dispatcher sets to 1 at entry and never reassigns on this path.",
+      "owner_approval_required": false,
+      "subcommand": "0x07",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x180020f6; 0x180020fc tst #0x30; 0x18002104 strb into the payload",
+      "handler": "0x180020f6",
+      "kind": "query",
+      "meaning": "returns 1 or 0 according to whether bits 0x30 of the byte at 0x1801e6b7 are set \u2014 a state flag, not a capability constant.",
+      "owner_approval_required": false,
+      "subcommand": "0x08",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x180021b4; bl 0x1800ea36; 0x180021d0 movs r1,#0x13",
+      "handler": "0x18002118",
+      "kind": "query",
+      "meaning": "calls 0x1800ea36 with a pointer to payload byte 0. On the branch the capture took it replies 12 12 with 01 01; the other branch replies with SUBCOMMAND 0x13, so this query has two reply shapes.",
+      "owner_approval_required": false,
+      "subcommand": "0x12",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x18002088 cmp #0x13 -> 0x1800211a",
+      "handler": "0x1800211a",
+      "kind": "query",
+      "meaning": "a compare site and handler entry of its own at 0x1800211a. Note that 12 12's success path REPLIES with subcommand 0x13, so the two are related; the request handler's semantics are NOT established.",
+      "owner_approval_required": false,
+      "subcommand": "0x13",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x180021d4 cbz/cmp on byte 2; 0x180021e4 ldrh global+0x18",
+      "handler": "0x180021d4",
+      "kind": "query",
+      "meaning": "MULTIPLEXED. Request byte 2 selects: 0 compares the global block's +0x18 marker against bytes 4-5; 1 takes a third path; 2 returns the ASCII model string 024080600167, which is the form the capture used.",
+      "owner_approval_required": false,
+      "subcommand": "0x14",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002254; 0x18002258 ldrb profile+0x4f8; 0x1800225c and #0xf",
+      "handler": "0x18002254",
+      "kind": "query",
+      "meaning": "GET POLLING RATE. Reads profile block +0x4f8, masks 0xf, returns the index in reply byte 4. Recovered in log 126; Armoury Crate never sent it, so no reply was observed.",
+      "owner_approval_required": false,
+      "subcommand": "0x15",
+      "writes_device_state": false
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x1800226c ldrb [r7,#7]; 0x1800226e cmp #0xb5",
+      "handler": "0x1800226c",
+      "kind": "query",
+      "meaning": "returns 1 if the device header's byte 7 equals 0xb5, else 0. The capture saw 0, so that byte was not 0xb5.",
+      "owner_approval_required": false,
+      "subcommand": "0x16",
+      "writes_device_state": false
+    }
+  ],
+  "rapid_burst": {
+    "answer": "NOTHING ELSE WAS BEING RE-APPLIED. With the subcommand map in hand the question can be answered negatively and precisely: all nine frames are 51 31 with index 0 and 59 zero bytes, each followed by its own 50 55 commit, and log 126 established that the capture's ENTIRE host-to-device vendor traffic is 74 frames of which these are the only ones in the window. No 51 50, no 51 2d, no 51 00 \u2014 Armoury Crate re-sent the polling rate alone, nine times.",
+    "cause": "still undetermined. The map rules out a multi-setting batch; it does not explain why one setting was written nine times.",
+    "count": 9,
+    "distinct_payloads": [
+      "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    ],
+    "indices": [
+      0
+    ],
+    "why_it_matters": "the burst is not a batched apply of several settings, so it cannot be read as evidence that other subcommands accompany a rate change.",
+    "window": "t = 314.2555 .. 318.198"
+  },
+  "storage_map": [
+    {
+      "checksum": "A \u2014 sum16(blob+2, 0x4b0) & (profile | 0xfff0)",
+      "covered": true,
+      "field": "profile block key table",
+      "flash": "0x2000 + profile*0x1000",
+      "ram": "0x18021de0 +0xd4 (+layer*0x1ee)",
+      "written_by": [
+        "51 20",
+        "51 21",
+        "51 22"
+      ]
+    },
+    {
+      "checksum": "A",
+      "covered": true,
+      "field": "profile block flags",
+      "flash": "0x2000 + profile*0x1000",
+      "ram": "0x18021de0 +0x02",
+      "written_by": [
+        "51 2d"
+      ]
+    },
+    {
+      "checksum": "NEITHER \u2014 A ends at +0x4b1 and B starts at +0x4fc",
+      "covered": false,
+      "field": "polling-rate index",
+      "flash": "0x2000 + profile*0x1000",
+      "ram": "0x18021de0 +0x4f8 bits 0..3",
+      "written_by": [
+        "51 31"
+      ]
+    },
+    {
+      "checksum": "the store's own record checksum",
+      "covered": true,
+      "field": "all-key actuation",
+      "flash": "the wear-levelled store at 0x1c000..0x20000",
+      "ram": "0x18024f0c bits 9..15",
+      "written_by": [
+        "51 50"
+      ]
+    },
+    {
+      "checksum": "the store's own",
+      "covered": true,
+      "field": "global marker",
+      "flash": "the wear-levelled store",
+      "ram": "0x18024f0c +0x18",
+      "written_by": [
+        "51 42"
+      ]
+    },
+    {
+      "checksum": "the bank's own first halfword",
+      "covered": true,
+      "field": "per-key records",
+      "flash": "0x320000 + profile*0x4000 + layer*0x1000",
+      "ram": "0x180202d8 + layer*0xd84 + key*0x20, fields +0x06..+0x0a",
+      "written_by": [
+        "51 53",
+        "51 57",
+        "51 0c",
+        "51 18"
+      ]
+    },
+    {
+      "checksum": "the store's own",
+      "covered": true,
+      "field": "profile selection",
+      "flash": "the wear-levelled store's 16-byte header",
+      "ram": "0x1801e6d0 +6",
+      "written_by": [
+        "51 00 (indirectly, via the storage state machine)"
+      ]
+    },
+    {
+      "checksum": "the block's own first halfword",
+      "covered": true,
+      "field": "macro block",
+      "flash": "0x20000 + profile*0x80000 + slot*0x1000",
+      "ram": "0x180225fc",
+      "written_by": [
+        "an unresolved dispatcher branch at 0x180035dc"
+      ]
+    },
+    {
+      "checksum": "the block's own first halfword",
+      "covered": true,
+      "field": "block D",
+      "flash": "0x340000 + profile*0x1000",
+      "ram": "0x1801fef8",
+      "written_by": []
+    }
+  ],
+  "subcommands_51": [
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002514 ldrb [r4,#4]; 0x18002516/0x1800251e cmp #6; 0x1800252c movs r2,#2; 0x1800252e/0x18002530 strb into REQSTRUCT+0x84/85",
+      "handler": "0x18002514",
+      "kind": "write",
+      "meaning": "PROFILE SWITCH (indirect). Request byte 4 is the profile, accepted 0..5 with 6 folded to 0; anything else is refused at 0x1800251e. The handler does NOT write the selection byte \u2014 it posts opcode 2 into the storage request struct at +0x84 with the profile at +0x85 and returns.",
+      "owner_approval_required": true,
+      "storage": "storage request struct -> device header +6",
+      "subcommand": "0x00",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x180024a6 cmp #0x0c -> 0x18002d8e",
+      "handler": "0x18002d8e",
+      "kind": "write",
+      "meaning": "reaches the shared per-key/global writer tail at 0x18002cdc, which writes keymap record +0x06/+0x07 bits 0..2 and the global block's bits 9..15 and calls the actuation clamp. Which of those this subcommand selects is NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x0c",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x180024aa cmp #0x18 -> 0x18002c9a",
+      "handler": "0x18002c9a",
+      "kind": "write",
+      "meaning": "enters the same shared writer tail. Semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x18",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x1800253e ldrb [r4,#4]/[r4,#5]; 0x1800254e cmp #0xbc; 0x18002556 cmp #0x9f",
+      "handler": "0x1800253e",
+      "kind": "write",
+      "meaning": "the key-remap family's third entry: byte 2 is the source (<= 0xbc), byte 3 must be 0x00 or 0x9f, bytes 4-5 are a 16-bit target. Writes the profile block's key table.",
+      "owner_approval_required": true,
+      "storage": "profile block +0xd4 (+ layer*0x1ee)",
+      "subcommand": "0x20",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x18002662 ldrb [r4,#2]; 0x18002664 cmp #0xbc; 0x1800266c cmp #0x9f; 0x18002686 cmp #0xbc; 0x180026d2 strh.w [r2,#0xd4]",
+      "handler": "0x18002662",
+      "kind": "write",
+      "meaning": "SET Fn-LAYER KEY BINDING (historical [C][V]). Byte 2 source <= 0xbc, byte 3 in {0x00, 0x9f}, bytes 4-5 the 16-bit target; targets <= 0xbc go through the translation table, 0xff/0xc7/0xc8/0xd3 take separate paths. The store is a halfword into the profile block's key table.",
+      "owner_approval_required": true,
+      "storage": "profile block +0xd4 + layer*0x1ee + xlate[src]*2",
+      "subcommand": "0x21",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x180024b0/0x180024b4 both -> 0x180024b8 -> 0x18002662",
+      "handler": "0x18002662",
+      "kind": "write",
+      "meaning": "shares 0x21's handler entry at 0x18002662 \u2014 the two compare sites both branch to it. FINDINGS records 0x22 as the variant that SETS the per-key mode byte and stores an actuation value, where 0x21 clears it.",
+      "owner_approval_required": true,
+      "storage": "profile block key table + keymap record",
+      "subcommand": "0x22",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x180027d6 cmp #0xbc; 0x180027e0 cmp #0x9f",
+      "handler": "0x180027d6",
+      "kind": "write",
+      "meaning": "byte 2 <= 0xbc and byte 3 in {0x00,0x9f} \u2014 the same source/layer guard as the remap family \u2014 then calls 0x18004a1c. Store target NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x23",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x1800289a; 0x180028a8 cmp #0x9f",
+      "handler": "0x1800289a",
+      "kind": "write",
+      "meaning": "same source/layer guard, then a sequence of stores through a base this scan did not resolve. NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x24",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002972/0x18002976/0x1800297a cmp #4/#5/#7; 0x180029a0 strb [r7,#5]",
+      "handler": "0x18002970",
+      "kind": "write",
+      "meaning": "byte 2 is compared against 4, 5 and 7; the handler calls a copy routine and the storage request primitive at 0x18000b28, and writes the device header +5 and the byte at 0x1801e6b7.",
+      "owner_approval_required": true,
+      "storage": "device header +5",
+      "subcommand": "0x2c",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002ace cmp #2; 0x18002ad2 cmp #4; 0x18002af6 strh.w profile+0x2; bl 0x1800075a",
+      "handler": "0x18002aca",
+      "kind": "write",
+      "meaning": "LIGHTING. Byte 2 is compared against 2 and 4; the handler reads and rewrites the profile block's flags halfword at +0x02 and calls the lighting default setter FUN_1800075a that log 125 recovered.",
+      "owner_approval_required": true,
+      "storage": "profile block +0x02 and the lighting slots at +0x04",
+      "subcommand": "0x2d",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "wire-proven",
+      "evidence": "0x18002b2e ldrb [r4,#4]; 0x18002b30 cmp #3; 0x18002b3e bfi #0,#4",
+      "handler": "0x18002b2e",
+      "kind": "write",
+      "meaning": "SET POLLING RATE. Byte 4 is a 4-bit index, accepted only 0 and 3; writes profile block +0x4f8 bits 0..3 and caches 1 << index at 0x1801e736. Fully decoded in logs 126 and 127.",
+      "owner_approval_required": true,
+      "storage": "profile block +0x4f8 bits 0..3",
+      "subcommand": "0x31",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18003310; 0x18003316/0x1800331c strh global+0x18; bl 0x1800e6d6",
+      "handler": "0x18003310",
+      "kind": "write",
+      "meaning": "writes the global block's halfword at +0x18 \u2014 the marker log 125 records the demo-mode check owning \u2014 from request byte 4, and calls the wear-levelled store's write primitive.",
+      "owner_approval_required": true,
+      "storage": "global block +0x18, wear-levelled store",
+      "subcommand": "0x42",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x18002b62; 0x18002b68 cmp #0x9f",
+      "handler": "0x18002b62",
+      "kind": "write",
+      "meaning": "reads request byte 5 and compares it against 0x9f. NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x4f",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002be4 ldrb [r7,#6]; 0x18002be8 ldrb [r4,#4]; 0x18002bee bfi #9,#7; bl 0x18006d3c",
+      "handler": "0x180026ec",
+      "kind": "write",
+      "meaning": "ALL-KEY ACTUATION. Indexes the global block by the CURRENT PROFILE (device header +6) and inserts request byte 4 into bits 9..15 \u2014 log 125's actuation field, range 1..40 \u2014 then calls the clamp at 0x18006d3c that log 125 showed raising values below 0x28 and lowering above 1. This is the strongest match in the table to a HAL name (SetActuation_AllKey), and it is offered as a match, not as the command's name.",
+      "owner_approval_required": true,
+      "storage": "global block, bits 9..15 of the profile's word",
+      "subcommand": "0x50",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002c0a ldr r1,[pc] -> 0x1801e7b8; 0x18002c10 str r0,[r1]",
+      "handler": "0x180026ea",
+      "kind": "write",
+      "meaning": "stores the constant 0x3c into the word at 0x1801e7b8 and replies. The cell's consumer is NOT identified.",
+      "owner_approval_required": true,
+      "storage": "0x1801e7b8 (RAM, consumer unknown)",
+      "subcommand": "0x51",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x18002c1a ldrb [r4,#2]; 0x18002c1c cmp #5; 0x18002c20 tbb",
+      "handler": "0x180026e8",
+      "kind": "write",
+      "meaning": "byte 2 selects one of five sub-paths through a byte table at 0x18002c24, and byte 4 is then tested against 0, 1 and 2. Failure calls the short responder. Field meanings NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x52",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002efa ldrb [r4,#7]; 0x18002f1a movw #0x361; 0x18002f36 bfi #14,#2",
+      "handler": "0x180026e6",
+      "kind": "write",
+      "meaning": "byte 7 selects a layer (0 or 1, anything else rejected) and byte 6 gates a per-key record update at keymap + layer*0xd84 + key*0x20 + 0x0a.",
+      "owner_approval_required": true,
+      "storage": "keymap record +0x0a",
+      "subcommand": "0x53",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "tbb entry -> 0x18002ee4 -> 0x18002fe4",
+      "handler": "0x180026e4",
+      "kind": "write",
+      "meaning": "branches to 0x18002fe4. Semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x54",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x180024dc cmp #0x55 -> 0x18002dc6",
+      "handler": "0x18002dc6",
+      "kind": "write",
+      "meaning": "handler entry proven; semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x55",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x180024fc cmp #0x56 -> 0x18002dca",
+      "handler": "0x18002dca",
+      "kind": "write",
+      "meaning": "handler entry proven; semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x56",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-handler-proven",
+      "evidence": "0x18002500 cmp #0x57 -> 0x180031e6; the tail at 0x18002cdc..0x18002dc0",
+      "handler": "0x18002cda",
+      "kind": "write",
+      "meaning": "enters the shared per-key writer tail at 0x18002cdc, which updates keymap record +0x08 (bits 0..6, clearing bit 15) and +0x0a (two 7-bit fields, clearing bits 14-15) for BOTH layers under flag control.",
+      "owner_approval_required": true,
+      "storage": "keymap records +0x06/+0x07/+0x08/+0x0a, both layers",
+      "subcommand": "0x57",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x180024f6 cmp #0x58 -> 0x18002dc8",
+      "handler": "0x18002dc8",
+      "kind": "write",
+      "meaning": "handler entry proven; semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x58",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x1800250a cmp #0x59 -> 0x18002dcc",
+      "handler": "0x18002dcc",
+      "kind": "write",
+      "meaning": "handler entry proven; semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x59",
+      "writes_device_state": true
+    },
+    {
+      "confidence": "static-located-only",
+      "evidence": "0x1800250e cmp #0x90 -> 0x18002d0e -> 0x1800322a",
+      "handler": "0x18002d0e",
+      "kind": "write",
+      "meaning": "branches to 0x1800322a. Semantics NOT established.",
+      "owner_approval_required": true,
+      "storage": "unestablished",
+      "subcommand": "0x90",
+      "writes_device_state": true
+    }
+  ],
+  "summary": {
+    "checks": 88,
+    "failed": 0,
+    "ok": true
+  },
+  "transport": {
+    "dispatcher": "0x18001fbe",
+    "note": "see notes/polling-rate-protocol.json for the USB transport; this model is the command layer",
+    "report_size_bytes": 64,
+    "request_buffer": "0x180233a8",
+    "responder": "0x18000a70"
+  },
+  "verdict": "the dispatcher accepts seventeen top-level opcodes and twenty-four 0x51 subcommands; nine 0x12 queries and eight 0x51 subcommands are decoded, the rest are located only"
+}

@@ -1,0 +1,513 @@
+LOG 128 — THE VENDOR COMMAND SURFACE, RECOVERED STATICALLY
+Date: 2026-09-09
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged. NO FRAME WAS CONSTRUCTED.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Every byte layout in this
+log, in notes/ and in the tool is READ OUT of the dispatcher's own compare and
+store instructions; nothing was assembled into a frame and nothing was
+transmitted or suggested for transmission. Neither evidence binary was opened
+for writing and both hashes are unchanged below. The capture files were not
+opened — log 126's generated model was read instead. No historical log and not
+opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+THE HEADLINE
+================================================================================
+THE SURFACE IS FAR LARGER THAN THE CAPTURE RECORD. notes/protocol.md's command
+table has six rows. The dispatcher accepts SEVENTEEN TOP-LEVEL OPCODES and
+TWENTY-FOUR 0x51 SUBCOMMANDS and TEN 0x12 QUERIES, every one of them located at
+a compare site pinned to the image.
+
+AND MOST OF IT IS STILL NOT DECODED, which is the honest headline. Of the 34
+0x51 subcommands and 0x12 queries:
+
+    wire-proven             9    observed in log 126's capture AND decoded
+    static-handler-proven  12    reads, ranges and stores read out of the
+                                 instruction stream; no capture exercised them
+    static-located-only    13    the compare site and handler entry are proven
+                                 and NOTHING ELSE IS
+
+Eleven of the seventeen top-level opcodes are not opened at all. A surface that
+is bounded is not a surface that is understood, and the model says which is
+which on every row.
+
+THE FIVE ANSWERS THE STEP WAS ASKED FOR:
+
+  PROFILE SWITCH   there IS a USB command, and it is INDIRECT. `51 00` posts a
+                   request; the storage state machine writes the byte.
+  MACRO BLOCK      it DOES have a USB writer. Macros are not device-only.
+  BLOCK D          it does NOT. Its only writer is the storage state machine.
+  THE +0x22 FIELD  a per-key press-and-hold timer that emits a stored 16-bit
+                   code on expiry — a dual-role key. NO HAL NAME IS ASSIGNED.
+  THE NINE WRITES  nothing else was being re-applied. All nine are `51 31`
+                   index 0, and the map is what makes that a real negative.
+
+
+================================================================================
+STEP 0 — METHOD, AND THE TWO REGISTERS THAT UNLOCK EVERYTHING
+================================================================================
+Sources: ghidra/decompiles/dispatcher.txt and ghidra/peripherals/*.txt, both
+pre-existing and read-only; the imported slices, for byte-level confirmation;
+and notes/polling-rate-protocol.json and notes/profile-format.json, read as
+models rather than restated.
+
+TWO REGISTERS ARE SET ONCE AT DISPATCHER ENTRY AND NEVER REASSIGNED, and every
+handler below is legible only because of them:
+
+  18001fc2  4c6c        ldr   r4,[pc,#0x1b0]   ; *(...) = 0x180233a8
+                                               ; THE 64-BYTE REQUEST BUFFER
+  18001fd6  2601        movs  r6,#0x1          ; the default response length
+  18001fdc  f1a9 0905   sub.w r9,r9,#0x5       ; r9 = 0x1801e6b4
+  18001fee  f109 071c   add.w r7,r9,#0x1c      ; r7 = 0x1801e6d0
+                                               ; THE 16-BYTE DEVICE HEADER
+
+So `[r4,#N]` is request byte N and `[r7,#6]` is THE CURRENT PROFILE — log 125's
+selection byte. Every handler that indexes a per-profile structure does it
+through r7+6, and that is what makes the per-profile writes identifiable.
+
+CONFIDENCE SCHEME, applied per row and never by feature name alone:
+  wire-proven / static-handler-proven / static-located-only / hal-name-only.
+
+
+================================================================================
+STEP 1 — THE FULL TABLE
+================================================================================
+TOP-LEVEL OPCODES, seventeen compare sites, each pinned:
+
+  0x04 -> 0x18002052   0x41 -> 0x180028e2   0x53 -> 0x18002112
+  0x12 -> 0x18002066   0x43 -> 0x180020e8   0x54 -> 0x18002114
+  0x22 -> 0x180020e4   0x50 -> 0x18002110   0x71 -> 0x18003954
+  0x25 -> 0x180022be   0x51 -> 0x1800248e   0x73 -> 0x18003a2e
+  0x52 -> 0x180028e0   0xb0 -> 0x180039ea   0xc0 -> 0x18002116
+                       0xfa -> 0x18003a70   0xfd -> 0x180040a4
+
+  notes/protocol.md knew 0x12, 0x22, 0x25, 0x50 and 0x51. TWELVE MORE EXIST.
+  Only 0x12 and 0x51 are opened here. THE OTHER FIFTEEN ARE LOCATED AND NOTHING
+  MORE, and 0x71/0x73/0xb0/0xfa/0xfd reach far into the image — they are on the
+  NEVER-SEND list precisely because nothing is known about them.
+
+THE 0x51 FAMILY, twenty-four subcommands. Nineteen from an explicit compare
+chain and five from a `tbb` byte table at 0x180024ec decoded out of the image:
+
+  0x00  0x18002514  PROFILE SWITCH, indirect        static-handler-proven
+  0x0c  0x18002d8e  shared per-key writer tail      static-located-only
+  0x18  0x18002c9a  shared per-key writer tail      static-located-only
+  0x20  0x1800253e  key remap, third entry          static-handler-proven
+  0x21  0x18002662  SET Fn-LAYER KEY BINDING        wire-proven
+  0x22  0x18002662  same handler as 0x21            static-handler-proven
+  0x23  0x180027d6  same source/layer guard         static-located-only
+  0x24  0x1800289a  same source/layer guard         static-located-only
+  0x2c  0x18002970  device header +5, storage req   static-handler-proven
+  0x2d  0x18002aca  LIGHTING                        static-handler-proven
+  0x31  0x18002b2e  SET POLLING RATE                wire-proven
+  0x42  0x18003310  global block +0x18              static-handler-proven
+  0x4f  0x18002b62  reads byte 5, cmp 0x9f          static-located-only
+  0x50  0x180026ec  ALL-KEY ACTUATION               static-handler-proven
+  0x51  0x180026ea  stores 0x3c at 0x1801e7b8       static-handler-proven
+  0x52  0x180026e8  five sub-paths via tbb          static-located-only
+  0x53  0x180026e6  per-key record +0x0a            static-handler-proven
+  0x54  0x180026e4  -> 0x18002fe4                   static-located-only
+  0x55  0x18002dc6                                  static-located-only
+  0x56  0x18002dca                                  static-located-only
+  0x57  0x18002cda  per-key records, both layers    static-handler-proven
+  0x58  0x18002dc8                                  static-located-only
+  0x59  0x18002dcc                                  static-located-only
+  0x90  0x18002d0e  -> 0x1800322a                   static-located-only
+
+THE ROWS THAT ARE ACTUALLY DECODED, with their instructions.
+
+  51 00 — PROFILE SWITCH, and it does not write the profile.
+      18002514  7921   ldrb r1,[r4,#0x4]      the requested profile
+      18002516  2906   cmp  r1,#0x6           6 is folded to 0
+      1800251e  2906   cmp  r1,#0x6           >= 6 is REFUSED
+      1800252c  2202   movs r2,#0x2           the storage request opcode
+      1800252e  7002   strb r2,[r0]           REQSTRUCT+0x84
+      18002530  7041   strb r1,[r0,#0x1]      REQSTRUCT+0x85
+      and it only posts when +0x84 is not already 2 — log 125's one-deep
+      request struct, refusing while busy, exactly as log 111 described.
+
+  51 21 / 51 22 — the remap family, and the store is now identified.
+      18002662  78a1   ldrb r1,[r4,#0x2]      source
+      18002664  29bc   cmp  r1,#0xbc          source <= 0xbc
+      1800266c  289f   cmp  r0,#0x9f          byte 3 in {0x00, 0x9f}
+      18002686  2bbc   cmp  r3,#0xbc          target <= 0xbc uses the table
+      180026d2  f8a2 30d4  strh.w r3,[r2,#0xd4]
+      The effective address is PROFILE_BLOCK + layer*0x1ee + xlate[src]*2 +
+      0xd4, and log 125 independently recorded FUN_18007e38 READING exactly
+      `*(u16*)(0x18021de0 + layer*0x1ee + i*2 + 0xd4)`. The writer and the
+      reader agree, from two directions, and that is what identifies the field.
+
+  51 50 — ALL-KEY ACTUATION, the strongest HAL match in the table.
+      18002be4  79b9   ldrb r1,[r7,#0x6]      THE CURRENT PROFILE
+      18002be8  7923   ldrb r3,[r4,#0x4]      the value
+      18002bee  f363 224f  bfi r2,r3,#9,#7    BITS 9..15
+      18002bfa  bl 0x18006d3c                 the clamp
+      Log 125's global block: "bits 9..15 actuation 1..40 default 10", and
+      0x18006d3c is the function it showed raising values below 0x28 and
+      lowering above 1. Field, range and clamp all line up.
+      THE NAME IS OFFERED, NOT ASSIGNED. `SetActuation_AllKey` is the obvious
+      HAL candidate and the model records it as a match rather than as the
+      command's name, and a test requires that wording.
+
+  51 2d — LIGHTING.
+      18002ace cmp #2 / 18002ad2 cmp #4 on byte 2; 18002af6 rewrites the
+      profile block's flags halfword at +0x02; and it calls FUN_1800075a, the
+      lighting default setter log 125 recovered with its ten slots at +0x04.
+
+  51 42 — the global block's marker halfword at +0x18, from byte 4, followed by
+      the wear-levelled store's write primitive 0x1800e6d6. Log 125 attributes
+      +0x18 to the demo-mode check.
+
+  51 57 / 51 53 / 51 0c / 51 18 — the SHARED PER-KEY WRITER TAIL at
+      0x18002cdc..0x18002dc0, entered by several subcommands. It updates keymap
+      record +0x06 and +0x07 (bits 0..2 — log 125's rapid-trigger press and
+      release, range 1..6), +0x08 (bits 0..6, clearing bit 15 — log 125's
+      per-key actuation and its override flag) and +0x0a (two 7-bit fields,
+      clearing bits 14-15), FOR BOTH LAYERS, under flag control. WHICH
+      SUBCOMMAND SELECTS WHICH FIELD IS NOT ESTABLISHED, and 0x0c and 0x18 stay
+      static-located-only for that reason. This is where SetRapidTrigger and
+      SetDeadZone almost certainly live; nothing here proves which.
+
+THE 0x12 QUERY FAMILY, ten reachable subcommands. Five from a `tbh` halfword
+table at 0x18002072 (0x00..0x08, with four of the nine entries landing on a
+common default that is therefore not a command) and five from explicit
+compares. ALL TEN ARE READ-ONLY and none is gated.
+
+  12 00  0x1800209a  wire-proven  DEVICE HEADER READ
+      180020a2  e9d9 6007  ldrd r6,r0,[r9,#28]   ; from 0x1801e6d0
+      180020a6  e9c1 600d  strd r6,r0,[r1,#52]   ; into the reply payload
+      180020ae  2006       movs r0,#0x6          ; an internal 0 reports as 6
+      EIGHT BYTES OF THE DEVICE HEADER. The capture's reply payload was
+      59 00 01 00 06 00 03 00, so the header reads 0x0059 (the 1.59 minor),
+      0x0001, 06, 00, 03, 00 — AND BYTE 6 IS THE CURRENT PROFILE. It was 3,
+      which independently agrees with notes/ac-profile3-decoded.json being
+      profile 3. This is the read-back for the profile switch, and nobody had
+      noticed the field was in a reply already on the wire.
+  12 03  0x180020be  wire-proven  echo only, one payload byte
+  12 05  0x180020ca  static-handler-proven  one byte from 0x1801ee90+0xc plus a
+                     constant 0xff. NEVER SENT by Armoury Crate.
+  12 07  0x180020ea  wire-proven  returns the constant 1 (r6, set at entry)
+  12 08  0x180020f6  wire-proven  1 or 0 from bits 0x30 of 0x1801e6b7 — a state
+                     flag, not a capability constant
+  12 12  0x18002118  wire-proven  calls 0x1800ea36 with a pointer to payload
+                     byte 0; the OTHER branch replies with subcommand 0x13, so
+                     this query has two reply shapes
+  12 13  0x1800211a  static-located-only  its own entry; related to 12 12's
+                     reply subcommand; semantics NOT established
+  12 14  0x180021d4  wire-proven  MULTIPLEXED on byte 2: 0 compares the global
+                     block's +0x18 marker against bytes 4-5; 1 takes a third
+                     path; 2 returns the ASCII model string 024080600167, which
+                     is the form the capture used
+  12 15  0x18002254  static-handler-proven  GET POLLING RATE (log 126)
+  12 16  0x1800226c  wire-proven  1 if device header byte 7 == 0xb5 else 0
+
+  SO THE OWNER'S APP HAS TEN SAFE READS, of which nine are decoded. protocol.md
+  listed 12 03 / 12 12 / 12 08 / 12 16 / 12 14 as "meanings unknown"; four of
+  those five now have one, and 12 00 turns out to carry the profile.
+
+
+================================================================================
+STEP 2 — PROFILE SWITCHING, ANSWERED IN FULL
+================================================================================
+THE QUESTION was whether a USB command stores the selection byte at device
+header +6, and if not, to prove the negative by enumerating its writers.
+
+THE ANSWER IS NEITHER OF THE TWO OFFERED. There IS a USB command, and it does
+NOT write the byte.
+
+  $ every resolved access to 0x1801e6d6 in the installed export
+      97 reads
+       2 writes — 0x180011bc and 0x18001df8, BOTH in FUN_18000d56
+       0 writes from the dispatcher, in any of its 13 accesses
+
+  THE DISPATCHER ONLY EVER READS IT. The write happens in the storage state
+  machine, and the chain is:
+
+    host      51 00 xx xx <profile>, accepted 0..5 with 6 folded to 0
+    handler   0x18002514 posts opcode 2 at REQSTRUCT+0x84 and the profile at
+              +0x85, and only while +0x84 is not already 2
+    machine   FUN_18000d56:
+                180011b8  f898 0001  ldrb.w r0,[r8,#0x1]   ; REQSTRUCT+0x85
+                180011bc  71a0       strb   r0,[r4,#0x6]   ; DEVICE HEADER +6
+    read-back 12 00's reply byte 6 returns it, 0 reported as 6
+
+  SO THE WIRE NUMBERING IS 1..6 (with 0 accepted as an alias for 6) WHILE THE
+  INTERNAL INDEX IS 0..5. That asymmetry is visible in two places at once — the
+  fold at 0x18002516 and the report at 0x180020ae — which is why it is stated
+  as a protocol fact rather than as an inference from one site.
+
+  DOES A SWITCH TRIGGER THE RELOAD? The four profile-apply writes of the
+  polling-rate multiplier log 127 found — 0x1800117c, 0x18001548, 0x180018f8,
+  0x18001ece — are all in FUN_18000d56, the same function that writes the
+  selection byte at 0x180011bc, and 0x1800117c is forty bytes away from it.
+  WHICH BRANCH A SWITCH TAKES IS NOT ESTABLISHED, so this step does not claim
+  that one switch invocation reaches 0x1800153a specifically. What it
+  establishes is that the write and the reload live in one function and that
+  no other function writes the byte.
+
+  THE SECOND WRITER, 0x18001df8, stores 0x0 — the factory-default path, which
+  log 125 showed calling the key-table and keymap default initialisers.
+
+
+================================================================================
+STEP 3 — THE MACRO BLOCK
+================================================================================
+0x180225fc, 0x664 bytes, 53 resolved accesses in the installed export.
+
+  IT HAS A USB WRITER, so macros are NOT device-only and the negative the
+  prompt offered does not hold:
+
+    180035dc  7008        strb r0,[r1]            ; MACRO +0
+    180035e0  71cd        strb r5,[r1,#0x7]       ; MACRO +7
+    180035e2  f44f 71c8   mov.w r1,#0x190         ; 400 bytes
+    180035e8  bl 0x1801bdc8                       ; cleared from MACRO +8
+
+  So the block opens with an EIGHT-BYTE HEADER and a 400-BYTE BODY that is
+  cleared as a unit. The code immediately above filters HID usages 0x39, 0x47,
+  0x53, 0xe2 and 0xe8 — Caps Lock, Scroll Lock, Num Lock, Left Alt and log
+  120's vendor code — down a separate path, which is a RECORDING filter rather
+  than a playback one: those are the keys a macro recorder must not capture.
+
+  WHAT IS NOT ESTABLISHED, and is not guessed: the entry size, the record
+  count, and whether an entry holds timing as well as key codes. 400 bytes is
+  the cleared extent, not a proven stride. AND WHICH 0x51 SUBCOMMAND REACHES
+  0x180035dc is not established either — the site lies in the dispatcher body
+  past 0x18003310 and this step did not resolve the branch.
+
+
+================================================================================
+STEP 4 — BLOCK D
+================================================================================
+0x1801fef8, 0x3e0 bytes, flash home 0x340000 + profile*0x1000 (log 125), 14
+resolved accesses in the installed export.
+
+  IT HAS NO USB WRITER. Its only writer is FUN_18000d56, at 0x18001be0. The
+  dispatcher never writes it.
+
+  ITS RUNTIME READER IS ON THE REPORT PATH. FUN_180057fe reads +0x4 and +0x5,
+  and FUN_180057fe is veneer 0x406c — one of the four calls in the rate-gated
+  tick block log 127 mapped. So block D is consulted while reports are being
+  built, not only at load time.
+
+  ITS FIELDS ARE NOT DECODED. What is established: it persists, the storage
+  machine owns it exclusively, and two of its bytes are read per report cycle.
+
+  A METHOD NOTE THAT CHANGED THIS ANSWER. My first run reported FIVE writers
+  for block D. The census covers six exports, and the vendor application is
+  based at the same 0x18000000 — so an unscoped range query silently merged two
+  releases. Scoping to the installed export alone gives one writer. A test now
+  asserts that the scoped result is strictly smaller than the unscoped one, so
+  the mistake cannot recur silently.
+
+
+================================================================================
+STEP 5 — THE +0x22 PER-KEY TIMEOUT
+================================================================================
+Log 127 found the site: `threshold x 10 x (1 << rate index)` invocations of the
+tick job, compared against a per-key counter, which works out to
+`threshold x 10 ms` at either polling rate. What it did not establish was what
+the timeout is FOR. The expiry path answers that.
+
+  180054c4  8c13        ldrh   r3,[r2,#0x20]        ; the record's paired halfword
+  180054c6  6800        ldr    r0,[r0]              ; the layer
+  180054c8  rsb/add                                 ; r0 * 75
+  180054d0  ldr    r1,[pc]  -> 0x18024000
+  180054d6  ldr.w  r1,[r10,r0,lsl #2]               ; the ring's index
+  180054da  f82c 3011   strh.w r3,[r12,r1,lsl #1]   ; APPEND the halfword
+  180054de  1c49        adds   r1,r1,#0x1           ; advance the index
+
+  SO ON EXPIRY A STORED 16-BIT CODE IS APPENDED TO AN OUTPUT RING at
+  0x18024000 + layer*600. A per-key timer that emits a different code once the
+  key has been held long enough IS A DUAL-ROLE KEY: one code on tap, another on
+  hold. Confidence: STRONGLY-INFERRED.
+
+  NO HAL NAME IS ASSIGNED, and a test enforces that. `ChangeKey_ModTap`,
+  `ChangeKey_Toggle`, `ChangeKey_DKS` and `SetSpeedTap` all describe
+  hold-to-emit behaviour and nothing in the recovered code distinguishes them.
+  Naming it would be exactly the "match by feature name alone" the step forbids.
+
+  NOT ESTABLISHED: 600 bytes per layer is 300 halfwords, and 75 keys times 8 is
+  also 600, so whether the ring is indexed per layer or per scan group is
+  undetermined.
+
+
+================================================================================
+STEP 6 — THE NINE RAPID WRITES AT t = 314..318
+================================================================================
+Read from log 126's own model rather than re-derived:
+
+  count 9, window t = 314.2555 .. 318.198, indices {0},
+  ONE distinct 64-byte payload: 51 31 00 00 00 followed by 59 zero bytes.
+
+  THE ANSWER IS A NEGATIVE, AND IT IS THE MAP THAT MAKES IT ONE. With
+  twenty-four subcommands enumerated, "Armoury Crate was re-applying something
+  else in that burst" becomes a testable claim — and it is false. No 51 50, no
+  51 2d, no 51 00, no 51 57. Log 126 established the capture's entire
+  host-to-device vendor traffic is 74 frames; in this window they are nine
+  identical rate writes and their nine commits, and nothing else.
+
+  SO THE BURST IS NOT A BATCHED APPLY, and it cannot be cited as evidence that
+  other subcommands accompany a rate change. Its CAUSE is still undetermined —
+  the map rules out a multi-setting batch; it does not explain why one setting
+  was written nine times in four seconds.
+
+
+================================================================================
+STEP 7 — WHERE EVERY WRITABLE FIELD LANDS
+================================================================================
+  field                RAM                          checksum          covered
+  profile key table    0x18021de0 +0xd4             A                 yes
+  profile flags        0x18021de0 +0x02             A                 yes
+  POLLING-RATE INDEX   0x18021de0 +0x4f8 bits 0..3  NEITHER           NO
+  all-key actuation    0x18024f0c bits 9..15        the store's own   yes
+  global marker        0x18024f0c +0x18             the store's own   yes
+  per-key records      0x180202d8 +0x06..+0x0a      the bank's own    yes
+  profile selection    0x1801e6d0 +6                the store's own   yes
+  macro block          0x180225fc                   the block's own   yes
+  block D              0x1801fef8                   the block's own   yes  (no
+                                                                      USB writer)
+
+  THE POLLING-RATE FIELD IS THE ONLY WRITABLE FIELD COVERED BY NO CHECKSUM.
+  Log 125 gave checksum A the run +0x002..+0x4b1 and checksum B the run
+  +0x4fc..+0x7bb; +0x4f8 falls between them. That was already implicit in logs
+  125 and 127; stating it in one table with the other eight fields is what makes
+  it usable.
+
+
+================================================================================
+STEP 8 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_vendor_commands.py — one data model, notes/
+vendor-command-map.{json,md}, with --json, --write and --check. No new
+dependency: the compare sites are asserted against image halfwords, the two
+jump tables are decoded from image bytes, and the census and inventories are
+text.
+
+$ python3 tool/map_vendor_commands.py
+  RESULT vendor_command_map_ok=True checks=88
+
+Added tool/test_map_vendor_commands.py — 38 tests in four groups.
+
+  FAIL-CLOSED, six tests. A missing image raises; an address outside it raises;
+  and — the one that matters for a map whose claim is COMPLETENESS — A LOCATED
+  SUBCOMMAND WITH NO CURATED ROW RAISES rather than being emitted blank. The
+  test removes 0x31's row and requires the table to refuse to build. The same
+  for a query, and for a missing upstream model.
+
+  THE EVIDENCE, twelve tests. Seventeen opcodes, twenty-four subcommands, ten
+  queries; every compare site and every cited instruction pinned to the image;
+  both jump tables decoded; THE VENDOR RELEASE ASSERTED TO HAVE THE SAME
+  SEVENTEEN COMPARES; two writers for the selection byte and none from the
+  dispatcher; the macro block's USB writer; block D's absence of one; the nine
+  rate writes.
+
+  ANTI-VACUITY, five tests. The census must be scoped to one export AND the
+  scoped result must be strictly smaller than the unscoped one, which is the
+  bug that produced a wrong block-D answer. The block filter must find
+  accesses in BOTH blocks. THE DISPATCHER MUST BE SHOWN TO WRITE SOMETHING
+  ELSE, so "it never writes the selection byte" is a real absence. And a wrong
+  encoding must be caught: the test asserts 0x18001ffc is NOT the value I first
+  wrote for it.
+
+  DISCIPLINE, fifteen tests. Most of the table must stay labelled undecoded and
+  every `static-located-only` row must SAY "NOT established" in words rather
+  than merely wear the label; every `static-handler-proven` row must name a
+  store; every 0x51 write is gated and no 0x12 query is; the hold timer gets no
+  HAL name and must list more than one candidate; the unmatched HAL names are
+  listed; the actuation match must contain the words "offered as a match, not
+  as the command's name"; the polling-rate field must be marked unchecksummed;
+  no frame may be constructed; the document must say no device was accessed.
+
+FIVE CHECKS THAT FAILED FOR THE RIGHT REASON, all mine, all caught before
+anything was written:
+
+  - four cited instruction encodings were wrong from memory (0x18001fc2,
+    0x18001ffc, 0x180024a4, 0x18002be8, 0x18002bee, 0x18003316). The byte-level
+    assertions caught every one. This is why the citations are pinned rather
+    than transcribed;
+  - "block D has no USB writer" FAILED, reporting five writers, because the
+    census query was unscoped across six exports and the vendor image shares the
+    address range. Scoping fixed it and an anti-vacuity test now pins the
+    scoping itself;
+  - the vendor-release check failed 16/17 — which turned out to be one of my
+    wrong encodings, not a real release difference. After the fix it is 17/17,
+    and the only differing halfword in the whole entry region is a relocated
+    `bl` offset;
+  - three rows labelled `static-located-only` described proven stores. The
+    discipline test that requires such rows to SAY "NOT established" caught the
+    mislabelling, and they were promoted to `static-handler-proven` rather than
+    the test being loosened;
+  - `12 13` was located by a compare site and had no curated row, and the
+    fail-closed guard refused to emit the table until it got one.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_vendor_commands.py \
+      tool/test_map_vendor_commands.py                                 [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 1176 tests   OK                                                  [exit 0]
+  (1138 before this step; +38 in tool/test_map_vendor_commands.py)
+$ the twenty-one existing --check scripts plus the new one
+                                                   all reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                     all OK               [exit 0]
+$ git diff --check                                 clean                [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THIRTEEN OF THE THIRTY-FOUR decoded families are located only. 0x52's five
+    sub-paths, 0x54, 0x55, 0x56, 0x58, 0x59, 0x90, 0x23, 0x24, 0x4f, 0x0c,
+    0x18 and 12 13 have handler entries and nothing else.
+  - ELEVEN TOP-LEVEL OPCODES are not opened at all: 0x04, 0x22, 0x25, 0x41,
+    0x43, 0x50, 0x52, 0x53, 0x54, 0x71, 0x73, 0xb0, 0xc0, 0xfa, 0xfd — of which
+    0x22, 0x25 and 0x50 have historical meanings from protocol.md and the rest
+    have none.
+  - WHICH SUBCOMMAND SELECTS WHICH FIELD in the shared per-key writer tail.
+    SetRapidTrigger and SetDeadZone are almost certainly in there; nothing here
+    proves which.
+  - THE MACRO ENTRY FORMAT. Header size proven, body extent proven, stride and
+    contents not.
+  - WHICH SUBCOMMAND REACHES THE MACRO WRITER at 0x180035dc.
+  - BLOCK D'S FIELDS, beyond the two bytes the report path reads.
+  - THE HOLD TIMER'S HAL NAME, and whether its ring is per layer or per group.
+  - THE CONSUMER of 0x1801e7b8, the cell 51 51 sets to 0x3c.
+  - WHY NINE RATE WRITES in four seconds.
+  - Sixteen HAL method names still have no opcode, and they are listed rather
+    than guessed at.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NO FRAME WAS CONSTRUCTED. The map describes field layouts read out of
+    compare and store instructions; nothing was assembled, transmitted, or
+    suggested for transmission. Every 0x51 subcommand is marked
+    owner-approval-required and the read-only queries are marked safe.
+  - It did not access any device, open any hidraw node, or read USB sysfs.
+  - It did not open the capture files; log 126's model was read instead.
+  - It did not modify either evidence binary, any historical log, or
+    opencode.json. Logs 124-127 and their tools were not edited.
+  - It did not name any command for a feature on resemblance alone, and it did
+    not assign a HAL name to the hold timer.
+  - It did not decode the eleven unopened top-level opcodes, and it did not
+    speculate about them.
+  - The pre-existing ghidra/project falchion-hfx project was never opened; only
+    the existing read-only exports and imported slices were read.
+  - No package was installed.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

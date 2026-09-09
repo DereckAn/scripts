@@ -2894,12 +2894,99 @@ period is not a register map.
 1138 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-09 — The command surface, and how much of it is still dark (log 128)
+
+One step. Offline; authorises nothing; **no frame constructed**; nothing
+committed or staged.
+
+`notes/protocol.md` has carried a six-row command table since the earliest
+work, with a "still unknown" list naming actuation, rapid trigger, dead zone,
+speed tap, profile switch and polling rate as HAL methods with no opcode. Log
+126 decoded one of them from a capture. This step stopped waiting for captures
+and read the dispatcher's compare sites directly.
+
+**Seventeen top-level opcodes. Twenty-four `0x51` subcommands. Ten `0x12`
+queries.** Every one located at a compare site pinned to the image byte for
+byte, and the same seventeen compares present in both firmware releases.
+
+**And thirteen of the thirty-four are still just an address.** That is the
+honest headline and the model reports it as a coverage figure: 9 wire-proven,
+12 static-handler-proven, 13 static-located-only. Eleven top-level opcodes are
+not opened at all. A surface that is bounded is not a surface that is
+understood.
+
+**Two registers made the rest legible.** `r4` and `r7` are set once at
+dispatcher entry and never reassigned: the request buffer and the device
+header. Once `[r7,#6]` is known to be the current profile, every handler that
+indexes a per-profile structure gives up what it is doing. `51 50` indexes the
+global block by it and inserts request byte 4 into bits 9..15 — log 125's
+actuation field, range 1..40 — then calls the clamp log 125 showed raising
+below `0x28` and lowering above 1. Field, range and clamp all line up with
+`SetActuation_AllKey`. The model records that as a **match offered, not the
+command's name**, and a test requires the wording.
+
+**Profile switching turned out to be neither answer the question offered.** The
+selection byte has exactly two writers, both in the storage state machine, and
+the dispatcher never writes it in any of its thirteen accesses — so the
+"Fn-key-only" negative looked likely. But `51 00` exists: it validates a profile
+0..5, folds 6 to 0, and *posts a request* into the one-deep struct log 111
+traced, which the state machine consumes and stores. Indirect, not absent. And
+the wire numbers profiles 1..6 while the firmware indexes 0..5 — visible
+independently at the fold and at the report, which is why it is stated as a
+fact rather than inferred from one site.
+
+**A field was already on the wire and nobody had noticed.** `12 00` copies eight
+bytes of the device header into its reply, so the capture's
+`59 00 01 00 06 00 03 00` reads as firmware 1.59 *and profile 3* — which agrees
+with `notes/ac-profile3-decoded.json` being profile 3, from a direction nothing
+had used. That reply has been in the record since the earliest protocol notes.
+
+**Macros are not device-only**, which was the negative the step was told to try
+to prove: `0x180035dc` writes the block's header and clears 400 bytes of body,
+and the filter above it routes Caps Lock, Scroll Lock, Num Lock, Left Alt and
+log 120's vendor code down a separate path — a *recording* filter. **Block D
+genuinely has no USB writer**, and its runtime reader is veneer `0x406c`, one of
+the four calls in log 127's rate-gated tick block.
+
+**Log 127's `+0x22` timeout is a dual-role key.** On expiry the record's paired
+halfword is appended to an output ring and the index advanced: hold a key long
+enough and a different code comes out. Four HAL names describe that behaviour
+and nothing recovered distinguishes them, so **none is assigned** — naming it
+would be exactly the "match by feature name alone" the step forbids.
+
+**And the nine rapid writes at t = 314–318 were nothing but the polling rate.**
+That was already visible in log 126; what changed is that it is now a *real*
+negative. With twenty-four subcommands enumerated, "Armoury Crate was batching
+other settings" is a claim that can be tested, and it is false.
+
+**Five checks failed for the right reason, all mine.** Six cited instruction
+encodings were wrong from memory and the byte-level assertions caught every one
+— which is why the citations are pinned rather than transcribed. "Block D has
+no USB writer" failed reporting five writers, because the census query was
+unscoped across six exports and the vendor image shares the address range;
+scoping fixed it and an anti-vacuity test now pins the scoping itself, asserting
+the scoped result is strictly smaller than the unscoped one. The vendor-release
+check failed 16/17 — which turned out to be one of my wrong encodings, not a
+real difference. Three rows labelled `static-located-only` described proven
+stores, and the discipline test requiring such rows to *say* "NOT established"
+in words caught the mislabelling; they were promoted rather than the test
+loosened. And `12 13` was located with no curated row, and the fail-closed
+guard refused to emit the table until it got one.
+
+1176 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| `notes/protocol.md`'s six-row command table read as the command surface | It is the *captured* surface. The dispatcher accepts seventeen top-level opcodes, twenty-four `0x51` subcommands and ten `0x12` queries; thirteen of the thirty-four remain located-only (log 128) |
+| "Profile switching may be Fn-key-only, since no command writes the selection byte" | Half right. No command writes it — the dispatcher never does, in 13 accesses — but `51 00` posts a request that the storage state machine consumes and stores (log 128) |
+| "Macros are recorded on-device only" | False. `0x180035dc` writes the macro block from the dispatcher (log 128) |
+| My own unscoped census query over six Ghidra exports | The vendor application shares the `0x18000000` base, so an unscoped range query merged two releases and turned block D's single writer into five. Queries are now scoped to one export and a test pins it (log 128) |
+| Six instruction encodings I cited from memory in the first draft of the command map | All six wrong, all caught by the byte-level assertions before anything was written (log 128) |
 | Log 126's "six writers and no reader" for `0x1801e736` | The reader exists: `FUN_18004a7e`, four sites, reaching it as `key_state+2`. No aligned-word, displacement or movw/movt search can see that shape; the Ghidra peripheral census had already resolved it (log 127) |
 | Log 126's attribution of the sixth writer to `FUN_18007030` | Wrong. `0x18007a1e` lies in code with **no function body**; log 126 mapped it by nearest preceding entry, which fails whenever a literal pool sits far from its owner (log 127) |
 | Logs 110 and 119: "the actuation comparison runs on IRQ38's tick divided by 8" | True at 1000 Hz, false at 8000 Hz, where it runs on every tick. Both logs scoped the claim to "inside the branch gated by that job's own /8 counter" — which is exactly the branch the rate bypasses (log 127) |

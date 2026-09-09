@@ -3155,6 +3155,110 @@ belongs to (ModTap, Toggle, DKS, SpeedTap); CPU headroom at 2000/4000 Hz; what
 sets `*(0x1801e810)`, the word that gates the whole job; and whether the 10 ms
 parameter is user-facing — no Armoury Crate field has been matched to it.
 
+### The vendor command surface, recovered statically (log 128)
+
+`notes/protocol.md`'s command table has six rows. The dispatcher at
+`0x18001fbe` accepts **seventeen top-level opcodes**, **twenty-four `0x51`
+subcommands** and **ten `0x12` queries**, each located at a compare site pinned
+to the image byte for byte, in both releases.
+
+**Most of it is still not decoded, and the map says which is which.** Of the 34
+`0x51` subcommands and `0x12` queries: **9 wire-proven** (observed in log 126's
+capture *and* decoded), **12 static-handler-proven** (reads, ranges and stores
+read out of the instruction stream), **13 static-located-only** (compare site
+and handler entry proven, nothing else). Eleven top-level opcodes are not opened
+at all.
+
+Two registers, set once at dispatcher entry and never reassigned, are what make
+the handlers legible: `r4 = 0x180233a8`, the request buffer (`0x18001fc2`), and
+`r7 = 0x1801e6d0`, the device header (`0x18001fee`) — so `[r7,#6]` is **the
+current profile** in every handler that indexes a per-profile structure.
+
+| sub | handler | confidence | what it does |
+|---|---|---|---|
+| `0x00` | `0x18002514` | static-handler-proven | **profile switch, indirect** |
+| `0x20`/`0x21`/`0x22` | `0x1800253e`/`0x18002662` | wire-proven (0x21) | key remap → profile block key table |
+| `0x2c` | `0x18002970` | static-handler-proven | device header +5 + a storage request |
+| `0x2d` | `0x18002aca` | static-handler-proven | **lighting** → profile block +0x02, `FUN_1800075a` |
+| `0x31` | `0x18002b2e` | wire-proven | **polling rate** (logs 126/127) |
+| `0x42` | `0x18003310` | static-handler-proven | global block +0x18 + wear-levelled write |
+| `0x50` | `0x180026ec` | static-handler-proven | **all-key actuation**, global bits 9..15 |
+| `0x51` | `0x180026ea` | static-handler-proven | stores `0x3c` at `0x1801e7b8` |
+| `0x53`/`0x57` | `0x180026e6`/`0x18002cda` | static-handler-proven | per-key records +0x06..+0x0a, both layers |
+| `0x0c` `0x18` `0x23` `0x24` `0x4f` `0x52` `0x54` `0x55` `0x56` `0x58` `0x59` `0x90` | — | static-located-only | **semantics not established** |
+
+**`51 50` is the strongest HAL match in the table**, and it is offered as a
+match rather than as the command's name: `0x18002be4` indexes the global block
+by `[r7,#6]`, `0x18002bee` inserts request byte 4 into **bits 9..15** — log
+125's actuation field, range 1..40 — and `0x18002bfa` calls `0x18006d3c`, the
+clamp log 125 showed raising values below `0x28` and lowering above 1. Field,
+range and clamp all line up with `SetActuation_AllKey`.
+
+**`51 21`'s store is now identified**: `strh.w [r2,#0xd4]` at `0x180026d2`, with
+the effective address `0x18021de0 + layer*0x1ee + xlate[src]*2 + 0xd4` — and
+log 125 independently recorded `FUN_18007e38` *reading* exactly that expression.
+Writer and reader agree from two directions.
+
+**Profile switching: there is a USB command, and it is indirect.** The selection
+byte `0x1801e6d6` has **exactly two writers**, both in the storage state machine
+`FUN_18000d56` (`0x180011bc`, and `0x18001df8` storing 0 on factory default).
+The dispatcher **never writes it** in any of its 13 accesses. `51 00` accepts a
+profile 0..5 with 6 folded to 0, refuses ≥ 6, and posts opcode 2 at
+`REQSTRUCT+0x84` with the profile at `+0x85`; `FUN_18000d56` reads that byte at
+`0x180011b8` and stores it at `0x180011bc`. The wire numbering is **1..6 (0 an
+alias for 6)** while the internal index is **0..5** — visible independently at
+the fold (`0x18002516`) and at the report (`0x180020ae`). Log 127's four
+profile-apply writes of the rate multiplier live in the same function, 0x40
+bytes away; **which branch a switch takes is not established.**
+
+**`12 00` already carried the profile.** It copies eight bytes of the device
+header into the reply (`ldrd`/`strd` at `0x180020a2`/`0x180020a6`), so the
+capture's payload `59 00 01 00 06 00 03 00` reads as firmware 1.59 in the first
+halfword and **profile 3 in byte 6** — independently agreeing with
+`notes/ac-profile3-decoded.json` being profile 3. Of protocol.md's five
+"meaning unknown" queries, four now have one; all ten queries are read-only and
+safe.
+
+**The macro block has a USB writer** (`0x180035dc` writes `+0`, `+7`, then
+clears 400 bytes from `+8`), so macros are **not** device-only. The filter just
+above it routes HID usages `0x39`, `0x47`, `0x53`, `0xe2` and `0xe8` — Caps
+Lock, Scroll Lock, Num Lock, Left Alt and log 120's vendor code — down a
+separate path, which reads as a *recording* filter. Entry size, record count and
+whether entries hold timing are **not established**, and neither is which
+subcommand reaches the writer.
+
+**Block D has no USB writer.** Its only writer is `FUN_18000d56` at
+`0x18001be0`. Its runtime reader is `FUN_180057fe` — veneer `0x406c`, one of the
+four calls in log 127's rate-gated tick block — reading `+0x4` and `+0x5`, so it
+is consulted while reports are built. Its fields are not decoded.
+
+**The `+0x22` per-key timeout is a dual-role key.** On expiry the record's
+paired halfword at `+0x20` is appended to an output ring at
+`0x18024000 + layer*600` and the index advanced (`0x180054c4`, `0x180054da`,
+`0x180054de`). Combined with log 127's `threshold × 10 ms`, that is a per-key
+press-and-hold timer emitting a stored code — one code on tap, another on hold.
+Confidence strongly-inferred. **No HAL name is assigned:** `ChangeKey_ModTap`,
+`ChangeKey_Toggle`, `ChangeKey_DKS` and `SetSpeedTap` all describe hold-to-emit
+behaviour and nothing recovered distinguishes them.
+
+**The nine rapid writes at capture t = 314–318 were nothing but the polling
+rate.** All nine are `51 31` index 0 with one distinct 64-byte payload. With
+twenty-four subcommands enumerated this becomes a real negative: no `51 50`, no
+`51 2d`, no `51 00`. The burst is not a batched apply, so it cannot be cited as
+evidence that other commands accompany a rate change. Why one setting was
+written nine times is still undetermined.
+
+**The polling-rate index is the only writable field covered by no checksum** —
+checksum A ends at `+0x4b1`, B starts at `+0x4fc`, and the field is at `+0x4f8`.
+Eight other writable fields are all covered.
+
+**Still unresolved:** 13 located-only subcommands; 11 unopened top-level
+opcodes; which subcommand selects which field in the shared per-key writer tail
+(where `SetRapidTrigger` and `SetDeadZone` almost certainly live); the macro
+entry format; block D's fields; the hold timer's HAL name; the consumer of
+`0x1801e7b8`; and sixteen HAL method names that still have no opcode, listed
+rather than guessed at.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
