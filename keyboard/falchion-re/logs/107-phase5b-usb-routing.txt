@@ -1,0 +1,509 @@
+LOG 107 — PHASE 5B: USB OWNERSHIP, ENDPOINTS AND REPORT ROUTING
+Date: 2026-09-04
+Scope: Phase 5B ONLY. Phases 5C-5G were NOT begun. Nothing was committed.
+
+SAFETY: no /dev/hidraw, no USB or sysfs access, no sudo, no package install, no
+network, no probe/backup/bootloader tool, no unlock/erase/program/reset/SPI
+command construction. Neither evidence binary, no historical log, and not
+opencode.json at the repository root were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened; only the git-ignored
+ghidra/project-step6 was read, and every Ghidra run in this step was -readOnly.
+NO DEVICE WAS ACCESSED. The USB facts used as ground truth come from logs 07/09
+and notes/usb-descriptors.txt, captured read-only long before this step.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+STEP 1 — EVERY HOST REPORT DESCRIPTOR IS IN THE REGION, BYTE FOR BYTE
+================================================================================
+The four report descriptors the host read back (log 09) were searched for in
+every preserved image. Each is found exactly once, in the reconstructed
+decompressed region, and nowhere else:
+
+  hidraw0 (68 B)  region +0x0008    app: not found   entry: not found
+  hidraw1 (34 B)  region +0x004c    app: not found   entry: not found
+  hidraw2 (182 B) region +0x006e    app: not found   entry: not found
+  hidraw3 (23 B)  region +0x0124    app: not found   entry: not found
+  identical offsets in the vendor region
+
+The fifth (interface 4, LampArray, 327 B) was not captured to log 09, so it was
+located structurally: it begins at +0x13b, immediately after hidraw3, and its
+first bytes are
+
+  +0x13b  05 59 09 01 a1 01 85 01 09 02 a1 02 09 03 15 00 27 ff ff 00 00 75 10 95
+
+which is exactly the item sequence notes/usb-descriptors.txt records for it
+(Usage Page 0x59, Usage 1, Collection Application, Report ID 1, Usage 2,
+Collection Logical, Usage 3, Logical Min 0, Logical Max 65535, Report Size 16).
+It ends at +0x282 with `b1 02 c0 c0` — Feature, End Collection, End Collection —
+and 0x282 - 0x13b = 327, the host's wDescriptorLength.
+
+So all five report descriptors are stored verbatim and contiguously at
++0x008..+0x282.
+
+
+================================================================================
+STEP 2 — NO ASSEMBLED STANDARD DESCRIPTOR EXISTS IN ANY IMAGE
+================================================================================
+Searched across the region, the application slice, the entry slice, the
+bootloader mirror and the 0x18038000 RAM image:
+
+  device descriptor (18B)    12 01 00 02 00 00 00 40 05 0b 7e 1b 59 01 ...  ABSENT everywhere
+  config header (9B)         09 02 8d 00 05 01 00 a0 fa                     ABSENT everywhere
+  iface0..iface4 descriptors 09 04 0N 00 ...                                ABSENT everywhere
+  HID class descriptor       09 21 11 01 00 01 22 44 00                     ABSENT everywhere
+  EP 0x81/0x85/0x0d/0x8c/0x8e/0x0f descriptors                              ABSENT everywhere
+  the byte pair 85 0d, and the triple 81 8c 8e                              ABSENT everywhere
+
+ABSENCE IS NOT THE ARGUMENT. The positive finding is that they are BUILT, and
+the builder was recovered — see step 4. Endpoint ADDRESSES (0x81, 0x85, 0x0d,
+0x8c, 0x8e, 0x0f) are the one descriptor field this step did not find anywhere,
+in the table or in the images; that boundary is stated in step 9.
+
+
+================================================================================
+STEP 3 — THE PARAMETER TABLE AT region+0x284
+================================================================================
+INIT_TASK's second instruction is `ldr r0,[0x18000394]`, and *(0x18000394) =
+0x1801e604 = region+0x284 (installed) / 0x1801e5d8 = region+0x284 (vendor).
+It passes that to FUN_18018b70, decompiled read-only:
+
+  undefined4 FUN_18018b70(undefined2 *param_1)
+  {
+    if (((param_1 != 0) && (*(byte *)(param_1 + 9) != 0)) &&
+       (*(byte *)(param_1 + 9) < 6)) {
+      thunk_EXT_FUN_000026b4(DAT_18018cd4,param_1,0x8c);      <- memcpy 0x8c bytes
+      *(undefined2 *)(DAT_18018cd0 + 0x84) = *param_1;        <- idVendor
+      *(undefined2 *)(iVar1 + 0x86) = param_1[1];             <- idProduct
+      *(undefined2 *)(iVar1 + 0x88) = param_1[2];             <- bcdDevice
+      *(undefined1 *)(iVar1 + 0x10e) = *(undefined1 *)(param_1 + 8);
+      *(undefined1 *)(iVar1 + 0x10f) = *(undefined1 *)((int)param_1 + 0x11);
+      return 0;
+    }
+    thunk_EXT_FUN_00001560(s__USBD_HID__error_Invalid_struct_o_18018d48);
+    return 0xffffffea;
+  }
+
+  *(0x18018cd4) = 0x1803435c   the RAM copy of the table
+  *(0x18018cd0) = 0x1801ebb8   the USB core struct
+
+The guard `*(byte*)(table+0x12) != 0 && < 6` is the firmware's own bound on
+bNumInterfaces, and the failure string is "USBD_HID: error Invalid struct o…".
+The table is 0x8c bytes and the byte at +0x12 is 0x05.
+
+LAYOUT, read off the builder's field offsets rather than guessed:
+  +0x00 u16 idVendor      0x0b05
+  +0x02 u16 idProduct     0x1b7e
+  +0x04 u16 bcdDevice     0x0159 installed / 0x0158 vendor
+  +0x10 u8  attribute bits 0x20
+  +0x11 u8  bMaxPower/2    0xfa
+  +0x12 u8  bNumInterfaces 0x05
+then an interface array at +0x14, stride 0x18. FUN_18018082 indexes it as
+`table + i*0x18 + X`, so a record's own fields sit at X-0x14 from its base:
+  +0x02 u8  endpoint flags — bit0 IN present, bit1 OUT present
+  +0x04 u16 IN wMaxPacketSize
+  +0x06 u16 OUT wMaxPacketSize
+  +0x0c u16 report descriptor length
+  +0x10 u32 report descriptor pointer
+  +0x14 u8  bInterval for the IN endpoint
+
+RAW BYTES, installed:
+  +0x0284  05 0b 7e 1b 59 01 00 00 00 00 00 00 00 00 00 00
+  +0x0294  20 fa 05 00 | 01 01 01 00  08 00 01 00  00 00 00 00
+  +0x02a4  44 00 00 00  88 e3 01 18  01 00 00 00 | 00 00 03 00
+  +0x02b4  40 00 40 00  00 00 00 00  22 00 00 00  cc e3 01 18
+  +0x02c4  01 00 00 00 | 00 00 01 00  15 00 00 00  00 00 00 00
+  +0x02d4  b6 00 00 00  ee e3 01 18  01 00 00 00 | 00 00 01 00
+  +0x02e4  13 00 00 00  00 00 00 00  17 00 00 00  a4 e4 01 18
+  +0x02f4  04 00 00 00 | 00 00 02 00  00 00 40 00  00 00 00 00
+  +0x0304  47 01 00 00  bb e4 01 18  01 00 00 00 | 00 00 00 00
+  +0x0314  all zero to the end of the 0x8c-byte copy
+
+
+================================================================================
+STEP 4 — THE CONFIGURATION DESCRIPTOR IS BUILT, AND THE ARITHMETIC PROVES IT
+================================================================================
+FUN_18018082, decompiled read-only, opens with:
+
+  for (iVar5 = 0; iVar5 < (int)(uint)*(byte *)(DAT_18018390 + 0x12); iVar5++) {
+    uVar8  = (uint)*(byte *)(DAT_18018390 + iVar5 * 0x18 + 0x16);
+    iVar10 = (uVar8 & 1) - ((int)(uVar8 << 0x1e) >> 0x1f);      <- bit0 + bit1
+    iVar7  = iVar7  + iVar10 * 7 + 0x12;                        <- byte total
+    iVar11 = iVar11 + iVar10 + 2;                               <- chunk count
+  }
+  piVar6 = (int *)thunk_EXT_FUN_000019d0(iVar11 * 4 + 4 + iVar7);   <- malloc
+
+  DAT_18018390 = 0x1803435c, the RAM copy of the table.
+
+That is: 0x12 bytes per interface (9 interface + 9 HID class) plus 7 per
+endpoint, exactly the standard sizes, driven by the same 0x18 stride and the
+same +0x16 flag byte. Recomputing it from the table:
+
+  iface  flags  endpoints  bytes
+    0     0x01      1      0x12 + 7  = 25
+    1     0x03      2      0x12 + 14 = 32
+    2     0x01      1      0x12 + 7  = 25
+    3     0x01      1      0x12 + 7  = 25
+    4     0x02      1      0x12 + 7  = 25
+  plus the 9-byte configuration header                       = 141 = 0x008d
+
+$ python3 tool/map_usb_routing.py
+  PASS wTotalLength recomputed from the table equals the host's — built 141 (0x8d) vs host 141
+
+The host observed wTotalLength 0x008d. The firmware stores no such bytes; the
+arithmetic that produces them was read out of the builder's instructions. This
+is what "constructed at runtime" is asserted on.
+
+The interface-4 record's flags are 0x02 — the only record with bit1 set and
+bit0 clear, i.e. OUT-only — which is exactly the host's OUT-only interface 4.
+
+Strings are stored as plain ASCII ("ASUSTeK" at +0x850, "ROG FALCHION ACE HFX"
+at +0x882, "hid driver" at +0x8ec, "Sonix HID" at +0x9a4) with the LANGID dword
+0x00000409 at +0x848. A USB string descriptor is UTF-16LE with a 2-byte header,
+so these are inputs to a builder, not descriptors.
+
+
+================================================================================
+STEP 5 — FULL FIELD COMPARISON AGAINST THE HOST
+================================================================================
+$ python3 tool/map_usb_routing.py
+DESCRIPTOR SET (installed)
+  idVendor=0x0b05 idProduct=0x1b7e bcdDevice=0x0159
+  bNumInterfaces=5 bMaxPower=500mA attribute_bits=0x20
+  wTotalLength rebuilt from the table = 141 (0x8d)
+  IFACE 0 endpoints=1 in=8 out=- bInterval=1 report=+0x8 len=68 ptr=0x1801e388
+  IFACE 1 endpoints=2 in=64 out=64 bInterval=1 report=+0x4c len=34 ptr=0x1801e3cc
+  IFACE 2 endpoints=1 in=21 out=- bInterval=1 report=+0x6e len=182 ptr=0x1801e3ee
+  IFACE 3 endpoints=1 in=19 out=- bInterval=4 report=+0x124 len=23 ptr=0x1801e4a4
+  IFACE 4 endpoints=1 in=- out=64 bInterval=n/a report=+0x13b len=327 ptr=0x1801e4bb
+
+CHECKS
+  PASS idVendor matches the host device descriptor — 0x0b05
+  PASS idProduct matches the host device descriptor — 0x1b7e
+  PASS bcdDevice matches the host device descriptor — 0x0159
+  PASS bNumInterfaces matches the host configuration descriptor — 5
+  PASS bMaxPower matches the host configuration descriptor — 250 units = 500 mA
+  PASS the stored attribute bits are the host's minus the mandatory 0x80 — stored 0x20 vs host 0xa0
+  PASS wTotalLength recomputed from the table equals the host's — built 141 (0x8d) vs host 141
+  PASS interface 0 endpoint count matches the host — 1 vs 1
+  PASS interface 1 endpoint count matches the host — 2 vs 2
+  PASS interface 2 endpoint count matches the host — 1 vs 1
+  PASS interface 3 endpoint count matches the host — 1 vs 1
+  PASS interface 4 endpoint count matches the host — 1 vs 1
+  PASS the table's interval byte matches every host IN endpoint's bInterval — 1, 1, 1, 4
+  PASS the OUT endpoints' bInterval is NOT in the table — recorded unresolved, not inferred — host OUT bInterval is 4 for both 0x0d and 0x0f; no record holds it
+  PASS every host endpoint's wMaxPacketSize appears in the table — 8, 64, 64, 21, 19, 64
+  PASS interface 0's report descriptor is byte-identical to the host's — 68 bytes at region+0x8
+  PASS interface 1's report descriptor is byte-identical to the host's — 34 bytes at region+0x4c
+  PASS interface 2's report descriptor is byte-identical to the host's — 182 bytes at region+0x6e
+  PASS interface 3's report descriptor is byte-identical to the host's — 23 bytes at region+0x124
+  PASS the report descriptors are contiguous from +0x8 — +0x8, +0x4c, +0x6e, +0x124, +0x13b
+  PASS no assembled standard descriptor is stored in the region — device/config/interface/endpoint descriptors are built, not stored
+  PASS both releases describe the same interface shape — 5 interfaces both sides
+  PASS only bcdDevice differs between the releases — installed 0x0159 vs vendor 0x0158
+  PASS every route names an endpoint the table accounts for
+
+RESULT routing_ok=True checks=24
+  [exit 0]
+
+MISMATCHES: none. The two host descriptor fields NOT accounted for by the table
+are bEndpointAddress (all six) and the OUT endpoints' bInterval; both are listed
+as unresolved boundaries in step 9.
+
+
+================================================================================
+STEP 6 — 0x40100000 IS THE USB DEVICE CONTROLLER, NAMED BY THE FIRMWARE
+================================================================================
+The block was carried as unnamed from log 100. It is now named, and NOT by
+correlation — by the firmware's own strings.
+
+$ inventory strings of every function that accesses 0x401xxxxx
+  0x18016f6e Vector_IRQ6   {'send\susbd_ep0_Queue\serror\n', 'send\susbd_irq_Queue\serror\n'}
+  0x18008c16 FUN_18008c16  {'USB_PM_Rs','USB_PM_Ct','USB_PM_Rn','PM_nRs','PM_nNRs','Wake-up','Enter\ssleep','USB_Demo_Mode'}
+  0x18015ce2 FUN_18015ce2  {'usbd_wdt'}
+
+IRQ6's handler contains the firmware's own name for the two queues it feeds:
+usbd_ep0_Queue (control endpoint) and usbd_irq_Queue. FUN_18008c16 is USB power
+management. FUN_18015ce2 is, from log 106, the function that creates the task
+named "usbd_wdt" — the USB device watchdog — and it also writes this block.
+
+REGISTER BASE. Vector_IRQ6 loads its base from a literal:
+  *(0x1801723c) = 0x40100018
+and every 0x401xxxxx target the Phase 5 census attributes to IRQ6 is that base
+plus a small displacement, with no leftovers:
+  base-0x04 = 0x40100014   base+0x04 = 0x4010001c   base+0x14 = 0x4010002c
+  base+0x68 = 0x40100080   base+0x6c = 0x40100084
+It also loads *(0x18017240) = 0xe000ed04 (ICSR) with 0x10000000 (PENDSVSET), so
+the handler ends by pending PendSV — it hands off to the scheduler rather than
+doing work in interrupt context.
+
+BOTH DIRECTIONS.
+  init -> handler: 27 functions touch the block, clustered at
+    0x180146ec..0x180171c8 plus 0x18008b56..0x18008c16. Vector_IRQ6 is the only
+    interrupt among them.
+  handler -> consumers: Vector_IRQ6 calls FUN_18012b0c and FUN_18012bc6, both in
+    the RTOS range and both with no MMIO of their own, then pends PendSV. Its
+    two error strings name the queues, so the handler's output is two RTOS
+    queue posts, consumed by a task.
+
+WHY THE CORE AND THE DRIVER SHOW NO CALL PATH. A breadth-first search from
+FUN_18018bd6, FUN_180171b0 and FUN_18017672 reaches NO function that accesses
+0x401xxxxx. That is not a gap in the evidence — it is the architecture. The two
+layers are joined by the function-pointer tables 5A recovered:
+  table 0x18018ce8 (12 entries) — every target is a USB core/descriptor
+    function, including the builder FUN_18018082 and FUN_18017f9a
+  table 0x18016d44 (26 entries) — every target is in the controller-driver
+    cluster, including FUN_18016104, FUN_1801533c, FUN_180158de
+  table 0x18017d08 (6 entries) — a third layer between them
+The call is indirect through these tables, which is exactly why 5A had to seed
+them before this step could read anything.
+
+
+================================================================================
+STEP 7 — THE VENDOR CHANNEL, RECEIVE AND TRANSMIT
+================================================================================
+RECEIVE — EP 0x0d OUT -> buffer -> dispatcher.
+
+A value cross-reference over the whole application image finds exactly TWO
+functions that touch the buffer 0x180233a8: the producer and the dispatcher.
+
+  FUN_18000aec, called by FUN_18016104 (an entry in the driver ops table
+  0x18016d44, and itself a 0x40100000 accessor):
+
+    void FUN_18000aec(undefined4 param_1,uint param_2)
+    {
+      pcVar1 = DAT_18000e64;                       /* 0x180233a8 */
+      if ((*DAT_18000e64 == '\0') && (4 < param_2)) {
+        if (0x3f < param_2) {
+          thunk_EXT_FUN_0000262a(DAT_18000e64,param_1,0x40);      /* memcpy 64 */
+          return;
+        }
+        thunk_EXT_FUN_0000262a(DAT_18000e64,param_1,param_2);     /* memcpy len */
+        thunk_EXT_FUN_00002728(pcVar1 + param_2,0x40 - param_2);  /* memset 0 */
+        return;
+      }
+      return;
+    }
+
+  OWNERSHIP: byte 0 of the buffer is both the command byte and the busy flag.
+  The producer copies only when it is zero. A packet arriving while the previous
+  one is unprocessed is DROPPED SILENTLY — there is no else branch, no error
+  path, no counter and no second slot.
+  SIZE: packets of 4 bytes or fewer are rejected; longer ones are truncated to
+  64; shorter ones are zero-padded to 64. The buffer is always a full frame.
+  DMA: none is visible at this level. The transfer into the buffer is a CPU
+  memcpy from a caller-supplied pointer.
+
+  FUN_18001fbe (the dispatcher) then opens with
+    18001fbe  push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
+    18001fc2  ldr  r4,[0x18002174]        ; *(0x18002174) = 0x180233a8
+    18001fc4  ldrb r0,[r4,#0x0]
+    18001fc6  cmp  r0,#0x0
+    18001fc8  beq  0x180020bc             ; nothing to do
+  the exact complement of the producer's gate.
+
+TRANSMIT — dispatcher -> SendResponse64 -> EP 0x85 IN.
+
+  FUN_18000a70 (VendorHID_SendResponse64), callers FUN_18000ad8, FUN_18000d56
+  and the dispatcher FUN_18001fbe:
+
+    void FUN_18000a70(param_1,param_2,param_3,param_4,uint param_5)
+    {
+      thunk_EXT_FUN_0000276c(&local_58,0x40);     /* memset 64 */
+      thunk_EXT_FUN_0000276c(&local_98,0x40);     /* memset 64 */
+      if (0x3c < param_5) { param_5 = 0x3c; }     /* clamp payload to 60 */
+      local_56 = (undefined2)param_3;  local_58 = param_1;  local_57 = param_2;
+      thunk_EXT_FUN_0000262a(auStack_54,param_4,param_5);
+      local_96 = (undefined1)param_3;
+      local_95 = (undefined1)((uint)param_3 >> 8);
+      local_98 = param_1;  local_97 = param_2;
+      thunk_EXT_FUN_0000262a(auStack_94,param_4,param_5);
+      FUN_18018bd6(1,&local_98,0x40,0);
+    }
+
+  WIRE FORMAT: 4 header bytes (param_1, param_2, param_3 as a 16-bit field) plus
+  a payload clamped to 0x3c = 60, in a 64-byte frame zero-filled first.
+  OBSERVED ODDITY, recorded not explained: two identical 64-byte frames are
+  built on the stack and only the second is sent. The first is dead as written.
+
+  FUN_18018bd6(interface, buffer, length, flags), listing confirmed:
+    18018bdc  ldr  r1,[0x18018cd0]     ; USB core struct 0x1801ebb8
+    18018be0  add.w r7,r0,r0,lsl #0x1  ; r7 = interface * 3
+    18018be4  ldr  r1,[r1,#0x4]
+    18018be8  add.w r2,r1,r7,lsl #0x3  ; + interface * 0x18   <- same stride
+    18018bec  ldr  r4,[r2,#0x7c]       ; endpoint object
+    18018bf0  ldr  r6,[0x18018cd4]     ; table RAM copy 0x1803435c
+    18018bf2  ldrb r2,[r6,#0x12]       ; bNumInterfaces
+    18018bf4  cmp  r2,r0
+    18018bf6  bls  0x18018c12          ; -> return -0x16 (EINVAL)
+    18018bfc  ldrb r0,[r4,#0x0]        ; endpoint state
+    18018c02  cbz  r0,0x18018c64       ; -> return -5
+    18018c06  cmp  r0,#0x1
+    18018c08  beq  0x18018c18          ; only state 1 proceeds
+    18018c0a  mvn  r0,#0xf             ; -> return -0x10 (EBUSY)
+    18018c24  add.w r0,r6,r7,lsl #0x3
+    18018c28  ldrh r2,[r0,#0x18]       ; the record's IN wMaxPacketSize
+    18018c2a  cmp  r2,r5               ; bounded against the requested length
+
+  COMPLETION AND ERROR HANDLING: three distinct negative returns — -0x16 for an
+  interface index at or beyond bNumInterfaces, -5 for an endpoint that is not
+  open, -0x10 for one that is busy. FUN_18000a70 IGNORES all three: it does not
+  read the return value, so a dropped response is invisible to the vendor
+  command layer.
+
+  The `ldrh r2,[r0,#0x18]` is the same field the descriptor builder turns into
+  the endpoint's wMaxPacketSize. The transmit path and the enumerated descriptor
+  are bounded by one value in one table. Interface index 1 selects the record
+  whose IN wMaxPacketSize is 0x40 — endpoint 0x85.
+
+
+================================================================================
+STEP 8 — THE ROUTING MAP
+================================================================================
+$ python3 tool/map_usb_routing.py    (routing section)
+
+  EP 0x00 iface=-1 control 64B  [observed]           REQUIRED
+      purpose: control transfers, including GET_DESCRIPTOR
+      context: IRQ6 (USB device) -> usbd_ep0_Queue -> USB task -> FUN_18018082
+               builds the configuration descriptor
+      basis:   Vector_IRQ6 carries the firmware's own string
+               'send usbd_ep0_Queue error'; FUN_18018082's size arithmetic
+               reproduces the host's wTotalLength exactly
+
+  EP 0x81 iface=0 IN 8B         [strongly-inferred]  REQUIRED
+      purpose: boot keyboard, 8-byte report
+      context: IRQ6 -> usbd_irq_Queue -> USB task; report produced by the scan path
+      basis:   interface 0's record gives one IN endpoint of 8 bytes and its
+               report descriptor is byte-identical to the host's; the producing
+               scan path is 5C's subject and is not traced here
+
+  EP 0x85 iface=1 IN 64B        [observed]           optional
+      purpose: vendor page 0xFF00 response, 64-byte frame
+      context: dispatcher 0x18001fbe -> SendResponse64 0x18000a70 ->
+               FUN_18018bd6(iface=1)
+      basis:   FUN_18000a70 builds a 64-byte frame and calls FUN_18018bd6 with
+               interface index 1; FUN_18018bd6 bounds the length against the
+               same table field that produces this endpoint's wMaxPacketSize
+
+  EP 0x0d iface=1 OUT 64B       [observed]           optional
+      purpose: vendor page 0xFF00 command, 64-byte frame
+      context: USB controller -> FUN_18016104 (ops table 0x18016d44) ->
+               FUN_18000aec -> buffer 0x180233a8 -> dispatcher 0x18001fbe
+      basis:   FUN_18000aec is one of exactly two functions that touch
+               0x180233a8; it zero-pads to 64 and gates on byte 0, and the
+               dispatcher's first act is to read that byte
+
+  EP 0x8c iface=2 IN 21B        [strongly-inferred]  optional
+      purpose: consumer/system controls plus a vendor event collection
+      context: application task context; producer not traced in 5B
+      basis:   interface 2's record gives one IN endpoint of 21 bytes and its
+               182-byte report descriptor is byte-identical to the host's
+
+  EP 0x8e iface=3 IN 19B        [strongly-inferred]  optional
+      purpose: NKRO keyboard bitmap, 19-byte report
+      context: same producer as interface 0's report; not separated in 5B
+      basis:   interface 3's record gives one IN endpoint of 19 bytes and its
+               23-byte report descriptor is byte-identical to the host's
+
+  EP 0x0f iface=4 OUT 64B       [strongly-inferred]  optional
+      purpose: HID usage page 0x59 LampArray, 64-byte OUT plus feature reports
+      context: USB controller -> class ops; lighting consumer not traced in 5B
+      basis:   interface 4's record is the only one with the OUT bit set and no
+               IN endpoint, matching the host's OUT-only interface 4; its
+               327-byte report descriptor is byte-identical to the host's
+
+MINIMAL USB-KEYBOARD PATH: EP 0x00 and EP 0x81 — the control endpoint and
+interface 0's 8-byte boot report. Everything else is compatibility:
+  interface 1 (vendor 0xFF00)  — the ASUS configuration channel; omitting it
+      loses vendor software support and, note, the bootloader-entry command
+      path recorded in logs 82/87/88 lives on this channel
+  interface 2 (consumer/system) — media keys and system controls
+  interface 3 (NKRO)           — n-key rollover beyond the boot report's 6
+  interface 4 (LampArray)      — per-key lighting through the standard HID
+      LampArray page
+The parameter table makes each of these a matter of one record and one
+bNumInterfaces byte, both of which the firmware validates at 1..5.
+
+WHAT "context" DOES AND DOES NOT MEAN. Each context above is a call-graph and
+data-flow statement. It is NOT timing: nothing here observed the device, an
+interrupt firing, or a task running.
+
+
+================================================================================
+STEP 9 — REMAINING UNRESOLVED BOUNDARIES
+================================================================================
+Stated precisely, not closed.
+
+  1. bEndpointAddress. None of 0x81, 0x85, 0x0d, 0x8c, 0x8e, 0x0f is in the
+     parameter table, and the byte pair `85 0d` and triple `81 8c 8e` appear in
+     no preserved image. The addresses are assigned somewhere this step did not
+     find: most likely computed by the builder from an interface/endpoint index,
+     or fixed by the controller's endpoint hardware. HYPOTHESIS, not traced.
+  2. The OUT endpoints' bInterval. Both are 4 on the host; the table carries one
+     interval byte per interface and it tracks the IN endpoint. UNRESOLVED.
+  3. iSerial. The device descriptor reports iSerial 2, and lsusb shows it blank.
+     No serial string was located in the region. UNRESOLVED.
+  4. The producers of the interface 0, 2 and 3 reports. Those are the key-scan
+     and media paths — 5C's and 5D's subjects. NOT TRACED HERE, by scope.
+  5. The lighting consumer behind EP 0x0f. NOT TRACED HERE, by scope.
+  6. FUN_18000a70 builds two identical 64-byte frames and sends one. RECORDED,
+     unexplained.
+  7. The searches in steps 1 and 2 cover the five preserved images. A mask ROM,
+     if one exists, was not searched and cannot be. Nothing here rules out a ROM
+     contribution; equally, nothing requires one — the builder recovered in step
+     4 accounts for every standard descriptor field except item 1.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_usb_routing.py tool/test_map_usb_routing.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 483 tests   OK                                                 [exit 0]
+  (459 before this step; +24 in tool/test_map_usb_routing.py)
+$ python3 tool/report_phase3.py --check   RESULT reports_current=True stale=0
+$ python3 tool/report_phase4.py --check   RESULT reports_current=True stale=0
+$ python3 tool/report_phase5.py --check   RESULT reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check RESULT reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS            all OK                     [exit 0]
+$ git diff --check                        clean                      [exit 0]
+
+FAIL-CLOSED TESTS (tool/test_map_usb_routing.py, 24 tests). Each malformed
+input is asserted to RAISE, because a parser that silently accepts a truncated
+table would produce an endpoint map that looks complete and is wrong:
+  - a region too short for the 0x8c-byte table raises
+  - bNumInterfaces of 0 raises; of 6 raises, quoting the firmware's own 1..5
+  - an interface record running past the region raises (a defensive guard,
+    tested by shrinking the copied length, with a second test proving five
+    records always fit the real 0x8c so the guard cannot fire on a real image)
+  - a report pointer outside the region raises
+  - a report length running past the region raises
+  - a descriptor chain whose bLength overruns the capture raises
+  - a zero bLength raises instead of looping forever
+  - an endpoint-flag byte of 0 gives 0 endpoints and 0x12 descriptor bytes
+    rather than being skipped
+and on the real evidence: every check passes, the rebuilt wTotalLength is 0x8d,
+all five report descriptors are present, interface 4 is OUT-only, both releases
+agree except bcdDevice, every report pointer tracks its own release's base,
+only EP 0x00 and EP 0x81 are required, every route carries a confidence from a
+closed set and a basis, and the JSON is deterministic across two builds.
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phases 5C, 5D, 5E, 5F and 5G were not begun.
+  - Nothing was committed. No file was staged or unstaged.
+  - No firmware was built, modified or written.
+  - The key-scan, media and lighting producers were not traced.
+  - Endpoint addresses, the OUT bInterval and iSerial remain unresolved.
+  - Every Ghidra run was -readOnly; project-step6 was not modified by this step.
+  - NO DEVICE WAS ACCESSED.

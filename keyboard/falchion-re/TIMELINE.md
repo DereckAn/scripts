@@ -240,6 +240,8 @@ Major regions:
 
 | File range | Current interpretation |
 |---|---|
+| Log 111's "the modifiable ranges are disjoint from the application region" | True of the three erase addresses it had traced, false of the store as a whole: the wear-levelled banks and the macro region sit numerically inside `0x10000..0x7c000`. Whether that is the same address space is unsettleable while the medium is unidentified, so the reassurance is withdrawn. The omission proof, which rests on reachability rather than addresses, is unaffected (log 125) |
+| Phase 5E's "the settings format was NOT RECOVERED" | Correct for the erase branch it traced, which constructs nothing. The same state machine's save and load branches compute a 16-bit additive checksum and issue read/write requests; the format, its defaults and its migration are recovered (log 125) |
 | `0x00000–0x0ffff` | Primary bootloader/container |
 | `0x10000` | `SN_FWIN` application header |
 | `0x11000–0x168ab` | Candidate application A |
@@ -1488,12 +1490,1321 @@ Phase 5 is **not complete** and is not declared so. 5B through 5G are not
 started. 406 offline tests pass, both evidence hashes are unchanged, and no
 device was accessed.
 
+## 2026-09-04 — Phase 5A continuation: the decompressed region reconstructed (log 105)
+
+One step, at the owner's direction: reconstruct Candidate A's decompressed
+scatter region offline, then re-run 5A's reachability measurement over it.
+5B–5G were not begun and nothing was committed.
+
+Log 104 had named this exactly: a callback "held in the decompressed region that
+is mapped but not reconstructed, cannot appear". `tool/reconstruct_decompress.py`
+removes that blind spot. Its decoder is a **translation of the firmware's own
+handler** — the `0x5c` bytes at Candidate A program `0x17c..0x1d8`, which are
+**byte-identical in both releases** (sha256 `582c4804…6ae0`) — and it refuses to
+decode against a handler that does not hash to them. Both releases decode to
+exactly the descriptor's `0xb04`.
+
+One check failed on the first run and the failure was informative. "The decoder
+consumed the compressed source exactly" reported `0x3fd` of `0x400`. The premise
+was wrong, not the decoder: the compressed length is stored nowhere and is
+*derived* as "region 1's source to the end of record 1", which is word-aligned,
+so a short all-zero tail is expected. The check was replaced by two that state
+the real invariant — consumption rounds up to the derived length, and every
+unconsumed byte is zero — rather than relaxed into a tolerance.
+
+**The region turned out to be the USB / HID descriptor set**, initialised
+read-write data rather than code. That was read out of the decoded bytes: a HID
+report descriptor at `+0x8`, the strings `ASUSTeK`, `ROG FALCHION ACE HFX`,
+`hid driver` and `Sonix HID`, and at `+0x284` the adjacent halfwords idVendor
+`0x0b05`, idProduct `0x1b7e`, bcdDevice `0x0159`. That identity was recorded from
+sysfs in log 04, months of work before this region was decoded, and the vendor
+image decodes to `0x0158` at the same offset, matching its own filename. The
+decoder was given no vendor ID, no product ID and no version, so this is external
+corroboration rather than internal consistency. The two independently decoded
+regions differ in 45 of 2,820 bytes, 35 of 39 differing words by exactly the
+`0x2c` shift Phase 3 measured from flash alone.
+
+**A measurement that supports nothing, reported anyway.** The Thumb-2 disassembly
+rate was measured in `ghidra/project-step6` with a control: seeded pseudorandom
+noise decodes at 95.53%, known code at 97.13–97.93%, and the reconstructed region
+at 98.44–98.72% — *above* known code. Thumb-2 is too dense an encoding for that
+rate to distinguish code from data here, so "98.7% disassembly success" is not
+offered as evidence of anything. What the region is was settled by its content.
+
+**The region holds no pointer table**, and the rule was not weakened to produce
+one. Five isolated pointers exist; three name addresses at which Ghidra already
+has a function and are admitted as roots on that external agreement alone.
+Application reachability moved **138 → 146 of 573** — three roots, eight
+functions, reported as the small gain it is. Function counts are unchanged, so
+Phase 3 needed no regeneration.
+
+Recorded as required: table `0x5680`'s middle entry `0x4018` was absorbed into
+`PtrTarget_00004004`'s body extent, so log 104's `skipped=1` means that table
+contributes **two** indirect roots, not three. `reachability()` now reports a
+root that names no function instead of dropping it silently.
+
+**No claim of full reachability.** 427 application functions remain unreached,
+but only **135 are called by nothing at all** — the other 292 are downstream of
+those, so the gap is 135 missing entry points. The largest unaccounted mechanism
+is named: `0x1800023a`, recorded in FINDINGS.md and logs 79–80 as Candidate B's
+runtime entry, **is not a function in the inventory at all**, so the traversal
+cannot start there. Log 80's dispatcher `0x18001fbe` is the largest callerless
+function at 3,146 instructions. Task entry points handed to an RTOS creation call
+as register arguments would be invisible to every byte survey run so far — a
+hypothesis, not a trace. The next mechanism needs data-flow analysis.
+
+Phase 5 remains **not complete**. 433 offline tests pass, both evidence hashes are
+unchanged, and no device was accessed.
+
+## 2026-09-04 — Phase 5A completion: argument-passed task entries (log 106)
+
+One step, at the owner's direction: finish 5A by recovering the entry roots that
+are passed to the RTOS creation call in a register. 5B–5G were not begun and
+nothing was committed.
+
+The step opens with an **erratum to log 105**, recorded here rather than by
+editing that log. Log 105's STEP 10 said `0x1800023a` "is absent from
+installed_b.txt". It is not: the address string appears once, as the *exclusive*
+end of `FUN_180001d2`'s range. The substantively correct claim — verified by the
+reviewer and re-verified here — is that no `FUNC` entry exists at that address,
+so the traversal cannot start there, and everything log 105 concluded from it
+stands. The reviewer caught the wording.
+
+A second premise needed correcting before any work could rest on it. Log 80's
+decompile came from `app_candidate_b_18000000.bin`, whose hash is the **vendor**
+record slice, so every address in log 80 is a vendor address. The installed
+task-creation primitive was therefore *derived* — vendor `0x18012fa4` → installed
+`0x18012fd0`, identical body, the `+0x2c` Phase 3 measured — rather than assumed
+to be at the same address.
+
+**The call shape was read off the primitive's own code**, not from the name
+string: the initialiser allocates `stack << 2` bytes, copies at most `0x10` name
+bytes into the control block, clamps the priority to `0xe`, derives the
+ready-list index as `0xf − priority`, and hands `(stack_top, entry, argument)` to
+the frame builder. Constant propagation over each *calling* function then
+resolved all five call sites in both releases — after fixing a real blind spot:
+the first version missed `strd Ra,Rb,[sp,#0]`, which is exactly how `INIT_TASK`
+is created, so every sixth argument had come back `unknown`.
+
+Five tasks, with names, stacks, priorities and arguments identical across the two
+releases and entries differing by exactly 0 or `+0x2c`: `INIT_TASK` (priority 20,
+clamped to the ceiling of 14), `OEM_MAIN_SERVICE_TASK` (16 KiB of stack, sixteen
+times any other), `IDLE` (240 bytes, priority 0), `Tmr Svc`, and `usbd_wdt`.
+Creation order is the static chain main → `INIT_TASK` → `OEM_MAIN_SERVICE_TASK`;
+it is not a runtime schedule and nothing here observed execution.
+
+**One task runs code in the other image.** `OEM_MAIN_SERVICE_TASK`'s entry
+`0x499` comes from a literal-pool word and lands in Candidate A, the image the
+bootloader copies to address 0 — the mirror of log 79's finding that Candidate A
+calls into Candidate B. It was accepted on data-flow provenance, a Thumb prologue
+byte-identical in both releases and eight instructions decoding cleanly, *not* on
+`isValidSubroutine`, which says false for every unseeded span and is reported
+alongside so the disagreement stays visible.
+
+An unplanned cross-check fell out: `INIT_TASK` passes the decompressed region's
+base + `0x284` to a USB init function — the exact offset at which log 105 found
+the device's idVendor, idProduct and bcdDevice. Two independent routes to the
+same address.
+
+**A new baseline, not an improvement.** Seeding changed the function counts, so
+the numbers share no denominator with log 105's: entry image 91 of 101 →
+**101 of 114**, application 146 of 573 → **281 of 616**. Both releases moved
+symmetrically and Phase 3 still matches 114/114 and 616/616 with nothing
+unmatched. Every earlier root category survives and table `0x5680`'s absorbed
+middle entry is still reported rather than dropped, both now pinned by tests.
+
+**No task reaches a vendor peripheral.** Every vendor block is reached only from
+main's initialisation path, from IRQ6, or from the entry image. Stated as the
+call graph shows it.
+
+**The residue is enumerated, not eliminated**, which is what 5A's exit gate asks
+for: 121 callerless application functions totalling 12,313 instructions, whose
+four largest — including log 80's dispatcher `0x18001fbe` — have zero references
+of any kind and appear in no aligned word of any slice; and 81 unresolved
+register-target branches, each listed by address. The mechanisms still
+unaccounted for are named and none is traced.
+
+459 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-04 — Phase 5B: USB ownership, endpoints and report routing (log 107)
+
+Phase 5B only. 5C–5G were not begun and nothing was committed. Every Ghidra run
+was read-only.
+
+Log 105 identified the decompressed region as the descriptor set from its
+content. This step made that account complete and checkable. All five HID report
+descriptors sit contiguously at `+0x008..+0x282` and appear in no other
+preserved image. Four of them are byte-identical to the raw bytes the host read
+back in log 09. The fifth, interface 4's, cannot be checked that way at all: the
+interface was unbound on the host, so this repository holds no raw bytes for it —
+log 09 captured `hidraw0`–`hidraw3` only. It was located structurally and
+verified a step more weakly, and that difference is now stated wherever the
+claim appears (log 108).
+
+The standard descriptors are a different story, and the interesting one. No
+device, configuration, interface, HID-class or endpoint descriptor byte sequence
+exists anywhere in the five images. Rather than rest on that search, the builder
+was recovered: `INIT_TASK` hands region+`0x284` to `FUN_18018b70`, which
+validates `bNumInterfaces` in 1..5 against its own error string and copies
+`0x8c` bytes to RAM, and `FUN_18018082` then accumulates `0x12` bytes per
+interface plus `7` per endpoint over a 9-byte header. Recomputing that from the
+table yields **141 = `0x008d`**, exactly the `wTotalLength` the host reported.
+Every other field — VID, PID, bcdDevice, 500 mA, all six packet sizes, all four
+IN intervals — matches too.
+
+**`0x40100000`, carried as unnamed since log 100, is the USB device
+controller.** It is named on the firmware's own strings rather than on
+correlation: `Vector_IRQ6` contains `send usbd_ep0_Queue error` and
+`send usbd_irq_Queue error`, its register base literal is `0x40100018` — which
+accounts for every census target attributed to IRQ6 with nothing left over — and
+the block's other accessors carry `USB_PM_*` and `usbd_wdt`. The handler ends by
+pending PendSV, so it hands off to the scheduler rather than working in interrupt
+context.
+
+A negative result turned out to be the architecture rather than a gap: no static
+call path exists between the USB core and the controller driver. They are joined
+by the function-pointer tables Phase 5A had to seed first.
+
+The vendor channel was recovered in both directions, not just the known parser.
+Inbound is a single-slot 64-byte mailbox at `0x180233a8` whose byte 0 is both the
+command and the busy flag — and **a packet arriving while the previous one is
+unprocessed is dropped silently**, with no error path or second slot. Outbound
+clamps the payload to 60 bytes in a 64-byte frame and is bounds-checked against
+the same table field that produces the endpoint's `wMaxPacketSize`; the transmit
+call returns three distinct errors and the caller ignores all three.
+
+For a future custom firmware the useful conclusion is narrow and concrete: the
+minimal USB-keyboard path is the control endpoint plus interface 0's 8-byte boot
+report. The vendor channel, media/NKRO and lighting are each one table record and
+one count byte — though the vendor channel is also where the bootloader-entry
+command of logs 82/87/88 lives, which is worth knowing before omitting it.
+
+Left open and stated: `bEndpointAddress` for all six endpoints appears in no
+image, the OUT `bInterval` is absent, `iSerial` was not located, the scan, media
+and lighting producers were not traced, and a mask ROM was not searched and
+cannot be.
+
+483 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-04 — Phase 5C: scan scheduling recovered, acquisition not (log 109)
+
+Phase 5C only. 5D–5G were not begun, nothing was committed or staged, and every
+Ghidra run was read-only — no seeding was needed, so `project-step6` is
+unchanged by this step.
+
+A rider first: the byte-identity overclaim log 108 corrected had survived in a
+fourth place, `map_usb_routing.py`'s own module docstring. Log 108 stays
+unedited; the correction and its evidence are recorded in log 109's header, and
+the phrase now appears nowhere in the repository.
+
+Phase 5B had left the boot and NKRO report producers untraced. Resolving the
+interface index at every USB transmit call site showed all of them going to
+interface 1 — except one forwarding guard, and following *that* opened the
+keyboard path: `FUN_180061c2` builds and sends an 8-byte report to interface 0
+from `0x1801e7c8` and a 19-byte report to interface 3 from `0x18023c20`, along
+with the 4- and 5-byte interface-2 reports.
+
+Its driver turned out to be in the **entry image**, which is why Phase 5A's
+application-only call graph had left it callerless. `Vector_IRQ38` — the only
+writer of a word at the very start of the zeroinit region — wakes
+`Task_OEM_MAIN_SERVICE_TASK`, the 16 KiB task log 106 recovered. That task
+**busy-spins** rather than blocking, and synchronises with the ISR by masking
+interrupts around a read-and-clear. It then runs a cascaded prescaler — every
+tick, then /8, /5, /2, /10, /10 — whose every-tick job calls back into the
+application through veneers. That also **resolves three of log 106's largest
+orphans**.
+
+The honest half of the phase is what was *not* found. No MMIO block in either
+image has the shape of a key scanner. The closure from the service task inside
+the entry image reaches eleven functions and zero MMIO accesses. The
+application's per-tick jobs are dominated by accesses whose base register
+constant propagation could not pin — a census limitation, not evidence of
+absence — so **no block was renamed**.
+
+The pipeline bottoms out at a per-key array whose elements are *two bytes wide*,
+proved by the shift in `memset(base + 0x14, count << 1)`. Twelve report-range
+functions share it; none writes it from hardware. For a Hall-effect keyboard a
+16-bit-per-key array is what analog sampling would produce, so the finding is
+recorded as it stands and the acquisition arithmetic is left to 5D. No
+contact-matrix model was forced onto the evidence.
+
+Dimensions were kept strictly separate from the 189-entry wire-ID table, which
+is used as a count nowhere and is guarded by a test. What the report descriptors
+themselves prove: the NKRO bitmap is 152 bits, exactly the 19-byte packet the
+host enumerated. Rows, columns and key count stay unresolved, because the array's
+element count is a runtime value the region initialises to zero.
+
+Cadence source and divider ratios are observed; the absolute period is
+unresolved, since the timer behind IRQ38 was not identified. 518 offline tests
+pass, both evidence hashes are unchanged, and no device was accessed.
+
+## 2026-09-05 — Phase 5D: Hall actuation recovered, acquisition not (log 110)
+
+Phase 5D only. 5E–5G were not begun, nothing was committed or staged, every
+Ghidra run was read-only, and no seeding was needed.
+
+Two riders first, recorded in log 110 rather than by editing log 109. Its
+contiguity check printed `0x18023c33 +4 -> 0x18023c38` when `+4` gives
+`0x18023c37` — and re-measuring interface 2's reports from its own descriptor
+turned up a second error: the 5-byte buffer log 109 called "system control" is
+the **mouse** report, and the system report is the 2-byte buffer it had left
+unlabelled. There is a one-byte pad at `0x18023c37`. Separately, log 109's
+"per-key halfword array" turned out to be the **key-state bitmap** — five 32-bit
+words with a previous-state partner `0x810` higher. The halfword reading had been
+inferred from a `count << 1` memset length, and it did not survive direct
+identification.
+
+The phase itself recovered the actuation decision and confirmed it against the
+listing, not the decompiler: a travel byte at or above **100** presses, an exact
+zero releases, and everything between **leaves the bit unchanged**. That hold
+band came out of control flow rather than a feature name, and it is what keeps a
+key from chattering.
+
+The most satisfying part was the geometry, because it is spelled in the
+instruction encoding: a `rsb`/`add` shift pair computing ×15 then ×5. The key map
+is **5 × 15 = 75 entries per layer** — the first physical-side dimension this
+project has been able to prove. The *active* count per group is a runtime word
+the region initialises to zero, so 15 is a stride and not a key count, and that
+distinction is kept.
+
+The honest half again is what was not found. Every access in the `0x40000000`
+block is 32 bits wide; there is no converter shape anywhere, and `0x40022000` —
+which looks like a timer or PWM bank — is left unnamed, because shape is
+correlation. The travel buffer's address appears in no aligned word of any
+image, reachable only through a pointer cell something fills at runtime, so the
+acquisition, calibration, filtering, raw-to-travel conversion and fault
+behaviour are all unrecovered. No rapid-trigger state machine was found; the only
+per-key state in the recovered code is one bit plus the hold band.
+
+A check caught an error of mine mid-phase and changed the tool for the better. A
+first draft computed each function's vendor counterpart from "above the
+insertion point, subtract `0x2c`". Two of the functions in question sit above
+that point and relocate by 0 and `0x2c` respectively, so the rule was simply
+wrong. Counterparts are now looked up in Phase 3's measured match table, which
+also surfaced that the comparison function's cross-release match is only
+*tentative* — a caveat now carried explicitly.
+
+Physical interpretation stays out of reach: polarity, voltage, noise margin,
+distance and safe rate are not establishable from static code, the recovered
+numbers carry no unit, and a test enforces that none is given one. The analysis
+authorises no Hall drive and no live experiment. 560 offline tests pass, both
+evidence hashes are unchanged, and no device was accessed.
+
+## 2026-09-05 — Phase 5E: the nonvolatile commit path (log 111)
+
+Phase 5E only, static tracing throughout. 5F and 5G were not begun, nothing was
+committed or staged, every Ghidra run was read-only, and **no command was
+constructed or transmitted — including `50 55`**, which appears in the analysis
+only as a value the firmware compares against.
+
+The headline is a small one that changes the risk picture: the commit **queues
+work**. Its branch in the dispatcher is nine instructions long and contains no
+call at all — it sets one byte and returns. A neighbouring subcommand in the
+same tree does call, so the absence is real rather than an artefact.
+
+From that byte the path runs through two more hops: a state machine switches on
+it and asks for erases at three literal addresses plus a computed slot, filling
+a one-deep request struct with an opcode and an address; a separate drainer
+consumes that struct and reaches hardware five calls later in a DMA setup. The
+entire 36-function storage layer in between touches no MMIO whatsoever.
+
+The opcodes are `0xd8` and `0x52`, which are the JEDEC SPI-NOR block-erase
+codes. That is recognition, and it is recorded as recognition — not as an
+identification. No SPI controller register was found, so the medium stays
+unidentified and the two register windows the DMA reaches stay unnamed. Naming
+them on a recognised opcode would be precisely the correlation this project has
+refused everywhere else.
+
+What was *not* recovered matters for the exit gate: no magic, version, length or
+checksum is constructed or verified anywhere on the path, and the source of the
+persisted data was never found. The `0x51/0x22` link that log 110 left open is
+still open — the per-key bank pointer is loaded under a different subcommand.
+
+So the gate resolves to its second branch, explicitly. Safe persistence cannot
+be implemented from this evidence. But the negative is provable in four steps,
+and the target ranges are disjoint from the application region the bootloader
+programs, so a prototype that never touches the command byte or the request
+struct cannot corrupt existing configuration.
+
+The residual is stated rather than buried: that proof holds within the traced
+set, and both the state machine and the drainer are callerless, so a second
+writer outside that set is not excluded. 587 offline tests pass, both evidence
+hashes are unchanged, and no device was accessed.
+
+## 2026-09-05 — Phase 5F: RGB / LampArray routing (log 112)
+
+Phase 5F only. 5G was not begun, nothing was committed or staged, every Ghidra
+run was read-only, and no seeding was needed.
+
+The phase opened by correcting its own starting assumption. Phase 5B had routed
+endpoint `0x0f` as the lighting path, but walking interface 4's descriptor shows
+all thirteen of its Main items are **Feature** items — there is no Output report
+at all. The LampArray therefore runs over control transfers, and the 64-byte OUT
+endpoint carries none of it.
+
+From there the route came out cleanly: the class control handler dispatches
+GET/SET report type 3 through one registered callback, installed during
+INIT_TASK, which dispatches on bRequest and handles all six LampArray reports.
+A pleasing cross-check fell out — the GET handler returns 23 bytes for report 1,
+which is exactly what the descriptor's own item walk computes as 22 payload plus
+the ID prefix, derived from two independent sources.
+
+I misread the callback's first argument as an interface number on the first
+pass, which briefly made it look as though interface 4 was unhandled. Reading
+the call site instead of the callee's decompiled signature settled it: the
+argument is the report ID. That correction is recorded in the log rather than
+quietly fixed.
+
+The frame buffer is the concrete prize: 6 rows × 17 columns × 3 bytes at
+`0x1802505e`, red-green-blue order, eight bits per channel, intensity applied as
+`(channel × intensity) >> 8`, and out-of-range cells dropped silently — all read
+off one small function's listing. Lamps reach it by LampId through a coordinate
+table, bounds-checked first. The LED count came from a table in the *entry*
+image giving eight configurations of 23 to 89 lamps, every one fitting the 102
+available cells.
+
+What stayed out of reach is the driver. Both functions that consume the frame
+reach zero resolved MMIO, so SPI, PWM, GPIO and DMA are all still open, and
+`0x40022000` — which has a per-channel shape that would suit PWM — is left
+unnamed on principle.
+
+So RGB is classified **implemented, with a ceiling**: the host-facing protocol
+is fully reproducible, but a replacement built on this evidence could satisfy a
+LampArray host and light nothing. The safe-omission question splits in two, and
+only one half is provable: the buffer powers up all-zero and has a single
+writer, so omitting RGB provably leaves it blank — but whether blank means dark
+depends on a driver polarity nobody here can establish.
+
+617 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-05 — Phase 5G and the Phase 5 final gate (log 113)
+
+Phase 5G and the final dependency gate in one invocation. Nothing was committed
+or staged, every Ghidra run was read-only, and no seeding was needed.
+
+The watchdog question resolved cleanly and the answer was smaller than expected:
+exactly one function in either image touches the two magic-key blocks, on the
+reset path, writing an unlock key and then a zeroed control word to both. Nothing
+feeds them anywhere. The write pattern is what a disable looks like, and that is
+recorded as inference rather than identification, because no register map
+confirms the bits.
+
+The most useful thing about the phase was a lead that failed. The `usbd_wdt`
+task's name points straight at a watchdog feeder; tracing it shows a
+twelve-function closure that reaches only ICSR and never touches a watchdog
+block. It is a USB software supervisor. Had the name been taken as evidence the
+phase would have concluded the opposite, which is a reasonable argument for the
+habit of tracing names rather than trusting them.
+
+Clocks gave one hard constraint and one firm refusal: the reset path faults out
+unless the stack pointer lies in a specific 256 KiB window, and no frequency is
+established anywhere — a test now forbids any Hz figure from appearing in the
+model.
+
+Then the question log 104 left open got its answer. Main hands a flash address
+to an entry-image routine through a veneer and spins until a mailbox word holds
+`0x12345678`. Searching every preserved image for that token turns it up in
+exactly two places: the value main compares against, and inside the `0x18038000`
+image itself. So a second execution context is started at boot and waited for.
+What it *owns* is still unresolved, and it is recorded as a candidate rather than
+promoted to a finding — with a test to keep it that way.
+
+The final gate then classified seventeen services rather than address spaces: six
+must-implement, three must-neutralize, five may-omit, three unresolved. The rules
+that give it teeth are enforced by tests, not by intention — an unresolved
+service must name a real evidence boundary, and `may-omit` requires a *proven*
+safe idle state. That second rule is what keeps RGB in the blocker column despite
+its protocol being fully recovered: nobody can show that an all-zero frame means
+the LEDs are dark.
+
+Three of the five requirements for a first typing prototype are done, one is
+partial, and one is blocked outright. The Hall acquisition remains the largest
+blocker, and the strongest lead for it is the second context — started, waited
+for, and owning something the application does not, while the producer Phase 5D
+hunted was never found in either analysed image. Consistent, untested, and the
+obvious next move: the `0x18038000` image is preserved and has never been
+imported.
+
+650 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-05 — Phase 5G watchdog correction (log 114)
+
+An independent review found one material error in Phase 5G, and it was the kind
+worth finding. Log 113 stated that exactly one function in either image touches
+the two magic-key blocks, and that nothing feeds them. Both were false.
+
+The cause is the more instructive part. `FUN_000021fe` hands back a block base
+from a selector argument, so every accessor stores through a register rather
+than a literal — and a per-function MMIO census, which asks what each
+instruction's *resolved* target is, sees nothing at all. This project had
+already documented that exact blind spot three times, in logs 109, 110 and 112,
+and then made an absolute claim that depended on the census being complete. A
+census reporting one writer is evidence of one *visible* writer.
+
+Re-running the analysis through the selector turns up five callers, two more
+than the review had listed, and three distinct access paths rather than one. The
+reset path clears both blocks. The prescaler's divide-by-8 job — the same
+`FUN_00000516` log 109 recovered on the tick chain — feeds `0x40008000` every
+eight ticks. And the NMI handler, when it finds a status bit set, acknowledges
+the block, re-arms its key, counts the event, and writes SYSRESETREQ once the
+counter reaches its limit. That limit's power-on value is 1, so the first
+acknowledged NMI also resets the device.
+
+Constant propagation over every call site shows nothing ever passes selector 1,
+so the second block really is touched exactly once — that much of the original
+claim survives, for the second block only. The whole cluster is byte-identical
+between releases apart from one data pointer that shifts by the measured `0x2c`.
+
+The must-neutralize classification survived, but its justification was replaced
+rather than patched: a replacement cannot ignore these blocks in either
+direction, because omitting the feed risks a reset and inheriting the NMI vector
+without the acknowledge guarantees one. The withdrawn claims are kept in the
+model rather than deleted, and nine new tests pin the correction — including one
+that allows the falsified phrases to appear only beside the word WITHDRAWN, with
+a companion so it cannot pass vacuously.
+
+What was *not* done is worth stating: the census has not been re-audited for the
+same blind spot anywhere else. Logs 109, 110 and 112 all record large unresolved
+access counts, and none has been re-examined this way. 659 offline tests pass,
+both evidence hashes are unchanged, and no device was accessed.
+
+## 2026-09-05 — Phase 6: the development strategy decided (log 115)
+
+An analysis and writing phase. No firmware artefact, no builder change, no
+live-use instructions, nothing committed or staged.
+
+The output is an architecture decision record at `notes/development-strategy.md`,
+generated from one data model so its structured claims can be checked. The
+decision is Path A first — controlled patching, for offline format validation
+only — and Path B not yet.
+
+The interesting part was that the plan's default survived for a different reason
+than the plan gave. The plan tied Path B to the platform map becoming credible,
+and after five subphases the map *is* credible: six must-implement services
+understood, three must-neutralize policies recovered including the corrected
+three-path watchdog arrangement. So the condition arguably passed. Path B is
+still blocked, because credibility was not the binding constraint. The binding
+constraint is that nothing in either analysed image produces a key reading, so a
+clean-room application would enumerate perfectly and type nothing.
+
+Two things the ADR insists on that are easy to lose. The dangerous recovery case
+is not a rejected image — that leaves the device recoverable in bootloader mode —
+but a checksum-correct image that does not enumerate, after which the documented
+route back is a recovery key combination whose physical keys nobody here has
+established. And there is no on-device debugging at all, which makes every
+iteration blind and argues for small reversible changes independently of any
+blocker.
+
+Seven candidate first targets were assessed against Phase 8's criteria. Two pass:
+the USB product string and one ordinary key-policy entry. Five fail, each against
+named criteria — including the one that looks safest and is not, the application's
+USB identity, because changing it is a recovery effect.
+
+The ADR is a decision document and not a runbook, and that is enforced rather
+than promised: a scan for fourteen command-shaped patterns, a companion test
+proving the detector fires on known-bad strings so it cannot pass vacuously, and
+a third confirming ordinary flash-layout prose is not flagged. Twelve cited logs
+are verified to exist and still hash to what the checksum file records.
+
+686 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-05 — Phase 7: the offline builder (log 116)
+
+Phase 7 only. Phase 8 was not begun — no patch target selected, no artefact —
+and nothing was committed or staged.
+
+A rider first. The Phase 6 ADR said evidence was in hand for "five of" the six
+must-implement services and then listed five, omitting the control endpoint. The
+question was whether that was deliberate. It was an off-by-one: the dependency
+map records the control endpoint as `observed` with two citations, and log 115's
+own step 3 listed all six. The ADR contradicted both the model it summarised and
+the log beside it, which is a good argument for generating prose from the model
+wherever possible. Corrected and regenerated; log 115 unedited.
+
+The builder itself is a new module rather than a rewrite. `build_modified_image.py`
+is the subject of log 77 and rewriting it would have cost that log's
+reproducibility for nothing. The new one takes two explicit adapters, chosen by
+hash and size rather than by a flag — there is no `--base` to get wrong.
+
+Which turned out to matter immediately, in a different way. The first draft
+refused every patch as "outside every record", because record address fields
+carry the `0x60000000` flash base and I compared them against logical offsets.
+That is the third time this project has found the same address-space slip, after
+logs 110 and 114. The translation now happens exactly once and nothing
+downstream sees a raw field.
+
+Both no-op round trips come back byte-identical, and they do so *through* the
+recompute rather than around it: a no-op still recalculates the application
+word-sum, and gets the same bytes because the stored sum was already correct.
+The dependency order is enforced by construction — the record CRC field lies
+inside the word-sum's covered range, so a reversed order would leave it stale,
+and a test asserts that containment before checking the value against an
+independent reimplementation that shares no code with the builder.
+
+Fourteen refusal classes were exercised from the command line and every one is a
+clean one-line refusal leaving nothing behind. The backup-bootloader word-sum
+recompute exists and is deliberately unreachable; the primary is unavailable on
+an installed source and is never approximated — a build that needed it is
+refused instead.
+
+732 offline tests pass, both evidence hashes are unchanged, every build ran
+against a copy in a temporary directory, and no device was accessed.
+
+## 2026-09-05 — Phase 8: the first offline experimental artefact (log 117)
+
+Phase 8 only. Phase 9 not begun, nothing committed or staged, and no flashing
+command, updater invocation or device instruction produced. Booting is not
+claimed anywhere.
+
+The target came from the ADR's ranking: the USB product string. Its offset was
+verified rather than taken on trust, and the prompt's estimate for the vendor
+image turned out to be off — the string is at region+`0x882` in both releases,
+with only the compressed source's flash address differing by the measured
+`0x2c`.
+
+The interesting work was proving the patch was safe at all. The string lives
+inside a compressed stream, so a same-length replacement is only safe if the
+replaced bytes are literals *and* nothing later copies from the output they
+produce. A decoder with per-byte provenance answered both: all twenty bytes are
+literals, contiguous at the same stream offsets in both releases, and zero later
+back-references read from them. The first-ranked target held.
+
+Four artefacts were built into a git-ignored directory, every name carrying
+UNTESTED, and validated by a module that imports nothing from either builder —
+re-decoding, confirming the token structure is unchanged, and recomputing both
+integrity fields from zlib and struct directly. Thirty-eight checks pass.
+
+One of my own checks failed on the first run, and it was right to. It demanded
+twenty differing decoded bytes and found nineteen, because the two strings
+happen to share an `F` at position 18. The artefact was fine; the check was
+asserting a count when the invariant is containment. It was replaced with "no
+byte outside the span changed" plus an explicit accounting of the coincidence,
+rather than loosened to accept either number — a count check would have passed
+for the wrong reason on some other string.
+
+The rollback is the no-op build, byte-identical to source on both adapters,
+which is a stronger guarantee than a copy: it proves the pipeline itself
+introduces no drift.
+
+Both failure modes are demonstrated on a synthetic stream small enough to reason
+about by hand — a patched literal that a later back-reference copies changes two
+output bytes and is caught, and corrupting a control byte changes the token
+structure. Without those, a validator that only ever passes would prove nothing.
+
+759 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — The second execution context, imported and analysed (log 118)
+
+One step, against Path B's first two evidence gates. Not a step-6 phase: it
+changes no decision and authorises nothing live. Nothing committed or staged.
+
+Log 113 found what starts the `0x18038000` image and left what it *owns*
+unresolved. It is imported now, and the boundary is drawn instead of guessed.
+
+The first thing the import produced was a correction. The installed dump covers
+the same flash range, so the two releases can be compared directly, and they
+differ in four bytes — all four the application's word-sum field, which merely
+falls inside the range. The image is byte-identical across releases and its real
+extent ends four bytes earlier than the range does. That reads as maintained
+firmware that needed no change, not as a stale factory leftover.
+
+The image is a service payload: reset reads VTOR, runs one init function, and
+falls into an endless loop. No scheduler, no USB, no storage. One external
+interrupt of fifty-seven has its own handler.
+
+The interesting work was the mailbox. The shared word log 113 found turns out to
+be one field of a ring buffer — head, tail, eight records of forty-four bytes —
+and the token is written once as a server-is-up signal before that same word
+starts being used as the head index, which is why the application waits on it
+and then writes zero. The client side was hiding in an 0x86a-byte block of the
+entry image that Ghidra had never disassembled because nothing reaches it, the
+same block that holds the start routine log 113 had to validate by hand. Two
+independently written halves that agree on the ring depth, the record size and
+the field layout. That is a doorbell paired with a matching poll in a *different*
+image, which is precisely the shape the dual-core note recorded as missing.
+
+Then the part I had to be careful about. This image was the leading candidate
+owner of the Hall acquisition, and it does contain a real converter loop — 240
+iterations of write, strobe, read back. That is a producer of exactly the kind
+Path B's largest gate asks for, and no image had one before. It would have been
+easy, and wrong, to write that the gate falls.
+
+It does not. The loop's results terminate in an in-image array. The one write
+this image makes into application RAM is a 150-byte memset at pointer+0x3f2 —
+and the travel array is 150 bytes at pointer+0x35c, so 0x35c plus 0x96 is 0x3f2
+and the memset covers the array immediately *after* the travel array, not the
+travel array. The log-110 aligned-word search, re-run with this image included
+for the first time, still finds the travel array's address nowhere. So the gate
+is narrowed, not closed, and a unit test now refuses the phrases that would say
+otherwise, with a companion test so the refusal cannot pass vacuously.
+
+Two smaller corrections came out of it. Log 114 said one watchdog block is
+touched exactly once in the whole firmware; that was scoped to the two analysed
+images, and this one disables both blocks on its own init path — which
+strengthens the must-neutralize reading rather than disturbing it. And a first
+seeding run reported success with exit 0 while creating nothing, because zsh
+does not word-split an unquoted variable and all twelve arguments arrived as
+one. Recorded because it looked like it had worked.
+
+The dependency map gains four findings and rewrites one. Ownership stays
+`unresolved` and the test forbidding its promotion still passes, but its basis
+now splits what is resolved from what is not instead of restating the question.
+The classification is unchanged: six must-implement, three must-neutralize, five
+may-omit, three unresolved.
+
+793 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — Both sides of the mailbox, and the Hall gate closes (log 119)
+
+One step, against Path B's first evidence gate. Not a step-6 phase: it changes
+no decision. Nothing committed or staged.
+
+Log 118 left one question open — whether per-key sample data crosses the
+mailbox. It does, and tracing it closed the largest gate in the investigation.
+
+The clients were the way in. Six functions in the entry image's unanalysed
+block share a critical-section bracket and an identical record discipline: take
+the head, write an opcode, advance modulo eight, spin until the tail catches up.
+There is no status field; the tail index *is* the completion signal. None of the
+six has an aligned-word reference anywhere, which is why they had never been
+found — they are reached through veneers that encode the address in `movw`
+immediates, exactly like the start routine log 113 had to validate by hand. I
+encoded the instruction and searched for it rather than decoding every halfword
+pair, because a wrong encoding finds nothing while a wrong decoder invents
+plausible addresses, and I checked the branch decoder against a target Ghidra
+had resolved itself.
+
+Then the pointer. `FUN_18000136`, called from main at boot, sends opcode `0x0d`
+with record field +4 set to the *dereferenced* travel pointer cell. The
+application hands the second context the base of the very structure that holds
+the travel array. Everything else follows: the second context does not need to
+send anything back, it just writes the fields.
+
+And it does. Twenty-four stores put raw samples at `pointer+0x3f2` — the array
+log 118 could only describe as "immediately after the travel array" — and three
+stores put travel bytes at `pointer+0x35c`, which is `0x18034850` exactly. In
+between sits the normalisation: subtract a per-key reference, scale, shift,
+clamp at `0x4ff`, index a byte table.
+
+The table is what convinced me. It is exactly 1280 bytes — the clamp bound plus
+one — monotonic non-decreasing, and it tops out at 200. Log 110 recovered
+`travel >= 100` a long time ago without knowing what scale that threshold lived
+on. It is the midpoint. Three independent properties agreeing is not a
+coincidence I am willing to argue against.
+
+The cadence fell out of log 109's own chain. Veneer `0x4044`'s target is four
+bytes Ghidra never disassembled; they are a `b.w` straight into the sample
+client's veneer. So the fetch runs immediately before the actuation comparison,
+in the same `/8` job, in the order log 109 already listed. The absolute rate is
+still unknown and a test now forbids any wording that would quietly turn the
+ratio into a frequency.
+
+Log 110 was never wrong. Its negative — the buffer address appears in no aligned
+word of any image — is still true today, including for the second-context image.
+The address is in no image because it arrives at run time in a mailbox record.
+That was a complete and correct answer to the question it could ask.
+
+I was careful about what closing the gate means, because the temptation is to
+read it as progress. It is satisfied by *inheriting vendor code*. A replacement
+hands over a pointer and consumes what appears; it cannot reimplement a
+converter whose registers are unnamed and whose values carry no units. So the
+service moves to must-neutralize rather than must-implement, and the ADR gained
+a check requiring it to say the gate is satisfied by inheritance.
+
+Log 118's anti-promotion guard had to change shape rather than survive intact.
+It banned the words "gate is closed" outright, which was right when the path was
+incomplete and would be the wrong instrument now. It is replaced by a live one:
+the status is computed from eight backing facts, and four tests break one fact
+each and require the conclusion to reopen. A conclusion that cannot be falsified
+by breaking its own evidence is not a conclusion.
+
+Four checks elsewhere asserted the acquisition was unresolved. They were correct
+for the images they could see and are now false, so they were replaced rather
+than deleted, each keeping the job it was actually doing — calibration and
+physical units stay unresolved, and the acquisition is recorded as recovered but
+*not reproducible*. One rule was refined rather than dropped: "a resolved
+service needs no boundary" broke because the Hall service became resolved while
+a real residual limit survived, and deleting the boundary to satisfy the rule
+would have discarded the caveat that matters most.
+
+Regenerating the entry image's inventory also exposed an asymmetry I had created
+in log 118 by seeding one release and not the other. The fix was symmetry, not
+suppression: the same prologues are byte-identical in the vendor image, so they
+were seeded there too, and Phase 3's pairings rose from 114 to 144.
+
+828 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — Which keys enter recovery, and gate G1 (log 120)
+
+One step, closing risk-plan gate G1 as far as the evidence reaches. Offline;
+authorises nothing. Nothing committed or staged.
+
+The prompt came with a caution I want to record because it turned out to be the
+whole hinge: the application uses a Hall/analog path, but the bootloader's scan
+might be a simple digital read, and whether a user can hold three keys at once
+depends on which. It is not a digital read. The bootloader drives the same
+converter trio the second context uses — same registers, same idiom, same 0x7c
+strobe — from its own copy of the driver, because at that point in the boot
+nothing has started the second context. Every key is its own analog channel, so
+there is no matrix, no ghosting, and the question answers itself: any set of
+keys is simultaneously readable.
+
+Two of the prompt's own premises were wrong and the listings said so. The
+"enable" function is `msr primask,r0`, an interrupt mask bracketing the scan in
+a critical section, not a hardware enable. And the poll has exactly one caller;
+the second site calls the *scan*, not the poll.
+
+The bitmap turned out to be five words of fifteen bits, which is the same 5 × 15
+the application's key map uses — proved here from the packer's own loop bounds
+rather than assumed from the coincidence. The pattern then decodes cleanly: bits
+5 and 7 of word 0, bit 8 of word 4. And because the compare is exact equality
+rather than a mask, it also *requires* twenty-seven other positions released,
+including the key sitting physically between the two pressed ones.
+
+Naming them needed one thing I did not want to skip. The map's values look like
+HID usage IDs, and looking like something proves nothing, so I went and found
+the firmware applying the boot-keyboard modifier rule to them — subtract 0xe0,
+compare against 7, shift a bit into the report's modifier byte. That only makes
+sense if they are usage IDs. After that the names fall out of the published
+table: 8 and 6, with 7 between them that must stay up.
+
+The third key I could not name, and did not. Code 0xe8 is the only non-HID value
+in the map, appears exactly once in both layers, and no recovered path emits it
+to the host — it is outside the modifier range and outside the only other range
+the report builder handles. Its neighbours are Right Control and Right Alt, which
+on this product is where Fn sits. That is a layout inference, so it is recorded
+as strongly-inferred and a test forbids "Fn" from appearing as the answer, with
+an anti-vacuity companion so the ban cannot pass by matching nothing.
+
+The residual I care about more is quieter. The bootloader holds no key map at
+all — I checked for the application's table, for any eight-byte run of it, and
+for a reference to its address, and found none. So the claim that the
+bootloader's group 0 is the application's group 0 is corroborated, not proven.
+The corroboration that actually carries weight is the 'D' variant mask: it
+disables exactly two positions, and both are positions the application treats as
+non-keys. That test depends on the permutation — shuffle the groups and the mask
+lands on real keys — which is why it counts and why the symmetric
+position-14 observation does not.
+
+A pleasant side result: the delay function divides a *measured* core clock by
+one million, which makes its argument microseconds by construction. That is the
+first unit-bearing timing constant this project has recovered, and it holds
+without knowing the clock's numeric value, which is still unknown. So the poll's
+delays total about 200 ms — though each sample also runs a conversion sweep of
+unbounded duration, so I stated 200 ms as a floor and a test forbids quoting it
+as a total.
+
+One of my own checks caught a gap. The first run crashed because layer 1 uses
+two codes I had left out of the usage table. They are the standard Non-US # and
+Non-US backslash usages, so the fix was to add them rather than special-case the
+hole — after which 0xe8 is the only unknown left, which is the right outcome.
+
+G1 is marked PARTIAL, not RESOLVED, and the risk plan now says why: software-only
+recovery has a named, physically holdable combination instead of an unknown one,
+which is a real reduction in risk, but nothing here was exercised and two links
+are inferred. G3 stays a live decision rather than a formality.
+
+865 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — How the keyboard calibrates itself (log 121)
+
+One step, the last open piece of the acquisition story. Offline; authorises
+nothing; no command of any kind constructed. Nothing committed or staged.
+
+Logs 118 through 120 recovered the converter, the delivery, the travel curve
+and the recovery keys, and left one question: where do the per-key reference
+and scale values come from. Four candidates were on the table and three of them
+died to a single scan.
+
+The cheapest test came first. Both arrays are zero in the image, so there is no
+static default table. Then the exhaustive one: every literal-pool word in the
+second-context image that points into the calibration block, attributed to its
+owning function. Four functions, and only four — an initialiser, a runtime
+tracker, the converter reading, and a helper that touches only a settle timer.
+No mailbox handler appears anywhere in that list, which kills "the app sends
+it", and the arrays live in RAM the app cannot address and no storage path
+reaches, which kills "loaded from flash". What is left is that the second
+context calibrates itself, and now I could go and read exactly how.
+
+The moment that made me trust the reading was arithmetic. The tracker
+recomputes the scale with an sdiv whose numerator is 0x200000, dividing by
+reference minus floor. The boot defaults are immediates in the initialiser —
+0x15e0, 0xdac, 0x3e6 — and feeding the formula the default span of 2100 gives
+998, which is 0x3e6 exactly. Substituting that back into log 119's conversion
+collapses the opaque shift-by-21 into something plain: travel is just 1279
+times the fraction of the span the key has moved. Full travel lands on 1278,
+and the curve there reads 200, its maximum and twice the actuation threshold.
+Three constants written in three different places agree. That is not what a
+misreading produces.
+
+The updates turned out to be continuous rather than one-shot — baseline drift
+with hysteresis and consecutive-sample gates, floor tracking toward observed
+minima, and a scale recompute after every move. So I went looking for a
+recalibrate command, and there is none. The initialiser has exactly one caller
+and the tracker has exactly one, and neither is reachable from any mailbox
+opcode or host command. That is the safest possible answer to a question the
+prompt was careful about: there are no command bytes to recover, so nothing
+transmittable could leak into the output even by accident. I added a test that
+asserts the generated JSON contains nothing frame-shaped, to keep it that way.
+
+Chasing the trigger closed two old wounds. FUN_18001fbe and FUN_18008c16 have
+been listed as callerless since log 106 and were still open after log 119. Both
+are called from the entry image's divide-by-8 job through veneers — the same
+prescaler job that feeds the watchdog. The last large orphans are gone.
+
+The failure behaviour is the part I most wanted to get right, and it is
+uniformly safe. The 0xffff sentinel is compared before the subtraction, so it
+never wraps; the key is simply skipped. For the first 600 conversion passes the
+converter keeps updating calibration while forcing every travel byte to zero,
+so a keyboard that has not settled emits nothing at all rather than emitting
+nonsense. Samples outside a sanity window are ignored, and fifteen implausibly
+low ones flag the key and reset its floor to the default instead of leaving a
+nonsense span. Since actuation is travel >= 100 and travel is zero, an
+uncalibrated key reads released. That direction is a property of the code, not
+a hope, and I said so in those words.
+
+One nice cross-link: the fault counter the tracker increments does not live in
+the second context at all — it lives in the application's structure at +0x27a,
+which is the array mailbox opcode 0x07 carries. It is the only
+calibration-adjacent value that crosses the boundary, and it is a symptom count
+rather than a coefficient.
+
+Calibration enters the dependency map as must-neutralize, the same class as the
+acquisition and for the same reason: a replacement inherits it rather than
+implementing it, and the real obligation is to respect the settling window. That
+forced a rule I had narrowed in log 119 to be generalised. I had written "at
+most one resolved service may carry an evidence boundary, and it must be
+hall_acquisition", which was true when there was one. Rather than bump the
+number I made the rule say what it actually means: a resolved service may carry
+a boundary only when the second context owns it, because those are exactly the
+ones a replacement inherits. The test asserts set equality, so the teeth stay.
+
+My own anti-vacuity test caught me out. I asserted that perturbing the span by
+one would change the computed scale, and it does not — integer division at that
+magnitude absorbs it. The finding was fine; the test was wrong. It now asserts
+both facts, the insensitivity to one unit and the sensitivity to a hundred,
+which is more informative than what I originally intended.
+
+898 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — Hunting the RGB driver (log 122)
+
+One step. Offline; authorises nothing. Nothing committed or staged.
+
+Log 112 left the lighting hardware boundary as "both frame consumers reach zero
+resolved MMIO", with 79 and 91 unresolved-base accesses, and that phrasing had
+been quietly bothering me. An unresolved count sounds like something is hiding.
+The first thing worth doing was finding out what those accesses actually are.
+
+They are not a hidden driver. Across the whole closure there are 657 of them,
+and the census's own reason field splits them into stack-relative locals,
+indexing into arrays whose base is perfectly well known, and — the largest
+group by far — accesses whose base sits in an ARM parameter register, which
+means the pointer belongs to the caller. A function that takes a buffer and
+indexes it looks exactly like this. Log 112's counts were right; the inference
+that a peripheral might be lurking behind them was the part worth testing.
+
+So I computed the closure properly instead of sampling reachability: 42
+application functions from eleven roots, plus three entry-image library
+routines reached through veneers. Zero peripheral accesses anywhere in it. I
+made a point of checking that the same machinery finds MMIO when it is there —
+re-rooted at one of the 0x40022000 users it does, immediately — because a
+negative from a blind tool is worth nothing.
+
+The second-context hypothesis was the one I most expected to pay off. That
+image owns windows the app never touches and already ferries one peripheral's
+data across the mailbox, so ferrying a second would have been elegant. It does
+not. No reference to either frame buffer, none to the lighting RAM region at
+all, and not a single 306 anywhere — not as a word, not as an immediate. Its
+mailbox fields are all sized for 75 keys. Dead.
+
+Then the 0x40022000 bank, which log 112 had flagged as PWM-shaped and correctly
+declined to name. Its users form a tight cluster in the 0x18011xxx range and
+the intersection with the lighting closure is empty. The DMA setup from log 111
+is not in the closure either. And a window I had not seen before, 0x40100000,
+turned out to have 27 users almost all in the USB stack's range; the only
+lighting contact is a single status read.
+
+Two things did fall out, and both correct log 112. There IS double buffering: a
+306-byte copy from the live frame to a shadow exactly one frame below it, gated
+on two flag bits. And the frame timing IS recoverable — all three lighting
+roots are called from the prescaler's divide-by-8 job through veneers. The
+lighting subsystem is not on its own timer at all; it is one more client of the
+same IRQ38/8 tick that feeds the watchdog and fetches key samples. Log 112 had
+recorded the consumers as not reached from the tick chain, which was true of
+what could be seen before logs 119 to 121 taught this project to decode the
+veneer table.
+
+The safe-idle question still cannot be answered, but the reason is now much
+sharper than "unresolved". An output-enable line, a brightness register and a
+driver reset sequence would every one of them be an MMIO write, and the closure
+performs none. There is nothing to inspect — not something unrecognised. That
+is a better boundary than a count of unresolved accesses, and it is honest
+about what would be needed.
+
+So RGB stays unresolved. The step's own precondition was that it moves only
+with the safe-idle proof, and a tighter negative is not a proof. A common-anode
+part behind an inverting stage would still read an all-zero frame as full
+brightness. I rewrote the dependency map's boundary text and left the
+classification alone, with a test asserting both.
+
+Because the headline result is a negative, every "found nothing" check in the
+new tests has a companion that makes the same machinery find something. That
+felt like the only responsible way to publish an absence.
+
+931 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — There is no remap (log 123)
+
+One step, closing the last boot-acceptance item from log 101 and Path B's fifth
+gate. Offline; authorises nothing. Nothing committed or staged.
+
+The question was framed as "find the remap control", with three candidates to
+discriminate. The right answer turned out to be that there is not one to find,
+and getting there was a matter of enumerating carefully enough to be entitled
+to say so.
+
+The premise needed correcting before anything else. The prompt said the series
+brief documents ROM/RAM remapping as a series feature. It does not — the word
+does not appear in notes/references.md at all, which lists dual cores, USB,
+GPIO, timers and PWM, two watchdogs, SPI NOR and a SAR ADC. I recorded that and
+made sure nothing downstream leaned on it, which was easy, because the evidence
+went the other way anyway.
+
+Then the enumeration. All fifteen registers of the 0x45000000 block, across all
+four images, 210 accesses: not one write stores anything that looks like a base
+address. Every value is a small bitmask or enable field. A register that
+relocated a 64 KiB window would have to be told where to put it, and none is.
+VTOR settled the third candidate just as quickly: ten reads across four images,
+zero writes. Nobody relocates the vector table.
+
+What actually resolved it was reading the handoff properly. The bootloader
+doesn't copy to address 0 itself — it calls a veneer into a fifty-byte RAM stub,
+which makes obvious sense once you see it, because the copy overwrites the code
+doing the copying. The stub masks interrupts, word-copies, issues a barrier,
+reads AIRCR while preserving PRIGROUP, ors in the vector key and SYSRESETREQ,
+writes it, and spins. Its only two literals are AIRCR and the key, both
+architectural. It configures nothing at all. Address 0 is simply already
+writable.
+
+There is a small pleasure in the call just before it: 0x00000ffc, which the
+bootloader invokes with dst=0 right before the copy, is a bare `bx lr`. It is
+the hook where a remap or a cache operation would go on a part that needed one.
+This part does not.
+
+A second witness fell out on the way. The bootloader passes the selected entry
+address to the next stage by storing it into vector slot 7 — Reserved7, shipped
+as zero in both images — reached through VTOR. That the store works at all is
+independent evidence that the vector table is in writable RAM.
+
+The one inference I was careful to label as such is that address 0 is not an
+alias of 0x18000000. If it were, the entry image's own scatter loader would copy
+the application over 0x18000000 while executing from that very memory, and would
+destroy itself mid-copy. That is a strong argument but it is an argument, so the
+claim is strongly-inferred rather than observed. Both stages stacking in the
+0x18000000 window while running code at 0 corroborates it.
+
+So the answer for a replacement is unusually pleasant: sit at 0x60011000, fit
+the fixed 0x10000 copy, put the vector table at offset 0 and the stack in the
+0x18000000 window, and then leave everything alone. The gate asked which
+register arrangement must be preserved. None.
+
+What stays unresolved is what puts the bootloader at address 0 in the first
+place, before any preserved image runs. That is a ROM or hardware stage nobody
+can read. It does not block Path B, because a replacement inherits the
+bootloader rather than replacing it — the unread stage hands address 0 to the
+bootloader and everything after that is now understood. I marked the ADR gate
+satisfied on exactly that reasoning, with the boundary written inside the gate
+rather than dropped from it.
+
+Since the conclusion is a negative reached by enumeration, each enumeration got
+a companion that proves it can find what it says is absent: the VTOR filter
+re-run against AIRCR, which is written; and the base-address detector fed a
+synthetic 0x18000000 store, which it duly reports.
+
+962 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — Chasing the polling rate, and not finding it (log 124)
+
+One step. Offline; authorises nothing; no frame constructed. Nothing committed
+or staged.
+
+The hope was that the polling-rate setting would finally put units on the tick.
+Everything in this project's timing is ratios — IRQ38 divided by eight, five,
+two, ten — and a setting that says "1000 Hz" would anchor the whole ladder. It
+does not, and establishing that carefully turned out to be the work.
+
+The profile field is an index, "3", and nothing else lives in that block. So I
+went looking for what consumes an index, and tested all five candidates the
+plan named.
+
+The prescaler ladder fell first and cleanly: all five of its decisions are
+immediates in the instruction stream, four compares and a bit test, with
+nothing loaded from RAM. A stored index cannot touch it. The mailbox fell to
+log 121's own enumeration — five fields, all sized for 75 keys, none a rate.
+The descriptor took a little more care: the bIntervals are fixed in the region
+image, and an aligned-word search finds no reference at all to the RAM copy's
+interval bytes, while the builder's stores at +0x14 turn out to be
+wMaxPacketSize fields in the output buffer rather than writes back into the
+parameter table. I checked the search wasn't blind by confirming it does find
+the table's own base, from three USB-stack sites.
+
+The timer candidate I deliberately did not eliminate. There is no timer block
+identified in any image — log 109 said as much about IRQ38 and this step
+doesn't improve on it — and you cannot rule out a peripheral nobody has found.
+Unresolved is the honest label, not "eliminated".
+
+I also went looking for the table an index would need, and there is none: no
+window in any of the four images holds three or more of the plausible rate
+values. Two divisor-shaped byte runs did turn up and both are something else —
+a bit-position table sitting among pointers in a data area, and a plain
+ascending 1..8 identity run in the region.
+
+The most useful thing that happened was a check of mine failing. I had written
+"no polling-rate command appears in the observed wire record" and implemented
+it as "the word 'polling' does not appear in protocol.md". It does appear,
+twice — and both mentions say the opposite of what I feared. The note lists
+SetPollingRate and GetPollingRate among the host HAL's methods, and its "Still
+unknown" section says plainly that the polling-rate opcode has a known HAL name
+and was never captured. My check was too broad; the evidence it surfaced was
+better than what I had. I narrowed the check to the parsed command table and
+added a second one asserting the HAL fact, rather than loosening the first away.
+
+That distinction became the spine of the log. The negative here is about the
+firmware's consumers, not about the protocol. A polling-rate command very
+probably exists on the wire; it simply was never sent while anyone was
+capturing. Writing it the other way round would have been a real overclaim, and
+there is now a test forbidding the wording.
+
+On the big question — whether the rate changes the same tick that drives
+everything else — the answer is that it is moot on this evidence, which is
+still worth recording. Six subsystems ride IRQ38 and its divide-by-eight job,
+and if the period ever moved they would all move together, watchdog margin
+included. What survives for a replacement is exactly that: the coupling is
+real whether or not a rate setting exists, and reasoning about one client's
+rate in isolation would be wrong.
+
+No units were attached. The one alignment that tempts — 8000 divided by 8 is
+1000, and two independently recovered bIntervals read as 8000 Hz and 1000 Hz —
+is a consistency between three numbers, not a measurement, and it inherits log
+107's high-speed reading rather than proving anything. I wrote it down as a
+lead for a future step and added a test that stops any claim from stating a
+tick frequency. The dependency map's clock entry is untouched.
+
+994 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — The settings format, read against the Armoury Crate decode (log 125)
+
+One step. Offline; authorises nothing; no command constructed; nothing
+committed or staged. Log 124's uncommitted work was left untouched.
+
+Phase 5E ended with six blanks in a row — magic, version, length, checksum,
+defaults, migration, all NOT RECOVERED — and a good reason for each: the commit
+branch it traced hands addresses to erase primitives and constructs nothing.
+That was true. It was also only one branch. The same state machine has save and
+load branches, and those call a *write* and a *read* primitive and compute a
+checksum before they do.
+
+Finding them started from the wrong end. I went looking for the configuration
+loader FINDINGS describes and landed on `FUN_18007e38`, which turned out to be
+the macro subsystem — the right shape, the wrong subsystem, and half an hour
+spent before its `0x664` payload stopped matching anything a profile should
+contain. What actually pointed the way was mundane: the inventory's `consts`
+field. Exactly one function in the image mentions `0x320000`, and it is
+`FUN_18000d56`, the state machine log 111 had already named but only read four
+cases of. Reading the rest of it produced the whole format.
+
+Six request primitives, not two. They are byte-identical apart from the opcode
+each stores, and all six fill the same one-deep struct log 111 mapped — which
+means the struct has two more fields than that log could see, a buffer at `+4`
+and a length at `+0x10`. Those two fields are the entire reason payload sizes
+became visible. The medium is still not identified and I named nothing.
+
+The RAM side then fell out as one contiguous run: two `0xd84` keymap banks, an
+`0x81c` profile block, a `0x664` macro block, and log 111's request struct
+immediately after. The profile block sits at bank + two strides, which is why
+several functions reach it as "layer 2" of the keymap bank and why it had never
+been noticed as a separate structure.
+
+The Armoury Crate decode earned its keep twice, and only because it happens to
+be profile 3. The firmware has two per-profile ROM tables. The one at
+`0x1801bfbe` gives profile 3 a default lighting slot of **8**, and the decode's
+`effectID` is `"8"`. The one at `0x1801c010` gives profile 3 the colour
+**(0, 0, 255)**, and the decode's single colour is blue. Two independent tables,
+one index, two exact hits — that is what turned a plausible layout into a read
+one. Both are extracted from the image by the tool, and two tests move each
+pointer and require the match to break, because a Rosetta stone that agrees by
+construction is not evidence.
+
+Not everything matched, and the table says so in fourteen rows. `speed` is 1 in
+the decode and neither default produces 1. `customPattern` has seven entries
+and the default setter writes six triples; six is not seven and I left it. The
+key counts do not reconcile at all — 68 physical keys, 136 file entries, 189
+wire IDs, against the firmware's 247 table entries and 75 records — so only the
+layer count is claimed. And `direction` and `random` both land on a `0xff`
+byte, so I recorded that two bytes hold `-1` and refused to say which is which.
+
+Polling rate matched nothing here, which is the second independent negative on
+it in an hour: log 124 was searching for a consumer at the same time I was
+searching for a stored field, and neither of us found one.
+
+One correction, and it goes the wrong way for comfort. Log 111 reassured a
+reader that the modifiable ranges are disjoint from the bootloader's
+application region. They are, for the three addresses that log had. The full
+stored map reaches down to `0x2000`, and the wear-levelled banks and the macro
+region are numerically inside `0x10000..0x7c000`. Whether that is the same
+address space cannot be settled while the medium is unidentified, so the
+reassurance has to be withdrawn rather than qualified. What survives untouched
+is the part that actually matters: log 111's omission proof rests on
+reachability through one command byte and one request struct, and the write
+path I recovered uses the same funnel. The dependency map's persistence service
+now carries the withdrawal as its evidence boundary, and the rule about which
+services may carry a boundary was generalised — with its reason stated in the
+test — rather than bent.
+
+The user's sentence was right and imprecise. Lighting does persist because it
+is written to the settings store and read back before any host enumerates the
+device. But the command handler writes nothing; it sets a byte. And "the
+profile region" is five regions, of which lighting is in none of the ones
+previously named. The reason the *selected* profile survives is a different
+mechanism again: a sixteen-byte header in a wear-levelled A/B store, whose
+first word is compared against the firmware's own version word at boot and
+re-stamped when it disagrees. That comparison is the migration Phase 5E listed
+as not recovered.
+
+1042 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-09 — The polling rate, on the wire and in the code (log 126)
+
+One step. Offline; authorises nothing; no frame constructed for transmission;
+nothing committed or staged. Log 124 and log 125 were left untouched.
+
+The owner captured Armoury Crate 6.5.7.0 changing this keyboard's polling rate
+with `USBPcapCMD -A --inject-descriptors`, deliberately without an address
+filter in case a rate change re-enumerated the device onto a new address. It
+did not, but the decision was the right one and the capture would have caught it.
+
+**The command is `51 31`, with a one-byte index at payload offset 4.** Twenty
+writes, two 64-byte forms differing at exactly one of 64 bytes, twelve strictly
+alternating windows once repeats are collapsed. Every write is followed by a
+`50 55` commit. The reply is a byte-for-byte echo — and the firmware proves it
+is not a copy: `FUN_18000a70` rebuilds the frame from `&request[4]` with length
+1, which is why it coincides.
+
+**Two premises in the prompt were wrong, and the owner said so before I
+started.** Armoury Crate 6.5.7.0 exposes only 1000 and 8000 Hz for this
+keyboard, so the planned `1000 -> 2000 -> 4000 -> 8000` sequence was impossible;
+U7 governs that and the instruction was to decode what is there. It also
+predicted the changes would show as an 8x packet-rate staircase. **They do not**
+— an idle HID keyboard emits nothing, so the rate is invisible in packet counts.
+It turned out to be visible in packet *timing*, which is a better anchor than
+the staircase would have been.
+
+**The measurement is the part I did not expect to get.** With no wall-clock
+stamps, "index 0 is 1000 Hz" would have rested entirely on the owner
+remembering they started at 1000. It does not have to. A high-speed interrupt
+endpoint with `bInterval = 1` is polled every 125 us, so a device that only has
+a new report each millisecond can only complete on the coarser grid even when
+offered the finer one. Grading the gap between consecutive key reports — a
+*phase* measurement, so it is independent of typing speed — index 0 sits within
+50 us of a millisecond multiple 85% of the time against a 10% chance level,
+while index 3 does so 12% of the time and instead sits within 12.5 us of a
+125 us multiple 90% of the time. Two independent endpoints agree. The owner
+happened to be typing "1 2 3" with rollover, which is what supplied gaps short
+enough to matter.
+
+**A by-product worth more than the mapping.** Reports 125 us apart are
+impossible on a full-speed bus. Log 107 asserted high-speed operation and log
+124 explicitly recorded that it "inherits rather than re-derives" it. This
+capture derives it.
+
+**The firmware handler was where log 124's dispatcher work said it would be.**
+`0x18002b2e`: read request byte 4, accept only 0 or 3, `bfi` the value into a
+**four-bit** field of the profile block halfword at `+0x4f8`, mask with `0xf`,
+expand to `1 << index` and store one byte at `0x1801e736` — then log the
+firmware's own name for the command, `=S_PR_U`. With the measured endpoints, the
+multiplier's unit is 1000 Hz, so indices 1 and 2 are 2000 and 4000 Hz **by
+arithmetic**. Derived, not observed, and labelled that way everywhere with a
+test that requires the labelling.
+
+**Two prior logs are refined without being rewritten.** Log 125 read `+0x4f8` as
+the version stamp; it is that *and* the rate index in its low four bits, and log
+125's own checksum accounting is what makes that consistent — the field is
+covered by neither sum. Log 125's unmatched `performance.pollingRate` row is now
+matched, which means `notes/ac-profile3-decoded.json`'s `"pollingRate": "3"`
+means 8000 Hz. And `12 15` turns out to be `GetPollingRate`, an opcode
+`notes/protocol.md` has listed by HAL name and never by number.
+
+**Log 124's negative survives one level deeper, and that matters.** The byte at
+`0x1801e736` has six writers and no reader in any preserved image, by three
+independent searches each shown non-blind. So the images still do not show what
+turns a stored rate into a timer period — but this is emphatically *not*
+evidence the device ignores it, because the wire shows it obeying. Log 124's
+careful scoping ("the negative here is about the FIRMWARE'S CONSUMERS, not about
+the protocol") is what let this step land on the protocol side without
+contradicting it. IRQ38's period is still unresolved and the dependency map was
+**not** updated, because the consumer was not found.
+
+**Two of my own checks failed for the right reason.** The first counted two
+enumerations, because USBPcap's `--inject-descriptors` synthesis at t=0 is
+indistinguishable from a real descriptor read by `bRequest` alone; the fix keeps
+the injected set in the output and asserts it is strictly larger than the real
+one, so the exclusion cannot quietly hide a real re-enumeration. The second
+caught a genuine error in my own earlier shell analysis: `set -- $iv` does not
+word-split in zsh, so an ad-hoc interval check had compared every window against
+one malformed bound and reported zero reports everywhere. Fourteen reports do
+land between a write and its commit. The corrected finding is sharper than the
+false one — no two *consecutive* reports land there, and only a consecutive pair
+yields a gradeable gap, so U4 is blocked by the absence of a pair rather than
+the absence of reports. A third version of that test was also wrong, claiming
+all fourteen followed a no-op write; two follow the real change at t=314.2555.
+
+**One of log 124's rules is deliberately inverted here.** Log 124's tool asserts
+its JSON contains "nothing frame-shaped, so this step cannot leak something
+transmittable". This step's deliverable exists to carry exact command bytes for
+the owner's application, so that rule cannot hold. It is replaced rather than
+dropped: every state-writing command must carry `owner_approval_required`, the
+never-send list must cover them, and the read-only queries must be shown *not*
+to carry the flag, so the marking discriminates instead of blanket-gating. Log
+124's own rule and test are untouched.
+
+1089 offline tests pass, both evidence hashes are unchanged, the capture is
+unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| My own ad-hoc check "no report lands between a `51 31` write and its `50 55` commit" | **False, and my own error.** A zsh `set -- $iv` does not word-split an unquoted parameter, so every interval was compared against one malformed bound. Fourteen reports do land there; the real blocker for U4 is that no two are *consecutive*, so no inter-report gap lies wholly inside one (log 126) |
+| My own first count of "two enumerations" in the polling-rate capture | One. USBPcap's `--inject-descriptors` synthesis at t=0 looks identical to a real `GET_DESCRIPTOR(device)` by `bRequest` and `bDescriptorType`. The injected set is now kept in the output and asserted strictly larger than the real one (log 126) |
+| Log 125's "profile block `+0x4f8` is the version stamp" | **Refined, not withdrawn.** The halfword is the version stamp *and* carries the polling-rate index in bits 0..3; it is covered by neither of the block's two checksums, which is what makes both readings consistent (log 126) |
+| Log 125's `performance.pollingRate` listed as unmatched | Matched: profile block `+0x4f8` bits 0..3, so the decode's `"3"` means 8000 Hz (log 126) |
+| Log 107's high-speed reading, which log 124 recorded as inherited rather than derived | **Now derived.** Reports 125 us apart cannot occur on a full-speed bus, where a `bInterval = 1` interrupt endpoint completes only on 1 ms frame boundaries (log 126) |
+| The owner's capture note "`usb.data_fragment` returns EMPTY" | True on the vendor endpoints, **false in general** on TShark 4.7.3: it carries the short `SET_REPORT` payloads on 90 control transfers. The check was scoped to the vendor endpoints rather than loosened (log 126) |
+| The owner's prediction that the rate changes would appear as an 8x packet-rate staircase | They do not — an idle HID keyboard emits almost nothing. The rate is visible in report *timing*, not in packet counts (log 126) |
+| Decompressed region "mapped, not known" | Reconstructed from the firmware's own handler; it is the USB/HID descriptor set, and its content carries the device's own VID/PID/bcdDevice (log 105) |
+| "The decoder consumed the compressed source exactly" | Failed at `0x3fd` of `0x400`. The premise was wrong, not the decoder: the compressed length is derived and word-aligned, so an all-zero tail is expected. Replaced by two checks that state the real invariant (log 105) |
+| Table `0x5680` read as three indirect roots | Its middle entry `0x4018` was absorbed into `PtrTarget_00004004`'s body extent, so it contributes two. Roots naming no function are now reported, not dropped (log 105) |
+| Log 105's "`0x1800023a` is absent from installed_b.txt" | The address appears once, as the *exclusive* end of `FUN_180001d2`'s range. No `FUNC` entry exists at it, which is the claim that matters and which stands (log 106) |
+| Log 80's addresses read as installed addresses | Its decompile was of `app_candidate_b_18000000.bin` = the **vendor** record slice, so they are vendor addresses. The installed primitive was derived as `0x18012fd0`, not assumed equal (log 106) |
+| Task entries counted as an improvement on 146/573 | Seeding changed the denominators; 281 of 616 is a **new baseline**, not 135 more functions (log 106) |
+| Log 113's "exactly one function touches the watchdog blocks" and "nothing feeds them" | Both false. `FUN_000021fe` is a call-through base selector, so the NMI cluster and the ÷8 tick feed are invisible to a per-function census. Three access paths, not one (log 114) |
 | Sandboxed `lsusb` failure | Not a device result; direct read-only retry succeeded |
 | Sandboxed `dfu-util` failure | Not a DFU result; direct enumeration succeeded with no target |
 | Port comparison in log 25 | Parser included `xxd` ASCII; log 26 proved equality |

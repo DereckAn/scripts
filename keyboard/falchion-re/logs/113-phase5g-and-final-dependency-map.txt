@@ -1,0 +1,347 @@
+LOG 113 — PHASE 5G AND THE PHASE 5 FINAL DEPENDENCY GATE
+Date: 2026-09-05
+Scope: Phase 5G plus the Phase 5 final dependency gate, in one invocation.
+Nothing was committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary,
+no historical log and not opencode.json were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened. EVERY Ghidra run was -readOnly; no
+seeding was required and none was done. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+STEP 1 — CLOCK / RESET / PINMUX
+================================================================================
+FUN_00001216 is the reset-path init, called by Vector_Reset. Its listing:
+
+    00001216  push {r4,lr}
+    00001218  mov.w r4,#0x45000000
+    0000121c  ldr r2,[0x00001494]      ; 0x5afa55aa
+    0000121e  ldr r0,[0x00001498]      ; 0x40009000
+    00001220  ldr r1,[0x0000149c]      ; 0x40008000
+    00001222  ldr r3,[r4,#0x0]         ; read 0x45000000
+    00001224  cbnz r3,0x0000122a
+    00001226  ldr r3,[r4,#0xc]         ; read 0x4500000c
+    00001228  cbz r3,0x00001252
+    0000122a  str r2,[r1,#0xc]         ; 0x4000800c = 0x5afa55aa
+    0000122c  ldr r2,[0x000014a0]      ; 0x5afa0000
+    0000122e  str r2,[r1,#0x0]         ; 0x40008000 = 0x5afa0000
+    00001230  str r2,[r0,#0x0]         ; 0x40009000 = 0x5afa0000
+    00001232  mrs r0,msp
+    00001236  cmp.w r0,#0x18000000
+    0000123a  bcc 0x00001246
+    0000123c  mrs r0,msp
+    00001240  ldr r1,[0x000014a4]      ; 0x18040000
+    00001242  cmp r0,r1
+    00001244  bls 0x0000124c
+    00001246  movs r0,#0x7
+    00001248  bl 0x00000dbc            ; fault path
+    0000125a  bl 0x00000d3e
+    0000125e  bl 0x00000de8
+    00001262  bl 0x00000e68
+    00001266  bl 0x00000ec4
+    0000126a  bl 0x00000ef6
+    00001272  b  0x00000f0a            ; tail
+
+  every literal read from the entry slice's raw bytes:
+    *(0x1494) = 0x5afa55aa   *(0x1498) = 0x40009000
+    *(0x149c) = 0x40008000   *(0x14a0) = 0x5afa0000
+    *(0x14a4) = 0x18040000
+
+TWO CONCRETE REQUIREMENTS COME OUT OF THIS, and nothing else does.
+  1. THE STACK WINDOW. The reset path reads MSP and faults out unless it lies
+     in 0x18000000..0x18040000. That is a hard, listing-verified constraint on
+     any replacement's RAM layout.
+  2. A FIXED FIVE-CALL INIT CHAIN, preserved as a sequence.
+
+WHAT IS NOT CLAIMED: any frequency. No constant in the recovered chain carries
+a unit, and no timing relationship ties a divider to a rate. Phase 5C recovered
+the tick's RATIOS (1, 8, 5, 2, 10, 10) and explicitly not its period; nothing
+here changes that. A unit test asserts no Hz figure appears in this model's
+output.
+
+The reset path also writes 0x4002f000 = 3 and 0x4002f004 = 0x60021000 in
+FUN_00000ec4. Log 100 identified 0x60021000 as record slot 1's address, so the
+pair looks like a boot-source remap. THE BLOCK IS NOT NAMED.
+
+
+================================================================================
+STEP 2 — WATCHDOGS
+================================================================================
+$ a per-function MMIO census over BOTH peripheral maps, filtered to the two
+$ magic-key blocks
+
+  app:   functions touching 0x40008000 / 0x40009000: NONE
+  entry: functions touching them: 0x00001216 (FUN_00001216)
+
+EXACTLY ONE FUNCTION IN EITHER IMAGE TOUCHES THEM, and it is on the reset path.
+It writes the key 0x5afa55aa to +0xc and then 0x5afa0000 to +0 of both blocks.
+NOTHING RE-ENABLES OR FEEDS THEM ANYWHERE.
+
+The control value's low half is ZERO, which is what a disable looks like. But
+no register map confirms the bit meanings, so this is INFERENCE FROM THE WRITE
+PATTERN, NOT IDENTIFICATION, and the model records it as strongly-inferred.
+The series brief's "two watchdogs" and the two identical blocks are a
+consistency hint, and a periodic magic write would be a lead rather than proof —
+but there is no periodic write here at all, which is a stronger fact than
+either.
+
+THE usbd_wdt LEAD DOES NOT PAN OUT. The prompt flagged the task name as a lead
+rather than evidence, and tracing it settles the matter:
+
+  usbd_wdt task body FUN_18015c84: insns=37 callees=4 reach=12
+    MMIO in closure: ['0xe000ed04']
+    touches a watchdog block: False
+
+Its entire twelve-function closure reaches only ICSR, the RTOS yield. It is a
+USB-device software supervisor, not a hardware watchdog feeder. Had the name
+been taken as evidence, this phase would have concluded the opposite.
+
+SAFE REPLACEMENT POLICY: perform the same disable. A replacement that simply
+ignores the blocks inherits whatever their reset default is, and that default
+is not established anywhere. So the watchdogs are MUST-NEUTRALIZE, not may-omit.
+
+
+================================================================================
+STEP 3 — FAULTS
+================================================================================
+  NMI (entry 0x20be) writes AIRCR with 0x05fa0004 = VECTKEY | SYSRESETREQ.
+    That is a HARDWARE ACTION, not a diagnostic. A replacement must decide
+    deliberately whether an NMI resets the device; inheriting the behaviour by
+    accident, or leaving the vector unpopulated, are both unacceptable.
+    Classified MUST-NEUTRALIZE.
+  HardFault reads CFSR, MMFAR and BFAR and nothing else. Reading a status
+    register cannot itself be required for correct operation, so the fault
+    logger is DIAGNOSTIC and may be omitted.
+  The vector table stays at 80 slots with IRQ63 live, and stays
+    STRONGLY-INFERRED. Log 102 established the extent by the first code address
+    because ARMv7-M tables have no terminator. No exact-device evidence proves
+    the implemented interrupt count, none has appeared since, and the model
+    refuses to promote it. A unit test enforces that.
+
+
+================================================================================
+STEP 4 — MULTICORE: THE START MECHANISM IS FOUND
+================================================================================
+Log 104 left this as the open question: the RAM image at flash 0x74000 ->
+0x18038000 has its own vector table and reset vector, and nothing was found
+that starts it. It is found now.
+
+An aligned-word search for the descriptor values across every preserved image:
+
+  entry+0x2000 (0x00002000) holds 0x60074000     <- the flash source
+  entry+0x2004 (0x00002004) holds 0x18038000     <- the RAM destination
+  app+0x3f0   (0x180003f0) holds 0x60074000
+  ram18038000+0x4 (0x18038004) holds 0x180381c1  <- its own reset vector
+
+The entry-image pair at 0x2000/0x2004 has NO loader — nothing reads it. The
+application's copy does. CandidateB_Main's opening listing:
+
+    1800023a  push {r2,r3,r4,lr}
+    1800023c  mov.w r4,#0x20000000
+    18000240  movs r5,#0x0
+    18000242  ldr r0,[0x180003f0]      ; r0 = 0x60074000
+    18000244  str r5,[r4,#0x0]         ; *(0x20000000) = 0
+    18000246  bl 0x1801bd96            ; a cross-image veneer
+    1800024a  ldr r0,[0x180003f4]      ; r0 = 0x12345678
+    1800024c  ldr r1,[r4,#0x0]
+    1800024e  cmp r1,r0
+    18000250  bne 0x1800024c           ; SPIN until the mailbox holds the token
+    18000252  str r5,[r4,#0x0]         ; then clear it
+
+  *(0x180003f0) = 0x60074000   *(0x180003f4) = 0x12345678
+
+WHERE DOES THE TOKEN COME FROM? An exhaustive aligned-word search of the entry
+slice, the application slice, the reconstructed region, the bootloader mirror
+and the 0x18038000 RAM image:
+
+  entry:        0x12345678 at NOWHERE
+  app:          0x12345678 at ['0x3f4']          <- the expected value
+  region:       0x12345678 at NOWHERE
+  boot:         0x12345678 at NOWHERE
+  ram18038000:  0x12345678 at ['0x3214']         <- INSIDE THE SECOND IMAGE
+
+The token the application waits for exists in exactly two places, and one of
+them is inside the image at 0x18038000. That is the evidence log 104 lacked.
+
+THE START ROUTINE. The veneer at 0x1801bd96 is `41 f6 51 7c c0 f2 00 0c`,
+which decodes as `movw r12,#0x1f51` / `movt r12,#0x0` — entry-image 0x1f50.
+Ghidra had not disassembled it because it is unreached, so it was validated
+directly:
+
+  TARGET addr=0x1f50 thumb=true mapped=true valid_subroutine=true decoded=8
+         prologue=push_{r4,r5,r6,lr} defined=false at=none
+  raw bytes: 70 b5 40 07 02 d0 4f f0 ff 30 70 bd 4f f0 8a 44 28 4d d4 f8 00 01
+             4f f4 00 42 20 f4 00 40 c4 f8
+
+It is a real function: a standard prologue, eight instructions decoding
+cleanly, and a read-modify-write of [r4,#0x100] clearing bit 15 — and the entry
+image's census records 0x45000100 and 0x4500010c in that same block. So THE
+START MANIPULATES 0x45000100. The block is NOT named.
+
+SO THE MECHANISM IS: main hands the flash address 0x60074000 to entry-image
+0x1f50 through a veneer; that routine manipulates 0x45000100; main then spins
+until 0x20000000 holds 0x12345678, a token that lives inside the started image.
+A second execution context with a mailbox handshake.
+
+WHAT IS STILL UNRESOLVED, and it matters: WHAT THE SECOND CONTEXT OWNS. No
+evidence assigns USB, the Hall acquisition or storage to it. It is a strong
+CANDIDATE owner of the Phase 5D acquisition boundary — precisely because that
+producer was never found in either analysed image — but a candidate is not a
+finding, and the model records it as unresolved. A unit test enforces that it
+is not promoted.
+
+NO ROM SERVICE WAS IDENTIFIED. Every cross-image call recovered so far resolves
+into one of the preserved images. A mask ROM was not searched and cannot be, so
+its absence is unproven either way and is recorded as a platform dependency
+boundary rather than as an absence.
+
+
+================================================================================
+STEP 5 — THE FINAL DEPENDENCY GATE
+================================================================================
+$ python3 tool/map_platform_dependencies.py
+
+  === MUST-IMPLEMENT (6) ===
+    reset_clock_ram      reset, clock and RAM bring-up
+        cite: log 113 step 1: FUN_00001216's listing
+        cite: log 113: the stack window 0x18000000..0x18040000
+    tick                 the periodic tick that drives everything
+        cite: log 109 step 3: Vector_IRQ38 is the only writer of 0x1801ee84
+    key_state            key-state generation from travel bytes
+        cite: log 110 step 1: cmp r3,#0x64 and the surrounding control flow
+    usb_enumeration      USB enumeration and the descriptor set
+        cite: log 107 step 4: the builder's arithmetic reproduces 0x008d
+    usb_boot_keyboard    interface 0, the 8-byte boot report
+        cite: log 109 step 1: interface 0, 8 bytes, buffer 0x1801e7c8
+    usb_control          the control endpoint
+        cite: log 107 step 8: EP 0x00 is required
+
+  === MUST-NEUTRALIZE (3) ===
+    watchdogs            the two magic-key watchdog blocks
+        the vendor disables both and never feeds them; a replacement that
+        ignores them inherits an unestablished reset default
+    second_context       the second execution context at 0x18038000
+        main SPINS FOREVER on the mailbox token, so a replacement must either
+        reproduce the start or remove the handshake — it cannot ignore it
+    nmi_reset            the NMI handler's system reset
+        SYSRESETREQ is a hardware action and the decision must be deliberate
+
+  === MAY-OMIT (5), each with a PROVEN safe idle state ===
+    vendor_channel       the vendor 0xFF00 configuration channel
+    persistence          nonvolatile settings and the commit path
+    media_nkro           interface 2 and 3, media and NKRO reports
+    diagnostics          the fault logger and debug strings
+    rtos                 the vendor RTOS
+
+  === UNRESOLVED (3) — BLOCKERS, NOT PERMISSION TO OMIT ===
+    hall_acquisition     per-key Hall sample acquisition
+        BOUNDARY: no function in either analysed image writes the per-key
+        travel array from a hardware register, and the buffer is reachable
+        only by dereferencing a pointer cell that something fills at runtime.
+        The producer is outside the analysed set. The second execution context
+        at 0x18038000 is a CANDIDATE owner and is not evidence.
+    rgb                  RGB / LampArray lighting
+        BOUNDARY: the LED driver is unidentified, so its idle polarity is
+        unknown and no shared clock, pin or controller initialisation could be
+        inspected. Proving safe omission requires identifying the consumer of
+        the 306-byte frame at 0x1802505e.
+    clock_frequency      the actual clock configuration
+        BOUNDARY: no crystal value, PLL multiplier or divider with a stated
+        unit appears in the recovered code, and no register map exists for the
+        blocks the sequence writes. Any Hz figure would have to come from the
+        silicon or from measurement, neither of which this project has.
+
+  RESULT gate_ok=True checks=15 blockers=3
+  [exit 0]
+
+THE GATE HAS TEETH, AND THE CHECKS ARE THE TEETH. Three of them exist purely to
+make "five unanalysed service areas plus an MMIO census" impossible to pass off
+as completion:
+  - every UNRESOLVED service must name an evidence boundary of more than 60
+    characters; a bare "unknown" fails the run
+  - no service may be MAY-OMIT without a proven safe idle state
+  - the contrapositive: any service whose idle state is unproven must NOT be
+    may-omit. RGB is the case that rule exists for, and it is why RGB is a
+    blocker here even though its protocol is fully recovered.
+A fourth check requires every class to be non-empty, so the classification is a
+real partition rather than a pile in one bucket.
+
+NO RESET-REACHABLE WRITE IS CALLED AN INITIALISATION REQUIREMENT SOLELY BECAUSE
+OF GRAPH REACHABILITY. Each must-implement service names a consumer that fails
+without it: no tick means no key state, no control endpoint means no
+enumeration, no stack window means the reset path faults out. The blocks the
+init chain writes are preserved as a SEQUENCE, not asserted as requirements.
+
+
+================================================================================
+STEP 6 — THE FIRST TYPING PROTOTYPE, MAPPED
+================================================================================
+The plan's minimum, against what is now known:
+
+  understood reset/clock/RAM behaviour   sequence preserved; FREQUENCY UNRESOLVED
+  a safe watchdog policy                 KNOWN: disable both, as the vendor does
+  GPIO plus Hall/sample acquisition      BLOCKED — the producer is not recovered
+  calibrated key-state generation        RECOVERED and executable
+  one USB keyboard-IN route              RECOVERED end to end
+
+THREE OF FIVE ARE DONE. One is partially done — the reset sequence can be
+copied but not reasoned about. One is blocked outright.
+
+THE LARGEST BLOCKER IS THE HALL ACQUISITION, exactly as the prompt anticipated.
+Without it a prototype has no input at all: it could enumerate, tick, build
+reports and transmit them, and every key would read as released forever.
+
+The most promising lead is the one this phase produced: the second execution
+context at 0x18038000 is started at boot, is waited for, and owns something the
+application does not. The Phase 5D producer was never found in either analysed
+image. Those two facts are consistent with the acquisition living there, AND
+THAT IS A HYPOTHESIS, NOT A FINDING. Testing it would mean analysing the
+0x18038000 image itself, which is preserved in ghidra/imports and has not been
+imported or analysed in project-step6.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_platform_dependencies.py tool/test_map_platform_dependencies.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 650 tests   OK                                                 [exit 0]
+  (617 before this step; +33 in tool/test_map_platform_dependencies.py)
+$ python3 tool/report_phase3.py --check              reports_current=True stale=0
+$ python3 tool/report_phase4.py --check              reports_current=True stale=0
+$ python3 tool/report_phase5.py --check              reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check            reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check          reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check       reports_current=True stale=0
+$ python3 tool/map_nonvolatile_writes.py --check     reports_current=True stale=0
+$ python3 tool/map_rgb_lamparray.py --check          reports_current=True stale=0
+$ python3 tool/map_platform_dependencies.py --check  reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                       all OK          [exit 0]
+$ git diff --check                                   clean           [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - NO MMIO BLOCK WAS NAMED. 0x45000000, 0x40008000, 0x40009000, 0x4002f000
+    and 0x40022000 all stay unnamed, including the two whose write pattern
+    reads exactly like a watchdog disable.
+  - No seeding; every Ghidra run was -readOnly; project-step6 is unchanged.
+  - The 0x18038000 image was NOT imported or analysed. Identifying what the
+    second context owns is the obvious next step and it was not taken here.
+  - The Hall acquisition, the LED driver and the clock frequency remain
+    unresolved, each with an exact evidence boundary attached.
+  - NO DEVICE WAS ACCESSED.

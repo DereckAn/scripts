@@ -1,0 +1,590 @@
+{
+  "claims": [
+    {
+      "confidence": "observed",
+      "key": "no_output_report",
+      "kind_basis": "walking the 327-byte descriptor's own items yields thirteen Main items, every one of them Feature and none Output",
+      "statement": "interface 4 declares no Output report; all six of its reports are Feature reports, so the LampArray runs over CONTROL transfers and endpoint 0x0f carries none of it",
+      "verified_against": "bytes"
+    },
+    {
+      "confidence": "observed",
+      "key": "feature_callback",
+      "kind_basis": "FUN_180184b6 dispatches 0xa101 and 0x2109 with report type 3 to `(*(code *)*piVar3)(...)`, and DAT_18018860 resolves to 0x1801ebb8",
+      "statement": "both GET_REPORT and SET_REPORT for Feature reports route through one registered callback at *(0x1801ebb8)",
+      "verified_against": "decompiler"
+    },
+    {
+      "confidence": "observed",
+      "key": "callback_registration",
+      "kind_basis": "FUN_18008f4a is five instructions: `adr.w r0,0x18008f13` then a tail branch to `str r0,[r1,#0x0]` through the core struct pointer; log 106 recorded INIT_TASK calling it first",
+      "statement": "the callback is FUN_18008f12, installed during INIT_TASK",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "observed",
+      "key": "request_dispatch",
+      "kind_basis": "`cmp r1,#0x1` / `cmp r1,#0x9` / `cmp r1,#0xff` at 0x18008f16, 0x18008f1a and 0x18008f1e, with `mvn r0,#0x15` for anything else",
+      "statement": "the callback dispatches on bRequest: 1 to the GET handler, 9 to the SET handler, 0xff to a debug print",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "observed",
+      "key": "get_lengths",
+      "kind_basis": "`movs r0,#0x17` / `strh r0,[r4,#0x0]` at 0x1800ffd0 in FUN_1800ffaa, matched against the item walk's own total",
+      "statement": "the GET handler returns 0x17 = 23 bytes for report ID 1, which is exactly the descriptor's 22 payload bytes plus the ID prefix",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "observed",
+      "key": "set_length_cap",
+      "kind_basis": "`if (0x3f < uVar14) return -0x5f;` in FUN_180184b6's type-3 branch",
+      "statement": "SET_REPORT is capped at 64 bytes before the callback is reached",
+      "verified_against": "decompiler"
+    },
+    {
+      "confidence": "observed",
+      "key": "lamp_addressing",
+      "kind_basis": "`FUN_1800c132(*(byte *)(base + lampId*2), *(byte *)(base + lampId*2 + 1), &channels[i*4])` in the report-4 loop",
+      "statement": "a lamp is addressed by LampId, translated to a (row, column) pair through a 2-byte-per-lamp table",
+      "verified_against": "decompiler"
+    },
+    {
+      "confidence": "observed",
+      "key": "multi_update_bounds",
+      "kind_basis": "`if (local_4d[uVar8] <= (ushort)*(byte *)(DAT_18010140 + (uint)bVar2 * 8))` guards each iteration",
+      "statement": "every LampId in a multi-update is bounds-checked against the active configuration's lamp count before it is applied",
+      "verified_against": "decompiler"
+    },
+    {
+      "confidence": "observed",
+      "key": "frame_geometry",
+      "kind_basis": "`cmp r0,#0x6` / `bcs` and `cmp r1,#0x11` / `bcs` bound the two indices, and the address arithmetic is `add.w r0,r0,r0,lsl #0x4` (row*17) then `add.w r4,r0,r0,lsl #0x1` (*3) plus `add.w r1,r1,r1,lsl #0x1` (col*3)",
+      "statement": "the frame buffer is 6 rows x 17 columns x 3 bytes = 306 bytes",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "observed",
+      "key": "frame_order",
+      "kind_basis": "three `strb` at [r0,r1], [r0,#0x1] and [r0,#0x2], sourced from param_3[0], [1] and [2] in that order",
+      "statement": "the channel order in the frame is red, green, blue at cell offsets 0, 1 and 2, eight bits each",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "observed",
+      "key": "intensity",
+      "kind_basis": "`ldrb r4,[r2,#0x3]` then `muls r3,r4` then `lsrs r3,r3,#0x8`, repeated for all three channels",
+      "statement": "intensity scales each channel as (channel * intensity) >> 8",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "observed",
+      "key": "out_of_range_dropped",
+      "kind_basis": "both `bcs` branches jump straight to `pop {r4,pc}` at 0x1800c16c",
+      "statement": "a lamp outside the frame's bounds is dropped silently, with no error path",
+      "verified_against": "listing"
+    },
+    {
+      "confidence": "strongly-inferred",
+      "key": "autonomous_mode",
+      "kind_basis": "`*(bool *)(DAT_18010134 + 3) = bVar1; *(bool *)DAT_18010134 = !bVar1;` then FUN_1800fd4c() and FUN_18004498(0x81,5,0,...)",
+      "statement": "report ID 6 sets a pair of complementary flags and calls two further functions, one of them with the current mode",
+      "verified_against": "decompiler"
+    },
+    {
+      "confidence": "unresolved",
+      "key": "hardware_boundary",
+      "kind_basis": "the two functions that consume the frame buffer, FUN_1800aba4 and FUN_1800aab0, reach no resolved MMIO at all: their closures report 79 and 91 unresolved-base accesses and zero resolved ones. No SPI, PWM, GPIO or DMA interface was reached, and no block is named",
+      "statement": "the final hardware interface is NOT identified",
+      "verified_against": "xref"
+    },
+    {
+      "confidence": "unresolved",
+      "key": "frame_timing",
+      "kind_basis": "the frame consumers are not reached from the Phase 5C tick chain, and no second buffer or swap was found",
+      "statement": "frame timing, double buffering and any interaction with the keyboard scan tick are NOT recovered",
+      "verified_against": "xref"
+    }
+  ],
+  "classification": {
+    "detail": "RGB is IMPLEMENTED in the recovered firmware: all six LampArray reports are handled, lamps are addressed by LampId through a coordinate table, and a 306-byte frame buffer is written with intensity-scaled RGB. What is NOT recovered is the final hardware interface, so a replacement cannot yet drive the LEDs even though it can reproduce the protocol.",
+    "verdict": "implemented"
+  },
+  "frame_buffer": {
+    "address": 402804830,
+    "bytes_per_cell": 3,
+    "cells": 102,
+    "channel_order": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "channel_width_bits": 8,
+    "columns": 17,
+    "intensity_shift": 8,
+    "rows": 6,
+    "size": 306,
+    "vendor_address": 402804786
+  },
+  "hardware_boundary": {
+    "identified": false,
+    "note": "UNRESOLVED. The frame consumers reach no resolved MMIO: 79 and 91 unresolved-base accesses and zero resolved. SPI, PWM, GPIO and DMA are all still open, and the 0x40022000 bank is NOT named on the strength of a plausible per-channel shape."
+  },
+  "lamp_counts": [
+    84,
+    85,
+    89,
+    23,
+    37,
+    51,
+    65,
+    79
+  ],
+  "reports": {
+    "1": {
+      "bits": 176,
+      "fields": [
+        {
+          "count": 1,
+          "size": 16,
+          "usages": [
+            {
+              "id": 3,
+              "spec_name": "LampCount"
+            }
+          ]
+        },
+        {
+          "count": 5,
+          "size": 32,
+          "usages": [
+            {
+              "id": 4,
+              "spec_name": "BoundingBoxWidthInMicrometers"
+            },
+            {
+              "id": 5,
+              "spec_name": "BoundingBoxHeightInMicrometers"
+            },
+            {
+              "id": 6,
+              "spec_name": "BoundingBoxDepthInMicrometers"
+            },
+            {
+              "id": 7,
+              "spec_name": "LampArrayKind"
+            },
+            {
+              "id": 8,
+              "spec_name": "MinUpdateIntervalInMicroseconds"
+            }
+          ]
+        }
+      ],
+      "firmware_handles": "GET",
+      "kinds": [
+        "Feature"
+      ],
+      "payload_bytes": 22,
+      "spec_name": "LampArrayAttributesReport",
+      "wire_bytes": 23
+    },
+    "2": {
+      "bits": 16,
+      "fields": [
+        {
+          "count": 1,
+          "size": 16,
+          "usages": [
+            {
+              "id": 33,
+              "spec_name": "LampId"
+            }
+          ]
+        }
+      ],
+      "firmware_handles": "SET",
+      "kinds": [
+        "Feature"
+      ],
+      "payload_bytes": 2,
+      "spec_name": "LampAttributesRequestReport",
+      "wire_bytes": 3
+    },
+    "3": {
+      "bits": 224,
+      "fields": [
+        {
+          "count": 1,
+          "size": 16,
+          "usages": [
+            {
+              "id": 33,
+              "spec_name": "LampId"
+            }
+          ]
+        },
+        {
+          "count": 5,
+          "size": 32,
+          "usages": [
+            {
+              "id": 35,
+              "spec_name": "PositionXInMicrometers"
+            },
+            {
+              "id": 36,
+              "spec_name": "PositionYInMicrometers"
+            },
+            {
+              "id": 37,
+              "spec_name": "PositionZInMicrometers"
+            },
+            {
+              "id": 39,
+              "spec_name": "UpdateLatencyInMicroseconds"
+            },
+            {
+              "id": 38,
+              "spec_name": "LampPurposes"
+            }
+          ]
+        },
+        {
+          "count": 6,
+          "size": 8,
+          "usages": [
+            {
+              "id": 40,
+              "spec_name": "RedLevelCount"
+            },
+            {
+              "id": 41,
+              "spec_name": "GreenLevelCount"
+            },
+            {
+              "id": 42,
+              "spec_name": "BlueLevelCount"
+            },
+            {
+              "id": 43,
+              "spec_name": "IntensityLevelCount"
+            },
+            {
+              "id": 44,
+              "spec_name": "IsProgrammable"
+            },
+            {
+              "id": 45,
+              "spec_name": "InputBinding"
+            }
+          ]
+        }
+      ],
+      "firmware_handles": "GET",
+      "kinds": [
+        "Feature"
+      ],
+      "payload_bytes": 28,
+      "spec_name": "LampAttributesResponseReport",
+      "wire_bytes": 29
+    },
+    "4": {
+      "bits": 400,
+      "fields": [
+        {
+          "count": 2,
+          "size": 8,
+          "usages": [
+            {
+              "id": 3,
+              "spec_name": "LampCount"
+            },
+            {
+              "id": 85,
+              "spec_name": "LampUpdateFlags"
+            }
+          ]
+        },
+        {
+          "count": 8,
+          "size": 16,
+          "usages": [
+            {
+              "id": 33,
+              "spec_name": "LampId"
+            }
+          ]
+        },
+        {
+          "count": 32,
+          "size": 8,
+          "usages": [
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            },
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            }
+          ]
+        }
+      ],
+      "firmware_handles": "SET",
+      "kinds": [
+        "Feature"
+      ],
+      "payload_bytes": 50,
+      "spec_name": "LampMultiUpdateReport",
+      "wire_bytes": 51
+    },
+    "5": {
+      "bits": 72,
+      "fields": [
+        {
+          "count": 1,
+          "size": 8,
+          "usages": [
+            {
+              "id": 85,
+              "spec_name": "LampUpdateFlags"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "size": 16,
+          "usages": [
+            {
+              "id": 97,
+              "spec_name": "LampIdStart"
+            },
+            {
+              "id": 98,
+              "spec_name": "LampIdEnd"
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "size": 8,
+          "usages": [
+            {
+              "id": 81,
+              "spec_name": "RedUpdateChannel"
+            },
+            {
+              "id": 82,
+              "spec_name": "GreenUpdateChannel"
+            },
+            {
+              "id": 83,
+              "spec_name": "BlueUpdateChannel"
+            },
+            {
+              "id": 84,
+              "spec_name": "IntensityUpdateChannel"
+            }
+          ]
+        }
+      ],
+      "firmware_handles": "SET",
+      "kinds": [
+        "Feature"
+      ],
+      "payload_bytes": 9,
+      "spec_name": "LampRangeUpdateReport",
+      "wire_bytes": 10
+    },
+    "6": {
+      "bits": 8,
+      "fields": [
+        {
+          "count": 1,
+          "size": 8,
+          "usages": [
+            {
+              "id": 113,
+              "spec_name": "AutonomousMode"
+            }
+          ]
+        }
+      ],
+      "firmware_handles": "SET",
+      "kinds": [
+        "Feature"
+      ],
+      "payload_bytes": 1,
+      "spec_name": "LampArrayControlReport",
+      "wire_bytes": 2
+    }
+  },
+  "route": {
+    "callback_registrar": {
+      "installed": 402689866,
+      "vendor": 402689822,
+      "vendor_match": "identical"
+    },
+    "control_handler": {
+      "installed": 402752694,
+      "vendor": 402752650,
+      "vendor_match": "identical"
+    },
+    "feature_callback": {
+      "installed": 402689810,
+      "vendor": 402689766,
+      "vendor_match": "identical"
+    },
+    "frame_consumer_a": {
+      "installed": 402697124,
+      "vendor": 402697080,
+      "vendor_match": "identical"
+    },
+    "frame_consumer_b": {
+      "installed": 402696880,
+      "vendor": 402696836,
+      "vendor_match": "identical"
+    },
+    "frame_write": {
+      "installed": 402702642,
+      "vendor": 402702598,
+      "vendor_match": "identical"
+    },
+    "get_handler": {
+      "installed": 402718634,
+      "vendor": 402718590,
+      "vendor_match": "identical"
+    },
+    "set_handler": {
+      "installed": 402718978,
+      "vendor": 402718934,
+      "vendor_match": "structural"
+    }
+  },
+  "safe_omission": {
+    "buffer_idle_state_provable": true,
+    "hardware_idle_state_provable": false,
+    "note": "The BUFFER's idle state is provable: it lives at 0x1802505e, inside the zeroinit region Phase 3 recovered, so it powers up all-zero and only FUN_1800c132 ever writes it. A firmware that omits RGB and never calls that function leaves an all-zero frame. Whether all-zero means LEDS OFF is NOT provable here, because the driver that consumes the frame is unidentified and its polarity is unknown. No shared clock, pin or controller initialisation could be identified either, for the same reason."
+  }
+}

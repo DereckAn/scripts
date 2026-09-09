@@ -1,0 +1,709 @@
+{
+  "address_zero": {
+    "alias_argument": "if address 0 aliased 0x18000000, the entry image's scatter loader at 0x148 would copy 0x1e354 bytes from flash to 0x18000000 \u2014 i.e. over itself, while executing from it. The loader would be destroyed mid-copy. The two are therefore distinct memories.",
+    "configured_by_software": false,
+    "is_an_alias_of_app_ram": false,
+    "is_writable_ram": true,
+    "minimum_size": "0x10000",
+    "size_evidence": "the copy length is a fixed 0x10000, and the bootloader itself occupies 0x0..0xefff",
+    "stack_lives_elsewhere": "both stages put their stack in the 0x18000000 window: the bootloader's initial SP is 0x1802b230 and the entry image's is 0x18036168, while their code runs at 0. Code window and data window are separate.",
+    "what_configures_it": "UNRESOLVED \u2014 see rom_dependency",
+    "writable_evidence": "the handoff stub performs a plain word-store loop into address 0 and the bootloader writes vector slot 7 through VTOR. Neither would work against a flash XIP alias, so address 0 is RAM."
+  },
+  "answer": "there is no remap; address 0 is writable RAM the software never configures",
+  "boot_stages": [
+    {
+      "address_zero_holds": "the bootloader, somehow",
+      "confidence": "unresolved",
+      "stage": "ROM or hardware boot",
+      "who_puts_it_there": "UNRESOLVED \u2014 no preserved image does it"
+    },
+    {
+      "address_zero_holds": "the bootloader (its own vector table at 0, reset 0x000002f5)",
+      "confidence": "observed",
+      "stage": "bootloader running",
+      "who_puts_it_there": "the unread stage above"
+    },
+    {
+      "address_zero_holds": "being overwritten with the entry image",
+      "confidence": "observed",
+      "stage": "handoff",
+      "who_puts_it_there": "the RAM stub at 0x18010000, called through veneer 0x00000fee"
+    },
+    {
+      "address_zero_holds": "the entry image (vector table at 0, reset 0x000014a9)",
+      "confidence": "observed",
+      "stage": "after the reset",
+      "who_puts_it_there": "the copy above; the core fetches SP and PC from address 0 on reset"
+    },
+    {
+      "address_zero_holds": "still the entry image \u2014 the application is copied to 0x18000000 and its interrupt handlers are entered through the table at 0",
+      "confidence": "observed",
+      "stage": "application running",
+      "who_puts_it_there": "nothing maintains it; VTOR is never written and nothing re-aliases anything"
+    }
+  ],
+  "brief_check": {
+    "correction": "notes/references.md lists dual Cortex-M3 cores, USB host and device, GPIO, timers and PWM, two watchdogs, an SPI NOR interface and a 10-bit six-channel SAR ADC. ROM/RAM remapping is NOT among them. The lead does not exist in this repository, and no conclusion here rests on it \u2014 which is just as well, because the evidence says there is no remap to find.",
+    "occurrences_of_remap_in_references": 0,
+    "premise": "the series brief documents ROM/RAM remapping as a series feature",
+    "premise_supported": false
+  },
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "80 bytes",
+      "label": "the handoff stub is the expected size",
+      "ok": true
+    },
+    {
+      "detail": "0xe000ed0c, 0x05fa0000",
+      "label": "the stub's literals are AIRCR and the vector key",
+      "ok": true
+    },
+    {
+      "detail": "it configures nothing",
+      "label": "the stub writes NO system-control register",
+      "ok": true
+    },
+    {
+      "detail": "15 registers, 210 accesses",
+      "label": "the 0x45000000 block is enumerated, not sampled",
+      "ok": true
+    },
+    {
+      "detail": "so candidate (a) is eliminated",
+      "label": "no write into the block stores a base-address-shaped value",
+      "ok": true
+    },
+    {
+      "detail": "10 reads, 0 writes",
+      "label": "VTOR is never written, in any image",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "so candidate (c) is eliminated",
+      "ok": true
+    },
+    {
+      "detail": "so the absence of writes is not an absence of the register",
+      "label": "VTOR is nonetheless read widely",
+      "ok": true
+    },
+    {
+      "detail": "the handoff stub performs a plain word-store loop into addre...",
+      "label": "address 0 is writable RAM",
+      "ok": true
+    },
+    {
+      "detail": "the scatter loader would destroy itself",
+      "label": "address 0 is NOT an alias of 0x18000000",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "no software configures the arrangement",
+      "ok": true
+    },
+    {
+      "detail": "0xe000ed08",
+      "label": "the slot-7 setter reaches the table through VTOR",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "both images ship vector slot 7 as zero, so it is scratch",
+      "ok": true
+    },
+    {
+      "detail": "5",
+      "label": "every boot stage has an entry",
+      "ok": true
+    },
+    {
+      "detail": "the ROM stage",
+      "label": "exactly one stage is unresolved \u2014 the one before the images",
+      "ok": true
+    },
+    {
+      "detail": "6 requirements",
+      "label": "the replacement's obligations are enumerated",
+      "ok": true
+    },
+    {
+      "detail": "0x60011000",
+      "label": "the entry constant is read from the bootloader's own pool",
+      "ok": true
+    },
+    {
+      "detail": "recorded as a correction rather than relied on",
+      "label": "the ROM/RAM-remapping premise is NOT in notes/references.md",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "the ROM stage",
+      "label": "at least one claim is left unresolved",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and a citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "Nothing in software. Address 0 is ordinary writable RAM by hardware arrangement: the handoff stub stores into it with a plain word loop and the bootloader writes a vector slot through VTOR. No preserved image configures, enables or relocates anything to make that true.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1",
+        "log 101"
+      ],
+      "key": "mechanism",
+      "kind_basis": "the handoff stub's complete 0x50-byte listing, which contains only an interrupt mask, a copy, two barriers and an AIRCR reset",
+      "question": "What makes address 0 writable?"
+    },
+    {
+      "answer": "No. All 15 registers of the 0x45000000 block are enumerated across four images, and not one write stores a base-address-shaped value \u2014 every stored value is a small bitmask or enable field. A register that relocated a 64 KiB window would have to be told where.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1"
+      ],
+      "key": "sysctl",
+      "kind_basis": "the census, grouped by register, with the stored values listed",
+      "question": "Is there a system-control remap register?"
+    },
+    {
+      "answer": "No. VTOR is read ten times across the four images \u2014 for the initial stack pointer, and once to reach the table as data \u2014 and written zero times. Nothing relocates the vector table.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1",
+        "this log step 2"
+      ],
+      "key": "vtor",
+      "kind_basis": "the census, filtered to VTOR",
+      "question": "Is it a VTOR-plus-copy arrangement?"
+    },
+    {
+      "answer": "No. If it were, the entry image's own scatter loader at 0x148 would copy the application over 0x18000000 \u2014 over itself \u2014 while executing from it, and would be destroyed mid-copy. Both stages also place their stack in the 0x18000000 window while running code at 0, so the code and data windows are distinct.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "this log step 2",
+        "FINDINGS, Candidate A scatter-load"
+      ],
+      "key": "not_an_alias",
+      "kind_basis": "the scatter table's destination and length against the loader's own address, plus both images' initial stack pointers",
+      "question": "Is address 0 an alias of the application RAM?"
+    },
+    {
+      "answer": "Nothing, because nothing established it. The entry image's vector table stays at address 0, the application is copied to 0x18000000, and its interrupt handlers are entered through the table at 0. No software action keeps that true.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 109"
+      ],
+      "key": "persistence",
+      "kind_basis": "the absence of any VTOR write or remap write anywhere",
+      "question": "What maintains the arrangement after the app starts?"
+    },
+    {
+      "answer": "Through vector slot 7. FUN_00007fa8 reads VTOR and stores the selected entry at VTOR+0x1c, the ARMv7-M Reserved7 slot, which both images ship as zero. That the write works at all is further evidence the table is in RAM.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2"
+      ],
+      "key": "handoff_channel",
+      "kind_basis": "the setter's four-instruction listing and its pool value 0xe000ed08",
+      "question": "How does the bootloader pass the entry address?"
+    },
+    {
+      "answer": "Six things, all of them easy: sit at 0x60011000, fit the fixed 0x10000-byte copy, put its vector table at image offset 0, put its stack in the 0x18000000 window, configure no remap and never write VTOR, and not assume vector slot 7 is zero at runtime. Preserving the arrangement means leaving it alone.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3"
+      ],
+      "key": "replacement",
+      "kind_basis": "the constants recovered above, each read from bytes",
+      "question": "What must a replacement entry image reproduce?"
+    },
+    {
+      "answer": "What places the BOOTLOADER at address 0 before any preserved image runs. That is a ROM or hardware boot stage outside the preserved set, it was never searched and cannot be, and every statement here begins after it has already happened.",
+      "confidence": "unresolved",
+      "evidence": [
+        "this log step 2",
+        "log 113"
+      ],
+      "key": "rom",
+      "kind_basis": "the preserved set contains no code that writes the bootloader to address 0",
+      "question": "What stays unresolved?"
+    }
+  ],
+  "disclaimer": "Offline analysis of preserved images. No device was accessed. This authorises nothing live.",
+  "handoff_stub": {
+    "aircr_literal_present": true,
+    "conclusion": "the stub disables interrupts, copies, and resets. It configures NOTHING. Address 0 is already writable when it runs.",
+    "length": 80,
+    "literals": {
+      "0x18010048": "0xe000ed0c",
+      "0x1801004c": "0x05fa0000"
+    },
+    "reached_by": "bootloader veneer 0x00000fee (movw/movt to 0x18010000)",
+    "runs_at": "0x18010000",
+    "steps": [
+      "msr primask,#1 \u2014 disable interrupts",
+      "word-copy len>>2 words from src to dst, dst = 0",
+      "dsb #0xf",
+      "read AIRCR (0xe000ed0c), keep PRIGROUP (& 0x700), or VECTKEY (0x05fa0000), add SYSRESETREQ (0x4)",
+      "store to AIRCR \u2014 system reset",
+      "dsb #0xf, then spin until the reset lands"
+    ],
+    "vectkey_literal_present": true,
+    "why_in_ram": "it overwrites address 0, which is where the bootloader itself is executing. The copy therefore has to run from somewhere else, and 0x18010000 is disjoint from the 0..0xffff destination.",
+    "writes_a_system_control_register": false
+  },
+  "replacement_requirements": [
+    {
+      "confidence": "observed",
+      "detail": "the bootloader compares the selected entry against 0x60011000 and refuses anything else",
+      "requirement": "place the image where the bootloader looks"
+    },
+    {
+      "confidence": "observed",
+      "detail": "the copy length is a hard-coded 0x10000 bytes; the vendor entry image is 0x58ac, so there is room, but the length is not negotiable and the source must be readable for the whole 0x10000",
+      "requirement": "fit the fixed copy"
+    },
+    {
+      "confidence": "observed",
+      "detail": "the image lands at address 0 and VTOR is never written, so the table must be the first thing in the image",
+      "requirement": "put the vector table at image offset 0"
+    },
+    {
+      "confidence": "observed",
+      "detail": "both preserved stages do, and the entry image's own init bounds-checks MSP into [0x18000000, ...] and faults otherwise",
+      "requirement": "put the stack in the 0x18000000 window"
+    },
+    {
+      "confidence": "observed",
+      "detail": "nothing in any preserved image does either. Preserving the arrangement means leaving it alone, which is the easiest possible obligation",
+      "requirement": "configure no remap, and do not write VTOR"
+    },
+    {
+      "confidence": "observed",
+      "detail": "the bootloader writes it to VTOR+0x1c before the reset; a replacement may read it or ignore it, but must not rely on slot 7 being zero at runtime",
+      "requirement": "expect the selected entry in vector slot 7"
+    }
+  ],
+  "slot7_channel": {
+    "boot_slot7_value": "0x00000000",
+    "entry_slot7_value": "0x00000000",
+    "listing": "ldr r1,[pool] ; ldr r1,[r1] ; str r0,[r1,#0x1c] ; bx lr",
+    "meaning": "the bootloader stores the selected entry address into an unused vector slot, reached through VTOR, immediately before the copy and reset. Both images ship that slot as zero, so it is scratch. It is a handoff variable that survives the reset BECAUSE the vector table is in writable RAM \u2014 which is itself evidence that address 0 is RAM.",
+    "pool_is_vtor": true,
+    "pool_value": "0xe000ed08",
+    "setter": "0x00007fa8",
+    "slot": 7,
+    "slot_name": "Reserved7, unused by ARMv7-M",
+    "slot_offset": "0x1c"
+  },
+  "summary": {
+    "checks": 23,
+    "failed": 0,
+    "ok": true
+  },
+  "sysctl_block": {
+    "any_base_shaped_store": false,
+    "base_shaped_stores": [],
+    "basis": "not one write into the block stores a base-address-shaped value. Every stored value is a small bitmask or enable field (0x0, 0x2, 0x4, 0x8, 0x10, 0x28, 0x1, 0x7fff, 0x9fff, 0xfffd, 0xffff). A register that relocated a 64 KiB window would have to be told where, and none is.",
+    "eliminated": true,
+    "register_count": 15,
+    "registers": [
+      {
+        "accesses": 55,
+        "functions": [
+          "0000075c",
+          "000007fe",
+          "00000986",
+          "00000de8",
+          "00001216",
+          "000012b6"
+        ],
+        "images": [
+          "app",
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 37,
+        "register": "0x45000000",
+        "stored": [],
+        "writes": 18
+      },
+      {
+        "accesses": 38,
+        "functions": [
+          "000007fe",
+          "00000918",
+          "000012b6",
+          "00004910",
+          "18039bb8",
+          "1803a3e4"
+        ],
+        "images": [
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 24,
+        "register": "0x45000004",
+        "stored": [],
+        "writes": 14
+      },
+      {
+        "accesses": 7,
+        "functions": [
+          "00000de8",
+          "00004d40",
+          "00005648",
+          "1801bc30",
+          "18039c24"
+        ],
+        "images": [
+          "app",
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 7,
+        "register": "0x45000008",
+        "stored": [],
+        "writes": 0
+      },
+      {
+        "accesses": 58,
+        "functions": [
+          "0000075c",
+          "000007fe",
+          "00000954",
+          "00000986",
+          "00000e68",
+          "00001216"
+        ],
+        "images": [
+          "app",
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 45,
+        "register": "0x4500000c",
+        "stored": [
+          "0x0",
+          "0x10",
+          "0x2",
+          "0x4"
+        ],
+        "writes": 13
+      },
+      {
+        "accesses": 5,
+        "functions": [
+          "00000954",
+          "00000986",
+          "00004910",
+          "18039bb8",
+          "1803a3e4"
+        ],
+        "images": [
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 3,
+        "register": "0x45000010",
+        "stored": [
+          "0x0"
+        ],
+        "writes": 2
+      },
+      {
+        "accesses": 8,
+        "functions": [
+          "00000de8",
+          "18039c24"
+        ],
+        "images": [
+          "entry",
+          "second"
+        ],
+        "reads": 4,
+        "register": "0x45000018",
+        "stored": [],
+        "writes": 4
+      },
+      {
+        "accesses": 4,
+        "functions": [
+          "00000ef6",
+          "18039c24"
+        ],
+        "images": [
+          "entry",
+          "second"
+        ],
+        "reads": 2,
+        "register": "0x45000020",
+        "stored": [],
+        "writes": 2
+      },
+      {
+        "accesses": 4,
+        "functions": [
+          "00004d40"
+        ],
+        "images": [
+          "boot"
+        ],
+        "reads": 0,
+        "register": "0x4500002c",
+        "stored": [
+          "0x0"
+        ],
+        "writes": 4
+      },
+      {
+        "accesses": 4,
+        "functions": [
+          "00000de8",
+          "18039c24"
+        ],
+        "images": [
+          "entry",
+          "second"
+        ],
+        "reads": 2,
+        "register": "0x45000050",
+        "stored": [],
+        "writes": 2
+      },
+      {
+        "accesses": 4,
+        "functions": [
+          "0000539c",
+          "000054f8",
+          "18011dd0",
+          "18012030"
+        ],
+        "images": [
+          "app",
+          "boot"
+        ],
+        "reads": 4,
+        "register": "0x45000054",
+        "stored": [],
+        "writes": 0
+      },
+      {
+        "accesses": 5,
+        "functions": [
+          "00000de8",
+          "00005648",
+          "00007d7c",
+          "18039c24"
+        ],
+        "images": [
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 1,
+        "register": "0x45000100",
+        "stored": [
+          "0x7fff",
+          "0x9fff"
+        ],
+        "writes": 4
+      },
+      {
+        "accesses": 7,
+        "functions": [
+          "00000de8",
+          "00000ec4",
+          "00005648",
+          "18039c24"
+        ],
+        "images": [
+          "boot",
+          "entry",
+          "second"
+        ],
+        "reads": 2,
+        "register": "0x4500010c",
+        "stored": [
+          "0xfffd",
+          "0xffff"
+        ],
+        "writes": 5
+      },
+      {
+        "accesses": 6,
+        "functions": [
+          "00007d7c",
+          "00009dec",
+          "18015ce2",
+          "18016b7c"
+        ],
+        "images": [
+          "app",
+          "boot"
+        ],
+        "reads": 2,
+        "register": "0x45000110",
+        "stored": [
+          "0x28",
+          "0x8"
+        ],
+        "writes": 4
+      },
+      {
+        "accesses": 1,
+        "functions": [
+          "1803a63c"
+        ],
+        "images": [
+          "second"
+        ],
+        "reads": 0,
+        "register": "0x45000114",
+        "stored": [
+          "0x1"
+        ],
+        "writes": 1
+      },
+      {
+        "accesses": 4,
+        "functions": [
+          "000014be",
+          "180381d6"
+        ],
+        "images": [
+          "entry",
+          "second"
+        ],
+        "reads": 2,
+        "register": "0x45000300",
+        "stored": [],
+        "writes": 2
+      }
+    ],
+    "total_accesses": 210
+  },
+  "unresolved": [
+    {
+      "detail": "What places the bootloader at address 0 is not in any preserved image. A mask ROM was never searched and cannot be, so this is a boundary, not an absence.",
+      "key": "rom_stage"
+    },
+    {
+      "detail": "The address-0 window is at least 0x10000 bytes because the copy is that long. Its true size, and whether it is a dedicated block or a window onto something larger, is not established.",
+      "key": "window_extent"
+    },
+    {
+      "detail": "Which physical memory backs address 0 is unknown. That it is writable and distinct from 0x18000000 is shown; what it IS is not.",
+      "key": "window_identity"
+    },
+    {
+      "detail": "Whether address 0 is a hardwired alias of some other range, or a memory with its own decode, cannot be distinguished from code that never configures it.",
+      "key": "alias_direction"
+    },
+    {
+      "detail": "Whether the address-0 contents survive the AIRCR reset is assumed by the design \u2014 the copy happens before the reset and the image runs after it \u2014 but no code asserts it and no test could.",
+      "key": "reset_state"
+    },
+    {
+      "detail": "The bootloader writes vector slot 7; no preserved image is shown reading it back. Its consumer is not recovered.",
+      "key": "slot7_reader"
+    }
+  ],
+  "vtor": {
+    "basis": "VTOR is read to fetch the initial stack pointer and, in one bootloader function, to reach the vector table as data. It is never written, in any of the four images. Nothing relocates the table, so the table's presence at address 0 is not a software arrangement.",
+    "eliminated": true,
+    "reads": 10,
+    "sites": [
+      {
+        "dir": "read",
+        "func": "0x0000075c",
+        "image": "entry",
+        "instr": "0x00000778"
+      },
+      {
+        "dir": "read",
+        "func": "0x000010ae",
+        "image": "entry",
+        "instr": "0x000010f0"
+      },
+      {
+        "dir": "read",
+        "func": "0x000014a8",
+        "image": "entry",
+        "instr": "0x000014b0"
+      },
+      {
+        "dir": "read",
+        "func": "0x000002f4",
+        "image": "boot",
+        "instr": "0x000002fc"
+      },
+      {
+        "dir": "read",
+        "func": "0x00002818",
+        "image": "boot",
+        "instr": "0x00002832"
+      },
+      {
+        "dir": "read",
+        "func": "0x00007fa8",
+        "image": "boot",
+        "instr": "0x00007faa"
+      },
+      {
+        "dir": "read",
+        "func": "0x180381c0",
+        "image": "second",
+        "instr": "0x180381c8"
+      },
+      {
+        "dir": "read",
+        "func": "0x18038be0",
+        "image": "second",
+        "instr": "0x18038c22"
+      },
+      {
+        "dir": "read",
+        "func": "0x1803a3e4",
+        "image": "second",
+        "instr": "0x1803a56e"
+      },
+      {
+        "dir": "read",
+        "func": "0x1803a3e4",
+        "image": "second",
+        "instr": "0x1803a5b8"
+      }
+    ],
+    "writes": 0
+  }
+}

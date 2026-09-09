@@ -1,0 +1,1318 @@
+{
+  "background": {
+    "handshake_last_query_t": 289.477134,
+    "host_vendor_frames_after_handshake": 40,
+    "keepalive_period_s": null,
+    "other_devices": [
+      {
+        "address": 3,
+        "device": "0b05:19af",
+        "frames": 185372,
+        "share": 0.7972
+      },
+      {
+        "address": 2,
+        "device": "1532:00e6",
+        "frames": 44986,
+        "share": 0.1935
+      },
+      {
+        "address": 5,
+        "device": "174c:2074",
+        "frames": 12,
+        "share": 0.0001
+      },
+      {
+        "address": 1,
+        "device": "174c:3074",
+        "frames": 6,
+        "share": 0.0
+      },
+      {
+        "address": 4,
+        "device": "13d3:3614",
+        "frames": 6,
+        "share": 0.0
+      }
+    ],
+    "subject_vendor_frames": 148,
+    "verdict": "Armoury Crate sends the Falchion NO periodic keepalive. After the startup handshake every host frame on the vendor channel is a deliberate user action (51 31) and its commit (50 55). The heavy periodic traffic in this capture belongs to OTHER devices and must not be attributed to the keyboard."
+  },
+  "capture": {
+    "anchor_method": "traffic landmarks \u2014 no wall-clock stamps were recorded for the rate changes",
+    "duration_s": 473.772421,
+    "fields_used": [
+      "frame.number",
+      "frame.time_relative",
+      "usb.device_address",
+      "usb.endpoint_address",
+      "usb.transfer_type",
+      "usb.data_len",
+      "usb.src",
+      "usb.dst",
+      "usb.bmRequestType",
+      "usb.setup.bRequest",
+      "usb.bDescriptorType",
+      "usbhid.data"
+    ],
+    "fields_verified_empty": {
+      "data.data": 0,
+      "usb.capdata": 0,
+      "usb.data_fragment": 0
+    },
+    "file": "captures/02-polling-rate.pcap",
+    "frames": 232530,
+    "second_capture": "none \u2014 no lighting capture was taken, so the lighting branch of the analysis is skipped",
+    "sha256": "a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54",
+    "tshark": "TShark (Wireshark) 4.7.3."
+  },
+  "checks": [
+    {
+      "detail": "0b05:1b7e at address(es) [6, 7]",
+      "label": "the Falchion identifies itself on the wire",
+      "ok": true
+    },
+    {
+      "detail": "bcdDevice 0x0159 on every subject address",
+      "label": "the subject's bcdDevice is the preserved 1.59 firmware",
+      "ok": true
+    },
+    {
+      "detail": "payload offset 4 = [0, 3] over 20 writes",
+      "label": "the rate field takes exactly two values",
+      "ok": true
+    },
+    {
+      "detail": "20 frames",
+      "label": "every rate write is opcode 51 subcommand 31",
+      "ok": true
+    },
+    {
+      "detail": "index 0: 6 windows, index 3: 6 windows",
+      "label": "each rate value repeats across at least two windows (U3)",
+      "ok": true
+    },
+    {
+      "detail": "12 windows",
+      "label": "the collapsed windows strictly alternate",
+      "ok": true
+    },
+    {
+      "detail": "20 writes, all committed",
+      "label": "a 50 55 commit follows every 51 31 write",
+      "ok": true
+    },
+    {
+      "detail": "14 isolated reports land there, 0 consecutive pairs",
+      "label": "no consecutive report pair lies inside a write-to-commit interval, which is precisely why U4 stays open",
+      "ok": true
+    },
+    {
+      "detail": "one real GET_DESCRIPTOR(device), at t=185.087648; the t=0 descriptor frames are USBPcap's injected synthesis and are excluded",
+      "label": "the subject enumerates exactly once \u2014 no rate change re-enumerates (U5)",
+      "ok": true
+    },
+    {
+      "detail": "402 control frames, all in [185.087648, 185.817046]; first rate change at 297.109678",
+      "label": "no control transfer reaches the subject at or after any rate change (U1)",
+      "ok": true
+    },
+    {
+      "detail": "0x0d bInterval=4, 0x0f bInterval=4, 0x81 bInterval=1, 0x85 bInterval=1, 0x8c bInterval=1, 0x8e bInterval=4",
+      "label": "the wire descriptor reproduces log 107's bInterval table",
+      "ok": true
+    },
+    {
+      "detail": "index 0: 1000 Hz; index 3: 8000 Hz",
+      "label": "EP 0x81: the report grid measures index 0 = 1000 Hz and index 3 = 8000 Hz",
+      "ok": true
+    },
+    {
+      "detail": "index 0: 1000 Hz; index 3: 8000 Hz",
+      "label": "EP 0x8c: the report grid measures index 0 = 1000 Hz and index 3 = 8000 Hz",
+      "ok": true
+    },
+    {
+      "detail": "index 0: 85.1% on the 1 ms grid; index 3: 12.2%",
+      "label": "the 1 ms grid separates the two states, which is what makes the reading a measurement rather than a restatement of the owner's order",
+      "ok": true
+    },
+    {
+      "detail": "90.0% of 229 gaps",
+      "label": "index 3's reports land on the 125 us grid, which is impossible at full speed \u2014 this capture demonstrates high-speed operation",
+      "ok": true
+    },
+    {
+      "detail": "data.data=0, usb.capdata=0, usb.data_fragment=0 \u2014 note this build DOES populate usb.data_fragment on 90 control transfers, so the owner's blanket 'returns EMPTY' is corrected to 'empty on the vendor endpoints'",
+      "label": "on the vendor endpoints only usbhid.data carries the payload (U8)",
+      "ok": true
+    },
+    {
+      "detail": "[12 03] [12 00] [22 01] [12 12] [12 08] [12 16] [12 14] [25 00] [25 01]",
+      "label": "the launch burst ends with notes/protocol.md's recorded nine-command startup block, in order",
+      "ok": true
+    },
+    {
+      "detail": "74 request/response pairs",
+      "label": "every vendor request has exactly one reply",
+      "ok": true
+    },
+    {
+      "detail": "2 write-capable commands",
+      "label": "every state-writing command is marked owner-approval-only",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the never-send list covers every write-capable command",
+      "ok": true
+    }
+  ],
+  "devices": [
+    {
+      "address": 1,
+      "bcd_device": "0x0001",
+      "frames": 6,
+      "is_subject": false,
+      "pid": "0x3074",
+      "vid": "0x174c"
+    },
+    {
+      "address": 2,
+      "bcd_device": "0x0101",
+      "frames": 44986,
+      "is_subject": false,
+      "pid": "0x00e6",
+      "vid": "0x1532"
+    },
+    {
+      "address": 3,
+      "bcd_device": "0x0100",
+      "frames": 185372,
+      "is_subject": false,
+      "pid": "0x19af",
+      "vid": "0x0b05"
+    },
+    {
+      "address": 4,
+      "bcd_device": "0x0100",
+      "frames": 6,
+      "is_subject": false,
+      "pid": "0x3614",
+      "vid": "0x13d3"
+    },
+    {
+      "address": 5,
+      "bcd_device": "0x0001",
+      "frames": 12,
+      "is_subject": false,
+      "pid": "0x2074",
+      "vid": "0x174c"
+    },
+    {
+      "address": 6,
+      "bcd_device": "0x0159",
+      "frames": 14,
+      "is_subject": true,
+      "pid": "0x1b7e",
+      "vid": "0x0b05"
+    },
+    {
+      "address": 7,
+      "bcd_device": "0x0159",
+      "frames": 2134,
+      "is_subject": true,
+      "pid": "0x1b7e",
+      "vid": "0x0b05"
+    }
+  ],
+  "disclaimer": "Offline analysis of a preserved capture and preserved firmware images. No device was accessed and no frame was constructed for transmission. Every byte string here was read out of the capture or the images. This authorises nothing live.",
+  "enumeration": {
+    "control_transfer_span": {
+      "count": 402,
+      "first": 185.087648,
+      "last": 185.817046
+    },
+    "endpoints": [
+      {
+        "b_interval": 1,
+        "endpoint": "0x81",
+        "w_max_packet_size": 8
+      },
+      {
+        "b_interval": 1,
+        "endpoint": "0x85",
+        "w_max_packet_size": 64
+      },
+      {
+        "b_interval": 4,
+        "endpoint": "0x0d",
+        "w_max_packet_size": 64
+      },
+      {
+        "b_interval": 1,
+        "endpoint": "0x8c",
+        "w_max_packet_size": 21
+      },
+      {
+        "b_interval": 4,
+        "endpoint": "0x8e",
+        "w_max_packet_size": 19
+      },
+      {
+        "b_interval": 4,
+        "endpoint": "0x0f",
+        "w_max_packet_size": 64
+      }
+    ],
+    "events": [
+      {
+        "address": 7,
+        "frame": 76117,
+        "injected": false,
+        "t": 185.087648
+      }
+    ],
+    "injected_at_t0": [
+      {
+        "address": 6,
+        "frame": 19,
+        "injected": true,
+        "t": 0.0
+      },
+      {
+        "address": 7,
+        "frame": 76117,
+        "injected": false,
+        "t": 185.087648
+      }
+    ]
+  },
+  "firmware": {
+    "acceptance": {
+      "accepted_values": [
+        0,
+        3
+      ],
+      "note": "the handler accepts 0 and 3 by explicit comparison and falls through for everything else, INCLUDING 1 and 2. The four-entry reading rests on bfi's 4-bit field, the mask `and r1,r0,#0xf`, and the `1 << index` expansion \u2014 not on the handler accepting 1 or 2, which it does not."
+    },
+    "consumer": {
+      "byte": "0x1801e736",
+      "found": false,
+      "readers": [],
+      "search": "an aligned-word search of every preserved image for the address, a displacement search over every region pointer within 4095 bytes below it, and a movw/movt immediate search for its construction",
+      "verdict": "SIX WRITERS, NO READER. Log 124's residual negative survives one level deeper: the firmware stores the index, persists it and expands it to a multiplier, and nothing in the preserved images turns that multiplier into a timer period. What the images do NOT contain is not evidence that the device ignores it \u2014 the wire shows it plainly does not.",
+      "writers": [
+        "0x1800117c",
+        "0x18001536",
+        "0x180018f4",
+        "0x18001ecc",
+        "0x18002b4e",
+        "0x18007a18"
+      ]
+    },
+    "get_command": {
+      "address": "0x18002254",
+      "command": "12 15",
+      "confidence": "strongly-inferred",
+      "kind_basis": "the handler is read out of the instruction stream and reaches the same field the set handler writes, but Armoury Crate never sent 12 15 in this capture, so no reply was observed",
+      "listing": [
+        "18002254  ldr    r0,[0x1800259c]   ; = 0x18021de0, the profile block",
+        "18002256  adds   r3,r4,#0x4",
+        "18002258  ldrb.w r0,[r0,#0x4f8]",
+        "1800225c  and    r0,r0,#0xf",
+        "18002260  strb   r0,[r4,#0x4]      ; the index into reply byte 4",
+        "18002262  movs   r0,#0x3c          ; 60-byte payload",
+        "18002268  movs   r1,#0x15",
+        "18002250  movs   r0,#0x12          ; -> SendResponse64"
+      ]
+    },
+    "handler": {
+      "address": "0x18002b2e",
+      "confidence": "observed",
+      "kind_basis": "static analysis of the preserved installed application image, cross-checked instruction for instruction against the pre-existing Ghidra listing in ghidra/decompiles/dispatcher.txt",
+      "listing": [
+        "18002b2e  ldrb   r1,[r4,#0x4]     ; r4 = 0x180233a8, the vendor request buffer",
+        "18002b30  cmp    r1,#0x3",
+        "18002b32  beq    0x18002b38",
+        "18002b34  cmp    r1,#0x0",
+        "18002b36  bne    0x18002b6c        ; anything but 0 or 3 leaves the handler",
+        "18002b38  ldr    r2,[0x18002e40]   ; *(0x18002e40) = 0x18021de0, the profile block",
+        "18002b3a  ldrh.w r0,[r2,#0x4f8]",
+        "18002b3e  bfi    r0,r1,#0x0,#0x4   ; the index into bits 0..3",
+        "18002b42  strh.w r0,[r2,#0x4f8]",
+        "18002b46  and    r1,r0,#0xf",
+        "18002b4a  lsl.w  r0,r6,r1          ; r6 = 1, set once at 0x18001fd6",
+        "18002b4e  ldr    r1,[0x18002e44]   ; *(0x18002e44) = 0x1801e736",
+        "18002b50  strb   r0,[r1,#0x0]      ; the expanded multiplier, as a byte",
+        "18002b52  adr    r0,[0x18002e48]   ; the string \"=S_PR_U\"",
+        "18002b54  bl     0x1801bd78        ; the firmware's own logger",
+        "18002b58  adds   r3,r4,#0x4",
+        "18002b5a  movs   r2,#0x0",
+        "18002b5c  movs   r1,#0x31",
+        "18002b5e  str    r6,[sp,#0x0]      ; response payload length = 1",
+        "18002b60  b      0x180030c4        ; movs r0,#0x51 ; bl SendResponse64"
+      ],
+      "reached_from": "the vendor-HID dispatcher FUN_18001fbe: cmp r2,#0x51 at 0x1800201c selects the opcode, cmp r2,#0x31 at 0x180024d2 the subcommand"
+    },
+    "persistence": {
+      "checksum_coverage": "neither",
+      "checksum_ranges": "checksum A covers +0x002..+0x4b1 and checksum B covers +0x4fc..+0x7bb, so +0x4f8 falls between them and writing four bits of it invalidates neither sum",
+      "corrects": "log 125 recorded +0x4f8 as the VERSION STAMP copied from ROM 0x1801bfbc. That reading is refined, not withdrawn: the polling-rate index occupies the low four bits of the same halfword, and log 125's unmatched `performance.pollingRate` row is now matched.",
+      "field": "profile block 0x18021de0 + 0x4f8, bits 0..3",
+      "reload_path": "FUN_18000d56 at 0x1800153a reloads it: ldrb.w r1,[r7,#0x4f8]; and r1,r1,#0xf; lsl.w r1,r0,r1; strb r1,[r2] \u2014 the same expansion as the wire handler"
+    },
+    "units": {
+      "attached_now": "the REPORT CADENCE, measured: index 0 delivers on a 1 ms grid and index 3 on a 125 us grid. Combined with the firmware's 1 << index, the expansion's unit is 1000 Hz.",
+      "still_unresolved": "IRQ38's period. Nothing here reads the tick, and the dependency map's clock_frequency stays unresolved. The six subsystems log 124 found riding IRQ38 are untouched by this step."
+    }
+  },
+  "polling_rate": {
+    "command": {
+      "distinct_payloads_observed": [
+        "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "opcode": "0x51",
+      "other_bytes": "zero in every observed frame",
+      "owner_approval_required": true,
+      "response": "a verbatim echo of the request. The firmware builds it from the request rather than copying the frame: opcode 0x51, subcommand 0x31, a zero 16-bit field, then one payload byte taken from request byte 4",
+      "subcommand": "0x31",
+      "value_offset": 4,
+      "value_width_bytes": 1
+    },
+    "commits": [
+      {
+        "commit_frame": 142467,
+        "commit_latency_ms": 55.659,
+        "echo_latency_ms": 102.392,
+        "write_frame": 142443,
+        "write_t": 297.109678
+      },
+      {
+        "commit_frame": 149991,
+        "commit_latency_ms": 56.022,
+        "echo_latency_ms": 102.297,
+        "write_frame": 149897,
+        "write_t": 312.186715
+      },
+      {
+        "commit_frame": 151015,
+        "commit_latency_ms": 76.725,
+        "echo_latency_ms": 102.946,
+        "write_frame": 150977,
+        "write_t": 314.2555
+      },
+      {
+        "commit_frame": 151393,
+        "commit_latency_ms": 64.086,
+        "echo_latency_ms": 104.11,
+        "write_frame": 151361,
+        "write_t": 315.197956
+      },
+      {
+        "commit_frame": 151931,
+        "commit_latency_ms": 51.685,
+        "echo_latency_ms": 101.856,
+        "write_frame": 151907,
+        "write_t": 316.532745
+      },
+      {
+        "commit_frame": 152137,
+        "commit_latency_ms": 65.623,
+        "echo_latency_ms": 101.65,
+        "write_frame": 152107,
+        "write_t": 316.994127
+      },
+      {
+        "commit_frame": 152243,
+        "commit_latency_ms": 56.761,
+        "echo_latency_ms": 101.628,
+        "write_frame": 152217,
+        "write_t": 317.234008
+      },
+      {
+        "commit_frame": 152337,
+        "commit_latency_ms": 51.672,
+        "echo_latency_ms": 101.469,
+        "write_frame": 152315,
+        "write_t": 317.434257
+      },
+      {
+        "commit_frame": 152465,
+        "commit_latency_ms": 50.509,
+        "echo_latency_ms": 101.488,
+        "write_frame": 152443,
+        "write_t": 317.716398
+      },
+      {
+        "commit_frame": 152583,
+        "commit_latency_ms": 60.389,
+        "echo_latency_ms": 102.162,
+        "write_frame": 152557,
+        "write_t": 317.966853
+      },
+      {
+        "commit_frame": 152689,
+        "commit_latency_ms": 54.708,
+        "echo_latency_ms": 101.792,
+        "write_frame": 152661,
+        "write_t": 318.198015
+      },
+      {
+        "commit_frame": 154509,
+        "commit_latency_ms": 56.417,
+        "echo_latency_ms": 103.097,
+        "write_frame": 154482,
+        "write_t": 322.023249
+      },
+      {
+        "commit_frame": 163215,
+        "commit_latency_ms": 61.627,
+        "echo_latency_ms": 102.309,
+        "write_frame": 163187,
+        "write_t": 339.029117
+      },
+      {
+        "commit_frame": 172297,
+        "commit_latency_ms": 48.914,
+        "echo_latency_ms": 102.351,
+        "write_frame": 172249,
+        "write_t": 358.093341
+      },
+      {
+        "commit_frame": 182309,
+        "commit_latency_ms": 51.458,
+        "echo_latency_ms": 116.415,
+        "write_frame": 182287,
+        "write_t": 379.571397
+      },
+      {
+        "commit_frame": 193943,
+        "commit_latency_ms": 54.729,
+        "echo_latency_ms": 106.856,
+        "write_frame": 193912,
+        "write_t": 404.045587
+      },
+      {
+        "commit_frame": 203945,
+        "commit_latency_ms": 55.552,
+        "echo_latency_ms": 103.633,
+        "write_frame": 203863,
+        "write_t": 416.655058
+      },
+      {
+        "commit_frame": 208779,
+        "commit_latency_ms": 61.918,
+        "echo_latency_ms": 101.625,
+        "write_frame": 208683,
+        "write_t": 425.323301
+      },
+      {
+        "commit_frame": 215383,
+        "commit_latency_ms": 60.164,
+        "echo_latency_ms": 101.922,
+        "write_frame": 215355,
+        "write_t": 438.990826
+      },
+      {
+        "commit_frame": 220763,
+        "commit_latency_ms": 60.57,
+        "echo_latency_ms": 103.371,
+        "write_frame": 220736,
+        "write_t": 449.615797
+      }
+    ],
+    "encoding": {
+      "derived_not_observed": {
+        "1": 2000,
+        "2": 4000
+      },
+      "direction": "ascending \u2014 the larger index is the faster rate",
+      "firmware_expansion": "1 << index",
+      "kind": "index",
+      "note": "Armoury Crate 6.5.7.0 exposes only 1000 and 8000 Hz for this keyboard, so indices 1 and 2 were never sent. They are read out of the firmware's own arithmetic and its bound of 3, not observed on the wire.",
+      "observed": {
+        "0": 1000,
+        "3": 8000
+      },
+      "unit_of_expansion_hz": 1000
+    },
+    "measurement": {
+      "grids_ms": {
+        "fast": 0.125,
+        "slow": 1.0
+      },
+      "method": "inter-report timestamp quantisation on the subject's interrupt-IN endpoints, per rate state",
+      "per_endpoint": {
+        "0x81": {
+          "0": {
+            "gaps": 121,
+            "min_gap_ms": 2.994,
+            "on_125us_fraction": 0.9091,
+            "on_125us_grid": 110,
+            "on_1ms_fraction": 0.8512,
+            "on_1ms_grid": 103
+          },
+          "3": {
+            "gaps": 229,
+            "min_gap_ms": 1.752,
+            "on_125us_fraction": 0.8996,
+            "on_125us_grid": 206,
+            "on_1ms_fraction": 0.1223,
+            "on_1ms_grid": 28
+          }
+        },
+        "0x8c": {
+          "0": {
+            "gaps": 121,
+            "min_gap_ms": 3.001,
+            "on_125us_fraction": 0.8347,
+            "on_125us_grid": 101,
+            "on_1ms_fraction": 0.8264,
+            "on_1ms_grid": 100
+          },
+          "3": {
+            "gaps": 229,
+            "min_gap_ms": 1.753,
+            "on_125us_fraction": 0.8865,
+            "on_125us_grid": 203,
+            "on_1ms_fraction": 0.131,
+            "on_1ms_grid": 30
+          }
+        }
+      },
+      "verdict": {
+        "0x81": {
+          "0": 1000,
+          "3": 8000
+        },
+        "0x8c": {
+          "0": 1000,
+          "3": 8000
+        }
+      }
+    },
+    "persistence": {
+      "applies_without_commit": "NOT DETERMINED BY THIS CAPTURE. Key reports DO land between a 51 31 write and its 50 55 echo \u2014 14 of them \u2014 but never two consecutively, and only a consecutive PAIR yields an inter-report gap that could be graded against a grid. Worse for the question, 12 of those 14 follow a write of the value the device already held, so even a pair there would have compared one state with itself. The remaining 2 follow a real change but are lone reports with no successor inside the window",
+      "commit_command": "50 55",
+      "commit_required_to_persist": true,
+      "stored_at": "profile block +0x4f8, bits 0..3"
+    },
+    "re_enumeration": {
+      "b_interval_consequence": "because the device never re-enumerates, this capture provides no post-change configuration descriptor. Whether any bInterval would change is NOT ANSWERED. The mechanism does not need one: the host already polls EP 0x81 every 125 us (bInterval 1 at high speed), and the rate setting changes how often the DEVICE has a new report ready.",
+      "evidence": "the subject issues exactly one GET_DESCRIPTOR(device), at the deliberate replug; no device address above the subject's appears anywhere; every control transfer to the subject predates the first rate change",
+      "occurs": false
+    },
+    "reports_inside_commit_windows": {
+      "after_real_change": 2,
+      "consecutive_pairs": 0,
+      "detail": [
+        {
+          "after_real_change": true,
+          "endpoint": "0x81",
+          "reports": [
+            314.292143
+          ],
+          "write_t": 314.2555
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x81",
+          "reports": [
+            315.346154
+          ],
+          "write_t": 315.197956
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x81",
+          "reports": [
+            317.111396
+          ],
+          "write_t": 316.994127
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x81",
+          "reports": [
+            317.352456
+          ],
+          "write_t": 317.234008
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x81",
+          "reports": [
+            317.845446
+          ],
+          "write_t": 317.716398
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x81",
+          "reports": [
+            318.091382
+          ],
+          "write_t": 317.966853
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x81",
+          "reports": [
+            318.319377
+          ],
+          "write_t": 318.198015
+        },
+        {
+          "after_real_change": true,
+          "endpoint": "0x8c",
+          "reports": [
+            314.292154
+          ],
+          "write_t": 314.2555
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x8c",
+          "reports": [
+            315.346288
+          ],
+          "write_t": 315.197956
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x8c",
+          "reports": [
+            317.111406
+          ],
+          "write_t": 316.994127
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x8c",
+          "reports": [
+            317.352398
+          ],
+          "write_t": 317.234008
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x8c",
+          "reports": [
+            317.845409
+          ],
+          "write_t": 317.716398
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x8c",
+          "reports": [
+            318.091406
+          ],
+          "write_t": 317.966853
+        },
+        {
+          "after_real_change": false,
+          "endpoint": "0x8c",
+          "reports": [
+            318.319532
+          ],
+          "write_t": 318.198015
+        }
+      ],
+      "single": 14
+    },
+    "windows": [
+      {
+        "frame": 142443,
+        "index": 0,
+        "start": 297.109678,
+        "stop": 312.186715
+      },
+      {
+        "frame": 149897,
+        "index": 3,
+        "start": 312.186715,
+        "stop": 314.2555
+      },
+      {
+        "frame": 150977,
+        "index": 0,
+        "start": 314.2555,
+        "stop": 322.023249
+      },
+      {
+        "frame": 154482,
+        "index": 3,
+        "start": 322.023249,
+        "stop": 339.029117
+      },
+      {
+        "frame": 163187,
+        "index": 0,
+        "start": 339.029117,
+        "stop": 358.093341
+      },
+      {
+        "frame": 172249,
+        "index": 3,
+        "start": 358.093341,
+        "stop": 379.571397
+      },
+      {
+        "frame": 182287,
+        "index": 0,
+        "start": 379.571397,
+        "stop": 404.045587
+      },
+      {
+        "frame": 193912,
+        "index": 3,
+        "start": 404.045587,
+        "stop": 416.655058
+      },
+      {
+        "frame": 203863,
+        "index": 0,
+        "start": 416.655058,
+        "stop": 425.323301
+      },
+      {
+        "frame": 208683,
+        "index": 3,
+        "start": 425.323301,
+        "stop": 438.990826
+      },
+      {
+        "frame": 215355,
+        "index": 0,
+        "start": 438.990826,
+        "stop": 449.615797
+      },
+      {
+        "frame": 220736,
+        "index": 3,
+        "start": 449.615797,
+        "stop": 473.772421
+      }
+    ],
+    "writes": [
+      {
+        "frame": 142443,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 297.109678
+      },
+      {
+        "frame": 149897,
+        "index": 3,
+        "payload": "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 312.186715
+      },
+      {
+        "frame": 150977,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 314.2555
+      },
+      {
+        "frame": 151361,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 315.197956
+      },
+      {
+        "frame": 151907,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 316.532745
+      },
+      {
+        "frame": 152107,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 316.994127
+      },
+      {
+        "frame": 152217,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 317.234008
+      },
+      {
+        "frame": 152315,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 317.434257
+      },
+      {
+        "frame": 152443,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 317.716398
+      },
+      {
+        "frame": 152557,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 317.966853
+      },
+      {
+        "frame": 152661,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 318.198015
+      },
+      {
+        "frame": 154482,
+        "index": 3,
+        "payload": "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 322.023249
+      },
+      {
+        "frame": 163187,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 339.029117
+      },
+      {
+        "frame": 172249,
+        "index": 3,
+        "payload": "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 358.093341
+      },
+      {
+        "frame": 182287,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 379.571397
+      },
+      {
+        "frame": 193912,
+        "index": 3,
+        "payload": "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 404.045587
+      },
+      {
+        "frame": 203863,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 416.655058
+      },
+      {
+        "frame": 208683,
+        "index": 3,
+        "payload": "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 425.323301
+      },
+      {
+        "frame": 215355,
+        "index": 0,
+        "payload": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 438.990826
+      },
+      {
+        "frame": 220736,
+        "index": 3,
+        "payload": "51310000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "t": 449.615797
+      }
+    ]
+  },
+  "startup": {
+    "bursts": [
+      {
+        "sequence": [
+          "12 14",
+          "12 07",
+          "12 14",
+          "12 14",
+          "12 00",
+          "22 01",
+          "12 12",
+          "12 14",
+          "12 00",
+          "22 01",
+          "12 07"
+        ],
+        "start": 185.573032,
+        "stop": 185.905032
+      },
+      {
+        "sequence": [
+          "12 14",
+          "12 07",
+          "12 00",
+          "22 01",
+          "12 12",
+          "12 12",
+          "12 03",
+          "12 00",
+          "22 01",
+          "12 12",
+          "12 07",
+          "12 08",
+          "12 14",
+          "12 16",
+          "12 03",
+          "12 00",
+          "22 01",
+          "12 12",
+          "12 08",
+          "12 16",
+          "12 14",
+          "25 00",
+          "25 01"
+        ],
+        "start": 286.643709,
+        "stop": 289.477134
+      }
+    ],
+    "commands": [
+      {
+        "command": "12 00",
+        "count": 5,
+        "echo_only": false,
+        "first_frame": 76787,
+        "first_t": 185.731764,
+        "request": "12000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12000000590001000600030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "12 03",
+        "count": 2,
+        "echo_only": true,
+        "first_frame": 134105,
+        "first_t": 287.0835,
+        "request": "12030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "12 07",
+        "count": 4,
+        "echo_only": false,
+        "first_frame": 76647,
+        "first_t": 185.58879,
+        "request": "12070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12070000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "12 08",
+        "count": 2,
+        "echo_only": false,
+        "first_frame": 134209,
+        "first_t": 287.262005,
+        "request": "12080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12080000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "12 12",
+        "count": 5,
+        "echo_only": false,
+        "first_frame": 76800,
+        "first_t": 185.738745,
+        "request": "12120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12120000010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "12 14",
+        "count": 7,
+        "echo_only": false,
+        "first_frame": 76627,
+        "first_t": 185.573032,
+        "request": "12140200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12140200303234303830363030313637000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "12 16",
+        "count": 2,
+        "echo_only": true,
+        "first_frame": 134287,
+        "first_t": 287.410315,
+        "request": "12160000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "12160000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "22 01",
+        "count": 5,
+        "echo_only": true,
+        "first_frame": 76795,
+        "first_t": 185.735421,
+        "request": "22010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "22010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "25 00",
+        "count": 1,
+        "echo_only": true,
+        "first_frame": 135665,
+        "first_t": 289.397795,
+        "request": "25000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "25000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "25 01",
+        "count": 1,
+        "echo_only": true,
+        "first_frame": 135735,
+        "first_t": 289.475103,
+        "request": "25010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "25010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "50 55",
+        "count": 20,
+        "echo_only": true,
+        "first_frame": 142467,
+        "first_t": 297.165337,
+        "request": "50550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "50550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "command": "51 31",
+        "count": 20,
+        "echo_only": true,
+        "first_frame": 142443,
+        "first_t": 297.109678,
+        "request": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "response": "51310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "historical_agreement": "notes/protocol.md records the startup order as 12 03, 12 00, 22 01, 12 12, 12 08, 12 16, 12 14, 25 00, 25 01. The Armoury Crate launch burst in this capture ENDS with exactly that nine-command block, in that order, so the historical record is CONFIRMED rather than corrected. What it did not record: the launch burst is longer than nine commands, it opens with 12 14 carrying request byte 2 = 02 (a model-string read returning the ASCII 024080600167) followed by 12 07, and the 12 03 / 12 00 / 22 01 / 12 12 group is repeated more than once within a single launch. The prompt's expectation that the startup query is 12 00 is therefore half right: 12 00 is the VERSION query and appears inside the block, but it is not the first query of a launch.",
+    "historical_tail": [
+      "12 03",
+      "12 00",
+      "22 01",
+      "12 12",
+      "12 08",
+      "12 16",
+      "12 14",
+      "25 00",
+      "25 01"
+    ],
+    "historical_tail_matches": true,
+    "last_launch_burst": [
+      "12 14",
+      "12 07",
+      "12 00",
+      "22 01",
+      "12 12",
+      "12 12",
+      "12 03",
+      "12 00",
+      "22 01",
+      "12 12",
+      "12 07",
+      "12 08",
+      "12 14",
+      "12 16",
+      "12 03",
+      "12 00",
+      "22 01",
+      "12 12",
+      "12 08",
+      "12 16",
+      "12 14",
+      "25 00",
+      "25 01"
+    ]
+  },
+  "summary": {
+    "checks": 20,
+    "failed": 0,
+    "ok": true
+  },
+  "uncertainties": [
+    {
+      "key": "U1",
+      "question": "Command transport: interrupt OUT or a control SET_REPORT?",
+      "resolution": "RESOLVED \u2014 interrupt OUT on EP 0x0d. Every control transfer to the subject, all 402 of them, lies inside the 0.73 s enumeration burst that follows the deliberate replug; the first rate change is over 110 s later. Both paths were searched for every window."
+    },
+    {
+      "key": "U2",
+      "question": "Encoding direction: ascending or descending?",
+      "resolution": "RESOLVED \u2014 ascending, and not from the owner's stated order alone. The report-timestamp grid measures index 3 as the faster state."
+    },
+    {
+      "key": "U3",
+      "question": "Carrier shape: a dedicated command or a byte in a larger blob?",
+      "resolution": "RESOLVED \u2014 a dedicated command. The two 51 31 forms differ at exactly one of 64 payload bytes; the other 59 non-header bytes are zero in all 20 frames. Each value recurs in at least two cleanly separated windows."
+    },
+    {
+      "key": "U4",
+      "question": "Application timing: immediately, on commit, or on re-enumeration?",
+      "resolution": "PARTIALLY RESOLVED \u2014 not on re-enumeration, because none occurs. Whether the 51 31 write alone suffices, or the 50 55 commit is needed, is NOT DETERMINED. Fourteen key reports do land inside a write-to-commit-echo interval, but never two consecutively, so no inter-report gap lies wholly inside one and there is nothing to grade against a grid; and all but two of them follow a write of the value the device already held. Every observed change was a write immediately followed by a commit."
+    },
+    {
+      "key": "U5",
+      "question": "Re-enumeration: does the device reset and come back?",
+      "resolution": "RESOLVED, NEGATIVE \u2014 and the negative is a first-class fact. Exactly one GET_DESCRIPTOR(device) in the whole capture, at the replug; no address above the subject's; the subject holds one address across all twelve windows. Consequently NO post-change configuration descriptor exists and no bInterval diff against log 107 is possible from this capture."
+    },
+    {
+      "key": "U6",
+      "question": "Background traffic: what must an app tolerate?",
+      "resolution": "RESOLVED \u2014 nothing from the keyboard. Armoury Crate sends the Falchion no periodic keepalive at all: after the startup handshake every host frame on its vendor channel is a user action. The capture's heavy periodic traffic belongs to other devices on the same root hub and is kept strictly separate."
+    },
+    {
+      "key": "U7",
+      "question": "Coalescing: fewer than four change events?",
+      "resolution": "RESOLVED, THE OTHER WAY \u2014 there are MORE. Armoury Crate 6.5.7.0 exposes only 1000 and 8000 Hz, so the prompt's 1000/2000/4000/8000 sequence was impossible; the owner toggled between the two values repeatedly. Twenty 51 31 writes collapse to twelve strictly alternating windows. Nothing was invented to reach four."
+    },
+    {
+      "key": "U8",
+      "question": "tshark output quirks.",
+      "resolution": "RESOLVED \u2014 usbhid.data carries the 64-byte payload; usb.capdata, data.data and usb.data_fragment are re-verified empty on this build rather than assumed. Every payload is length-checked to 64 bytes before it is decoded, and the firmware listing was cross-checked against an independent disassembly."
+    }
+  ],
+  "verdict": "the polling rate is set by 51 31 with a one-byte index at payload offset 4; index 0 = 1000 Hz and index 3 = 8000 Hz, measured from the report cadence; the device does not re-enumerate",
+  "wire_document": {
+    "commands": [
+      {
+        "command": "12 00",
+        "kind": "query",
+        "meaning": "firmware version; reply appends 00 00 59 00 01 00 06 00 03 00 = 1.59",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 03",
+        "kind": "query",
+        "meaning": "unidentified; reply is the header and zeros",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 07",
+        "kind": "query",
+        "meaning": "unidentified; reply appends 01",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 08",
+        "kind": "query",
+        "meaning": "unidentified; reply appends 01",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 12",
+        "kind": "query",
+        "meaning": "unidentified; reply appends 01 01",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 14",
+        "kind": "query",
+        "meaning": "with request byte 2 = 02 the reply appends the ASCII model string 024080600167; with byte 2 = 00 the reply is the header and zeros",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 15",
+        "kind": "query",
+        "meaning": "GET POLLING RATE. Not sent by Armoury Crate in this capture; recovered from the firmware dispatcher, which reads profile block +0x4f8, masks the low four bits and returns the index in reply byte 4",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "12 16",
+        "kind": "query",
+        "meaning": "unidentified; reply is the header and zeros",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "22 01",
+        "kind": "handshake",
+        "meaning": "init handshake; echo only",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "25 00",
+        "kind": "handshake",
+        "meaning": "init handshake; echo only",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "25 01",
+        "kind": "handshake",
+        "meaning": "init handshake; echo only",
+        "owner_approval_required": false,
+        "writes_device_state": false
+      },
+      {
+        "command": "51 31",
+        "kind": "write",
+        "meaning": "SET POLLING RATE. Payload byte 4 is the rate index; all other bytes are zero in every observed frame",
+        "owner_approval_required": true,
+        "writes_device_state": true
+      },
+      {
+        "command": "50 55",
+        "kind": "commit",
+        "meaning": "persistent commit to flash",
+        "owner_approval_required": true,
+        "writes_device_state": true
+      }
+    ],
+    "never_send": [
+      {
+        "frame": "50 55",
+        "why": "persistent commit to flash \u2014 writes the profile block and the wear-levelled store; observed 20 times in this capture, always immediately after a 51 31 write"
+      },
+      {
+        "frame": "51 xx (any subcommand)",
+        "why": "the configuration write family; 51 31 is the polling rate, 51 21 the Fn-layer remap, and the rest are unidentified writes"
+      },
+      {
+        "frame": "any erase / program / unlock / reset / SPI framing",
+        "why": "the bootloader vendor-HID protocol of logs 81/82/87/88; not present in this capture and not to be constructed"
+      }
+    ],
+    "transport": {
+      "endpoints": [
+        {
+          "b_interval": 1,
+          "endpoint": "0x81",
+          "w_max_packet_size": 8
+        },
+        {
+          "b_interval": 1,
+          "endpoint": "0x85",
+          "w_max_packet_size": 64
+        },
+        {
+          "b_interval": 4,
+          "endpoint": "0x0d",
+          "w_max_packet_size": 64
+        },
+        {
+          "b_interval": 1,
+          "endpoint": "0x8c",
+          "w_max_packet_size": 21
+        },
+        {
+          "b_interval": 4,
+          "endpoint": "0x8e",
+          "w_max_packet_size": 19
+        },
+        {
+          "b_interval": 4,
+          "endpoint": "0x0f",
+          "w_max_packet_size": 64
+        }
+      ],
+      "in_endpoint": "0x85",
+      "interface": 1,
+      "out_endpoint": "0x0d",
+      "report_id": "none declared \u2014 prepend a 0x00 placeholder byte on both Windows and Linux hidraw",
+      "report_size_bytes": 64,
+      "usage_page": "0xFF00"
+    }
+  }
+}

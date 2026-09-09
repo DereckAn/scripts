@@ -1,0 +1,1777 @@
+{
+  "census": {
+    "exclusive": [
+      "0x00001000",
+      "0x40018000",
+      "0x4001c000",
+      "0x40040000",
+      "0x60011000"
+    ],
+    "functions": 69,
+    "resolved": 353,
+    "shared": [
+      "0x0800ff00",
+      "0x10000000",
+      "0x20000000",
+      "0x20000f00",
+      "0x40008000",
+      "0x40009000",
+      "0x40019000",
+      "0x4001b000",
+      "0x40022000",
+      "0x4002f000",
+      "0x45000000",
+      "0x45000100",
+      "0x45000300",
+      "0x60000800",
+      "0xe000e400",
+      "0xe000ed00"
+    ],
+    "touches_application_ram": false,
+    "unresolved": 484,
+    "windows": [
+      {
+        "accesses": 1,
+        "also_in_application": false,
+        "application_accesses": 0,
+        "functions": [
+          "18038be0"
+        ],
+        "reads": 1,
+        "registers": [
+          "0x00001000"
+        ],
+        "window": "0x00001000",
+        "writes": 0
+      },
+      {
+        "accesses": 2,
+        "also_in_application": true,
+        "application_accesses": 1,
+        "functions": [
+          "1803a3e4"
+        ],
+        "reads": 2,
+        "registers": [
+          "0x0800fff8"
+        ],
+        "window": "0x0800ff00",
+        "writes": 0
+      },
+      {
+        "accesses": 1,
+        "also_in_application": true,
+        "application_accesses": 1,
+        "functions": [
+          "18039c24"
+        ],
+        "reads": 1,
+        "registers": [
+          "0x10000000"
+        ],
+        "window": "0x10000000",
+        "writes": 0
+      },
+      {
+        "accesses": 37,
+        "also_in_application": true,
+        "application_accesses": 21,
+        "functions": [
+          "18039c24",
+          "1803a3e4",
+          "1803af90"
+        ],
+        "reads": 24,
+        "registers": [
+          "0x20000000",
+          "0x20000004",
+          "0x20000008",
+          "0x2000000c",
+          "0x20000010"
+        ],
+        "window": "0x20000000",
+        "writes": 13
+      },
+      {
+        "accesses": 1,
+        "also_in_application": true,
+        "application_accesses": 2,
+        "functions": [
+          "1803b7b0"
+        ],
+        "reads": 1,
+        "registers": [
+          "0x20000f30"
+        ],
+        "window": "0x20000f00",
+        "writes": 0
+      },
+      {
+        "accesses": 4,
+        "also_in_application": true,
+        "application_accesses": 4,
+        "functions": [
+          "18039c24"
+        ],
+        "reads": 0,
+        "registers": [
+          "0x40008000",
+          "0x4000800c"
+        ],
+        "window": "0x40008000",
+        "writes": 4
+      },
+      {
+        "accesses": 4,
+        "also_in_application": true,
+        "application_accesses": 4,
+        "functions": [
+          "18039c24"
+        ],
+        "reads": 0,
+        "registers": [
+          "0x40009000",
+          "0x4000900c"
+        ],
+        "window": "0x40009000",
+        "writes": 4
+      },
+      {
+        "accesses": 12,
+        "also_in_application": false,
+        "application_accesses": 0,
+        "functions": [
+          "1803ae58",
+          "1803af28",
+          "1803af90"
+        ],
+        "reads": 3,
+        "registers": [
+          "0x40018000",
+          "0x40018004",
+          "0x40018008"
+        ],
+        "window": "0x40018000",
+        "writes": 9
+      },
+      {
+        "accesses": 10,
+        "also_in_application": true,
+        "application_accesses": 7,
+        "functions": [
+          "1803ae58",
+          "1803af28",
+          "1803af90"
+        ],
+        "reads": 7,
+        "registers": [
+          "0x40019000",
+          "0x40019004",
+          "0x40019008"
+        ],
+        "window": "0x40019000",
+        "writes": 3
+      },
+      {
+        "accesses": 54,
+        "also_in_application": true,
+        "application_accesses": 14,
+        "functions": [
+          "18038414",
+          "1803875c",
+          "180388c8",
+          "18038970",
+          "18038a4c",
+          "18038b1c",
+          "1803901c",
+          "18039a64",
+          "1803a968",
+          "1803ae58",
+          "1803af28",
+          "1803af90",
+          "1803b5a0",
+          "1803b740"
+        ],
+        "reads": 3,
+        "registers": [
+          "0x4001b000",
+          "0x4001b004",
+          "0x4001b008"
+        ],
+        "window": "0x4001b000",
+        "writes": 51
+      },
+      {
+        "accesses": 18,
+        "also_in_application": false,
+        "application_accesses": 0,
+        "functions": [
+          "1803af90",
+          "1803b5a0"
+        ],
+        "reads": 9,
+        "registers": [
+          "0x4001c004",
+          "0x4001c008",
+          "0x4001c024",
+          "0x4001c028"
+        ],
+        "window": "0x4001c000",
+        "writes": 9
+      },
+      {
+        "accesses": 11,
+        "also_in_application": true,
+        "application_accesses": 41,
+        "functions": [
+          "18039c24",
+          "1803af90"
+        ],
+        "reads": 6,
+        "registers": [
+          "0x40022000"
+        ],
+        "window": "0x40022000",
+        "writes": 5
+      },
+      {
+        "accesses": 3,
+        "also_in_application": true,
+        "application_accesses": 3,
+        "functions": [
+          "18039c24"
+        ],
+        "reads": 0,
+        "registers": [
+          "0x4002f000",
+          "0x4002f004"
+        ],
+        "window": "0x4002f000",
+        "writes": 3
+      },
+      {
+        "accesses": 98,
+        "also_in_application": false,
+        "application_accesses": 0,
+        "functions": [
+          "1803ad64",
+          "1803b24c"
+        ],
+        "reads": 53,
+        "registers": [
+          "0x40040000",
+          "0x40040004",
+          "0x4004000c",
+          "0x40040014",
+          "0x40040018",
+          "0x4004001c",
+          "0x40040020",
+          "0x40040024",
+          "0x40040028",
+          "0x40040034",
+          "0x40040038",
+          "0x4004003c",
+          "0x40040040",
+          "0x4004005c",
+          "0x40040060",
+          "0x400400a0",
+          "0x400400a4",
+          "0x400400c0",
+          "0x400400c4",
+          "0x400400e0",
+          "0x400400e4",
+          "0x400400e8",
+          "0x400400ec",
+          "0x400400f0"
+        ],
+        "window": "0x40040000",
+        "writes": 45
+      },
+      {
+        "accesses": 70,
+        "also_in_application": true,
+        "application_accesses": 78,
+        "functions": [
+          "18039bb8",
+          "18039c24",
+          "1803a3e4"
+        ],
+        "reads": 49,
+        "registers": [
+          "0x45000000",
+          "0x45000004",
+          "0x45000008",
+          "0x4500000c",
+          "0x45000010",
+          "0x45000018",
+          "0x45000020",
+          "0x45000050"
+        ],
+        "window": "0x45000000",
+        "writes": 21
+      },
+      {
+        "accesses": 5,
+        "also_in_application": true,
+        "application_accesses": 7,
+        "functions": [
+          "18039c24",
+          "1803a63c"
+        ],
+        "reads": 1,
+        "registers": [
+          "0x45000100",
+          "0x4500010c",
+          "0x45000114"
+        ],
+        "window": "0x45000100",
+        "writes": 4
+      },
+      {
+        "accesses": 2,
+        "also_in_application": true,
+        "application_accesses": 2,
+        "functions": [
+          "180381d6"
+        ],
+        "reads": 1,
+        "registers": [
+          "0x45000300"
+        ],
+        "window": "0x45000300",
+        "writes": 1
+      },
+      {
+        "accesses": 4,
+        "also_in_application": true,
+        "application_accesses": 2,
+        "functions": [
+          "18038be0",
+          "1803b7b0"
+        ],
+        "reads": 2,
+        "registers": [
+          "0x60000880",
+          "0x60000884"
+        ],
+        "window": "0x60000800",
+        "writes": 2
+      },
+      {
+        "accesses": 1,
+        "also_in_application": false,
+        "application_accesses": 0,
+        "functions": [
+          "18039c24"
+        ],
+        "reads": 1,
+        "registers": [
+          "0x60011000"
+        ],
+        "window": "0x60011000",
+        "writes": 0
+      },
+      {
+        "accesses": 2,
+        "also_in_application": true,
+        "application_accesses": 1,
+        "functions": [
+          "18039c24"
+        ],
+        "reads": 0,
+        "registers": [
+          "0xe000e407"
+        ],
+        "window": "0xe000e400",
+        "writes": 2
+      },
+      {
+        "accesses": 13,
+        "also_in_application": true,
+        "application_accesses": 32,
+        "functions": [
+          "180381c0",
+          "18038be0",
+          "1803967c",
+          "18039c24",
+          "1803a3e4"
+        ],
+        "reads": 11,
+        "registers": [
+          "0xe000ed08",
+          "0xe000ed1b",
+          "0xe000ed28",
+          "0xe000ed34",
+          "0xe000ed38"
+        ],
+        "window": "0xe000ed00",
+        "writes": 2
+      }
+    ]
+  },
+  "checks": [
+    {
+      "detail": "installed and vendor",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "0c718c523ef24e07",
+      "label": "the imported slice is exactly vendor[0x74000:0x7c000]",
+      "ok": true
+    },
+    {
+      "detail": "0x8000",
+      "label": "the range is 0x8000 bytes",
+      "ok": true
+    },
+    {
+      "detail": "4 differing bytes, all in the word-sum field",
+      "label": "the image is byte-identical across the two releases",
+      "ok": true
+    },
+    {
+      "detail": "0x7bffc",
+      "label": "every differing byte lies in the application word-sum field",
+      "ok": true
+    },
+    {
+      "detail": "73 entries, 57 external",
+      "label": "the vector table extends past the core slots",
+      "ok": true
+    },
+    {
+      "detail": "0x1803e458 / 0x180381c1",
+      "label": "the initial SP and reset vector match the recorded values",
+      "ok": true
+    },
+    {
+      "detail": "56 slots -> 0x180381f7",
+      "label": "most external slots share one default handler",
+      "ok": true
+    },
+    {
+      "detail": "IRQ3",
+      "label": "exactly one external interrupt has its own handler",
+      "ok": true
+    },
+    {
+      "detail": "0x1803b214 = 0x12345678",
+      "label": "the handshake token really is at the recorded offset",
+      "ok": true
+    },
+    {
+      "detail": "pool 0x3214",
+      "label": "the token is loaded from a literal pool, not computed",
+      "ok": true
+    },
+    {
+      "detail": "16",
+      "label": "the opcode dispatch table has sixteen entries",
+      "ok": true
+    },
+    {
+      "detail": "10 implemented, 6 fall through",
+      "label": "most opcodes have a distinct handler",
+      "ok": true
+    },
+    {
+      "detail": "353 resolved, 484 unresolved",
+      "label": "the census reports both resolved and unresolved accesses",
+      "ok": true
+    },
+    {
+      "detail": "0x18000000..0x18037fff",
+      "label": "no RESOLVED access reaches application RAM",
+      "ok": true
+    },
+    {
+      "detail": "5 exclusive windows",
+      "label": "the 0x40040000 block is exclusive to this image",
+      "ok": true
+    },
+    {
+      "detail": "a write-strobe-readback trio driven by an index",
+      "label": "a write-strobe-readback register trio is present",
+      "ok": true
+    },
+    {
+      "detail": "1 register",
+      "label": "0x40022000 is NOT used as a per-channel bank in this image",
+      "ok": true
+    },
+    {
+      "detail": "stated as a bounded negative",
+      "label": "no DMA descriptor structure was resolved",
+      "ok": true
+    },
+    {
+      "detail": "0x5afa0000 -> +0, 0x5afa55aa -> +0xc",
+      "label": "this image runs log 114's reset-path disable on BOTH watchdog blocks",
+      "ok": true
+    },
+    {
+      "detail": "log 110's negative survives this image",
+      "label": "the travel array address appears in NO aligned word of any image",
+      "ok": true
+    },
+    {
+      "detail": "as log 113 predicted",
+      "label": "the token is found inside this image",
+      "ok": true
+    },
+    {
+      "detail": "which is what makes it a mailbox rather than a coincidence",
+      "label": "the record array address is known to BOTH sides",
+      "ok": true
+    },
+    {
+      "detail": "narrowed, not closed",
+      "label": "the Hall gate is reported as narrowed and NOT closed",
+      "ok": true
+    },
+    {
+      "detail": "the boundary is stated more precisely instead",
+      "label": "the gate is not claimed closed on an image that does not fill the array",
+      "ok": true
+    },
+    {
+      "detail": "6 claims",
+      "label": "every required question has an answer",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and at least one citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "A service payload, not a full application. The reset handler reads VTOR, loads SP from it, calls one init function and jumps to a three-call main that ends in an endless command loop. There is no scheduler, no task table and no USB or storage code. It is a command-driven server for one client.",
+      "confidence": "observed",
+      "evidence": [
+        "log 113 step 4",
+        "this log step 1",
+        "this log step 4"
+      ],
+      "key": "is_second_core_payload",
+      "kind_basis": "listing: SC_Vector_Reset at 0x180381c0 reads 0xe000ed08, then FUN_180381a0 calls FUN_1803af90, which never returns",
+      "question": "Is this a second core's payload, and what does the reset path start?"
+    },
+    {
+      "answer": "It TRANSPORTS and CONVERTS them, and it does not deliver them to the application. Opcode 0x0f de-interleaves five groups of 16-bit values out of application RAM at pointer+0x72c, then runs a 240-iteration converter loop whose results land in an in-image array. No recovered path writes those results back.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4",
+        "log 110 step 4"
+      ],
+      "key": "produces_per_key_readings",
+      "kind_basis": "listing: FUN_18038b1c's five-group de-interleave and FUN_1803ae58's strobe/write/readback loop; the census resolves no write into 0x18000000..0x18037fff except one memset",
+      "question": "Does it produce or transport per-key analog readings?"
+    },
+    {
+      "answer": "No. The one demonstrated write into application RAM is a 150-byte memset to 0xff at pointer+0x3f2, on the init opcode. The travel array is at pointer+0x35c and is 150 bytes, so the memset covers the array IMMEDIATELY AFTER it and not the array itself. The key bitmap is never referenced.",
+      "confidence": "observed",
+      "evidence": [
+        "log 110 step 4",
+        "log 109",
+        "this log step 3"
+      ],
+      "key": "writes_travel_array",
+      "kind_basis": "listing: FUN_18038308 is a byte-replicating memset and is called with (pointer+0x3f2, 0x96, 0xff); aligned-word search finds the bitmap in no word of this image",
+      "question": "Does anything in it write the travel array or the key bitmap?"
+    },
+    {
+      "answer": "One block outright and two registers. 0x40040000 is touched 98 times from a single init function here and NEVER by the application or the entry image. 0x40018000 and 0x4001c000 are likewise absent from both. Everything else it touches is shared, including the 0x45000000 control block and both watchdog blocks.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 100"
+      ],
+      "key": "owns_what",
+      "kind_basis": "census set difference against the application's and entry image's own FalchionPeripheralMap output",
+      "question": "What does it own that the application does not?"
+    },
+    {
+      "answer": "In its own RAM. The 240 conversion results are stored to an in-image array and read by one further in-image function. The only outward channels recovered are the mailbox tail index and the single memset into application RAM.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "this log step 4"
+      ],
+      "key": "data_flow_terminus",
+      "kind_basis": "aligned-word search: the result array is referenced from exactly three literal-pool slots, all inside this image",
+      "question": "Where does its data flow terminate?"
+    },
+    {
+      "answer": "It settles the mechanism and not the silicon. There is now a real core-to-core-shaped channel: a ring buffer with a head owned by one image, a tail owned by another, and a start register. Whether the two run concurrently on two cores or in sequence on one is still not shown, because nothing recovered proves the application keeps executing while this image runs.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "log 113 step 4",
+        "notes/dual-core-question.md",
+        "this log step 4"
+      ],
+      "key": "dual_core",
+      "kind_basis": "listing on both sides: the entry image's client at 0x1b7c and this image's server at 0x1803af90 implement complementary halves",
+      "question": "Does this settle the dual-core question?"
+    }
+  ],
+  "cross_context": {
+    "images_searched": [
+      "app_installed",
+      "app_vendor",
+      "bootloader",
+      "entry_installed",
+      "entry_vendor",
+      "region1",
+      "second_context"
+    ],
+    "rows": [
+      {
+        "found_anywhere": false,
+        "found_in": {},
+        "found_in_second_context": false,
+        "name": "travel_array",
+        "note": "log 110: *(0x1801ed6c)+0x35c",
+        "value": "0x18034850"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "region1": [
+            "+0x9ec"
+          ]
+        },
+        "found_in_second_context": false,
+        "name": "travel_buffer_base",
+        "note": "the pointer cell's value",
+        "value": "0x180344f4"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "app_installed": [
+            "+0x3dc",
+            "+0x4da8",
+            "+0x5f48",
+            "+0x6a98",
+            "+0x8da8",
+            "+0x8f8c",
+            "+0xbbc8",
+            "+0xf1a0",
+            "+0xfa38"
+          ],
+          "entry_installed": [
+            "+0x1bd0"
+          ]
+        },
+        "found_in_second_context": false,
+        "name": "travel_pointer_cell",
+        "note": "log 110",
+        "value": "0x1801ed6c"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "app_installed": [
+            "+0x4db8",
+            "+0x5f08",
+            "+0x6368"
+          ]
+        },
+        "found_in_second_context": false,
+        "name": "key_state_bitmap",
+        "note": "log 109",
+        "value": "0x18023410"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "app_installed": [
+            "+0x154b8"
+          ],
+          "app_vendor": [
+            "+0x1548c"
+          ]
+        },
+        "found_in_second_context": false,
+        "name": "mailbox_base",
+        "note": "log 113 step 4",
+        "value": "0x20000000"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "app_installed": [
+            "+0x3d8",
+            "+0x8f54"
+          ],
+          "app_vendor": [
+            "+0x3d8",
+            "+0x8f28"
+          ],
+          "entry_installed": [
+            "+0x1bcc"
+          ],
+          "entry_vendor": [
+            "+0x1bcc"
+          ],
+          "second_context": [
+            "+0x321c"
+          ]
+        },
+        "found_in_second_context": true,
+        "name": "mailbox_records",
+        "note": "the record array",
+        "value": "0x20000008"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "app_installed": [
+            "+0x3f4"
+          ],
+          "app_vendor": [
+            "+0x3f4"
+          ],
+          "second_context": [
+            "+0x3214"
+          ]
+        },
+        "found_in_second_context": true,
+        "name": "handshake_token",
+        "note": "log 113 step 4",
+        "value": "0x12345678"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "entry_installed": [
+            "+0x2004"
+          ],
+          "entry_vendor": [
+            "+0x2004"
+          ]
+        },
+        "found_in_second_context": false,
+        "name": "second_context_base",
+        "note": "the image's runtime base",
+        "value": "0x18038000"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "app_installed": [
+            "+0x3f0"
+          ],
+          "app_vendor": [
+            "+0x3f0"
+          ],
+          "entry_installed": [
+            "+0x2000"
+          ],
+          "entry_vendor": [
+            "+0x2000"
+          ]
+        },
+        "found_in_second_context": false,
+        "name": "second_context_flash_src",
+        "note": "the descriptor's source",
+        "value": "0x60074000"
+      },
+      {
+        "found_anywhere": true,
+        "found_in": {
+          "second_context": [
+            "+0x4"
+          ]
+        },
+        "found_in_second_context": true,
+        "name": "second_context_reset",
+        "note": "its own reset vector",
+        "value": "0x180381c1"
+      }
+    ]
+  },
+  "disclaimer": "Offline analysis of a preserved image. No device was accessed. This changes no decision and authorises nothing live.",
+  "dispatch": {
+    "count": 16,
+    "distinct_targets": 11,
+    "fallback_target": "0x1803b1b0",
+    "implemented": [
+      "0x01",
+      "0x02",
+      "0x03",
+      "0x07",
+      "0x08",
+      "0x0b",
+      "0x0c",
+      "0x0d",
+      "0x0e",
+      "0x0f"
+    ],
+    "rows": [
+      {
+        "is_fallback": true,
+        "opcode": "0x00",
+        "table_byte": "0xf6",
+        "target": "0x1803b1b0"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x01",
+        "table_byte": "0xc0",
+        "target": "0x1803b144"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x02",
+        "table_byte": "0xb4",
+        "target": "0x1803b12c"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x03",
+        "table_byte": "0xc9",
+        "target": "0x1803b156"
+      },
+      {
+        "is_fallback": true,
+        "opcode": "0x04",
+        "table_byte": "0xf6",
+        "target": "0x1803b1b0"
+      },
+      {
+        "is_fallback": true,
+        "opcode": "0x05",
+        "table_byte": "0xf6",
+        "target": "0x1803b1b0"
+      },
+      {
+        "is_fallback": true,
+        "opcode": "0x06",
+        "table_byte": "0xf6",
+        "target": "0x1803b1b0"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x07",
+        "table_byte": "0xd2",
+        "target": "0x1803b168"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x08",
+        "table_byte": "0xdd",
+        "target": "0x1803b17e"
+      },
+      {
+        "is_fallback": true,
+        "opcode": "0x09",
+        "table_byte": "0xf6",
+        "target": "0x1803b1b0"
+      },
+      {
+        "is_fallback": true,
+        "opcode": "0x0a",
+        "table_byte": "0xf6",
+        "target": "0x1803b1b0"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x0b",
+        "table_byte": "0xe8",
+        "target": "0x1803b194"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x0c",
+        "table_byte": "0xf7",
+        "target": "0x1803b1b2"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x0d",
+        "table_byte": "0x08",
+        "target": "0x1803afd4"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x0e",
+        "table_byte": "0xf4",
+        "target": "0x1803b1ac"
+      },
+      {
+        "is_fallback": false,
+        "opcode": "0x0f",
+        "table_byte": "0xf3",
+        "target": "0x1803b1aa"
+      }
+    ],
+    "table_at": "0x1803afc4"
+  },
+  "hall_gate": {
+    "boundary_now": "the second context reads application RAM at pointer+0x72c and writes application RAM at pointer+0x3f2, which is the 150 bytes IMMEDIATELY AFTER the travel array at pointer+0x35c. The producer of the travel bytes themselves is still unrecovered.",
+    "gate": "a recovered producer for the per-key travel bytes",
+    "gate_status": "narrowed, not closed",
+    "log110_negative_still_holds": true,
+    "moved": true,
+    "travel_array": "0x18034850",
+    "travel_array_found_in_any_image": false,
+    "what_did_not_move": "that loop does not fill the travel array. Its results terminate in an in-image array, and the travel array's address still appears in no aligned word of ANY image, this one included.",
+    "what_moved": "a hardware acquisition loop IS now recovered, in this image: 240 iterations of write-a-16-bit-word, strobe, read-a-16-bit-word back, over a fixed register trio. Before this step no per-channel converter loop had been found in any image."
+  },
+  "mailbox": {
+    "base": "0x20000000",
+    "consumer": "this image, which advances the tail after each record",
+    "head_index": "0x20000000",
+    "opcode_field": "record byte 0",
+    "pointer_field": "record word at +4, saved by the init opcode",
+    "producer": "the application and entry image, which advance the head",
+    "record_size": "0x2c",
+    "records_at": "0x20000008",
+    "records_extent": "0x20000008..0x20000167",
+    "ring_depth": 8,
+    "tail_index": "0x20000004",
+    "token": "0x12345678",
+    "token_load_instruction": "0x1803af94",
+    "token_pool": "0x1803b214",
+    "token_pool_holds_token": true,
+    "token_pool_offset": "0x3214",
+    "token_store_instruction": "0x1803af96"
+  },
+  "release_delta": {
+    "all_inside_word_sum_field": true,
+    "code_bytes_identical": true,
+    "differing_bytes": 4,
+    "differing_offsets": [
+      "0x7ffc",
+      "0x7ffd",
+      "0x7ffe",
+      "0x7fff"
+    ],
+    "image_extent_excluding_word_sum": "0x74000..0x7bffb",
+    "word_sum_field_logical": "0x7bffc"
+  },
+  "shaped_questions": {
+    "adc_shaped_window": {
+      "data_in": "0x40019000",
+      "data_out": "0x40018000",
+      "iterations": 240,
+      "note": "the index varies the DATA written, not the register address, so this is a muxed converter interface and NOT a per-channel register bank",
+      "present": true,
+      "register_addresses_are_fixed": true,
+      "shape": "a write-strobe-readback trio driven by an index",
+      "strobe": "0x4001b000"
+    },
+    "dma_descriptors": {
+      "found": false,
+      "note": "no descriptor-shaped structure and no window with the source/destination/count triple a DMA engine needs was resolved; 484 unresolved accesses bound this negative"
+    },
+    "flash_or_spi_controller": {
+      "note": "two registers in the flash window, read and then written with 1, from the fault handler and one other function; no erase or program sequence was recovered",
+      "registers_touched": [
+        "0x60000880",
+        "0x60000884"
+      ]
+    },
+    "per_channel_bank_0x40022000": {
+      "distinct_registers": 1,
+      "is_a_per_channel_bank_here": false,
+      "note": "only the base word is touched, by a single bit-15 clear and matching reads; no stride, no channel select",
+      "registers_touched": [
+        "0x40022000"
+      ]
+    },
+    "watchdog_blocks": {
+      "blocks": [
+        {
+          "block": "0x40008000",
+          "disable_written": true,
+          "functions": [
+            "18039c24"
+          ],
+          "key_written": true
+        },
+        {
+          "block": "0x40009000",
+          "disable_written": true,
+          "functions": [
+            "18039c24"
+          ],
+          "key_written": true
+        }
+      ],
+      "log114_scope_correction": "log 114 recorded block 0x40009000 as touched exactly once in the whole firmware. That was true of the two analysed images; this image disables BOTH blocks on its own init path, so the scope of that sentence was the analysed set and not the firmware.",
+      "matches_log114_reset_path_disable": true
+    }
+  },
+  "source": {
+    "image": "ghidra/imports/ram_image_18038000.bin",
+    "range": "0x74000..0x7bfff",
+    "runtime_base": "0x18038000",
+    "sha256": "0c718c523ef24e0794831fce89d41ce77775155cc9c3b91dbbad9da52114cee6",
+    "size": "0x8000",
+    "source_hashes": {
+      "installed": "fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b",
+      "vendor": "6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d"
+    }
+  },
+  "summary": {
+    "checks": 29,
+    "failed": 0,
+    "ok": true
+  },
+  "unresolved": [
+    {
+      "detail": "484 of this image's accesses have an unresolved base, against 353 resolved. Every negative about what it touches is bounded by that ratio and is stated as 'not resolved', never as 'does not happen'.",
+      "key": "unresolved_accesses"
+    },
+    {
+      "detail": "No block is named. The strobe, data-out and data-in roles are read off an instruction sequence; the peripherals themselves stay unnamed for want of a reference manual.",
+      "key": "register_identity"
+    },
+    {
+      "detail": "Whether the two contexts execute concurrently is not shown. The client spins waiting for the tail to catch up, which is equally consistent with a second core and with a coroutine on one core.",
+      "key": "concurrency"
+    },
+    {
+      "detail": "The producer of the travel bytes at pointer+0x35c is still unrecovered. This image narrows where it is not.",
+      "key": "travel_producer"
+    },
+    {
+      "detail": "The 240 values the loop writes come from an in-image table by default and from application RAM in one mode. What the conversion physically drives and measures is not established.",
+      "key": "converter_source"
+    },
+    {
+      "detail": "The entry image clears bit 15 of 0x45000100 to start this context and this image clears bit 15 of 0x40022000 in its init opcode. The two are the same idiom on different registers; neither register is identified.",
+      "key": "start_semantics"
+    }
+  ],
+  "vector_table": {
+    "default_handler": "0x180381f7",
+    "default_slot_count": 56,
+    "entries": 73,
+    "external_slots": 57,
+    "initial_sp": "0x1803e458",
+    "live_external": [
+      "IRQ3"
+    ],
+    "live_handlers": [
+      {
+        "name": "Reset",
+        "value": "0x180381c1"
+      },
+      {
+        "name": "NMI",
+        "value": "0x180381e9"
+      },
+      {
+        "name": "HardFault",
+        "value": "0x18038be1"
+      },
+      {
+        "name": "MemManage",
+        "value": "0x1803970d"
+      },
+      {
+        "name": "BusFault",
+        "value": "0x180381eb"
+      },
+      {
+        "name": "UsageFault",
+        "value": "0x180381ed"
+      },
+      {
+        "name": "SVCall",
+        "value": "0x180381ef"
+      },
+      {
+        "name": "DebugMonitor",
+        "value": "0x180381f1"
+      },
+      {
+        "name": "PendSV",
+        "value": "0x180381f3"
+      },
+      {
+        "name": "SysTick",
+        "value": "0x18039b7d"
+      },
+      {
+        "name": "IRQ3",
+        "value": "0x180381d7"
+      }
+    ],
+    "reset": "0x180381c1",
+    "rows": [
+      {
+        "in_image": true,
+        "index": 0,
+        "is_default_handler": false,
+        "name": "initial_SP",
+        "offset": "",
+        "thumb": null,
+        "value": "0x1803e458"
+      },
+      {
+        "in_image": true,
+        "index": 1,
+        "is_default_handler": false,
+        "name": "Reset",
+        "offset": "0x1c0",
+        "thumb": true,
+        "value": "0x180381c1"
+      },
+      {
+        "in_image": true,
+        "index": 2,
+        "is_default_handler": false,
+        "name": "NMI",
+        "offset": "0x1e8",
+        "thumb": true,
+        "value": "0x180381e9"
+      },
+      {
+        "in_image": true,
+        "index": 3,
+        "is_default_handler": false,
+        "name": "HardFault",
+        "offset": "0xbe0",
+        "thumb": true,
+        "value": "0x18038be1"
+      },
+      {
+        "in_image": true,
+        "index": 4,
+        "is_default_handler": false,
+        "name": "MemManage",
+        "offset": "0x170c",
+        "thumb": true,
+        "value": "0x1803970d"
+      },
+      {
+        "in_image": true,
+        "index": 5,
+        "is_default_handler": false,
+        "name": "BusFault",
+        "offset": "0x1ea",
+        "thumb": true,
+        "value": "0x180381eb"
+      },
+      {
+        "in_image": true,
+        "index": 6,
+        "is_default_handler": false,
+        "name": "UsageFault",
+        "offset": "0x1ec",
+        "thumb": true,
+        "value": "0x180381ed"
+      },
+      {
+        "in_image": false,
+        "index": 7,
+        "is_default_handler": false,
+        "name": "Reserved7",
+        "offset": "",
+        "thumb": false,
+        "value": "0x00000000"
+      },
+      {
+        "in_image": false,
+        "index": 8,
+        "is_default_handler": false,
+        "name": "Reserved8",
+        "offset": "",
+        "thumb": false,
+        "value": "0x00000000"
+      },
+      {
+        "in_image": false,
+        "index": 9,
+        "is_default_handler": false,
+        "name": "Reserved9",
+        "offset": "",
+        "thumb": false,
+        "value": "0x00000000"
+      },
+      {
+        "in_image": false,
+        "index": 10,
+        "is_default_handler": false,
+        "name": "Reserved10",
+        "offset": "",
+        "thumb": false,
+        "value": "0x00000000"
+      },
+      {
+        "in_image": true,
+        "index": 11,
+        "is_default_handler": false,
+        "name": "SVCall",
+        "offset": "0x1ee",
+        "thumb": true,
+        "value": "0x180381ef"
+      },
+      {
+        "in_image": true,
+        "index": 12,
+        "is_default_handler": false,
+        "name": "DebugMonitor",
+        "offset": "0x1f0",
+        "thumb": true,
+        "value": "0x180381f1"
+      },
+      {
+        "in_image": false,
+        "index": 13,
+        "is_default_handler": false,
+        "name": "Reserved13",
+        "offset": "",
+        "thumb": false,
+        "value": "0x00000000"
+      },
+      {
+        "in_image": true,
+        "index": 14,
+        "is_default_handler": false,
+        "name": "PendSV",
+        "offset": "0x1f2",
+        "thumb": true,
+        "value": "0x180381f3"
+      },
+      {
+        "in_image": true,
+        "index": 15,
+        "is_default_handler": false,
+        "name": "SysTick",
+        "offset": "0x1b7c",
+        "thumb": true,
+        "value": "0x18039b7d"
+      },
+      {
+        "in_image": true,
+        "index": 16,
+        "is_default_handler": true,
+        "name": "IRQ0",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 17,
+        "is_default_handler": true,
+        "name": "IRQ1",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 18,
+        "is_default_handler": true,
+        "name": "IRQ2",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 19,
+        "is_default_handler": false,
+        "name": "IRQ3",
+        "offset": "0x1d6",
+        "thumb": true,
+        "value": "0x180381d7"
+      },
+      {
+        "in_image": true,
+        "index": 20,
+        "is_default_handler": true,
+        "name": "IRQ4",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 21,
+        "is_default_handler": true,
+        "name": "IRQ5",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 22,
+        "is_default_handler": true,
+        "name": "IRQ6",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 23,
+        "is_default_handler": true,
+        "name": "IRQ7",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 24,
+        "is_default_handler": true,
+        "name": "IRQ8",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 25,
+        "is_default_handler": true,
+        "name": "IRQ9",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 26,
+        "is_default_handler": true,
+        "name": "IRQ10",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 27,
+        "is_default_handler": true,
+        "name": "IRQ11",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 28,
+        "is_default_handler": true,
+        "name": "IRQ12",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 29,
+        "is_default_handler": true,
+        "name": "IRQ13",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 30,
+        "is_default_handler": true,
+        "name": "IRQ14",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 31,
+        "is_default_handler": true,
+        "name": "IRQ15",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 32,
+        "is_default_handler": true,
+        "name": "IRQ16",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 33,
+        "is_default_handler": true,
+        "name": "IRQ17",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 34,
+        "is_default_handler": true,
+        "name": "IRQ18",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 35,
+        "is_default_handler": true,
+        "name": "IRQ19",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 36,
+        "is_default_handler": true,
+        "name": "IRQ20",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 37,
+        "is_default_handler": true,
+        "name": "IRQ21",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 38,
+        "is_default_handler": true,
+        "name": "IRQ22",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 39,
+        "is_default_handler": true,
+        "name": "IRQ23",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 40,
+        "is_default_handler": true,
+        "name": "IRQ24",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 41,
+        "is_default_handler": true,
+        "name": "IRQ25",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 42,
+        "is_default_handler": true,
+        "name": "IRQ26",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 43,
+        "is_default_handler": true,
+        "name": "IRQ27",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 44,
+        "is_default_handler": true,
+        "name": "IRQ28",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 45,
+        "is_default_handler": true,
+        "name": "IRQ29",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 46,
+        "is_default_handler": true,
+        "name": "IRQ30",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 47,
+        "is_default_handler": true,
+        "name": "IRQ31",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 48,
+        "is_default_handler": true,
+        "name": "IRQ32",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 49,
+        "is_default_handler": true,
+        "name": "IRQ33",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 50,
+        "is_default_handler": true,
+        "name": "IRQ34",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 51,
+        "is_default_handler": true,
+        "name": "IRQ35",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 52,
+        "is_default_handler": true,
+        "name": "IRQ36",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 53,
+        "is_default_handler": true,
+        "name": "IRQ37",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 54,
+        "is_default_handler": true,
+        "name": "IRQ38",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 55,
+        "is_default_handler": true,
+        "name": "IRQ39",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 56,
+        "is_default_handler": true,
+        "name": "IRQ40",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 57,
+        "is_default_handler": true,
+        "name": "IRQ41",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 58,
+        "is_default_handler": true,
+        "name": "IRQ42",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 59,
+        "is_default_handler": true,
+        "name": "IRQ43",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 60,
+        "is_default_handler": true,
+        "name": "IRQ44",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 61,
+        "is_default_handler": true,
+        "name": "IRQ45",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 62,
+        "is_default_handler": true,
+        "name": "IRQ46",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 63,
+        "is_default_handler": true,
+        "name": "IRQ47",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 64,
+        "is_default_handler": true,
+        "name": "IRQ48",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 65,
+        "is_default_handler": true,
+        "name": "IRQ49",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 66,
+        "is_default_handler": true,
+        "name": "IRQ50",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 67,
+        "is_default_handler": true,
+        "name": "IRQ51",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 68,
+        "is_default_handler": true,
+        "name": "IRQ52",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 69,
+        "is_default_handler": true,
+        "name": "IRQ53",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 70,
+        "is_default_handler": true,
+        "name": "IRQ54",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 71,
+        "is_default_handler": true,
+        "name": "IRQ55",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      },
+      {
+        "in_image": true,
+        "index": 72,
+        "is_default_handler": true,
+        "name": "IRQ56",
+        "offset": "0x1f6",
+        "thumb": true,
+        "value": "0x180381f7"
+      }
+    ]
+  }
+}

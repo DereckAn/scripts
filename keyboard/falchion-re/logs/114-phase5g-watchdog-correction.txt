@@ -1,0 +1,303 @@
+LOG 114 — PHASE 5G WATCHDOG CORRECTION
+Date: 2026-09-05
+Scope: ONE correction to Phase 5G's watchdog claim, at the reviewer's
+direction. Phase 6 was NOT begun. Nothing was committed, staged or unstaged.
+Log 113 is immutable and was NOT edited.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary,
+no historical log and not opencode.json were modified. Every Ghidra run was
+-readOnly. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+THE ERROR
+================================================================================
+ORIGINAL WORDING — log 113 step 2 and tool/map_platform_dependencies.py:
+
+  finding key `watchdog_sole_user`:
+    statement: "exactly one function in either image touches those blocks"
+    basis:     "a per-function MMIO census over both peripheral maps returns
+                FUN_00001216 in the entry image and NOTHING in the
+                application; so nothing re-enables or feeds them after reset"
+
+  and, in the service rationale:
+    "the vendor firmware disables both on the reset path and never feeds them"
+
+BOTH ARE FALSE. The failure mode is one this project had already documented
+three times — logs 109, 110 and 112 all record that the MMIO census cannot
+attribute an access whose base register is not statically resolvable — and I
+then made an absolute claim that depended on the census being complete. A
+census that reports one writer is evidence of one VISIBLE writer, and I wrote
+it up as evidence of one writer.
+
+THE FALSIFYING EVIDENCE, reproduced with the project's own disassembler on
+installed_app_a. The base does not come from a literal in each accessor; it
+comes back from a call:
+
+    000021fe  movs r1,r0
+    00002200  mov.w r0,#0x0
+    00002204  beq 0x0000220e
+    00002206  cmp r1,#0x1
+    00002208  bne 0x0000220c
+    0000220a  ldr r0,[0x00002220]      ; selector 1 -> 0x40009000
+    0000220c  bx lr
+    0000220e  ldr r0,[0x00002224]      ; selector 0 -> 0x40008000
+    00002210  bx lr
+
+  *(0x2220) = 0x40009000    *(0x2224) = 0x40008000
+
+Every caller of FUN_000021fe therefore performs its store through a register
+the census cannot resolve, and FIVE functions call it — 0x2148, 0x216c,
+0x21b0, 0x21c8 and 0x21e2, two more than the review listed:
+
+    CALLERS FUN_00002148, FUN_0000216c, FUN_000021b0, FUN_000021c8, FUN_000021e2
+
+
+================================================================================
+STEP 1 — THE ACCESSORS, AND WHO CALLS THEM WITH WHAT
+================================================================================
+    000021b0  push {r4,lr}              ; STATUS READ
+    000021b2  bl 0x000021fe
+    000021b6  cbz r0,0x000021c4
+    000021b8  ldr r0,[r0,#0x0]
+    000021ba  ubfx r0,r0,#0x2,#0x1      ; bit 2 of base+0
+    000021be  cbz r0,0x000021c4
+    000021c0  movs r0,#0x1
+
+    000021c8  push {r4,lr}              ; ACKNOWLEDGE
+    000021cc  bl 0x000021fe
+    000021d2  ldr r1,[0x00002214]       ; 0x5afa0002
+    000021d4  adds r1,r1,#0x1           ; -> 0x5afa0003
+    000021d6  str r1,[r0,#0x0]          ; base+0
+
+    000021e2  push {r4,lr}              ; RE-ARM THE KEY
+    000021e6  bl 0x000021fe
+    000021ec  ldr r1,[0x00002218]       ; 0x5afa55aa
+    000021ee  str r1,[r0,#0xc]          ; base+0xc
+
+    00002148  push {r4,r5,r6,lr}        ; RELOAD  (sel, value)
+    0000214e  bl 0x000021fe
+    00002154  ldr r2,[0x00002214]       ; 0x5afa0002
+    00002156  uxtb r1,r5
+    00002158  subs r2,r2,#0x2           ; -> 0x5afa0000
+    0000215a  orrs r1,r2                ; -> 0x5afa0000 | value
+    0000215c  str r1,[r0,#0x8]          ; base+8
+    0000215e  ldr r1,[0x00002218]
+    00002160  str r1,[r0,#0xc]          ; base+0xc, key
+
+    0000216c  ... writes 0x5afa0002-1 = 0x5afa0001 to base+0.  ZERO CALLERS.
+
+$ constant propagation over every call site resolves the selector:
+  FUN_00002148  called from 0x0000051c in FUN_00000516 with a0=0x0 a1=0xff
+  FUN_000021b0  called from 0x000020c2 in Vector_NMI with a0=0x0
+  FUN_000021c8  called from 0x000020cc in Vector_NMI with a0=0x0
+  FUN_000021e2  called from 0x000021... in Vector_NMI with a0=0x0
+  FUN_0000216c  callers=0
+
+NOTHING PASSES 1. Block 0x40009000 is therefore touched exactly once in the
+whole firmware — by the reset-path disable — and never again.
+
+FUN_00000516 IS NOT AN ARBITRARY CALLER. Log 109 step 4 recovered it as the
+prescaler's DIVIDE-BY-8 job: `FUN_0000042c` calls `bl 0x00000516` after the
+first counter reaches 8. So FUN_00002148(0, 0xff) runs every eight ticks of
+IRQ38, writing 0x5afa00ff to 0x40008008 and re-arming the key at 0x4000800c.
+
+THAT IS A PERIODIC FEED, ON THE TICK CHAIN. "Nothing feeds them anywhere" is
+withdrawn.
+
+
+================================================================================
+STEP 2 — WHAT THE NMI HANDLER DOES AFTER 0x20dc
+================================================================================
+    000020be  push {r4,lr}
+    000020c0  movs r0,#0x0
+    000020c2  bl 0x000021b0            ; status: bit 2 of 0x40008000
+    000020c6  ldr r4,[0x000020ec]      ; r4 = 0x1801ee05
+    000020c8  cbz r0,0x000020dc        ; not set -> skip the service
+    000020ca  movs r0,#0x0
+    000020cc  bl 0x000021c8            ; 0x5afa0003 -> 0x40008000
+    000020d0  movs r0,#0x0
+    000020d2  bl 0x000021e2            ; key -> 0x4000800c
+    000020d6  ldrb r0,[r4,#0x1]        ; counter
+    000020d8  adds r0,r0,#0x1
+    000020da  strb r0,[r4,#0x1]
+    000020dc  ldrb r0,[r4,#0x1]        ; counter
+    000020de  ldrb r1,[r4,#0x0]        ; limit
+    000020e0  cmp r0,r1
+    000020e2  bcc 0x000020ea           ; counter < limit -> return
+    000020e4  ldr r1,[0x0000212c]      ; 0xe000ed0c  = AIRCR
+    000020e6  ldr r0,[0x00002128]      ; 0x05fa0004  = VECTKEY|SYSRESETREQ
+    000020e8  str r0,[r1,#0x0]         ; SYSTEM RESET
+    000020ea  pop {r4,pc}
+
+WHICH FUNCTION STORES 0x05fa0004, AND FROM WHERE IS IT REACHED: Vector_NMI
+itself, at 0x20e8, reached only by falling through the counter comparison. It
+is not in a helper and not shared.
+
+THE ESCALATION LIMIT IS ONE. The pair at *(0x20ec) = 0x1801ee05 is
+region+0xa85, and the reconstructed region's initialised bytes there are
+
+    region+0xa85: 01 00 00 07      ->  limit = 1, counter = 0
+
+so with the power-on values the FIRST acknowledged NMI increments the counter
+to 1, fails `bcc`, and writes AIRCR. One strike. Nothing observed changes the
+limit at runtime; nothing rules it out either, so this is strongly-inferred
+rather than observed.
+
+IS 0x21c8's 0x5afa0003 WRITE A FEED, AN ACKNOWLEDGE, OR A FORCED RESET?
+From control flow and constants, not from the word "watchdog":
+  - it is NOT a feed: it is gated on a status bit and is not periodic; the
+    periodic write is the separate /8 path, and it targets a DIFFERENT
+    register (+8, not +0);
+  - it is NOT itself a reset: the reset is the explicit AIRCR write at 0x20e8;
+  - it IS an acknowledge-and-re-arm: it is executed only in response to a
+    status bit, is immediately followed by re-arming the key, and is counted
+    towards a bounded retry that ends in a deliberate reset.
+Labelled STRONGLY-INFERRED. The register bit meanings are still unmapped, so
+the role is read off control flow, not identified.
+
+THE UNEXPLAINED LITERAL 0x73300000 at 0x221c is used by FUN_0000216c, which
+has zero callers. It remains UNRESOLVED and is not claimed.
+
+
+================================================================================
+STEP 3 — METHOD AND ITS LIMITS
+================================================================================
+The method that found this: for a candidate MMIO block, enumerate every
+function that returns one of its base addresses, then treat every CALLER of
+those functions as a potential accessor and resolve their arguments by
+constant propagation. That is what a per-function census cannot do, because
+the census asks "which resolved target does this instruction touch" and the
+answer here is "none — the base is in a register from a call".
+
+ITS LIMITS, stated rather than implied:
+  - It found this cluster because the selector returns a LITERAL from its own
+    pool. A selector that computed a base arithmetically, or read one from
+    RAM written elsewhere, would still be invisible.
+  - It was applied HERE, to these two blocks. The same blind spot may hide
+    accesses to every other block in both censuses. Logs 109, 110 and 112
+    each record large unresolved-access counts, and none of them has been
+    re-examined this way.
+  - No emulation was performed.
+So this correction fixes one claim. It does not certify the rest of the
+census, and no claim in this log depends on the census being complete.
+
+
+================================================================================
+STEP 4 — VENDOR SYMMETRY
+================================================================================
+$ compare entry-image 0x20be..0x2230 between releases
+  BYTE-IDENTICAL over the whole cluster: False
+  differing offsets: ['0x20ec', '0x20ed']
+    0x20ec: installed 05 vendor d9
+    0x20ed: installed ee vendor ed
+  *(0x2214): installed 0x5afa0002  vendor 0x5afa0002  same
+  *(0x2218): installed 0x5afa55aa  vendor 0x5afa55aa  same
+  *(0x221c): installed 0x73300000  vendor 0x73300000  same
+  *(0x2220): installed 0x40009000  vendor 0x40009000  same
+  *(0x2224): installed 0x40008000  vendor 0x40008000  same
+  *(0x2128): installed 0x05fa0004  vendor 0x05fa0004  same
+  *(0x212c): installed 0xe000ed0c  vendor 0xe000ed0c  same
+  *(0x20ec): installed 0x1801ee05  vendor 0x1801edd9  DIFFER
+
+THE CODE IS BYTE-IDENTICAL. The only difference in the whole cluster is the
+counter/limit POINTER, 0x1801ee05 versus 0x1801edd9 — a difference of exactly
+0x2c, the relocation Phase 3 measured. So the watchdog policy is the same in
+both releases and only its data pointer moves.
+
+
+================================================================================
+STEP 5 — THE CORRECTED RECORD
+================================================================================
+CORRECTED WORDING, now in the tool and the regenerated notes. There are THREE
+access paths, not one:
+
+  reset-path disable            FUN_00001216   blocks 0x40008000 AND 0x40009000
+      key 0x5afa55aa -> +0xc ; 0x5afa0000 -> +0        census-visible: YES
+  periodic feed                 FUN_00000516 -> FUN_00002148(0, 0xff)
+      every 8 ticks: 0x5afa00ff -> +8 ; key -> +0xc    census-visible: NO
+  NMI acknowledge and escalate  Vector_NMI, only when bit 2 of +0 is set
+      0x5afa0003 -> +0 ; key -> +0xc ; counter++ ;
+      then AIRCR 0x05fa0004 once the limit (default 1) is reached
+                                                      census-visible: NO
+
+The withdrawn claims are kept on the record in the model's
+`withdrawn_claims` field rather than deleted, and five new checks pin the
+correction: the model must name all three paths, must record two of them as
+census-invisible, must report `fed_anywhere = true`, must keep both withdrawn
+claims, and must record that the second block is never touched after reset.
+A unit test additionally requires that the falsified PHRASES may appear only
+next to the word WITHDRAWN, with a companion test so it cannot pass vacuously.
+
+
+================================================================================
+STEP 6 — THE CLASSIFICATION SURVIVES, AND IS STRENGTHENED
+================================================================================
+The watchdogs were classified MUST-NEUTRALIZE on the reasoning that a
+replacement inherits an unestablished reset default. That reasoning was based
+on a false premise, so it is replaced — but the classification stands, on
+better grounds:
+
+  A replacement cannot ignore these blocks IN EITHER DIRECTION.
+  - Omitting the periodic feed risks a reset if the block is live, and
+    whether it is live after the reset-path write is not established.
+  - Inheriting the NMI vector without the acknowledge means the first NMI
+    that finds bit 2 set resets the device.
+  - Removing the NMI handler entirely leaves the vector unpopulated.
+  Each of those is a deliberate decision a replacement must make, which is
+  exactly what must-neutralize means.
+
+The prototype status line changed with it: "known: disable both, as the vendor
+does" is replaced by "known, and it is NOT just a disable: reset clears both,
+the /8 tick feeds 0x40008000, and NMI acknowledges it and resets after one
+strike (log 114)".
+
+NOTHING ELSE IN LOG 113 CHANGED. The multicore token handshake, the veneer
+decode, the MSP window and the final service partition were re-run and are
+unaffected; the gate still reports 6 must-implement, 3 must-neutralize, 5
+may-omit and 3 unresolved.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_platform_dependencies.py tool/test_map_platform_dependencies.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 659 tests   OK                                                 [exit 0]
+  (650 before this correction; +9 in tool/test_map_platform_dependencies.py)
+$ python3 tool/report_phase3.py --check              reports_current=True stale=0
+$ python3 tool/report_phase4.py --check              reports_current=True stale=0
+$ python3 tool/report_phase5.py --check              reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check            reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check          reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check       reports_current=True stale=0
+$ python3 tool/map_nonvolatile_writes.py --check     reports_current=True stale=0
+$ python3 tool/map_rgb_lamparray.py --check          reports_current=True stale=0
+$ python3 tool/map_platform_dependencies.py --check  reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                       all OK          [exit 0]
+$ git diff --check                                   clean           [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phase 6 was not begun.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - Log 113 was not edited; this log is the correction record.
+  - NO MMIO BLOCK WAS NAMED. 0x40008000 and 0x40009000 still have no
+    identified register map, and the roles above are read off control flow.
+  - The census was NOT re-audited for the same blind spot elsewhere. That is
+    a known and now-demonstrated gap, and it is recorded rather than closed.
+  - The 0x73300000 literal and FUN_0000216c remain unresolved.
+  - NO DEVICE WAS ACCESSED.

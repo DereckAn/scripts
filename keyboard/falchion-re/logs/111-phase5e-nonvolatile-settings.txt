@@ -1,0 +1,328 @@
+LOG 111 — PHASE 5E: NONVOLATILE SETTINGS, TRACED WITHOUT REPLAYING WRITES
+Date: 2026-09-05
+Scope: Phase 5E ONLY. Phases 5F and 5G were NOT begun. Nothing was committed,
+staged or unstaged.
+
+SAFETY: offline and STATIC ONLY. No /dev/hidraw, no USB or sysfs access, no
+sudo, no package install, no network, no probe/backup/bootloader tool. NO
+UNLOCK, ERASE, PROGRAM, RESET OR SPI COMMAND WAS CONSTRUCTED — INCLUDING THE
+`50 55` COMMIT ITSELF. The bytes 0x50 and 0x55 appear below only as values the
+firmware COMPARES against in its own listing. Neither evidence binary, no
+historical log and not opencode.json were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened. EVERY Ghidra run was -readOnly; no
+seeding was required and none was done. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+STEP 1 — THE COMMIT BRANCH CONTAINS NO CALL
+================================================================================
+The dispatcher's opcode test, from its listing:
+
+    18002014  cmp r2,#0x43
+    18002018  cmp r2,#0x50
+    1800201a  beq 0x18002110          <- the 0x50 branch
+    1800201c  cmp r2,#0x51
+    18002020  b   0x1800248e          <- the 0x51 configuration handlers
+
+and inside the 0x50 branch, the subcommand test:
+
+    180023de  ldrb r0,[r4,#0x1]       ; request byte 1
+    180023e0  cmp  r0,#0x55
+    180023e2  beq  0x18002428         <- THE COMMIT
+    180023e6  cmp  r0,#0x30
+    180023ea  cmp  r0,#0x40
+    180023f0  cmp  r0,#0x60
+
+The commit target, in full — nine instructions, and NOT ONE OF THEM IS A CALL:
+
+    18002428  ldr    r0,[0x180025a0]  ; *(0x180025a0) = 0x18022c60
+    1800242a  adds   r0,#0x84
+    1800242c  ldrb   r1,[r0,#0x0]
+    1800242e  cmp    r1,#0x4
+    18002430  beq    0x18002508       ; already 4 -> skip; the commit is idempotent
+    18002432  strb.w r12,[r0,#0x0]    ; r12 = 4, from `mov.w r12,#0x4` at 0x18001fea
+    18002436  strb   r5,[r0,#0x8]     ; a sub-selector
+    18002438  ldrb   r1,[r0,#0x9]
+    1800243a  bic    r1,r1,#0xc       ; clear two flag bits
+    1800243e  b      0x18002420
+
+For contrast, the neighbouring 0x60 subcommand at 0x18002440 DOES call
+(`bl 0x1800072c`, `bl 0x18000584`), so the absence of a call at 0x18002428 is a
+property of this branch and not of the disassembly.
+
+ANSWER TO THE PHASE'S FIRST QUESTION: (b) THE COMMIT QUEUES WORK. It sets a
+command byte at 0x18022ce4 to 4 and returns. Not (a): it programs nothing. Not
+(c): it invokes no ROM and no other core. Not (d): there is no table dispatch
+here.
+
+
+================================================================================
+STEP 2 — THE STATE MACHINE THAT DRAINS THE COMMAND BYTE
+================================================================================
+$ ... -postScript FalchionValueXrefs.java 0x18022c60
+  LITERAL at 0x180025a0, seven loaders all inside FUN_18001fbe
+  LITERAL at 0x18005f38, loader 0x18005cb4 (FUN_18005a88)
+  REG in FUN_18000bb8, FUN_18000d56, FUN_18001fbe
+  RESULT uses=16
+
+FUN_18000d56 (1426 instructions, callerless in the application call graph) has
+    switch(*DAT_18000e7c) { ... }
+and *(0x18000e7c) = 0x18022ce4 = 0x18022c60 + 0x84 — the command byte itself,
+confirmed from the raw literal pool. Inside it, a sub-switch on the byte at +8,
+which is exactly the sub-selector the commit stored.
+
+FUN_18000bb8 also loads the struct but does `subs r4,#0x84` then
+`strb.w r0,[r4,#0x81]`, i.e. it writes +0x81, NOT the command byte. So within
+the traced set the dispatcher is the only writer of +0x84.
+
+
+================================================================================
+STEP 3 — THE STORAGE PRIMITIVES, AND WHAT THEY DO NOT DO
+================================================================================
+The sub-switch calls, with literal target addresses:
+
+    case 1:  if (FUN_1800e272() == 0) FUN_1800e2a8(0x320000);
+    case 2:  if (FUN_1800e272() == 0) FUN_1800e2c4(0x330000);
+    case 3:  if (FUN_1800e272() != 0) return;  FUN_1800e2c4(0x340000);
+    case 4:  if (FUN_1800e272() != 0) return;
+             iVar14 = (uint)*(byte *)(iVar14 + 0x1f) * 0x4000 + 0x320000;
+
+FUN_1800e2a8, complete listing:
+
+    1800e2a8  ldr  r1,[0x1800e3c0]    ; *(0x1800e3c0) = 0x18025ef4
+    1800e2aa  ldrb r2,[r1,#0x0]
+    1800e2ac  cbz  r2,0x1800e2b2
+    1800e2ae  movs r0,#0x0            ; busy -> refuse
+    1800e2b0  bx   lr
+    1800e2b2  movs r2,#0xd8           ; <- the opcode byte
+    1800e2b4  strb r2,[r1,#0x0]
+    1800e2b6  str  r0,[r1,#0xc]       ; <- the address
+    1800e2b8  movs r0,#0x0
+    1800e2ba  strb r0,[r1,#0x19]
+    1800e2bc  movs r0,#0x1
+    1800e2be  strb r0,[r1,#0x8]
+    1800e2c0  strb r0,[r1,#0x18]      ; <- pending = 1
+    1800e2c2  bx   lr
+
+FUN_1800e2c4 is byte-for-byte the same shape with `movs r2,#0x52`.
+FUN_1800e272 is six instructions: `ldrb r0,[r0,#0x18]` / `cmp r0,#0x1`.
+
+REQUEST STRUCT at 0x18025ef4:  +0x00 opcode, +0x08 flag, +0x0c address,
+                               +0x18 pending, +0x19 cleared
+A non-zero byte 0 makes the primitives refuse, so ONE REQUEST IS OUTSTANDING AT
+A TIME. There is no queue depth, no journal and no sequence number.
+
+CRITICALLY: NEITHER PRIMITIVE TOUCHES MMIO. Nor does anything else in the
+cluster. Every function from 0x1800e272 to 0x1800ef84 — 36 of them — reports
+zero resolved MMIO accesses in the Phase 5 census:
+
+  0x1800e272 .. 0x1800e368   mmio=[] unresolved=0   (the nine primitives)
+  0x1800e3c8                 mmio=[] unresolved=24
+  0x1800e4ea, 0x1800e64e ('FR_fail'), 0x1800e836, 0x1800ee72 ... all mmio=[]
+
+The whole storage layer works on RAM structures.
+
+
+================================================================================
+STEP 4 — WHERE THE HARDWARE ACTUALLY IS
+================================================================================
+$ ... -postScript FalchionValueXrefs.java 0x18025ef4
+  the nine primitives, plus FUN_1800dc92 (loader at 0x1800dc96)
+  RESULT uses=25
+
+FUN_1800dc92 (579 instructions, also callerless) is the drainer. Its call-graph
+closure is 39 functions and it DOES reach hardware:
+
+  blocks    0x40000000, 0x45000000
+  registers 0x40020008 0x40020010 0x40020014 0x40020018 0x4002001c
+            0x45000000 0x4500000c 0x45000054
+  unresolved 339
+
+The path to the hardware contact, from the inventory call graph:
+  0x1800dc92 -> 0x1800d9ce -> 0x1800d914 -> 0x1801ae04 -> 0x18011ece -> 0x18011dd0
+
+FUN_18011dd0's listing is a DMA transfer setup:
+
+    18011ddc  ldrd  r0,r6,[r7,#0x14]      ; source address and length
+    18011de2  cmp.w r0,#0x18000000
+    18011de6  bcc   0x18011e2a            ; reject a source below RAM
+    18011de8  ldr   r0,[0x180120f8]
+    18011dec  bhi   0x18011e2a            ; reject a source past the limit
+    18011dee  ldrb  r0,[r7,#0x10]         ; a direction selector
+    18011df8  ldr   r5,[0x180120d0]       ; channel base
+    18011e00  adds  r5,#0x10              ;   or the second channel
+    18011e04  ldr   r2,[r5,#0x8]
+    18011e06  lsls  r2,r2,#0x1f
+    18011e08  beq   0x18011e10            ; busy bit -> return 1
+    18011e10  mov.w r2,#0x45000000
+    18011e14  ldr   r3,[r2,#0x0]
+    18011e18  ldr   r3,[r2,#0xc]
+    18011e1c  ldr   r2,[r2,#0x54]
+
+So the transfer is DMA-driven, bounds-checked on its SOURCE, and gated on a
+per-channel busy bit.
+
+WHAT IS *NOT* ESTABLISHED, and this is the important part. The opcodes 0xd8 and
+0x52 are the JEDEC SPI-NOR block-erase opcodes for 64 KiB and 32 KiB. THAT IS
+RECOGNITION, NOT PROOF. What the code demonstrably does is place those bytes in
+a struct that a DMA path consumes. No SPI controller register was identified.
+0x40020000 and 0x45000000 are NOT NAMED here — naming them from an opcode I
+recognised would be exactly the correlation this project refuses.
+
+THE STORAGE MEDIUM IS THEREFORE RECORDED AS UNIDENTIFIED. Internal MCU storage,
+external U5 SPI NOR and a RAM mirror all remain consistent with the evidence.
+The path is also NOT the bootloader's flash controller from log 81: that path
+programs 0x10000..0x7c000 through its own primitives, and nothing here touches
+them.
+
+
+================================================================================
+STEP 5 — THE SETTINGS FORMAT WAS NOT RECOVERED
+================================================================================
+Stated plainly because the exit gate turns on it.
+
+  magic      NOT RECOVERED     version    NOT RECOVERED
+  length     NOT RECOVERED     checksum   NOT RECOVERED
+  defaults   NOT RECOVERED     migration  NOT RECOVERED
+
+The commit path passes ADDRESSES to erase primitives. No header is constructed,
+no checksum is computed, and no version is compared anywhere in the traced
+chain. What the commit persists FROM was not established either: no copy from
+the 0x180202d8 per-key bank or the 0x18024f0c global table into a staging
+buffer appears on this path.
+
+ON THE 0x51/0x22 WRITE PATH THAT LOG 110 LEFT UNTRACED: the 0x51 branch begins
+at 0x1800248e with its own subcommand tree (`ldrb r2,[r4,#0x1]`, then compares
+against 0x4f, 0x23, 0x42, 0x55, 0x56, 0x58 and a `tbb` table for 0x50..0x54).
+The per-key bank pointer 0x180202d8 is loaded in the dispatcher at 0x1800244a
+and 0x18002452 — inside the 0x60 subcommand branch, NOT inside 0x22. THE
+COMMAND -> RAM -> COMMIT CHAIN IS THEREFORE STILL OPEN AT ITS FIRST LINK, and
+that gap is recorded rather than assumed closed. What IS closed is the second
+half: RAM state -> command byte -> erase, which is this log's subject.
+
+The dirty-flag behaviour FINDINGS describes for the 0x51 handlers is consistent
+with a two-stage design — 0x51 mutates RAM, 0x50/0x55 requests persistence —
+and the absence of any erase call under 0x51 supports it. Recorded as
+consistent, not as proven.
+
+
+================================================================================
+STEP 6 — RANGES THE PATH MAY MODIFY
+================================================================================
+  0x320000..0x330000   the 64 KiB target of the 0xd8 erase        observed
+  0x330000..0x338000   the 32 KiB target of one 0x52 erase        observed
+  0x340000..0x348000   the 32 KiB target of another 0x52 erase    observed
+  0x320000..0x720000   a computed slot: 0x320000 + byte * 0x4000  strongly-inferred
+
+The EXTENTS assume each opcode's nominal size, which is recognition and is the
+weakest claim in this log. The BASE ADDRESSES are literals in the listing and
+are not in doubt.
+
+NONE OF THEM OVERLAPS 0x10000..0x7c000, the application region the bootloader
+programs. The commit path and the firmware image are disjoint address ranges.
+A unit test asserts this, and a second test asserts the overlap predicate can
+actually detect an overlap, so the first cannot pass vacuously.
+
+POWER-LOSS AND COMPLETION BEHAVIOUR: not recovered. There is a busy flag and a
+one-deep request slot, and that is all. No journal, no A/B slotting, no wear
+levelling and no completion callback appears in the traced chain. Absence in
+the traced chain is not absence in the firmware, and it is recorded that way.
+
+
+================================================================================
+STEP 7 — THE EXIT GATE: WHICH BRANCH THE EVIDENCE SUPPORTS
+================================================================================
+The gate is dual: document the format and write call graph well enough EITHER to
+implement safe persistence OR to deliberately omit all writes while proving a
+prototype cannot corrupt existing configuration.
+
+THE EVIDENCE SUPPORTS THE SECOND BRANCH ONLY.
+
+Safe persistence CANNOT be implemented from this evidence: the format's magic,
+version, length and checksum were not recovered, the storage medium is
+unidentified, and the source of the persisted data was never found. Writing
+under those conditions would be guesswork against a medium this project has not
+identified.
+
+The negative CAN be proven, and the argument is short:
+  1. The only routes into an erase are FUN_1800e2a8 and FUN_1800e2c4.
+  2. Both are called only from FUN_18000d56's sub-switch, which runs only when
+     the command byte at 0x18022ce4 is non-idle.
+  3. Within the traced set, the only writer of that byte is the dispatcher's
+     0x50 branch.
+  4. Both primitives additionally refuse unless byte 0 of the request struct at
+     0x18025ef4 is zero, and they are the only writers of the opcode field.
+  Therefore a firmware that never writes 0x18022ce4, never fills 0x18025ef4,
+  never calls those two functions and never dispatches 0x50/0x55 cannot reach
+  an erase.
+
+WHAT A CUSTOM FIRMWARE MUST PROVABLY NEVER DO:
+  - write 0x18022ce4
+  - write the request struct at 0x18025ef4
+  - call FUN_1800e2a8 or FUN_1800e2c4, or their vendor counterparts
+  - dispatch vendor opcode 0x50 subcommand 0x55
+
+THE RESIDUAL, stated because the proof is only as good as its scope: steps 2-4
+of that argument hold WITHIN THE TRACED SET. FUN_18000d56 and FUN_1800dc92 are
+both callerless in the application call graph, so the context that runs them is
+not established, and this log does not exclude a second writer of the command
+byte outside the traced set. The proof is therefore conditional on the traced
+set being complete, and that condition is NOT proven.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_nonvolatile_writes.py tool/test_map_nonvolatile_writes.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 587 tests   OK                                                 [exit 0]
+  (560 before this step; +27 in tool/test_map_nonvolatile_writes.py)
+$ python3 tool/report_phase3.py --check           reports_current=True stale=0
+$ python3 tool/report_phase4.py --check           reports_current=True stale=0
+$ python3 tool/report_phase5.py --check           reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check         reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check       reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check    reports_current=True stale=0
+$ python3 tool/map_nonvolatile_writes.py --check  reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                    all OK             [exit 0]
+$ git diff --check                                clean              [exit 0]
+
+FAIL-CLOSED TESTS (tool/test_map_nonvolatile_writes.py, 27 tests). Three
+guard the safety property directly:
+  - the module must expose no name starting build_/send_/encode_/transmit_/emit_
+  - the commit bytes must never appear in the emitted model as an adjacent pair
+    that could be read as a ready-made packet
+  - the report must state that it never speaks to the device
+and the rest guard the model's honesty: the medium stays unidentified, the
+opcodes stay "matches the JEDEC …" and never "is the JEDEC …", no format field
+is claimed, the dispatch answer stays (b), the exit gate stays the negative
+branch, the asynchronous hop stays strongly-inferred with its callerless
+caveat, the load-bearing steps stay listing-verified, no range overlaps the
+application region AND the overlap predicate is shown to work, function
+counterparts are looked up while data takes the flat shift and a raw code
+address claims nothing, and a missing match file fails closed.
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phases 5F and 5G were not begun.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - NO COMMAND WAS CONSTRUCTED OR TRANSMITTED, including `50 55`.
+  - NO MMIO BLOCK WAS NAMED. 0x40020000 and 0x45000000 stay unnamed despite the
+    recognisable opcodes, because that would be naming on correlation.
+  - The settings format, the storage medium, the data source, the power-loss
+    behaviour and the 0x51/0x22 -> RAM link remain unrecovered, each with its
+    reason.
+  - The omit-all-writes proof is conditional on the traced set being complete,
+    and that condition is not proven.
+  - NO DEVICE WAS ACCESSED.

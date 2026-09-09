@@ -1,0 +1,184 @@
+LOG 108 — PHASE 5B PROSE CORRECTION: INTERFACE 4 BYTE-IDENTITY OVERCLAIM
+Date: 2026-09-04
+Scope: ONE narrow correction to Phase 5B, at the reviewer's direction. Phase 5C
+was NOT begun. Nothing was committed. Log 107 is immutable and was NOT edited.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary and
+no historical log was modified, opencode.json was left alone, and nothing was
+staged or committed. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+THE OVERCLAIM
+================================================================================
+ORIGINAL WORDING — tool/map_usb_routing.py, the EP 0x0f route's kind_basis,
+which propagated verbatim to notes/usb-routing.json, notes/usb-routing.md and
+the tool's stdout, and so into log 107's STEP 8:
+
+  "interface 4's record is the only one with the OUT bit set and no IN
+   endpoint, matching the host's OUT-only interface 4; its 327-byte report
+   descriptor is byte-identical to the host's"
+
+WHY IT IS UNPROVABLE FROM THIS REPOSITORY. Interface 4 was unbound on the host,
+so no driver ever exposed a hidraw node for it and no raw report-descriptor
+bytes for it were ever captured:
+
+  $ grep -o '== hidraw[0-9] ==' logs/09-falchion-hid-report-descriptors-xxd.txt
+    == hidraw0 ==
+    == hidraw1 ==
+    == hidraw2 ==
+    == hidraw3 ==
+  $ grep -cE '^[0-9a-f]{8}: ' logs/15-lsusb-falchion-verbose.txt
+    0
+  $ grep -n 'Report Descriptor' logs/15-lsusb-falchion-verbose.txt
+    48:          Report Descriptors:
+    78:          Report Descriptors:
+   118:          Report Descriptors:
+   148:          Report Descriptors:
+   178:          Report Descriptor: (length is 327)
+
+Log 09 holds hidraw0-3 only. Log 15 holds zero lines of raw hex; for interface 4
+it holds lsusb's DECODED item listing and nothing else. FINDINGS.md line 106
+independently records that interface 4 "remained unbound". There is therefore no
+byte source in this repository against which interface 4's descriptor could have
+been compared, and the claim could not have been made from evidence.
+
+WHAT WAS ALREADY CORRECT, and is left untouched:
+  - the tool's CHECKS section. Byte-identity PASS lines existed only for
+    interfaces 0-3; interface 4 never had one.
+  - log 107's STEP 1 narrative, which says the fifth descriptor was "located
+    structurally" and that its bounds match notes/usb-descriptors.txt.
+Only the routing-map basis prose overclaimed.
+
+
+================================================================================
+THE CORRECTION
+================================================================================
+CORRECTED WORDING, now in tool/map_usb_routing.py and regenerated into
+notes/usb-routing.{json,md}:
+
+  "interface 4's record is the only one with the OUT bit set and no IN
+   endpoint, matching the host's OUT-only interface 4. Its 327-byte report
+   descriptor at region+0x13b was located STRUCTURALLY, is well-formed (the HID
+   item walk consumes exactly 327 bytes), and its parsed item sequence matches
+   the host's parsed listing item for item. BYTE-IDENTITY CANNOT BE CHECKED:
+   interface 4 was unbound on the host, so no raw report-descriptor bytes for
+   it exist in this repository — log 09 captured hidraw0-3 only and log 15
+   preserves lsusb's parsed items, not bytes"
+
+THE BOUNDARY IS NOW PINNED BY CHECKS, not only by prose. Three were added to
+tool/map_usb_routing.py; no existing check was weakened or removed.
+
+$ python3 tool/map_usb_routing.py
+  PASS interface 4 has NO raw host bytes in this repository — byte-identity is not checkable — interface 4 was unbound on the host; log 09 captured hidraw0-3 only and log 15 preserves lsusb's parsed items, not bytes
+  PASS interface 4's descriptor is well-formed and the item walk consumes exactly its declared length — 155 items over 327 bytes at region+0x13b
+  PASS interface 4's PARSED item sequence matches the host's parsed listing (item comparison, not byte comparison) — 155 firmware items vs 155 host items
+  RESULT routing_ok=True checks=27
+  [exit 0]
+
+The check count moved from 24 to 27 and every prior check still passes. The new
+positive result is worth stating plainly: the firmware's descriptor walks into
+exactly 155 HID items and every one of them — kind and data bytes — matches the
+155 items lsusb decoded. That is strong evidence the descriptor is the one the
+host saw. It is an ITEM comparison. It is not a byte comparison, and the tool
+now says so in the same breath.
+
+
+================================================================================
+A SECOND INSTANCE THE REVIEW DID NOT FIND
+================================================================================
+The correction prompt stated that FINDINGS.md and TIMELINE.md do not contain the
+same overclaim, and asked for that to be verified rather than assumed. Verified —
+and both DID contain it, in each file's Phase 5B lead sentence.
+
+FINDINGS.md, original:
+  "**All five HID report descriptors are stored verbatim**, contiguous at
+   `+0x008..+0x282`, and each is byte-identical to what the host read back:"
+The table beneath it already qualified interface 4's row as "located
+structurally", but the lead sentence said "each", covering all five.
+
+TIMELINE.md, original — the stronger error of the two, because it names a source
+that does not contain interface 4 at all:
+  "All five HID report descriptors sit contiguously at `+0x008..+0x282` and are
+   byte-identical to what the host read back in log 09 — and they appear in no
+   other preserved image."
+Log 09 contains four report descriptors, not five.
+
+Both were rewritten to separate the four byte-identical interfaces from the
+fifth, to name the evidence for each, and to state why interface 4 is different.
+FINDINGS.md's table gained an explicit "strength" column and a paragraph on the
+unbound interface; TIMELINE.md's sentence now says four are byte-identical to
+log 09's raw bytes and that the fifth has no raw bytes in the repository at all.
+
+$ grep -n "byte-identical to what" FINDINGS.md TIMELINE.md
+  FINDINGS.md:1701:`+0x008..+0x282`. Four of the five are byte-identical to what the host read
+No other instance remains in either file.
+
+
+================================================================================
+TESTS ADDED
+================================================================================
+tool/test_map_usb_routing.py, from 24 tests to 33.
+
+Pinning the correction:
+  - test_the_lamparray_basis_does_not_claim_byte_identity — the EP 0x0f basis
+    must not contain "byte-identical", and must contain "structurally" and
+    "cannot be checked"
+  - test_byte_identity_is_claimed_only_where_raw_bytes_are_preserved — the
+    invariant rather than a hand-listed set: ANY route whose basis claims
+    byte-identity must name an interface this repository holds raw host bytes
+    for. A first draft of this test hard-coded the endpoint list and failed;
+    the list was wrong, not the tool, and the test was rewritten to assert the
+    property instead of the enumeration.
+  - test_no_raw_host_bytes_exist_for_interface_four — asserts hidraw0-3 are
+    present and hidraw4 is not
+  - test_the_lamparray_item_walk_matches_the_host_listing — 155 items, equal
+
+Fail-closed tests for the new item walk, so a malformed descriptor can never be
+reported as well-formed:
+  - a short-form size field of 3 means FOUR data bytes, not three
+  - an item whose payload runs past the end raises
+  - a truncated descriptor raises rather than returning a partial item list
+  - item kinds are decoded from the prefix (Global/Local/Main)
+  - a missing host section in notes/usb-descriptors.txt raises rather than
+    silently comparing against an empty listing
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_usb_routing.py tool/test_map_usb_routing.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 492 tests   OK                                                 [exit 0]
+  (483 before this correction; +9 in tool/test_map_usb_routing.py)
+$ python3 tool/report_phase3.py --check    RESULT reports_current=True stale=0
+$ python3 tool/report_phase4.py --check    RESULT reports_current=True stale=0
+$ python3 tool/report_phase5.py --check    RESULT reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check  RESULT reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS             all OK                    [exit 0]
+$ git diff --check                         clean                     [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phase 5C was not begun.
+  - Nothing was committed. No file was staged or unstaged. opencode.json was
+    left alone.
+  - Log 107 was not edited. This log is the correction record.
+  - No existing check was weakened, and no conclusion of Phase 5B changed. The
+    routing map, the descriptor model, the 0x40100000 naming and the vendor
+    channel findings all stand; only the strength claimed for one descriptor's
+    host comparison was corrected downward.
+  - NO DEVICE WAS ACCESSED.

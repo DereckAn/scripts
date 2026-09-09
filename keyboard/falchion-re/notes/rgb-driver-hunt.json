@@ -1,0 +1,467 @@
+{
+  "candidates": {
+    "bank_0x40022000": {
+      "eliminated": true,
+      "intersection_with_lighting_closure": [],
+      "label": "the per-channel bank log 112 flagged as PWM-shaped",
+      "note": "its users cluster at 0x18011886..0x18011bbe; log 112 said it 'would suit a PWM controller' and did not name it. That suspicion is now actively disfavoured for lighting.",
+      "user_count": 10,
+      "users": [
+        "00000e68",
+        "1801020e",
+        "18011886",
+        "180118dc",
+        "18011900",
+        "18011994",
+        "18011a2c",
+        "18011af6",
+        "18011bbe",
+        "18016104"
+      ],
+      "window": "0x40022000"
+    },
+    "dma_setup": {
+      "basis": "it does not appear in the exhaustive closure, confirming log 112's negative with a computed closure rather than a reachability sample",
+      "eliminated": true,
+      "hypothesis": "FUN_18011dd0, log 111's DMA setup, transports frames",
+      "in_lighting_closure": false
+    },
+    "second_context": {
+      "basis": "the second-context image contains no reference to either frame buffer, no reference to any address in the app's lighting RAM region, and no 306 constant in a word or an immediate. Its own mailbox fields are the fault counter, the channel table and the drive table, all sized for 75 keys, none 306 bytes.",
+      "eliminated": true,
+      "frame_address_references": 0,
+      "frame_size_immediate_sites": 0,
+      "frame_size_word_references": 0,
+      "hypothesis": "the second execution context drives the LEDs, as it drives the key converter",
+      "lighting_region_references": 0
+    },
+    "usb_block_0x40100000": {
+      "eliminated": true,
+      "intersection_with_lighting_closure": [],
+      "label": "the block the USB stack drives",
+      "note": "the lighting side touches it only through one status read in FUN_18008c16, which is also the /8 job root",
+      "user_count": 27,
+      "users": [
+        "18008b56",
+        "18008ba2",
+        "18008bbc",
+        "18008c16",
+        "180146ec",
+        "180148f2",
+        "18014a54",
+        "18014d66",
+        "18015098",
+        "1801518a",
+        "1801533c",
+        "1801562a",
+        "180156d2",
+        "1801574c",
+        "180158de",
+        "18015950",
+        "1801597e",
+        "180159dc",
+        "18015ce2",
+        "18016828",
+        "18016b8e",
+        "18016c48",
+        "18016cb2",
+        "18016d04",
+        "18016f6e",
+        "18017192",
+        "180171c8"
+      ],
+      "window": "0x40100000"
+    }
+  },
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "42 functions",
+      "label": "the lighting closure is computed, not sampled",
+      "ok": true
+    },
+    {
+      "detail": "0 MMIO accesses",
+      "label": "the closure resolves ZERO peripheral accesses",
+      "ok": true
+    },
+    {
+      "detail": "so the census is working, not silent",
+      "label": "the same closure DOES resolve RAM accesses",
+      "ok": true
+    },
+    {
+      "detail": "657",
+      "label": "the closure has unresolved accesses to explain",
+      "ok": true
+    },
+    {
+      "detail": "112 stack, 54 indexed, 396 parameter",
+      "label": "most unresolved accesses are locals, indexing or parameters",
+      "ok": true
+    },
+    {
+      "detail": "no frame reference, no lighting-region reference, no 306",
+      "label": "the second-context hypothesis is eliminated",
+      "ok": true
+    },
+    {
+      "detail": "empty intersection",
+      "label": "the 0x40022000 bank is not reachable from the lighting closure",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "log 111's DMA setup is not in the closure",
+      "ok": true
+    },
+    {
+      "detail": "27 functions",
+      "label": "the 0x40100000 block has many users, and they are the USB stack's",
+      "ok": true
+    },
+    {
+      "detail": "306 bytes -> 0x18024f2c",
+      "label": "double buffering is recovered",
+      "ok": true
+    },
+    {
+      "detail": "0x132 = 6*17*3",
+      "label": "the copy length equals the frame size exactly",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the shadow sits exactly one frame below the live buffer",
+      "ok": true
+    },
+    {
+      "detail": "3 roots",
+      "label": "every lighting root is called from the divide-by-8 job",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every veneer decodes to the function it is claimed to reach",
+      "ok": true
+    },
+    {
+      "detail": "a ratio is not a frequency",
+      "label": "the absolute frame rate is still reported as unresolved",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the safe-idle question is reported UNANSWERABLE, not answered",
+      "ok": true
+    },
+    {
+      "detail": "tighter ignorance is not proof",
+      "label": "RGB stays UNRESOLVED in the dependency map",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the boundary is stated more precisely than before",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and a citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "No. The lighting subsystem is an exhaustive closure of 45 functions \u2014 42 in the application and 3 library routines in the entry image \u2014 and it resolves ZERO peripheral accesses. The hardware interface is not merely unresolved; it is absent from both analysed images.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1",
+        "log 112 step 5"
+      ],
+      "key": "consumer",
+      "kind_basis": "a computed call-graph closure intersected with the census, rather than log 112's per-function reachability sample",
+      "question": "Did the frame consumers resolve to hardware?"
+    },
+    {
+      "answer": "Not a hidden peripheral base. They decompose into stack-relative locals, register-offset indexing into arrays whose base is known, and base-in-an-argument-register cases where the pointer belongs to the caller. Log 112's counts were correct; reading them as 'a driver is hiding here' would not be.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1"
+      ],
+      "key": "unresolved_meaning",
+      "kind_basis": "the census's own reason field, tallied across the closure",
+      "question": "What are the unresolved accesses, then?"
+    },
+    {
+      "answer": "No. Its image contains no reference to either frame buffer, none to the application's lighting RAM region, and no 306 constant in any word or immediate. Its mailbox fields are all sized for 75 keys.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 118",
+        "log 121"
+      ],
+      "key": "second_context",
+      "kind_basis": "aligned-word and immediate searches over the whole image",
+      "question": "Does the second execution context drive the LEDs?"
+    },
+    {
+      "answer": "Both eliminated. The 0x40022000 users form a cluster at 0x18011886..0x18011bbe whose intersection with the lighting closure is EMPTY, and log 111's DMA setup is not in the closure either. The 0x40100000 block is the USB stack's, touched from the lighting side only by one status read.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 111",
+        "log 112"
+      ],
+      "key": "candidates",
+      "kind_basis": "set intersection of each window's user set with the closure",
+      "question": "What about the 0x40022000 bank and the DMA setup?"
+    },
+    {
+      "answer": "Yes, and log 112 recorded that there was not. FUN_1800aab0 copies 306 bytes from the live frame at 0x1802505e to a shadow at 0x18024f2c, gated on flag bits 0x30, then tail-calls FUN_180089a8. Five functions read the shadow.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3",
+        "log 112 step 5"
+      ],
+      "key": "double_buffer",
+      "kind_basis": "the swap's listing, with the copy length equal to the frame size and the destination exactly one frame below the source",
+      "question": "Is there double buffering?"
+    },
+    {
+      "answer": "IRQ38 divided by 8. All three lighting roots are called from the prescaler's divide-by-8 job through veneers at 0x40d0, 0x40f8 and 0x4116. Log 112 recorded the consumers as NOT reached from the tick chain; the veneer mechanism logs 119 to 121 established is what makes the link visible. The absolute rate stays unresolved.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3",
+        "log 109 step 5",
+        "log 121"
+      ],
+      "key": "timing",
+      "kind_basis": "decoded movw/movt veneer targets and the call sites' offsets inside the job's recovered range",
+      "question": "What is the frame timing?"
+    },
+    {
+      "answer": "No. An output-enable line, a brightness register and a driver reset are all MMIO writes, and the closure contains none \u2014 so there is nothing to inspect rather than something unrecognised. The BUFFER's idle state remains provably all-zero; what the hardware does with an all-zero frame remains undetermined.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4",
+        "log 112 step 6"
+      ],
+      "key": "safe_idle",
+      "kind_basis": "the absence is now a property of an exhaustive closure rather than of a sampled one",
+      "question": "Can the safe-idle question be answered?"
+    },
+    {
+      "answer": "No. It stays UNRESOLVED. The boundary is much tighter, but tighter ignorance is not the safe-idle proof the move requires.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4"
+      ],
+      "key": "classification",
+      "kind_basis": "the step's own precondition: RGB moves only with the proof",
+      "question": "Does RGB move in the dependency map?"
+    }
+  ],
+  "closure": {
+    "closure_size": 42,
+    "members": [
+      "18000b28",
+      "18004498",
+      "180089a8",
+      "18008fc8",
+      "180090c2",
+      "180090fa",
+      "1800912e",
+      "180091f0",
+      "18009222",
+      "1800aab0",
+      "1800aba4",
+      "1800b0aa",
+      "1800b704",
+      "1800b7ea",
+      "1800bf54",
+      "1800c074",
+      "1800c132",
+      "1800c1b4",
+      "1800c3dc",
+      "1800c49e",
+      "1800c51c",
+      "1800c600",
+      "1800c6a4",
+      "1800c726",
+      "1800c7f0",
+      "1800c868",
+      "1800ca02",
+      "1800ca3c",
+      "1800cac8",
+      "1800cb10",
+      "1800cb20",
+      "1800cf98",
+      "1800d640",
+      "1800fd4c",
+      "18010102",
+      "1801bdbe",
+      "1801bdc8",
+      "1801bdd2",
+      "1801bdfa",
+      "1801be04",
+      "1801be7c",
+      "1801be90"
+    ],
+    "mmio_access_count": 0,
+    "mmio_windows": {},
+    "ram_windows_touched": 11,
+    "reaches_no_mmio": true
+  },
+  "disclaimer": "Offline analysis of preserved images. No device was accessed. This authorises nothing live.",
+  "double_buffer": {
+    "bytes": 306,
+    "function": "0x1800aab0",
+    "gate": "0x1801e6b7",
+    "gate_mask": "0x30",
+    "listing": "tst r0,#0x30 / beq skip ; memcpy(frame - 0x132, frame, 0x132) ; strb #0 ; b.w FUN_180089a8",
+    "live_frame": "0x1802505e",
+    "live_matches_log112": true,
+    "recovered": true,
+    "shadow": "0x18024f2c",
+    "shadow_readers": [
+      "0x18009222",
+      "0x1800b0aa",
+      "0x1800bf54",
+      "0x1800c1b4",
+      "0x1800d640"
+    ],
+    "supersedes": "log 112 step 5: 'no second buffer or swap was found'",
+    "tail_call": "0x180089a8"
+  },
+  "frame": {
+    "bytes": 306,
+    "geometry": "6x17x3",
+    "live": "0x1802505e",
+    "shadow": "0x18024f2c",
+    "writer": "0x1800c132"
+  },
+  "frame_timing": {
+    "absolute_rate": "UNRESOLVED \u2014 IRQ38's period is still unidentified",
+    "all_roots_on_the_tick": true,
+    "cadence": "IRQ38 divided by 8 \u2014 the same job that feeds the watchdog (log 114) and drives the mailbox cluster (log 121)",
+    "job": "entry FUN_00000516, the prescaler's divide-by-8 job",
+    "job_range": "0x0516..0x057a",
+    "recovered": true,
+    "roots": [
+      {
+        "app_function": "0x18001fbe",
+        "call_site": "0x0550",
+        "inside_the_div8_job": true,
+        "role": "calls FUN_1800aba4 and FUN_1800c1b4",
+        "veneer": "0x40d0",
+        "veneer_resolves": true,
+        "veneer_target": "0x18001fbf"
+      },
+      {
+        "app_function": "0x18008c16",
+        "call_site": "0x0576",
+        "inside_the_div8_job": true,
+        "role": "calls FUN_1800aab0, the frame swap",
+        "veneer": "0x4116",
+        "veneer_resolves": true,
+        "veneer_target": "0x18008c17"
+      },
+      {
+        "app_function": "0x1800b370",
+        "call_site": "0x0564",
+        "inside_the_div8_job": true,
+        "role": "calls FUN_18009222 and FUN_1800b0aa, the shadow readers",
+        "veneer": "0x40f8",
+        "veneer_resolves": true,
+        "veneer_target": "0x1800b371"
+      }
+    ],
+    "supersedes": "log 112 step 5: 'the frame consumers are not reached from Phase 5C's tick chain' and 'frame timing ... NOT RECOVERED'"
+  },
+  "safe_idle": {
+    "answerable": false,
+    "boundary_before": "both frame consumers reach zero resolved MMIO; 79 and 91 unresolved-base accesses (log 112)",
+    "boundary_now": "the lighting subsystem is an exhaustively enumerated closure of 45 functions that resolves ZERO peripheral accesses. Its unresolved accesses are stack locals, indexed array offsets and caller-supplied pointers, not a concealed peripheral base. Four candidate transports are individually eliminated: the second execution context, the 0x40022000 bank, log 111's DMA setup, and the 0x40100000 block. The frame is produced, intensity-scaled, double-buffered and swapped on the divide-by-8 tick \u2014 and then the data path leaves the analysed set entirely.",
+    "buffer_idle_state": "all zero, by construction \u2014 both buffers live in the zeroinit region and only FUN_1800c132 writes the live frame",
+    "classification": "unresolved",
+    "classification_unchanged": true,
+    "hardware_idle_state": "NOT DETERMINABLE from the preserved images",
+    "what_was_looked_for_and_not_found": [
+      "an output-enable or blank line asserted after the first frame",
+      "a global brightness or current-limit register",
+      "a driver reset or latch sequence in any lighting init path",
+      "any MMIO access whatsoever in the 45-function closure"
+    ],
+    "why": "an output-enable, a brightness register and a reset sequence are all MMIO writes, and the closure contains none. There is nothing to inspect, not merely something unrecognised.",
+    "why_unchanged": "RGB moves out of unresolved only with a safe-idle PROOF. Tighter ignorance is not proof. A common-anode part behind an inverting stage would still read an all-zero frame as full brightness, and nothing recovered excludes that."
+  },
+  "summary": {
+    "checks": 22,
+    "failed": 0,
+    "ok": true
+  },
+  "unresolved": [
+    {
+      "detail": "The frame is prepared, scaled, double-buffered and swapped on the tick, and then leaves the analysed set. SPI, PWM, GPIO bit-bang and DMA all remain open, but none is reachable from the closure.",
+      "key": "final_transport"
+    },
+    {
+      "detail": "Whether an all-zero frame means dark or bright depends on the driver's polarity, which is unidentified. A common-anode part behind an inverting stage would read all-zero as full brightness.",
+      "key": "driver_polarity"
+    },
+    {
+      "detail": "Whether any clock, pin or controller the lighting path initialises is SHARED with a mandatory service is still not established, because the initialisation is not in the closure either.",
+      "key": "shared_initialisation"
+    },
+    {
+      "detail": "The cadence is IRQ38/8, a ratio. IRQ38's period is still unknown, so no frame rate in Hz follows.",
+      "key": "absolute_frame_rate"
+    },
+    {
+      "detail": "The swap is gated on bits 4 and 5 of the byte at 0x1801e6b7. What sets those bits is not traced here.",
+      "key": "swap_gate"
+    },
+    {
+      "detail": "A mask ROM was never searched and cannot be, so a ROM-resident driver is not excluded \u2014 only unevidenced.",
+      "key": "unread_rom"
+    }
+  ],
+  "unresolved_breakdown": {
+    "base_is_an_argument_register": 396,
+    "by_reason": {
+      "base_r0_unknown": 134,
+      "base_r12_unknown": 1,
+      "base_r1_unknown": 116,
+      "base_r2_unknown": 85,
+      "base_r3_unknown": 60,
+      "base_r4_unknown": 27,
+      "base_r5_unknown": 28,
+      "base_r6_unknown": 13,
+      "base_r7_unknown": 7,
+      "base_r8_unknown": 8,
+      "base_r9_unknown": 12,
+      "register_offset": 54,
+      "stack_relative": 112
+    },
+    "indexed_into_a_known_array": 54,
+    "interpretation": "stack-relative accesses are locals and register-offset accesses index arrays whose base IS known. The base_r0..r3 cases are the ARM parameter registers, so their base is the caller's pointer, not a peripheral. None of these is a concealed MMIO base.",
+    "other_registers": 95,
+    "stack_relative": 112,
+    "total": 657
+  }
+}

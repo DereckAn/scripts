@@ -1,0 +1,498 @@
+{
+  "candidates": {
+    "a_timer_register": {
+      "basis": "the application and entry image touch four peripheral windows: the converter trio and its neighbour, 0x40020000, the block the USB stack drives, and the 15-register system-control block log 123 enumerated. None has a reload/divisor shape, and log 109 step 3 already recorded that the timer raising IRQ38 is unidentified. A rate index cannot be traced to a timer that has not been found.",
+      "confirmable": false,
+      "identified_timer_block": null,
+      "windows": {
+        "0x40000000": {
+          "accesses": 8,
+          "functions": 1
+        },
+        "0x40010000": {
+          "accesses": 21,
+          "functions": 5
+        },
+        "0x40020000": {
+          "accesses": 57,
+          "functions": 12
+        },
+        "0x40100000": {
+          "accesses": 139,
+          "functions": 27
+        },
+        "0x45000000": {
+          "accesses": 87,
+          "functions": 18
+        }
+      }
+    },
+    "b_prescaler_ladder": {
+      "all_immediates": true,
+      "basis": "every divisor is encoded in the instruction stream \u2014 four `cmp rN,#imm` and one `lsls #0x1f` bit test for the divide-by-two. Not one is loaded from RAM, so no stored index can change the ladder.",
+      "eliminated": true,
+      "function": "0x0000042c",
+      "ratios": [
+        8,
+        5,
+        2,
+        10,
+        10
+      ],
+      "sites": [
+        {
+          "encoding": "0x2808",
+          "expected_ratio": 8,
+          "immediate": 8,
+          "is_cmp_immediate": true,
+          "matches": true,
+          "site": "0x0000043a"
+        },
+        {
+          "encoding": "0x2805",
+          "expected_ratio": 5,
+          "immediate": 5,
+          "is_cmp_immediate": true,
+          "matches": true,
+          "site": "0x0000044c"
+        },
+        {
+          "encoding": "0x07c0",
+          "expected_ratio": 2,
+          "immediate": null,
+          "is_cmp_immediate": false,
+          "matches": true,
+          "site": "0x0000045c"
+        },
+        {
+          "encoding": "0x280a",
+          "expected_ratio": 10,
+          "immediate": 10,
+          "is_cmp_immediate": true,
+          "matches": true,
+          "site": "0x00000474"
+        },
+        {
+          "encoding": "0x280a",
+          "expected_ratio": 10,
+          "immediate": 10,
+          "is_cmp_immediate": true,
+          "matches": true,
+          "site": "0x00000484"
+        }
+      ]
+    },
+    "c_mailbox": {
+      "any_rate_field": false,
+      "basis": "log 121 enumerated the mailbox exhaustively: a fault counter, a channel table, a drive table, raw samples and travel bytes. All are sized for 75 keys and none carries a rate or an interval.",
+      "count": 5,
+      "eliminated": true,
+      "fields": [
+        {
+          "direction": "app -> second",
+          "offset": "0x1e4",
+          "opcode": "0x0b"
+        },
+        {
+          "direction": "app -> second",
+          "offset": "0x72c",
+          "opcode": "0x0f"
+        },
+        {
+          "direction": "BOTH",
+          "offset": "0x27a",
+          "opcode": "0x07"
+        },
+        {
+          "direction": "second -> app",
+          "offset": "0x3f2",
+          "opcode": "0x01/0x02/0x0c"
+        },
+        {
+          "direction": "second -> app",
+          "offset": "0x35c",
+          "opcode": "0x01/0x02/0x0c"
+        }
+      ]
+    },
+    "d_descriptor_binterval": {
+      "any_runtime_reference": false,
+      "basis": "the bInterval bytes are fixed in the region image, the RAM copy's bInterval bytes are referenced by no aligned word anywhere in the application, and the descriptor builder writes only the descriptor it emits, never the parameter table. Changing the polling rate this way would also require re-enumeration, and nothing triggers one.",
+      "eliminated": true,
+      "matches_log107": true,
+      "ram_binterval_addresses": [
+        {
+          "address": "0x18034384",
+          "references": []
+        },
+        {
+          "address": "0x1803439c",
+          "references": []
+        },
+        {
+          "address": "0x180343b4",
+          "references": []
+        },
+        {
+          "address": "0x180343cc",
+          "references": []
+        },
+        {
+          "address": "0x180343e4",
+          "references": []
+        }
+      ],
+      "ram_copy": "0x1803435c",
+      "region_table": "0x1801e604",
+      "static_bintervals": [
+        1,
+        1,
+        1,
+        4,
+        1
+      ]
+    }
+  },
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "'3'",
+      "label": "the historical profile's polling-rate index is read from the decode",
+      "ok": true
+    },
+    {
+      "detail": "no Hz, no divisor, no interval",
+      "label": "the performance block contains nothing but that index",
+      "ok": true
+    },
+    {
+      "detail": "5 commands",
+      "label": "the observed command table is parsed",
+      "ok": true
+    },
+    {
+      "detail": "so the wire record cannot settle this",
+      "label": "no polling-rate command appears in the observed command table",
+      "ok": true
+    },
+    {
+      "detail": "SetPollingRate, GetPollingRate",
+      "label": "the note records the opcode as a known HAL name, never captured",
+      "ok": true
+    },
+    {
+      "detail": "0 found",
+      "label": "no index-to-Hz table exists in any of the four images",
+      "ok": true
+    },
+    {
+      "detail": "2 candidates, none a rate table",
+      "label": "divisor-shaped byte runs DO exist and were examined individually",
+      "ok": true
+    },
+    {
+      "detail": "8, 5, 10, 10",
+      "label": "the prescaler ladder is compile-time immediates",
+      "ok": true
+    },
+    {
+      "detail": "[1, 1, 1, 4]",
+      "label": "the region's static bIntervals match log 107",
+      "ok": true
+    },
+    {
+      "detail": "so the descriptor is not a runtime mechanism",
+      "label": "no aligned word references any RAM bInterval byte",
+      "ok": true
+    },
+    {
+      "detail": "5 fields, none a rate",
+      "label": "the mailbox carries no rate field",
+      "ok": true
+    },
+    {
+      "detail": "5 peripheral windows",
+      "label": "no timer block is identified, so candidate (a) is UNRESOLVED rather than eliminated",
+      "ok": true
+    },
+    {
+      "detail": "6 clients",
+      "label": "the tick's clients are enumerated from prior logs",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the tick is not reconfigurable from the preserved images",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "no real units are attached to anything by this step",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "IRQ38's period stays unresolved",
+      "ok": true
+    },
+    {
+      "detail": "it stays unresolved, as the step required",
+      "label": "the dependency map's clock entry is untouched",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the 8000/8 alignment is recorded as a consistency, not a finding",
+      "ok": true
+    },
+    {
+      "detail": "the timer",
+      "label": "at least one claim is left unresolved",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and a citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "Nowhere traceable in the preserved images. The historical profile carries it as the index \"3\", the observed wire record contains no polling-rate command at all, and no image holds an index-to-rate table.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1",
+        "notes/ac-profile3-decoded.json",
+        "notes/protocol.md"
+      ],
+      "key": "landing",
+      "kind_basis": "the profile decode, the protocol note's command table, and a search of all four images for a table containing three or more of the plausible rate values",
+      "question": "Where does the polling-rate index land?"
+    },
+    {
+      "answer": "No. All five ladder decisions are encoded in the instruction stream \u2014 four `cmp rN,#imm` and one bit test \u2014 and none is loaded from RAM. The ladder is fixed at compile time.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 109 step 4"
+      ],
+      "key": "prescaler",
+      "kind_basis": "the five encodings, decoded from the entry image's bytes",
+      "question": "Could it change the prescaler ladder?"
+    },
+    {
+      "answer": "Not at runtime. The bIntervals are fixed in the region image at 1, 1, 1, 4, 1, the RAM copy's bInterval bytes are referenced by no aligned word in the application, and the descriptor builder writes only the descriptor it emits. Changing them would also need a re-enumeration that nothing triggers.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 107 step 3"
+      ],
+      "key": "descriptor",
+      "kind_basis": "the region bytes, an aligned-word search for each RAM bInterval address, and the builder's stores",
+      "question": "Could it change the descriptor's bInterval?"
+    },
+    {
+      "answer": "No. Log 121 enumerated the mailbox's five fields exhaustively \u2014 a fault counter, a channel table, a drive table, raw samples and travel bytes. None is a rate or an interval.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 121"
+      ],
+      "key": "mailbox",
+      "kind_basis": "log 121's model, read back from its generated JSON",
+      "question": "Could it be forwarded to the second context?"
+    },
+    {
+      "answer": "Not confirmable, because no timer block has been identified in any image. The application and entry image touch four peripheral windows and none has a reload or divisor shape. Log 109 already recorded that the timer raising IRQ38 is unidentified; this step does not change that.",
+      "confidence": "unresolved",
+      "evidence": [
+        "this log step 2",
+        "log 109 step 3",
+        "log 123"
+      ],
+      "key": "timer",
+      "kind_basis": "a window census of both images, with no reload-shaped register in any of them",
+      "question": "Could it program a timer?"
+    },
+    {
+      "answer": "The question is moot on this evidence, and that is itself the answer worth recording. Six subsystems ride IRQ38 and its divide-by-8 job \u2014 sample fetch, actuation compare, watchdog feed, mailbox cluster, lighting and the report builder \u2014 so IF the period changed they would all scale together. But no stored value reaches the tick, so the images show no configurable rate to couple anything to.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4"
+      ],
+      "key": "coupling",
+      "kind_basis": "the four eliminations above, against the tick-client list assembled from logs 109, 114, 119, 121 and 122",
+      "question": "Does the rate setting change the shared tick?"
+    },
+    {
+      "answer": "No. Nothing here converts a tick into Hz. The only unit-bearing timing in the project remains log 120's microsecond delay, which gets its unit by dividing a measured clock by a million rather than by knowing the clock. IRQ38's period stays unresolved and the dependency map is untouched.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3",
+        "log 120"
+      ],
+      "key": "units",
+      "kind_basis": "the absence of any recovered rate value, divisor or clock constant",
+      "question": "Are real units now attached to anything?"
+    }
+  ],
+  "disclaimer": "Offline analysis of preserved images. No device was accessed and no frame of any kind was constructed. This authorises nothing live.",
+  "observed_wire_commands": {
+    "commands": [
+      {
+        "command": "12 <sub>",
+        "meaning": "GET / query. Reply echoes `12 <sub>` then appends data."
+      },
+      {
+        "command": "22 01",
+        "meaning": "init handshake (echo only)"
+      },
+      {
+        "command": "51 21 ...",
+        "meaning": "**set Fn-layer key binding**"
+      },
+      {
+        "command": "51 22 ...",
+        "meaning": "set \u2014 exact function unconfirmed, seen with `C8` (200) payload"
+      },
+      {
+        "command": "50 55",
+        "meaning": "**commit to flash.** Reply ~220 ms later."
+      }
+    ],
+    "count": 5,
+    "finding": "the observed command surface is a version/query opcode, two init handshakes, the key-configuration opcodes and the commit. NO POLLING-RATE COMMAND APPEARS IN IT. The note independently records SetPollingRate and GetPollingRate as host HAL method names, and lists the polling-rate opcode among those that 'have known HAL method names; none captured yet'. So a polling-rate command very probably EXISTS on the wire and was simply never captured \u2014 which is why this step had to be answered from code, and why the negative below is about the firmware's consumers rather than about the protocol.",
+    "hal_method_names": [
+      "SetPollingRate",
+      "GetPollingRate"
+    ],
+    "listed_as_never_captured": true,
+    "polling_in_command_table": false
+  },
+  "profile_field": {
+    "is_an_index_not_a_rate": true,
+    "note": "the value is the string \"3\", and the block contains nothing else \u2014 no Hz, no divisor, no interval.",
+    "performance_block": {
+      "pollingRate": "3"
+    },
+    "polling_rate_index": "3",
+    "provenance": "previously observed on hardware; NOT reproducible from the PCAPs in this repository",
+    "source": "notes/ac-profile3-decoded.json"
+  },
+  "rate_tables": {
+    "divisor_candidate_count": 2,
+    "divisor_candidates": [
+      {
+        "address": "0x1800d258",
+        "context": "d0e601180c4f0218010204081000000098dd0118",
+        "image": "app",
+        "pattern": "1,2,4,8"
+      },
+      {
+        "address": "0x1800d258",
+        "context": "d0e601180c4f0218010204081000000098dd0118",
+        "image": "app",
+        "pattern": "1,2,4,8,16"
+      }
+    ],
+    "eliminated": true,
+    "rate_table_count": 0,
+    "rate_tables_found": [],
+    "verdict_divisors": "the byte runs that match a divisor pattern are examined individually below and none is a rate table: the application's 1,2,4,8,16 run sits in a data area among pointers and is a bit-position table, and the region's ascending run is an identity sequence. Neither is indexed by anything rate-related.",
+    "verdict_rates": "NO index-to-Hz table exists in any of the four images"
+  },
+  "shared_tick": {
+    "answer": "the question is moot on this evidence. No stored value reaches the tick at all: the ladder is immediates, no timer block is identified, the mailbox carries no rate and the descriptor is static. So the images do not show report timing and acquisition being coupled through a configurable rate, because they show no configurable rate.",
+    "client_count": 6,
+    "clients": [
+      {
+        "client": "sample fetch",
+        "evidence": "log 119",
+        "reached_via": "the /8 job, veneer 0x4044"
+      },
+      {
+        "client": "actuation compare",
+        "evidence": "log 110, log 119",
+        "reached_via": "the /8 job, veneer 0x4062"
+      },
+      {
+        "client": "watchdog feed",
+        "evidence": "log 114",
+        "reached_via": "FUN_00000516, the divide-by-8 job"
+      },
+      {
+        "client": "mailbox cluster",
+        "evidence": "log 121",
+        "reached_via": "FUN_00000516, veneer 0x40d0"
+      },
+      {
+        "client": "lighting swap and shadow read",
+        "evidence": "log 122",
+        "reached_via": "FUN_00000516, veneers 0x40f8 and 0x4116"
+      },
+      {
+        "client": "report builder",
+        "evidence": "log 109",
+        "reached_via": "the every-tick job, veneer 0x4076"
+      }
+    ],
+    "coupling_question": "if a stored rate DID change IRQ38's period, every client above would scale with it \u2014 the Hall sample rate, the actuation comparison, the watchdog feed margin, the lighting frame rate and the report cadence are all derived from the same interrupt and the same fixed ladder.",
+    "divider": "the prescaler ladder, ratios 1, 8, 5, 2, 10, 10",
+    "reconfigurable_from_the_images": false,
+    "source": "IRQ38",
+    "what_a_replacement_must_preserve": "the coupling itself. Anything that changes IRQ38's period changes all six clients at once, including the watchdog margin log 114 recorded as riding the divide-by-8 job. A replacement that reasons about one client's rate in isolation is reasoning wrongly, and that is true whether or not a rate setting exists."
+  },
+  "summary": {
+    "checks": 23,
+    "failed": 0,
+    "ok": true
+  },
+  "units": {
+    "dependency_map_effect": "none \u2014 clock_frequency stays unresolved",
+    "hz_attached_to_anything": false,
+    "irq38_period": "UNRESOLVED",
+    "only_unit_bearing_timing": "log 120's delay, which divides a measured core clock by 1000000 and is therefore in microseconds BY CONSTRUCTION, without the clock's numeric value being known",
+    "suggestive_but_unproven": "log 107 reads EP 0x81's bInterval=1 as 125us (8000 Hz) and EP 0x8e's bInterval=4 as 1 ms (1000 Hz), and the divide-by-8 job would turn an 8000 Hz IRQ38 into exactly 1000 Hz. That is a CONSISTENCY between two independently recovered numbers, not a measurement, and it is recorded here so a future step can test it rather than inherit it as fact."
+  },
+  "unresolved": [
+    {
+      "detail": "Where a polling-rate index goes, if the device accepts one at all. It may be handled by a command never captured, by a settings field whose format log 111 could not recover, or not by the device at all.",
+      "key": "rate_destination"
+    },
+    {
+      "detail": "The timer that raises IRQ38 is still unidentified, so its period cannot be read or reasoned about even in principle from these images.",
+      "key": "irq38_timer"
+    },
+    {
+      "detail": "Log 111 recorded the settings blob's format as unrecovered. If the rate is persisted, it is persisted somewhere this project cannot yet parse.",
+      "key": "settings_format"
+    },
+    {
+      "detail": "The historical wire record is a sample, not a specification. A polling-rate command may exist and simply never have been sent while captures were running.",
+      "key": "uncaptured_commands"
+    },
+    {
+      "detail": "Reading bInterval=1 as 125 microseconds assumes the device enumerates at high speed. That reading comes from log 107 and is inherited here, not re-derived.",
+      "key": "high_speed_assumption"
+    },
+    {
+      "detail": "That 8000 divided by 8 equals 1000, matching two independently recovered bInterval readings, is a consistency and not a measurement. It is recorded as a lead for a future step, deliberately not as a finding.",
+      "key": "suggestive_alignment"
+    }
+  ],
+  "verdict": "no polling-rate index is consumed anywhere in the preserved images, and no real units are attached"
+}

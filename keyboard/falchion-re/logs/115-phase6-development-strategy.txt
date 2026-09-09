@@ -1,0 +1,308 @@
+LOG 115 — PHASE 6: THE DEVELOPMENT-STRATEGY DECISION RECORD
+Date: 2026-09-05
+Scope: Phase 6 ONLY — an analysis and writing phase. No new firmware artefact,
+no builder changes, no live-use instructions. Phase 7 was NOT begun. Nothing
+was committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. NO FLASHING INSTRUCTIONS,
+NO DEVICE COMMAND SEQUENCES AND NO UPDATER INVOCATION WERE PRODUCED, and a unit
+test asserts the ADR stays that way. Neither evidence binary, no historical log
+and not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+STEP 1 — THE DECISION
+================================================================================
+$ python3 tool/report_development_strategy.py
+
+STATUS decided   DECISION path-a-first
+  Path A first, for offline format validation only, and Path B not yet. The
+  plan's default is CONFIRMED, and the evidence has hardened it rather than
+  softened it: Path B is not merely premature, it currently cannot produce a
+  typing keyboard.
+
+PATH B BLOCKING VERDICT
+  Path B currently CANNOT produce a typing keyboard. With the Hall acquisition
+  unrecovered, a replacement application could initialise, tick, enumerate,
+  build reports and transmit them, and every key would read as released
+  forever. That is a blocker, not a detail.
+
+RESULT adr_ok=True checks=13
+  [exit 0]
+
+THE PLAN'S DEFAULT IS CONFIRMED, AND IT IS WORTH SAYING WHY THAT IS NOT MERELY
+INHERITING IT. The default was "Path A for offline format validation, then Path
+B once the platform map is credible". Five subphases of evidence since could
+have overturned it. The platform map IS now substantially credible — six
+must-implement services understood, three must-neutralize policies recovered —
+so the condition the plan attached to Path B has arguably been met. Path B is
+still blocked anyway, because the credibility of the map turned out not to be
+the binding constraint. The binding constraint is that NOTHING IN EITHER
+ANALYSED IMAGE PRODUCES A KEY READING. That is a stronger and more specific
+reason than the plan anticipated, and it changes what would unblock Path B.
+
+
+================================================================================
+STEP 2 — PATH A, ASSESSED AGAINST THE EVIDENCE
+================================================================================
+WHAT IS UNDERSTOOD WELL ENOUGH TO PATCH:
+  YES  the USB identity strings — stored as plain ASCII in the decompressed
+       region and turned into UTF-16 string descriptors at runtime, with the
+       whole path traced (logs 105, 107)
+  YES  the key-policy tables — read by the report pipeline every tick, with
+       the index arithmetic listing-verified (logs 109, 110)
+  NO   the Hall actuation constants — Phase 5D recovered what happens to a
+       travel byte and not what produces one (log 110)
+  NO   the LampArray behaviour — the host protocol is fully recovered but the
+       driver that consumes the frame buffer is unidentified (log 112)
+
+INTEGRITY FIELDS A PATCH MUST RECOMPUTE, in dependency order:
+  1. each affected SN_FWIN record's chunked-CRC sum at record+0x8
+  2. the application-region additive word-sum at logical 0x7bffc, LAST,
+     because it covers the record checksum fields too
+Both are proven recomputable offline (logs 75, 76; the builder demonstrates the
+round trip in log 77).
+
+INTEGRITY FIELDS THAT MUST NOT BE TOUCHED:
+  - the primary bootloader word-sum at logical 0x0fffc — absent from an
+    installed app-only source and outside the writable range
+  - the backup bootloader word-sum at logical 0x70ffc — only relevant if that
+    region changed, and policy is that it does not
+
+SIZE AND LAYOUT CONSTRAINTS:
+  - a patch must fit inside an existing record. The record table is a FIXED
+    EIGHT SLOTS and slot 2 is an inactive hole, not free space (log 95).
+  - no new record may be added without proven layout rules, and those rules
+    are not proven.
+  - a patch inside the compressed scatter region must be validated by
+    DECOMPRESSING, because a byte there may be a literal or may be the source
+    of a later back-reference. The existing builder already does this.
+
+WHAT REMAINS VENDOR-DERIVED, stated plainly as the phase requires: NEARLY ALL
+OF IT. Path A changes a handful of bytes and inherits the entire vendor loader,
+RTOS, USB stack, scan pipeline and lighting code. Path A validates format
+knowledge. It does not produce our own firmware, and describing it as if it
+did would be dishonest.
+
+
+================================================================================
+STEP 3 — PATH B, ASSESSED AGAINST THE DEPENDENCY MAP
+================================================================================
+THE SIX MUST-IMPLEMENT SERVICES — five have their evidence in hand:
+  reset/clock/RAM      the sequence is preserved and the stack window is a
+                       hard listing-verified constraint; the FREQUENCY is not
+                       known (log 113, and gate 3 below)
+  tick                 IRQ38 is the sole writer of the event word (log 109)
+  key-state            recovered as executable arithmetic (log 110)
+  USB enumeration      the builder's own size arithmetic reproduces the
+                       host-observed wTotalLength exactly (log 107)
+  boot keyboard route  traced end to end (logs 107, 109)
+  control endpoint     traced (logs 107, 112)
+
+THE THREE MUST-NEUTRALIZE SERVICES — all three are now understood:
+  watchdogs            THREE access paths, not one: the reset disable, a
+                       periodic feed on the divide-by-8 tick, and an NMI
+                       acknowledge that escalates to a system reset after one
+                       strike (log 114). A replacement must decide about all
+                       three; inheriting half of the arrangement is the
+                       failure mode.
+  NMI reset            writes VECTKEY|SYSRESETREQ (log 113)
+  second context       started at boot and WAITED FOR — main spins until a
+                       mailbox token appears, so a replacement that neither
+                       starts it nor removes the wait hangs at boot (log 113)
+
+THE THREE UNRESOLVED BLOCKERS: the Hall acquisition, the RGB idle polarity,
+and the clock frequency (log 113).
+
+TOOLCHAIN AND LINKER SUPPORT PATH B CONCRETELY NEEDS:
+  - a Cortex-M3 bare-metal toolchain (Thumb-2, soft-float)
+  - a linker script placing an entry image whose SN_FWIN entry pointer equals
+    the bootloader's constant EXACTLY — log 101 proved the comparison is
+    against a fixed constant, so the entry image cannot be relocated — and an
+    application image at its own load address
+  - an ARMv7-M vector table matching the recovered extent, with the fault and
+    NMI vectors DELIBERATELY decided rather than left default
+  - a container writer for the SN_FWIN record table and the scatter-load
+    descriptors, including whichever regions are copied or decompressed
+Path A needs none of that. It needs the offline builder that already exists.
+
+
+================================================================================
+STEP 4 — RECOVERY RISK
+================================================================================
+  - the verified backup covers THE APPLICATION REGION ONLY (log 92). It does
+    not cover the primary bootloader.
+  - the bootloader's write path guards its accepted address range, so it does
+    not overwrite itself (log 101 and the log-81 protocol analysis).
+  - THE DANGEROUS CASE is not a rejected image. A rejected image leaves the
+    device in bootloader mode, which is recoverable. The dangerous case is an
+    image that is CHECKSUM-CORRECT AND STILL DOES NOT ENUMERATE: it passes the
+    boot gate, the device may leave bootloader mode, and the software route
+    back is gone. The remaining documented route is a recovery key
+    combination whose PHYSICAL KEYS THIS REPOSITORY DOES NOT ESTABLISH — log
+    101 records that as an unresolved item.
+  - the preserved 1.00.58 image is a restore SOURCE for the application
+    region, and it is a DIFFERENT VERSION from the installed 1.59. Restoring
+    it is a downgrade, not a byte-for-byte return to the observed state.
+
+DEBUGGING, which applies equally to both paths and changes the calculus for
+both: THERE IS NO ON-DEVICE DEBUGGING AVAILABLE TODAY. No trace, no console,
+no working breakpoint path. Every iteration would be blind, with the only
+signal being whether the device enumerates afterwards. That makes a small
+reversible change enormously more attractive than a large one, and it is the
+single strongest argument for Path A first — stronger, arguably, than the
+Hall blocker, because it would still apply even if the blocker were resolved
+tomorrow.
+
+
+================================================================================
+STEP 5 — EVIDENCE GATES FOR PATH B
+================================================================================
+Stated as evidence gates, not milestones. Path B becomes advisable when these
+pass.
+
+  1. THE HALL ACQUISITION BOUNDARY — THE LARGEST GATE. A recovered producer
+     for the per-key travel bytes: some function, in some image, that fills
+     that array from hardware. Until then a replacement cannot read a
+     keypress at all. (log 110 step 4; log 113)
+  2. WHAT THE SECOND EXECUTION CONTEXT OWNS. An analysis of the 0x18038000
+     image, which is preserved and has never been imported. It is started at
+     boot, waited for, and owns something the application does not, which
+     makes it the leading candidate for the acquisition. Resolving it may
+     close gate 1, or may prove the answer is elsewhere. (log 113 step 4)
+  3. THE CLOCK CONFIGURATION. Any unit-bearing evidence. A replacement can
+     copy the reset sequence without it but cannot reason about USB timing,
+     scan rate or watchdog margin — and the margin now matters, because the
+     block is fed on a divided tick. (log 113 step 1; log 114)
+  4. A DECIDED WATCHDOG POLICY. Not an evidence gate but a design one, listed
+     because it is easy to miss after log 114 changed the picture. (log 114)
+  5. WHAT MAKES ADDRESS 0 WRITABLE. The handoff copies the entry image there
+     and resets, so a remap or alias must exist; the register that arranges
+     it is not identified, and a replacement's entry image lives under the
+     same arrangement. (log 101, recorded unresolved)
+
+
+================================================================================
+STEP 6 — CANDIDATE FIRST TARGETS UNDER PATH A
+================================================================================
+Assessed against Phase 8's five criteria.
+
+  PASSES  the USB product string in the application record
+          Same-length ASCII replacement in the decompressed region; the path
+          to the descriptor is traced; touches no clock, watchdog,
+          flash-write, calibration or boot path; the bootloader's own product
+          identity is a separate value this does not alter, so the recovery
+          channel is unaffected; the builder already demonstrates the
+          decompress round trip for exactly this kind of byte.
+          (logs 105, 107, 77)
+
+  PASSES  one ordinary entry in a key-policy table
+          Uncompressed copy region, so no compression interaction. Small,
+          bounded, observable. RANKED BELOW the string only because some
+          historical KBID mappings in this repository are marked unverified,
+          so the specific entry would need its own citation. (logs 109, 110)
+
+  FAILS   the Hall actuation threshold constant
+          fails: a fully understood control/data path; no calibration effect.
+          Tempting — one byte, and the comparison is executable arithmetic —
+          but the input scale the threshold divides is unknown, and changing
+          when a key actuates is a calibration effect by any reasonable
+          reading. (log 110)
+
+  FAILS   the application's USB vendor and product IDs
+          fails: no recovery effect.
+          THE TARGET THAT LOOKS SAFEST AND IS NOT. The only non-physical route
+          back to a recoverable state depends on addressing the application by
+          its current identity. The physical alternative is a recovery key
+          combination whose physical keys are not established here, so a
+          mistake could leave no documented way back. (logs 101, 92)
+
+  FAILS   the NMI watchdog escalation limit
+          fails: no watchdog effect. Excluded by name. (log 114)
+
+  FAILS   the LampArray lighting behaviour
+          fails: a fully understood control/data path. The protocol is
+          recovered; the driver is not, and Phase 5F could not even prove an
+          all-zero frame means the LEDs are off. (log 112)
+
+  FAILS   anything in the bootloader region
+          fails: no recovery effect; exact original-byte assertions and a
+          clear rollback image. Outside the guarded range, absent from the
+          verified backup, no documented recovery. The builder already
+          refuses it. (logs 92, 101)
+
+
+================================================================================
+STEP 7 — THE ADR IS NOT A RUNBOOK, AND THAT IS TESTED
+================================================================================
+The deliverable is a decision document. Keeping it one is enforced rather than
+promised: `command_framing_hits()` scans the generated Markdown for fourteen
+command-shaped patterns — a shell prompt at line start, a hidraw path, sudo,
+dfu-util, fwupd, `--run`, HID write calls, and imperative forms such as "send
+the report", "then flash the", "run the following", "plug in".
+
+$ an independent scan of the WRITTEN file, not the in-memory string
+  patterns matched: NONE
+  lines: 197  words: 2548
+
+THREE TESTS GUARD THIS, and the second exists because the first could pass
+vacuously:
+  - the ADR matches no forbidden pattern
+  - the detector DOES fire on six known-bad strings, including
+    "$ python3 tool/backup_firmware.py --run" and "d.write(report)"
+  - ordinary flash-layout prose is NOT flagged — the ban is on instructions,
+    not on the word "flash", which this document necessarily uses throughout
+
+A fourth test scans the emitted JSON for the same patterns.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/report_development_strategy.py tool/test_report_development_strategy.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 686 tests   OK                                                 [exit 0]
+  (659 before this step; +27 in tool/test_report_development_strategy.py)
+$ python3 tool/report_phase3.py --check                 reports_current=True stale=0
+$ python3 tool/report_phase4.py --check                 reports_current=True stale=0
+$ python3 tool/report_phase5.py --check                 reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check               reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check             reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check          reports_current=True stale=0
+$ python3 tool/map_nonvolatile_writes.py --check        reports_current=True stale=0
+$ python3 tool/map_rgb_lamparray.py --check             reports_current=True stale=0
+$ python3 tool/map_platform_dependencies.py --check     reports_current=True stale=0
+$ python3 tool/report_development_strategy.py --check   reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                          all OK       [exit 0]
+$ git diff --check                                      clean        [exit 0]
+
+CITATION INTEGRITY. The ADR cites twelve logs, and two checks verify that each
+one exists and that its CURRENT content still hashes to what logs/SHA256SUMS
+records. A citation cannot rot silently: if a cited log were altered, the ADR's
+own --check would fail.
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phase 7 was not begun. tool/build_modified_image.py was NOT changed.
+  - No firmware artefact was produced.
+  - NO FLASHING INSTRUCTIONS, NO DEVICE COMMAND SEQUENCE AND NO UPDATER
+    INVOCATION were written, and a test enforces it.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - The decision itself lives in the ADR, not in FINDINGS.md; FINDINGS and
+    TIMELINE record only that the decision exists and what it is.
+  - Nothing here authorises a live experiment. Phase 9's independent review
+    remains between any artefact and any device.
+  - NO DEVICE WAS ACCESSED.

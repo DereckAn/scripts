@@ -1,0 +1,245 @@
+LOG 122 — THE RGB DRIVER HUNT
+Date: 2026-09-08
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary
+was opened for writing and both hashes are unchanged below. No historical log
+and not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE RESULT: the driver is STILL NOT FOUND, and the boundary is now far tighter
+than "both consumers reach zero resolved MMIO". Two things log 112 recorded as
+not recovered ARE recovered: double buffering, and frame timing.
+
+
+================================================================================
+STEP 1 — THE CONSUMERS, RESOLVED AS FAR AS THEY GO
+================================================================================
+Log 112 sampled reachability per function. This computes the closure.
+
+  lighting closure: 42 application functions, from 11 roots
+  plus 3 entry-image library routines reached through veneers
+  MMIO accesses resolved anywhere in it: ZERO
+  RAM windows resolved in it: many — so the census is working, not silent
+
+That last line matters: a census that resolved nothing at all would be
+evidence about the census. This one resolves plenty of RAM and no peripheral.
+
+WHY THE UNRESOLVED ACCESSES ARE NOT A HIDDEN DRIVER. 657 unresolved accesses
+across the closure, and the census's own reason field decomposes them:
+
+    stack_relative               112    locals, not memory-mapped anything
+    register_offset               54    indexing an array whose base IS known
+    base_r0..r3 unknown          396    the ARM PARAMETER registers — the base
+                                        belongs to the CALLER
+    other registers               95
+
+  Log 112's counts of 79 and 91 were correct. Reading them as "a peripheral
+  base is hiding in here" would not be: nearly all of them are ordinary local
+  and parameter addressing. A function that receives a buffer pointer and
+  indexes it looks exactly like this.
+
+RESOLUTION METHOD AND ITS LIMITS. Three methods, the ones that cracked the same
+blind spot in logs 114, 119 and 121: exhaustive call-graph closure; cross-image
+veneer decoding (movw/movt immediates, invisible to any word search); and
+aligned-word searches across all four images. THE LIMIT: constant propagation
+cannot follow a base that arrives through a runtime-filled pointer, which is
+precisely how the travel buffer hid in log 110. If the LED base arrives that
+way, this method cannot see it either — and the analysis below is what bounds
+that possibility rather than dismissing it.
+
+
+================================================================================
+STEP 2 — THE SECOND-CONTEXT HYPOTHESIS, AND THREE OTHER CANDIDATES
+================================================================================
+THE SECOND CONTEXT — ELIMINATED. It was the strongest hypothesis: that image
+owns windows the app never touches and already transports one peripheral's data
+across the mailbox. It does not transport this one.
+
+  references to either frame buffer in the image:            0
+  references to any address in 0x18024f00..0x18025200:       0
+  aligned words equal to 0x132 (306):                        0
+  `movw rD,#0x132` sites:                                    0
+
+  Its mailbox fields are the fault counter at +0x27a, the channel table at
+  +0x1e4 and the drive table at +0x72c, all sized for 75 keys (log 121). None
+  is a 306-byte RGB-ordered frame, and no handler writes a stride-3 array.
+
+THE 0x40022000 BANK — ELIMINATED for lighting. Log 112 noted it "would suit a
+PWM controller" and correctly refused to name it. Its users are:
+
+    entry 0x00000e68, 0x00000ec4
+    app   0x1801020e, 0x18011886, 0x180118dc, 0x18011900, 0x18011994,
+          0x18011a2c, 0x18011af6, 0x18011bbe, 0x18016104
+
+  INTERSECTION WITH THE LIGHTING CLOSURE: EMPTY. The suspicion is now actively
+  disfavoured, and the block is still not named.
+
+FUN_18011dd0, LOG 111'S DMA SETUP — ELIMINATED. Not in the closure. Log 112
+said the same from a reachability sample; this says it from a computed closure.
+
+THE 0x40100000 BLOCK — NOT THE DRIVER. It has 27 users, overwhelmingly in
+0x18014xxx..0x18017xxx, the USB stack's range. The only lighting-side contact
+is FUN_18008c16 reading 0x4010000c eight times, a status poll.
+
+
+================================================================================
+STEP 3 — WHAT WAS RECOVERED: DOUBLE BUFFERING AND FRAME TIMING
+================================================================================
+DOUBLE BUFFERING. Log 112 step 5: "no second buffer or swap was found." There
+is one.
+
+    1800aab0  ldr r0,[0x1800ad30]        ; = 0x1801e6b7, a flag byte
+    1800aab4  ldrb r0,[r0,#0x0]
+    1800aab6  tst r0,#0x30               ; bits 4 and 5
+    1800aaba  beq 0x1800aada             ; not set -> do nothing
+    1800aabe  ldr r1,[0x1800ad34]        ; = 0x1802505e, the LIVE frame
+    1800aac2  mov.w r2,#0x132            ; 306 bytes
+    1800aac6  sub.w r0,r1,#0x132         ; -> 0x18024f2c, the SHADOW
+    1800aaca  bl 0x1801bdd2              ; memcpy
+    1800aad0  strb r0,[r4,#0x0]          ; clear the request byte
+    1800aad6  b.w 0x180089a8
+
+  LIVE   0x1802505e   SHADOW 0x18024f2c   SIZE 0x132 = 6*17*3, exactly
+  The shadow sits exactly one frame below the live buffer, and five functions
+  read it: FUN_18009222, FUN_1800b0aa, FUN_1800bf54, FUN_1800c1b4, FUN_1800d640.
+
+FRAME TIMING. Log 112 step 5: "the frame consumers are not reached from Phase
+5C's tick chain" and "frame timing ... NOT RECOVERED". Both are superseded. The
+link is through veneers, which is why a word search never showed it — the same
+mechanism logs 119, 120 and 121 had to decode.
+
+  entry FUN_00000516, the prescaler's divide-by-8 job, range 0x516..0x57a:
+
+    0x0550 bl  -> veneer 0x40d0 -> app 0x18001fbe   calls FUN_1800aba4,
+                                                    FUN_1800c1b4
+    0x0564 bl  -> veneer 0x40f8 -> app 0x1800b370   calls FUN_18009222,
+                                                    FUN_1800b0aa (shadow readers)
+    0x0576 b.w -> veneer 0x4116 -> app 0x18008c16   calls FUN_1800aab0, the swap
+
+  ALL THREE LIGHTING ROOTS RIDE IRQ38 DIVIDED BY 8 — the same job that feeds
+  the watchdog (log 114), fetches samples and runs the mailbox cluster (log
+  121). The lighting subsystem is not off on its own timer; it is one more
+  client of the same tick.
+
+  THE ABSOLUTE RATE REMAINS UNRESOLVED. IRQ38's period is still unidentified,
+  so this is a ratio and not a frame rate. A test forbids stating one in Hz.
+
+THE TRANSPORT ITSELF IS STILL NOT NAMED, because there is nothing to name: the
+closure performs no peripheral access of any kind. SPI, PWM, GPIO bit-banging
+and DMA all remain open, and none of them is reachable from the frame.
+
+
+================================================================================
+STEP 4 — THE SAFE-IDLE QUESTION
+================================================================================
+NOT ANSWERABLE, and the reason is sharper than before.
+
+  PROVABLE, UNCHANGED: the buffer's idle state. Both buffers are in the
+  zeroinit region and only FUN_1800c132 writes the live frame, so a firmware
+  that never calls it leaves an all-zero frame by construction.
+
+  NOT ANSWERABLE: what the hardware does with that frame. An output-enable or
+  blank line, a global brightness or current-limit register, and a driver reset
+  or latch sequence are ALL MMIO writes. The closure contains none. So this is
+  not a case of an unrecognised register — THERE IS NOTHING TO INSPECT.
+
+  BOUNDARY BEFORE (log 112): both frame consumers reach zero resolved MMIO; 79
+  and 91 unresolved-base accesses.
+
+  BOUNDARY NOW: the lighting subsystem is an exhaustively enumerated closure of
+  45 functions resolving ZERO peripheral accesses. Its unresolved accesses are
+  stack locals, indexed array offsets and caller-supplied pointers, not a
+  concealed base. Four candidate transports are individually eliminated. The
+  frame is produced, intensity-scaled, double-buffered and swapped on the
+  divide-by-8 tick — and then the data path leaves the analysed set entirely.
+  The single remaining gap is the final transport, and it is outside both
+  analysed images.
+
+CLASSIFICATION: RGB STAYS UNRESOLVED. The step's own precondition is that RGB
+moves only with the safe-idle proof, and tighter ignorance is not proof. A
+common-anode part behind an inverting stage would still read an all-zero frame
+as full brightness, and nothing recovered excludes that. The dependency map's
+evidence_boundary is rewritten to the tighter statement; the classification is
+untouched. A unit test asserts both.
+
+
+================================================================================
+STEP 5 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_rgb_driver_hunt.py — one data model, notes/rgb-driver-hunt.
+{json,md}, with --json, --write and --check.
+
+$ python3 tool/map_rgb_driver_hunt.py
+  RESULT rgb_hunt_ok=True checks=22
+
+Added tool/test_map_rgb_driver_hunt.py — 33 tests in three groups.
+
+  THE HEADLINE RESULT IS A NEGATIVE, so every "found nothing" check has a
+  companion that makes the same machinery find something:
+    - the closure finds zero MMIO; re-rooted at FUN_18011900 the SAME function
+      finds MMIO, so the search is not blind;
+    - the veneer decoder resolves all three roots; given a deliberately wrong
+      target it reports failure;
+    - the elimination of the 0x40022000 bank asserts the intersection is empty
+      AND that the bank has users elsewhere, so "eliminated" is not "absent".
+
+  DISCIPLINE: no claim may name a peripheral block, promise the LEDs are off,
+  or state a rate in Hz — each with an anti-vacuity companion. A separate test
+  asserts the one PROVABLE fact, the buffer's all-zero idle state, is not lost
+  inside the negative.
+
+  FAIL-CLOSED: missing slice, missing inventory and missing census each raise;
+  bodies() raising makes main() return 1 without a traceback.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_rgb_driver_hunt.py \
+    tool/test_map_rgb_driver_hunt.py tool/map_platform_dependencies.py [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 931 tests   OK                                                   [exit 0]
+  (898 before this step; +33 in tool/test_map_rgb_driver_hunt.py)
+$ the fourteen existing --check scripts plus the new one
+                                                   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                     all OK              [exit 0]
+$ git diff --check                                 clean               [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THE FINAL TRANSPORT. The frame leaves the analysed set after the swap. SPI,
+    PWM, GPIO bit-bang and DMA remain open; none is reachable from the closure.
+  - DRIVER POLARITY, and therefore whether all-zero means dark.
+  - SHARED INITIALISATION. Whether any clock, pin or controller the lighting
+    path sets up is shared with a mandatory service is still unestablished,
+    because that initialisation is not in the closure either.
+  - THE ABSOLUTE FRAME RATE. IRQ38/8 is a ratio; the period is unknown.
+  - THE SWAP GATE. Bits 4 and 5 of 0x1801e6b7 gate the swap; what sets them is
+    not traced here.
+  - THE UNREAD ROM. A mask ROM was never searched and cannot be, so a
+    ROM-resident driver is not excluded, only unevidenced.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - It did not find the driver, and it does not claim RGB is safe to omit.
+  - No peripheral block was named, here or in the generated notes.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

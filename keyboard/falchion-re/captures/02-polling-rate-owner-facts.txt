@@ -1,0 +1,258 @@
+OWNER-PROVIDED FACTS — polling-rate capture
+(verified on the Windows capture host; carry this file over with the pcapng)
+
+HOST
+  Windows 11 Enterprise LTSC 2024, build 26100
+  CPU: AMD Ryzen 9 9950X3D
+  Wireshark/tshark 4.6.8 (v4.6.8-0-ge677bf052328)
+  USBPcap 1.5.4.0 (driver loaded; NonStandardHWIDs key NOT initialised)
+
+ARMOURY CRATE
+  Version: 6.5.7.0  (appx B9ECED6F.ArmouryCrate_6.5.7.0_x64__qmba6cd70vzyy)
+  Installed/updated: 2026-09-09 (the day of this capture)
+  NOTE: AC was updated on the capture day. The historical observations in
+  notes/protocol.md predate this version. Treat any disagreement between the
+  capture and protocol.md as a possible AC-version difference, not
+  automatically a correction.
+  AURA stack also reinstalled 2026-09-09 (AURA Service 3.10.10,
+  Aura SDK 3.07.05, AURA MB HAL 1.6.1.9).
+
+FIRMWARE-UPDATE PROMPT
+  Keyboard firmware was NOT updated. Verified after the AC update via the USB
+  hardware IDs: USB\VID_0B05&PID_1B7E&REV_0159 -> bcdDevice 1.59, unchanged,
+  matching dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+
+CAPTURE TRANSPORT
+  USBPcap filter device: \.\USBPcap3
+  Root hub:  USB\ROOT_HUB30\7&3898d510&0&0  (AMD USB 3.20 xHCI)
+  Falchion path: root hub -> [Port 10] Generic USB Hub (VID_174C&PID_2074,
+                 ASMedia) -> [Port 1] USB Composite Device = ROG FALCHION ACE HFX
+  NOTE: in the earlier capture 01-first-launch.pcapng the Falchion's traffic was
+  on \.\USBPcap2. The hub->USBPcapN mapping CHANGED between the two captures.
+  Do not assume 01's interface numbering applies to 02.
+  No --devices address filter was used: a rate change may re-enumerate the
+  device onto a NEW address, and an address filter would have dropped it.
+
+OTHER DEVICES ON THE SAME ROOT HUB (must be separated in analysis)
+  [Port 5]  Generic SuperSpeed USB Hub
+  [Port 8]  USB Composite Device - a second keyboard+mouse composite
+            (HID keyboard, HID mouse, consumer control, system controller)
+  [Port 11] USB Composite Device - AURA LED Controller  <-- likely source of
+            periodic lighting traffic; do NOT attribute it to the Falchion
+  [Port 16] USB Composite Device - Generic Bluetooth Adapter
+  A second ASUS device VID_0B05&PID_19AF is also present on this host and
+  appeared in capture 01 at device address 5.
+
+MACHINE STATE DURING CAPTURE
+  Armoury Crate UI was closed before the capture started, then launched inside
+  the capture window, so AC's startup handshake is on the wire.
+  The ASUS service layer (ArmouryCrateService, LightingService, asus_framework,
+  AsusFanControlService, AsusCertService) was left RUNNING - this is the normal
+  machine state a host application must tolerate (see U6).
+
+STILL TO FILL IN BY HAND AFTER THE CAPTURE
+  [ ] Any accidental setting change (what, and when)?
+  [ ] Did the keyboard visibly flash / did Windows chime after any RATE change
+      (not counting the deliberate replug)?
+  [ ] Optional second lighting capture taken? yes/no
+
+================================================================================
+DEVIATION FROM THE PROMPT'S PREMISE — READ BEFORE STEP 2
+================================================================================
+The prompt assumes four rate changes: 1000 -> 2000 -> 4000 -> 8000.
+ARMOURY CRATE 6.5.7.0 ON THIS HOST EXPOSES ONLY TWO VALUES: 1000 Hz and 8000 Hz.
+There is no 2000 and no 4000 option in the UI. This is a UI/observation limit,
+not a decode failure. See U7: decode what IS there; do not invent four values.
+
+REVISED CAPTURE PLAN (what the wall-clock stamps correspond to)
+  CHANGE 1: set 1000
+  CHANGE 2: set 8000
+  CHANGE 3: set 1000   (repeat of change 1)
+  CHANGE 4: set 8000   (repeat of change 2)
+Four change events, two distinct values, each value observed TWICE. The repeats
+are deliberate: U3 requires that a candidate byte "repeats across at least two
+windows" before it is accepted, and this plan supplies that directly.
+
+A TESTABLE PREDICTION THE TWO-VALUE CASE MAKES SHARPER, NOT WEAKER
+Whatever byte carries the rate, its two observed values discriminate between the
+competing encodings from STEP 2 in one shot:
+  0x01 / 0x08          -> Hz/1000
+  0xe8 0x03 / 0x40 0x1f -> raw Hz, little-endian 16-bit
+  0x00 / 0x01          -> a 2-entry index; AC exposes exactly what firmware has
+  0x00 / 0x03          -> a 4-ENTRY index (0..3) with only 0 and 3 reachable
+                          from this UI. This would mean the firmware supports
+                          four rates while AC exposes two, AND it would make
+                          notes/ac-profile3-decoded.json's
+                          "performance": {"pollingRate": "3"} mean 8000 Hz.
+                          That is the single most informative outcome available
+                          from this capture; check for it explicitly.
+  descending order (8000 -> 0) is equally possible: see U2, test both directions.
+
+CAPTURE ATTEMPT HISTORY (only the final file is evidence)
+  Attempt 1, 2026-09-09 ~05:40, DISCARDED, not carried over. Reasons:
+    - the 30s idle baseline was skipped (the "AC loaded" and "set 1000" stamps
+      were 0.2s apart, so the 1000 stamp was not a real change)
+    - AC took 2m03s to load because it was mid-update/repair, so its startup
+      handshake was not a representative launch
+    - only one of the four intended changes was reached
+  Armoury Crate 6.5.7.0 then required a REBOOT to finish installing.
+  The final capture was taken after that reboot, on a settled AC.
+
+================================================================================
+ANCHOR METHOD — NO WALL-CLOCK STAMPS WERE RECORDED
+================================================================================
+No per-change wall-clock times were noted, and there is no events/stamps file
+for the final capture. Use TRAFFIC LANDMARKS as the anchor method and record
+that choice, per the prompt's OWNER-PROVIDED FACTS fallback.
+
+This is not a degraded anchor for this particular capture. The setting being
+changed is the polling rate itself, so its effect is directly visible as
+interrupt-IN packet frequency: 1000 Hz vs 8000 Hz is an 8x step in packets per
+second on the keyboard's IN endpoint. A per-second histogram of the Falchion's
+endpoints should show four transitions as a staircase:
+
+    high(?) -> 1000 -> 8000 -> 1000 -> 8000
+
+in that order, with roughly 10 s of steady state between each. Identify the four
+windows from those transitions. If the staircase does NOT appear, that is itself
+a first-class finding for U4 (the change may not apply until a commit or a
+re-enumeration) and must be reported rather than worked around.
+
+The owner performed the changes by hand with deliberate ~10 s idle gaps.
+Order performed: 1000, 8000, 1000, 8000  (two distinct values, each seen twice)
+
+================================================================================
+CAPTURE VERIFICATION PERFORMED ON THE WINDOWS HOST (smoke check only)
+================================================================================
+This section records what was checked to confirm the capture is usable. It is a
+SMOKE CHECK, not the decode. Everything below must be independently re-derived
+from the wire with raw command output, per the prompt's evidence standards.
+
+FILES
+  02-polling-rate.pcap    17,155,500 bytes
+    sha256 a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54
+  02-polling-rate.pcapng  21,200,672 bytes   (editcap -F pcapng conversion of the above)
+    sha256 ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c
+  The .pcap is the ORIGINAL as written by USBPcapCMD. The .pcapng is a format
+  conversion only. Prefer the .pcap as primary evidence.
+
+CAPTURE COMMAND ACTUALLY USED (USBPcapCMD, not Wireshark)
+  USBPcapCMD.exe -d \.\USBPcap3 -A --inject-descriptors -s 65535 -b 134217728 -o <file>
+  Wireshark's GUI does not expose --inject-descriptors; it is a USBPcapCMD flag.
+  -A was used and NO --devices address filter, deliberately (see U5).
+
+CAPTURE PROPERTIES
+  232k packets, 473.772421 s
+  first packet 2026-09-09 00:06:18.128826, last 2026-09-09 00:14:11.901247
+
+DEVICE ADDRESSES (descriptor injection worked; VID:PID resolved for all)
+  addr 7  = 0b05:1b7e  ROG Falchion Ace HFX  <-- THE SUBJECT, post-replug, 2134 pkts
+  addr 6  = 0b05:1b7e  ROG Falchion Ace HFX  <-- pre-replug, 14 pkts (descriptors only)
+  addr 3  = 0b05:19af  other ASUS device, 185,372 pkts (the dominant noise source)
+  addr 2  = 1532:00e6  Razer device, 44,986 pkts
+  addr 4  = 13d3:3614  Bluetooth
+  The keyboard RE-ENUMERATED 6 -> 7 at the deliberate replug. Track both.
+
+TSHARK FIELD NAMES THAT WORK IN THIS BUILD (TShark 4.6.8) -- see U8
+  WORKS:        usbhid.data          (the 64-byte vendor payload, as hex)
+                usbhid.data.vendor
+                usb.device_address, usb.endpoint_address, usb.transfer_type,
+                usb.data_len, frame.time_relative, frame.time_epoch
+  RETURN EMPTY: usb.capdata, data.data, usb.data_fragment, usb.payload
+  The USBPcap pseudo-header is 27 bytes (0x1b); payload begins at offset 27.
+
+VENDOR TRANSPORT CONFIRMED PRESENT (matches log 107)
+  OUT: EP 0x0d, interrupt, 64-byte payloads -- 74 frames on addr 7
+  IN : EP 0x85, interrupt, 64-byte payloads -- 74 frames on addr 7
+  Also present on addr 7: EP 0x81 and 0x8c (interrupt IN, 8 and 21 byte), EP 0x8e,
+  and control traffic on EP 0x00/0x80.
+
+SMOKE-CHECK OBSERVATIONS TO RE-DERIVE INDEPENDENTLY
+  - The startup query family 12 <sub> IS present (12 14 02, 12 07, 12 00, 12 12,
+    12 03, 12 08, 12 16), plus 22 01 and 25 00 / 25 01 init handshakes. This is
+    consistent with notes/protocol.md.
+  - 20 frames of the 51 31 family appear, in exactly TWO distinct 64-byte forms
+    differing only at payload offset 4:
+        51 31 00 00 00  + 59 zero bytes   (14 occurrences)
+        51 31 00 00 03  + 59 zero bytes   ( 6 occurrences)
+    Each is echoed back verbatim on EP 0x85, and each is followed by a 50 55
+    commit which is also echoed (example: write at t=449.616, commit echo at
+    t=449.779, ~163 ms).
+  - If offset 4 is the rate index, then 0x00 and 0x03 with only two UI options
+    implies a FOUR-entry index (0..3) of which AC exposes only the endpoints,
+    ascending, and notes/ac-profile3-decoded.json's "pollingRate": "3" would
+    mean 8000 Hz. THIS IS THE PREDICTION MADE BEFORE THE CAPTURE -- treat it as
+    a hypothesis to test against the wire, not as an established result.
+  - CAUTION on counting: the 00-valued writes are NOT all user actions. Nine
+    consecutive 51 31 00 00 00 writes occur between t=314.255 and t=318.198
+    (~4 s), which is far faster than any human could click. Armoury Crate emits
+    51 31 for reasons beyond a deliberate rate change, so the four intended
+    change windows must be identified from timing, not by counting 51 31 frames.
+    Timeline of all 20, t in seconds relative to capture start:
+      297.110=00  312.187=03  314.255=00  315.198=00  316.533=00  316.994=00
+      317.234=00  317.434=00  317.716=00  317.967=00  318.198=00  322.023=03
+      339.029=00  358.093=03  379.571=00  404.046=03  416.655=00  425.323=03
+      438.991=00  449.616=03
+    The clean alternating run from t=339 to t=449.6 (00,03,00,03,00,03,00,03)
+    is EIGHT alternations, but the owner was asked to make only FOUR changes.
+    This is RESOLVED by the owner: see OWNER ANSWERS at the end of this file.
+
+================================================================================
+OWNER ANSWERS (given after the capture, resolving the two open items)
+================================================================================
+Q: How many rate changes did you actually make?
+A: "i change a lot of times, they were more than the ones you told me."
+   The owner made MORE than the four requested changes. The eight alternations
+   in the clean run t=339..449.6 are therefore ALL genuine user actions, not AC
+   acting on its own. The count discrepancy is resolved: there is no missing or
+   spurious traffic to explain.
+   This is a BETTER outcome than the four-change plan. U3 requires a candidate
+   byte to repeat across at least two windows; offset 4 is now observed taking
+   0x00 four times and 0x03 four times in eight cleanly separated windows.
+   It also means the rapid run of nine 51 31 00 00 00 writes at t=314.3..318.2
+   is plausibly the owner clicking repeatedly on the SAME value (1000) while
+   finding the control -- roughly 2 clicks/second, which is humanly possible.
+   Do not assume those nine are machine-generated; treat their cause as
+   undetermined and rely on the eight clean windows instead.
+
+Q: Were 2000 and 4000 Hz available after the Armoury Crate update finished?
+A: No. "there weren't 2k 4k polling rate options, just 1k and 8k"
+   CONFIRMED on a fully-updated, rebooted Armoury Crate 6.5.7.0. The two-option
+   UI is NOT an artefact of the half-updated AC seen earlier -- it is the real
+   exposed surface for this keyboard on this AC version.
+   Consequence: 1000 Hz and 8000 Hz are the ONLY two rates obtainable through
+   Armoury Crate, so the wire can only ever show two values for the rate field.
+   If offset 4 proves to be a 0..3 index, indices 1 and 2 are NOT reachable via
+   AC and their meaning (presumably 2000 and 4000) is UNVERIFIED by this capture
+   and must be labelled as such. Do not claim 1->2000 or 2->4000 as observed.
+
+================================================================================
+U5 — RE-ENUMERATION: OWNER OBSERVATION + WIRE CORROBORATION
+================================================================================
+OWNER: "i didn't see any disconnect/reconnect chime."
+  No Windows disconnect/reconnect sound and no visible LED flash was observed at
+  any rate change. (The deliberate replug early in the capture is separate and
+  expected.)
+
+WIRE (smoke check, re-derive independently):
+  - The Falchion holds device address 7 CONTINUOUSLY from t=185.088 to t=461.545.
+    All eight rate changes occur inside that span (t=339.029 .. t=449.616), and
+    the address survives 11.9 s beyond the last one.
+  - No device address above 7 appears anywhere in the capture.
+  - Zero GET_DESCRIPTOR requests occur after t=330, i.e. none around or after any
+    rate change.
+
+CONCLUSION TO TEST: the polling-rate change does NOT cause re-enumeration. The
+device keeps its address and no fresh descriptors are fetched. Per U5, the
+ABSENCE of re-enumeration is itself a first-class protocol fact and must be
+recorded as such — not omitted for being a negative.
+
+CONSEQUENCE FOR bInterval: because there is no re-enumeration, this capture
+provides NO post-change configuration descriptor to diff against log 107's
+bInterval table (1,1,1,4,1). Whether the endpoint bInterval values change at all
+is therefore NOT ANSWERED by this capture, and the log-107 table cannot be
+confirmed or refuted from it. Say so explicitly rather than inferring.
+
+ACCIDENTAL SETTING CHANGES: the owner reported none, and only the polling rate
+was described as being touched. This was not explicitly confirmed item-by-item,
+so treat "no other setting changed" as owner-reported rather than verified.

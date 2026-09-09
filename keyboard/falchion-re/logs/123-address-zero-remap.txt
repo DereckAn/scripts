@@ -1,0 +1,284 @@
+LOG 123 — WHAT MAKES ADDRESS 0 WRITABLE
+Date: 2026-09-08
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary
+was opened for writing and both hashes are unchanged below. No historical log
+and not opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE ANSWER: THERE IS NO REMAP. Address 0 is ordinary writable RAM by hardware
+arrangement, and no preserved image configures, enables or relocates anything
+to make that true. The question was framed as "find the remap control"; the
+correct answer is that there is not one to find.
+
+A CORRECTION TO THE PROMPT'S PREMISE, FIRST. The prompt states that the series
+brief "documents ROM/RAM remapping as a series feature". IT DOES NOT.
+notes/references.md lists dual Cortex-M3 cores, USB host and device, GPIO,
+timers and PWM, two watchdogs, an SPI NOR interface and a 10-bit six-channel
+SAR ADC. The word "remap" does not appear in the file at all. The lead does not
+exist in this repository, and nothing below rests on it — which is just as
+well, because the evidence says there is no remap to find.
+
+
+================================================================================
+STEP 1 — THE THREE CANDIDATES, DISCRIMINATED
+================================================================================
+(a) A SYSTEM-CONTROL REGISTER WRITTEN EARLY ON THE RESET PATH — ELIMINATED.
+
+Every access to the 0x45000000 block, across all four images, enumerated:
+
+  register     acc  r/w    images                 stored
+  0x45000000    55  37/18  app,boot,entry,second
+  0x45000004    38  24/14  boot,entry,second
+  0x45000008     7   7/0   app,boot,entry,second
+  0x4500000c    58  45/13  app,boot,entry,second  0x0, 0x2, 0x4, 0x10
+  0x45000010     5   3/2   boot,entry,second      0x0
+  0x45000018     8   4/4   entry,second
+  0x45000020     4   2/2   entry,second
+  0x4500002c     4   0/4   boot                   0x0
+  0x45000050     4   2/2   entry,second
+  0x45000054     4   4/0   app,boot
+  0x45000100     5   1/4   boot,entry,second      0x7fff, 0x9fff
+  0x4500010c     7   2/5   boot,entry,second      0xfffd, 0xffff
+  0x45000110     6   2/4   app,boot               0x8, 0x28
+  0x45000114     1   0/1   second                 0x1
+  0x45000300     4   2/2   entry,second
+
+  15 registers, 210 accesses, and NOT ONE WRITE STORES A BASE-ADDRESS-SHAPED
+  VALUE. Every stored value is a small bitmask or enable field. A register that
+  relocated a 64 KiB window would have to be told WHERE, and none is. The
+  search for 0x00000000, 0x18000000, 0x60000000, 0x60010000 and 0x60011000 as
+  stored values returns nothing.
+
+  (0x45000100, which the second-context start path manipulates, is in this
+  block and is written 0x7fff and 0x9fff — bit-mask values. It is a control
+  register of some kind and it is still NOT NAMED; whatever it gates, it is not
+  told an address.)
+
+(c) A VTOR-PLUS-COPY ARRANGEMENT — ELIMINATED.
+
+  VTOR (0xe000ed08) across all four images: 10 READS, 0 WRITES.
+
+    entry  read at 0x00000778 in FUN_0000075c
+    entry  read at 0x000010f0 in FUN_000010ae
+    entry  read at 0x000014b0 in FUN_000014a8   (the reset handler, for SP)
+    boot   read at 0x000002fc in FUN_000002f4   (the reset handler, for SP)
+    boot   read at 0x00002832 in FUN_00002818
+    boot   read at 0x00007faa in FUN_00007fa8
+    second read at 0x180381c8 in FUN_180381c0   (the reset handler, for SP)
+    second read at 0x18038c22 in FUN_18038be0
+    second read at 0x1803a56e, 0x1803a5b8 in FUN_1803a3e4
+
+  Nothing relocates the vector table. The reads are the standard "fetch the
+  initial stack pointer through the table" idiom, plus one function that uses
+  VTOR to reach the table as data — see step 2.
+
+(b) A FIXED HARDWARE ALIAS — this is what is left, and it requires nothing of
+    the software. The decisive evidence is the handoff stub itself.
+
+
+================================================================================
+STEP 2 — THE HANDOFF STUB, IN FULL
+================================================================================
+FUN_00007ec8 does not copy to address 0 itself. It calls a veneer:
+
+    00007f1a  movs r0,#0x0             ; dst = 0
+    00007f1c  bl 0x00000ffc            ; -> a bare `bx lr`. A NO-OP STUB.
+    00007f20  mov r0,r4                ; the selected entry
+    00007f22  bl 0x00007fa8            ; the slot-7 setter, below
+    00007f26  mov.w r2,#0x10000        ; length
+    00007f2a  mov r1,r4                ; src
+    00007f2c  movs r0,#0x0             ; dst
+    00007f2e  bl 0x00000fee            ; movw/movt r12,#0x18010001 ; bx r12
+
+  0x00000ffc IS A BARE `bx lr`. Whatever hook that slot exists for — a cache
+  operation, a remap, a platform quirk — THIS SOC NEEDS NOTHING THERE.
+
+  0x00000fee is a veneer into RAM at 0x18010000, which is the preserved 0x50-
+  byte boot-handoff image. The copy must run from RAM because it overwrites
+  address 0, where the bootloader is executing.
+
+THE STUB, ALL 0x50 BYTES:
+
+    18010000  mov r3,r0                ; dst
+    18010004  mov r6,r1                ; src
+    18010006  movs r4,#0x1
+    18010008  msr primask,r4           ; DISABLE INTERRUPTS
+    1801000e  lsrs r2,r2,#0x2          ; length -> word count
+    18010014  ldr.w r4,[r6,r0,lsl #0x2]
+    18010018  str.w r4,[r5,r0,lsl #0x2]  ; WORD COPY INTO ADDRESS 0
+    1801001e  cmp r0,r2 / bcc 0x18010014
+    18010024  dsb #0xf
+    18010028  ldr r4,[0x18010048]      ; = 0xe000ed0c, AIRCR
+    1801002a  ldr r4,[r4,#0x0]
+    1801002c  and r4,r4,#0x700         ; preserve PRIGROUP
+    18010030  ldr r7,[0x1801004c]      ; = 0x05fa0000, VECTKEY
+    18010032  orrs r4,r7
+    18010034  adds r4,r4,#0x4          ; | SYSRESETREQ
+    18010038  str r4,[r7,#0x0]         ; SYSTEM RESET
+    1801003a  dsb #0xf
+    18010044  b 0x18010042             ; spin until the reset lands
+
+  Its ONLY two literals are 0xe000ed0c and 0x05fa0000, both ARMv7-M
+  architectural. IT WRITES NO SYSTEM-CONTROL REGISTER. It masks interrupts,
+  copies, and resets. Address 0 is ALREADY WRITABLE when it runs.
+
+THE HANDOFF VARIABLE, and it is quietly good evidence:
+
+    00007fa8  ldr r1,[0x00007fb0]      ; = 0xe000ed08, VTOR
+    00007faa  ldr r1,[r1,#0x0]         ; the table's base
+    00007fac  str r0,[r1,#0x1c]        ; slot 7 = the selected entry
+    00007fae  bx lr
+
+  Vector slot 7 is ARMv7-M's Reserved7, and BOTH images ship it as 0x00000000,
+  so it is scratch. The bootloader parks the selected entry address there
+  immediately before the copy and the reset. THAT THE WRITE WORKS AT ALL MEANS
+  THE VECTOR TABLE IS IN WRITABLE RAM — which is the same conclusion the copy
+  gives, reached independently.
+
+WHAT ADDRESS 0 IS, AT EACH STAGE:
+
+  ROM or hardware boot   the bootloader, somehow    UNRESOLVED — see step 4
+  bootloader running     the bootloader (table at 0, reset 0x000002f5)
+  handoff                being overwritten, by the RAM stub
+  after the reset        the entry image (table at 0, reset 0x000014a9)
+  application running    STILL the entry image — the app is copied to
+                         0x18000000 and its handlers are entered through the
+                         table at 0
+
+  WHAT MAINTAINS IT AFTER THE APP STARTS: nothing, because nothing established
+  it. There is no VTOR write and no remap write anywhere. The arrangement is
+  static.
+
+IT IS NOT AN ALIAS OF 0x18000000, and this one is an inference rather than an
+observation, so it is labelled strongly-inferred. If address 0 aliased
+0x18000000, then the entry image's own scatter loader at 0x148 — which copies
+0x1e354 bytes from flash to 0x18000000 — would be copying over itself while
+executing from itself, and would be destroyed mid-copy. It is not. Corroborating
+this, both stages run code at 0 while placing their STACK in the 0x18000000
+window: the bootloader's initial SP is 0x1802b230 and the entry image's is
+0x18036168, and the entry image's own init bounds-checks MSP into
+[0x18000000, ...] and faults otherwise. The code window and the data window are
+distinct memories.
+
+
+================================================================================
+STEP 3 — WHAT A REPLACEMENT MUST REPRODUCE
+================================================================================
+Six things, every constant read from bytes, and the last one is the point:
+
+  1. SIT WHERE THE BOOTLOADER LOOKS. It compares the selected entry against
+     0x60011000, read from its own pool at 0x00007f98, and refuses anything
+     else.
+  2. FIT THE FIXED COPY. The length is a hard-coded 0x10000 and is not
+     negotiable; the source must be readable for the whole 0x10000. The vendor
+     entry image is 0x58ac, so there is room.
+  3. PUT THE VECTOR TABLE AT IMAGE OFFSET 0. The image lands at address 0 and
+     VTOR is never written, so the table must be the first thing in it.
+  4. PUT THE STACK IN THE 0x18000000 WINDOW. Both preserved stages do, and the
+     entry image's init faults if MSP is outside it.
+  5. CONFIGURE NO REMAP, AND NEVER WRITE VTOR. Nothing in any preserved image
+     does either.
+  6. DO NOT ASSUME VECTOR SLOT 7 IS ZERO AT RUNTIME. The bootloader writes the
+     selected entry there before the reset. A replacement may read it or ignore
+     it; it must not rely on it being clear.
+
+  PRESERVING THE ARRANGEMENT MEANS LEAVING IT ALONE. That is the easiest
+  obligation this project has produced, and it is a genuine result: the gate
+  asked which register arrangement a replacement must preserve, and the answer
+  is none.
+
+
+================================================================================
+STEP 4 — WHAT STAYS UNRESOLVED
+================================================================================
+WHAT PLACES THE BOOTLOADER AT ADDRESS 0 BEFORE ANY PRESERVED IMAGE RUNS. No
+code in the preserved set does it. A mask ROM was never searched and cannot be
+(log 113 recorded the same boundary for cross-image calls), so this is a
+boundary rather than an absence.
+
+  IT DOES NOT BLOCK PATH B. A replacement never has to reproduce that stage,
+  because the bootloader is precisely the component a replacement INHERITS. The
+  unread stage hands address 0 to the bootloader; everything after that is now
+  understood. The ADR's gate 5 is marked satisfied on exactly that reasoning.
+
+ALSO UNRESOLVED, and each recorded rather than guessed:
+  - the address-0 window's true extent (at least 0x10000, because the copy is
+    that long, and the bootloader occupies 0x0..0xefff)
+  - which physical memory backs it
+  - whether it is a hardwired alias of some other range or a memory with its
+    own decode — indistinguishable from code that never configures it
+  - whether its contents survive the AIRCR reset: the design assumes so, and no
+    code asserts it
+  - who reads vector slot 7 back; the bootloader writes it and no preserved
+    image is shown consuming it
+
+
+================================================================================
+STEP 5 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_address_zero.py — one data model, notes/address-zero.{json,md},
+with --json, --write and --check.
+
+$ python3 tool/map_address_zero.py
+  RESULT address_zero_ok=True checks=23
+
+Added tool/test_map_address_zero.py — 31 tests in three groups.
+
+  THE CONCLUSION IS A NEGATIVE REACHED BY ENUMERATION, so each enumeration has
+  a companion proving it can find what it says is absent:
+    - VTOR shows zero writes; the same filter is re-run against AIRCR, which IS
+      written, so the census does record writes when they exist;
+    - the base-address detector reports nothing; injecting a synthetic
+      0x18000000 store into the census makes it report exactly one, so it is a
+      real test and not a constant `True`.
+
+  DISCIPLINE: the alias conclusion must be labelled strongly-inferred and not
+  observed, because it rests on a would-destroy-itself argument; no claim may
+  name the backing memory; no claim may say the ROM stage is understood; and
+  the replacement advice must contain no flashing verb. Each has an
+  anti-vacuity companion.
+
+  FAIL-CLOSED: a missing slice and a missing census each raise; bodies()
+  raising makes main() return 1 without a traceback.
+
+THE ADR'S PATH B GATE 5 is marked SATISFIED, with the reasoning above and the
+ROM boundary stated inside the gate rather than dropped.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_address_zero.py tool/test_map_address_zero.py \
+    tool/report_development_strategy.py                                [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 962 tests   OK                                                   [exit 0]
+  (931 after log 122; +31 in tool/test_map_address_zero.py)
+$ the fifteen existing --check scripts plus the new one
+                                                   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                     all OK              [exit 0]
+$ git diff --check                                 clean               [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - It did not identify the physical memory behind address 0, only that it is
+    writable and distinct from 0x18000000.
+  - It did not name 0x45000100 or any other register in the block.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

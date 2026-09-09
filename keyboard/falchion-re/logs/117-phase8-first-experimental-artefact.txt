@@ -1,0 +1,290 @@
+LOG 117 — PHASE 8: THE FIRST OFFLINE EXPERIMENTAL ARTEFACT
+Date: 2026-09-05
+Scope: Phase 8 ONLY. Phase 9 was NOT begun. Nothing was committed, staged or
+unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. NO FLASHING COMMAND, NO
+UPDATER INVOCATION AND NO DEVICE INSTRUCTION OF ANY KIND WAS PRODUCED. Every
+build ran against the preserved evidence read-only and wrote only into the
+git-ignored generated/ directory; NEITHER EVIDENCE BINARY WAS EVER OPENED FOR
+WRITING, and both hashes are unchanged below. No historical log and not
+opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+BOOTING IS NOT CLAIMED. This phase succeeds when the offline builder and an
+independent validator agree on STRUCTURE. Nothing here is evidence that any
+image runs.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+STEP 1 — THE TARGET, VERIFIED RATHER THAN ASSUMED
+================================================================================
+The ADR's first-ranked passing target is the USB product string. The prompt
+gave "+0x882 installed / +0x856-ish vendor" and said to verify. Verified:
+
+  installed: region+0x882 len=20  compressed src flash 0x3f380
+      context: 00 00 00 00 52 4f 47 20 46 41 4c 43 48 49 4f 4e 20 41 43 45 20 48 46 58 00 00 00 00
+  vendor:    region+0x882 len=20  compressed src flash 0x3f354
+      context: 00 00 00 00 52 4f 47 20 46 41 4c 43 48 49 4f 4e 20 41 43 45 20 48 46 58 00 00 00 00
+
+THE OFFSET IS +0x882 IN BOTH RELEASES, not 0x856 in the vendor. The regions are
+the same length and the string sits at the same region offset; only the
+compressed source's FLASH address differs, by the measured 0x2c relocation.
+
+REPLACEMENT: "ROG FALCHION ACE HFX" -> "UNTESTED FALCHION FW"
+  20 bytes both, uppercase ASCII and spaces only, and it says UNTESTED in the
+  string itself so an artefact cannot be mistaken for a stock image even by
+  someone reading only the decoded bytes.
+
+
+================================================================================
+STEP 2 — THE TOKEN-LEVEL LITERAL PROOF
+================================================================================
+The string lives in the COMPRESSED scatter region, so a same-length replacement
+is only safe if two conditions hold, and neither is visible in the bytes:
+  1. every replaced stream byte is a LITERAL, not a token parameter;
+  2. no LATER back-reference reads from the output positions being changed.
+
+A decoder with per-output-byte provenance was written from the log-105 rules
+and cross-checked against reconstruct_decompress for output equality:
+
+  --- installed --- src flash 0x3f380..0x3f780 out=2820 consumed=0x3fd tokens=254
+      matches reconstruct_decompress: True
+      provenance of region+0x882..0x896: {'literal'}
+      stream offsets: 0x31b..0x32e contiguous=True
+      flash offsets : 0x3f69b..0x3f6ae
+      later back-references reading from that range: 0 []
+  --- vendor --- src flash 0x3f354..0x3f754 out=2820 consumed=0x3fe tokens=253
+      matches reconstruct_decompress: True
+      provenance of region+0x882..0x896: {'literal'}
+      stream offsets: 0x31b..0x32e contiguous=True
+      flash offsets : 0x3f66f..0x3f682
+      later back-references reading from that range: 0 []
+
+ALL TWENTY BYTES ARE LITERALS, contiguous in the stream, and NOTHING LATER
+COPIES FROM THEM. The stream offsets are IDENTICAL in both releases
+(0x31b..0x32e); only the flash address differs, 0x3f69b versus 0x3f66f — a
+difference of exactly 0x2c. The first-ranked target held; no fallback to the
+second-ranked key-policy entry was needed.
+
+
+================================================================================
+STEP 3 — THE BUILDS
+================================================================================
+Four artefacts, all under the git-ignored generated/ with UNTESTED in every
+name. Built with the Phase 7 builder; original-byte assertions mandatory and
+supplied in full.
+
+  installed-1.59-application_noop_UNTESTED_fc6128ab089e.bin
+      sha256=fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  vendor-1.00.58-full_noop_UNTESTED_6d410ee0a54f.bin
+      sha256=6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+
+  installed-1.59-application_productstring_UNTESTED_96f6157868da.bin
+      sha256=96f6157868dae85b63232781e61842a0421979052e4bb2394efb9f7118a93080
+      PATCHES 1
+        0x3f69b 524f472046414c4348494f4e2041434520484658
+             -> 554e5445535445442046414c4348494f4e204657
+      RECOMPUTED 2
+        record_chunked_crc at 0x1003c = 0xb5661320
+        application_word_sum at 0x7bffc = 0x30fcff70
+
+  vendor-1.00.58-full_productstring_UNTESTED_fda342b393a7.bin
+      sha256=fda342b393a732ad3d37ebff4ad557b7faee8c1fc7fe673d0112e83018043661
+      PATCHES 1
+        0x3f66f 524f472046414c4348494f4e2041434520484658
+             -> 554e5445535445442046414c4348494f4e204657
+      RECOMPUTED 2
+        record_chunked_crc at 0x1003c = 0xd49f3d6f
+        application_word_sum at 0x7bffc = 0x507d3ff0
+
+Each carries a .manifest.json beside it recording the source hash, the patch
+list WITH its original-byte assertions, the recomputed fields in the order they
+were written, the validations run, the word-sum availability, and the
+unresolved risks.
+
+
+================================================================================
+STEP 4 — INDEPENDENT VALIDATION
+================================================================================
+tool/verify_patched_region.py imports NOTHING from either builder — a test
+asserts the strings "build_offline_image" and "build_modified_image" appear
+nowhere in it. It re-decodes with its own provenance decoder and recomputes
+both integrity fields from zlib and struct directly.
+
+$ python3 tool/verify_patched_region.py
+RELEASE installed
+  region    flash 0x3f380..0x3f780  tokens=254  consumed=0x3fd
+  literals  stream 0x31b..0x32e  flash 0x3f69b..0x3f6ae
+  propagation reads: 0
+  decoded diff: 19 bytes changed, 1 coincided, 0 outside the span
+    PASS the artefact filename carries UNTESTED
+    PASS the rollback build is byte-identical to the source
+    PASS the patch did not move the compressed region — flash 0x3f380..0x3f780 size 0xb04
+    PASS the original region still decodes to its declared length — 0xb04
+    PASS the patched region decodes to the same declared length — 0xb04
+    PASS the patched stream consumes identically — 0x3fd both
+    PASS the token structure is unchanged — 254 tokens, identical boundaries and control bytes
+    PASS every patched output byte is a LITERAL in the token stream
+    PASS the literal stream offsets are contiguous — 0x31b..0x32e
+    PASS NO later back-reference reads from the patched output range — zero reads
+    PASS NO decoded byte outside the intended span changed — zero bytes outside 0x882..0x896
+    PASS every differing byte is accounted for by the replacement — 19 differ, 1 coincide (0x894), 20 = 20 total
+    PASS the original decoded bytes are the expected string — ROG FALCHION ACE HFX
+    PASS the patched decoded bytes are the replacement string — UNTESTED FALCHION FW
+    PASS the replacement preserves length and character class
+    PASS the record chunked-CRC matches an independent recomputation — 0xb5661320
+    PASS the application word-sum matches an independent recomputation — 0x30fcff70
+    PASS the word-sum's covered range contains the record CRC field
+    PASS every layout check that passed on the source still passes — 18 checks
+RELEASE vendor
+  region    flash 0x3f354..0x3f754  tokens=253  consumed=0x3fe
+  literals  stream 0x31b..0x32e  flash 0x3f66f..0x3f682
+  propagation reads: 0
+  decoded diff: 19 bytes changed, 1 coincided, 0 outside the span
+    (the same nineteen checks, all PASS; 25 layout checks on the full image)
+
+RESULT verified=True checks=38
+ACCEPTANCE NOT CLAIMED. This validates structure only. Nothing here is
+evidence that any image boots, and no device was accessed.
+  [exit 0]
+
+
+================================================================================
+STEP 5 — A CHECK THAT FAILED, AND WHY THAT WAS RIGHT
+================================================================================
+The first validation run reported:
+
+  FAIL the decoded regions differ in exactly the intended positions
+       — 19 bytes at 0x882..0x895
+
+Nineteen, not twenty. The artefact was correct and MY CHECK WAS WRONG. The two
+strings coincide at one position:
+
+  $ positions where the two strings coincide: [18] ['F']
+    ROG FALCHION ACE HFX
+    UNTESTED FALCHION FW
+                      ^ both 'F'
+
+A byte that did not change is not a defect. The invariant that matters is
+CONTAINMENT, not a count, so the check was replaced by two that state it
+precisely:
+
+  NO decoded byte outside the intended span changed          <- the real
+                                                                propagation test
+  every differing byte is accounted for by the replacement   <- 19 differ +
+                                                                1 coincide = 20
+
+The count check would have passed for the wrong reason on a different
+replacement string, and failed for the right reason here. Replacing it with
+containment is the correction; loosening it to "19 or 20" would not have been.
+
+
+================================================================================
+STEP 6 — THE ROLLBACK
+================================================================================
+The rollback artefact is the no-op build of the same source, and it is
+byte-identical to it:
+
+  installed rollback sha256 = fc6128ab…ded637b = source
+  vendor    rollback sha256 = 6d410ee0…0e19f1d = source
+
+That is a stronger rollback than a copy would be: it is produced by the same
+builder, through the same recompute path, and comes out identical — which
+demonstrates that the pipeline itself introduces no drift.
+
+
+================================================================================
+STEP 7 — THE FAILURE DEMONSTRATIONS
+================================================================================
+A validator that only ever passes proves nothing. Both required failure modes
+are demonstrated on a synthetic stream small enough to check by hand:
+
+  STREAM  b"\x1dABCD\x04"  ->  b"ABCDABC"
+  control 0x1d: literal field 5 (emits 4), bit 3 set, copy field 1 (emits 3)
+
+  PROPAGATION. Output byte 0 is a literal that the back-reference copies to
+  output byte 4. `propagation_reads(decoded, 0, 1)` returns ((0, 4),) — the
+  detector fires. And it is not merely theoretical: patching that literal to
+  'Z' yields b"ZBCDZBC", and the diff is [0, 4] — ONE PATCHED LITERAL CHANGED
+  TWO OUTPUT BYTES. A test asserts exactly that.
+
+  A LITERAL WITH NO LATER READER does not propagate: patching output byte 3
+  changes only byte 3, and `propagation_reads` returns empty.
+
+  TOKEN-STRUCTURE CORRUPTION. Changing the control byte from 0x1d to 0x2d
+  alters the copy field, and the decoded token tuples differ — the "token
+  structure is unchanged" check would fail. Corrupting the distance byte
+  changes the output wholesale. Truncation raises rather than returning short,
+  and a back-reference before the start of output raises.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/verify_patched_region.py tool/test_verify_patched_region.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 759 tests   OK                                                 [exit 0]
+  (732 before this step; +27 in tool/test_verify_patched_region.py)
+    SyntheticStream (10)        the decoder reasoned by hand, provenance
+                                separating literals from copies, BOTH failure
+                                demonstrations, truncation and bad-distance
+                                refusals, overlapping back-reference
+    IndependentPrimitives (4)   the chunked CRC matches a per-chunk zlib sum
+                                and DIFFERS from a single CRC over the whole
+                                range, the word-sum is a plain LE sum, and the
+                                validator imports nothing from either builder
+    RealArtefacts (12)          every check passes for both releases, nothing
+                                outside the span changed, zero propagation,
+                                both rollbacks byte-identical, identical stream
+                                offsets with a 0x2c flash difference, artefacts
+                                differ from their sources, UNTESTED in every
+                                name, acceptance never claimed, notes current,
+                                deterministic JSON, replacement marked
+    MissingArtefact (1)         a missing artefact fails closed
+
+$ ten --check scripts                                   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                          all OK       [exit 0]
+$ git diff --check                                      clean        [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED RISKS
+================================================================================
+  - THE ARTEFACT IS UNTESTED AND BOOTING IS NOT CLAIMED. Structure agrees
+    between two independent implementations; that is all.
+  - The runtime effect is INFERRED from logs 105 and 107: the region holds the
+    ASCII the descriptor builder turns into a UTF-16 string descriptor. No
+    execution was observed, so "the host would display a different name" is an
+    expectation, not a result.
+  - The installed adapter's primary-bootloader word-sum remains unavailable and
+    is never recomputed; the manifest carries that forward.
+  - Every boot-structure unresolved item from log 101 still rides along: what
+    makes address 0 writable, which physical keys the recovery scan matches,
+    and any ROM stage ahead of the bootloader.
+  - The 1-byte coincidence at position 18 is a property of the chosen
+    replacement string, not of the pipeline. A different string would change
+    the diff count and not the containment invariant.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phase 9 was not begun.
+  - NO FLASHING COMMAND, NO UPDATER INVOCATION AND NO DEVICE INSTRUCTION was
+    produced or documented.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - tool/build_offline_image.py was USED and not modified.
+  - Neither evidence binary was opened for writing; artefacts live only in the
+    git-ignored generated/ directory.
+  - NO DEVICE WAS ACCESSED, and booting is not claimed.

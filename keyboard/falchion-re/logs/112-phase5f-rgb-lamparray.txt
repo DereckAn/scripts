@@ -1,0 +1,333 @@
+LOG 112 — PHASE 5F: RGB / LAMPARRAY ROUTING
+Date: 2026-09-05
+Scope: Phase 5F ONLY. Phase 5G was NOT begun. Nothing was committed, staged or
+unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. Neither evidence binary,
+no historical log and not opencode.json were modified. The pre-existing
+ghidra/project/falchion-hfx was not opened. EVERY Ghidra run was -readOnly; no
+seeding was required and none was done. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+STEP 1 — THE DESCRIPTOR, WALKED WITH THE EXISTING ITEM WALKER
+================================================================================
+$ interface 4's 327-byte descriptor at region+0x13b, item-walked
+
+  ID 1  Feature  size= 16 count=  1 bits=   16  usages=[0x03]
+  ID 1  Feature  size= 32 count=  5 bits=  160  usages=[0x04,0x05,0x06,0x07,0x08]
+  ID 2  Feature  size= 16 count=  1 bits=   16  usages=[0x21]
+  ID 3  Feature  size= 16 count=  1 bits=   16  usages=[0x21]
+  ID 3  Feature  size= 32 count=  5 bits=  160  usages=[0x23,0x24,0x25,0x27,0x26]
+  ID 3  Feature  size=  8 count=  6 bits=   48  usages=[0x28,0x29,0x2a,0x2b,0x2c,0x2d]
+  ID 4  Feature  size=  8 count=  2 bits=   16  usages=[0x03,0x55]
+  ID 4  Feature  size= 16 count=  8 bits=  128  usages=[0x21]
+  ID 4  Feature  size=  8 count= 32 bits=  256  usages=[0x51,0x52,0x53,0x54,...]
+  ID 5  Feature  size=  8 count=  1 bits=    8  usages=[0x55]
+  ID 5  Feature  size= 16 count=  2 bits=   32  usages=[0x61,0x62]
+  ID 5  Feature  size=  8 count=  4 bits=   32  usages=[0x51,0x52,0x53,0x54]
+  ID 6  Feature  size=  8 count=  1 bits=    8  usages=[0x71]
+
+  ID 1: 22 payload bytes -> 23 on the wire      ID 4: 50 -> 51
+  ID 2:  2 ->  3                                ID 5:  9 -> 10
+  ID 3: 28 -> 29                                ID 6:  1 ->  2
+
+THE FIRST REAL FINDING IS A NEGATIVE ONE. **EVERY ONE OF THE THIRTEEN MAIN
+ITEMS IS A FEATURE ITEM. THERE IS NO OUTPUT REPORT.** Interface 4 has a 64-byte
+OUT endpoint 0x0f and declares nothing to send over it. So the LampArray
+protocol runs over CONTROL transfers, and Phase 5B's "EP 0x0f -> class ops ->
+lighting consumer" framing pointed at the wrong endpoint. The consumer is real;
+it is just not on EP 0x0f.
+
+SPEC-DERIVED NAMES, labelled as such. Usage page 0x59's report semantics are
+fixed by the LampArray specification, not observed here:
+  ID 1 LampArrayAttributes    ID 4 LampMultiUpdate
+  ID 2 LampAttributesRequest  ID 5 LampRangeUpdate
+  ID 3 LampAttributesResponse ID 6 LampArrayControl
+Every SIZE above is measured from the descriptor. Only the NAMES are spec-derived.
+
+
+================================================================================
+STEP 2 — THE ROUTE FROM THE CONTROL ENDPOINT
+================================================================================
+FUN_180184b6 is the class-ops control handler. Its request codes, decompiled:
+
+    if (uVar10 == 0x8106)  ... GET_DESCRIPTOR, types 0x21 and 0x22
+    if (uVar10 == 0x2109)  ... SET_REPORT
+    if (uVar10 == 0xa101)  ... GET_REPORT
+    0x210a SET_IDLE, 0x210b SET_PROTOCOL, 0xa102 GET_IDLE, 0xa103 GET_PROTOCOL
+
+and `uVar2 = param_2[1] >> 8` is the report TYPE. For type 3 (Feature) BOTH
+directions converge on one indirect call:
+
+    GET: (*(code *)*piVar3)(uVar15, *(byte *)((int)param_2 + 1), *puVar13, &local_2c)
+    SET: if (0x3f < uVar14) return -0x5f;      <- a 64-byte cap
+         (*(code *)*piVar3)(...)
+
+with piVar3 = DAT_18018860 = 0x1801ebb8, the USB core struct. Its first word is
+the Feature callback. Phase 5B's cross-reference had already recorded the one
+writer of that word:
+
+    REF value=0x1801ebb8 from=18018bb4 in=FUN_18008f4a type=WRITE
+
+FUN_18008f4a is five instructions and settles it:
+
+    18008f4a  adr.w r0,0x18008f13
+    18008f4e  b.w   0x18018bb2
+    18018bb2  ldr   r1,[0x18018cd0]     ; 0x1801ebb8
+    18018bb4  str   r0,[r1,#0x0]
+    18018bb6  bx    lr
+
+Log 106 recorded INIT_TASK's first call as FUN_18008f4a, so the callback is
+installed at startup. THE FEATURE CALLBACK IS 0x18008f12.
+
+    18008f16  cmp r1,#0x1  -> FUN_1800ffaa   ; bRequest 1  = GET_REPORT
+    18008f1a  cmp r1,#0x9  -> FUN_18010102   ; bRequest 9  = SET_REPORT
+    18008f1e  cmp r1,#0xff -> a debug print
+    18008f22  mvn r0,#0x15                   ; anything else -> -0x16
+
+A NOTE ON A MISREADING I MADE AND CORRECTED. On first pass I read
+FUN_18008f12's param_1 as the interface number and concluded interface 4 was
+unhandled. The call site settles it: uVar15 = `param_2[1] & 0xff` is wValue's
+low byte, the REPORT ID, and byte 1 of the setup packet is bRequest. The
+handler dispatches on bRequest and passes the report ID down. Reading the call
+site rather than the callee's decompiled signature is what fixed it.
+
+
+================================================================================
+STEP 3 — THE REPORT HANDLERS
+================================================================================
+GET, FUN_1800ffaa(reportId, buffer, lenPtr):
+
+    1800ffbe  cmp r0,#0x1  beq 0x1800ffd0
+    1800ffc2  cmp r0,#0x3  beq 0x1801006e
+    1800ffc6  strh r5,[r4,#0x0]        ; anything else -> length 0
+    1800ffd0  movs r0,#0x17            ; report 1 -> 23 BYTES
+    1800ffd2  strh r0,[r4,#0x0]
+
+0x17 = 23 is EXACTLY the item walk's 22 payload bytes plus the ID prefix. Two
+independent derivations of the same number, one from the descriptor's bytes and
+one from the handler's listing.
+
+SET, FUN_18010102(reportId, buffer), decompiled:
+
+    if (param_1 == 2) { ... bounds-check a LampId, store it ... }
+    if (param_1 == 4) { memset(&local_50, 0x34); memcpy(&local_50, param_2, 0x33);
+        if (local_50 == '\x04')
+          for (uVar8 = 0; uVar8 < local_4f; uVar8++) {
+            if (local_4d[uVar8] <= *(byte *)(DAT_18010140 + bVar2*8)) {
+              FUN_1800c132(*(byte *)(*(int *)(iVar3+4) + local_4d[uVar8]*2),
+                           *(byte *)(*(int *)(iVar3+4) + local_4d[uVar8]*2 + 1),
+                           auStack_3d + uVar8*4);
+    if (param_1 == 5) { ... range form ... }
+    if (param_1 == 6) { *(bool *)(DAT_18010134+3) = b; *(bool *)DAT_18010134 = !b;
+                        FUN_1800fd4c(); FUN_18004498(0x81,5,0,...); }
+
+So all six reports are handled: 1 and 3 on GET, 2/4/5/6 on SET. The 0x33 = 51
+copy is report 4's 50 payload bytes plus its ID, again matching the descriptor.
+
+LAMP ADDRESSING IS BY LampId THROUGH A COORDINATE TABLE. Each LampId indexes a
+2-byte record at `*(iVar3+4) + lampId*2`, giving the row and column passed to
+FUN_1800c132. Every LampId is bounds-checked against the active
+configuration's lamp count first.
+
+
+================================================================================
+STEP 4 — THE FRAME BUFFER, FROM THE LISTING
+================================================================================
+FUN_1800c132(row, column, channels), complete:
+
+    1800c132  push {r4,lr}
+    1800c134  cmp r0,#0x6
+    1800c136  bcs 0x1800c16c            ; row  >= 6  -> drop
+    1800c138  cmp r1,#0x11
+    1800c13a  bcs 0x1800c16c            ; col  >= 17 -> drop
+    1800c13c  ldrb r3,[r2,#0x0]         ; red
+    1800c13e  ldrb r4,[r2,#0x3]         ; intensity
+    1800c140  add.w r0,r0,r0, lsl #0x4  ; row * 17
+    1800c144  muls r3,r4
+    1800c146  add.w r4,r0,r0, lsl #0x1  ; * 3
+    1800c14a  ldr  r0,[0x1800c428]      ; frame base
+    1800c14c  add.w r1,r1,r1, lsl #0x1  ; col * 3
+    1800c150  add  r0,r4
+    1800c152  lsrs r3,r3,#0x8           ; (red * intensity) >> 8
+    1800c154  strb r3,[r0,r1]           ; cell + 0
+    1800c156  ldrb r3,[r2,#0x1]         ; green
+    ...       strb r3,[r0,#0x1]         ; cell + 1
+    1800c162  ldrb r1,[r2,#0x2]         ; blue
+    ...       strb r1,[r0,#0x2]         ; cell + 2
+    1800c16c  pop {r4,pc}
+
+  FRAME BUFFER  *(0x1800c428) = 0x1802505e, in the zeroinit region
+  GEOMETRY      6 rows x 17 columns x 3 bytes = 306 bytes, 102 cells
+  ORDER         red, green, blue at cell offsets 0, 1, 2
+  WIDTH         8 bits per channel
+  INTENSITY     (channel * intensity) >> 8, applied per channel
+  BOUNDS        row < 6 and column < 17, otherwise DROPPED SILENTLY — both
+                `bcs` branches jump straight to the return
+
+LED COUNT FROM EVIDENCE, NOT MARKETING. The lamp count is read from a table the
+handler indexes as `*(byte *)(DAT_18010140 + kind*8)`, and DAT_18010140 =
+0x0000500c — an address in the ENTRY IMAGE, not the application. Read from the
+entry slice's raw bytes:
+
+    record 0: 54 1b 7b d1 2e df 04 01   count = 84
+    record 1: 55 1b 7b d1 2e df 04 01   count = 85
+    record 2: 59 1b 7b d1 2e df 04 01   count = 89
+    record 3: 17 10 32 04 73 01 02 00   count = 23
+    record 4: 25 16 32 04 73 01 02 00   count = 37
+    record 5: 33 1c 32 04 73 01 02 00   count = 51
+    record 6: 41 22 32 04 73 01 02 00   count = 65
+    record 7: 4f 28 32 04 73 01 04 00   count = 79
+
+Eight configuration variants, 23 to 89 lamps, EVERY ONE OF THEM <= the frame's
+102 cells. That consistency is a check, not a coincidence, and the tool asserts
+it. TOPOLOGY: the frame is a 6 x 17 grid and lamps are placed into it by a
+coordinate table, so the addressing is a MATRIX. Whether the physical wiring is
+a matrix, a chain or something else is NOT established — the grid is a software
+layout.
+
+
+================================================================================
+STEP 5 — THE HARDWARE BOUNDARY IS NOT REACHED
+================================================================================
+$ ... -postScript FalchionValueXrefs.java 0x1802505e
+  loaders: FUN_1800aab0, FUN_1800aba4, FUN_1800c074, FUN_1800c132
+  RESULT uses=7
+
+Two of those four are the writers already traced. The other two CONSUME the
+frame, and their call-graph closures reach NO RESOLVED MMIO AT ALL:
+
+  FUN_1800aba4  insns=331 reach=1  blocks=[] regs=[] unresolved=79
+  FUN_1800aab0  insns=16  reach=4  blocks=[] regs=[] unresolved=91
+  FUN_18010102  insns=... reach=30 blocks=[] regs=[] unresolved=574
+  FUN_1800fd4c  insns=... reach=26 blocks=[] regs=[] unresolved=492
+
+THE FINAL HARDWARE INTERFACE IS UNRESOLVED. SPI, PWM, GPIO bit-banging and DMA
+are all still open. The 0x40022000 bank has a per-channel register shape that
+would suit a PWM controller, and IT IS NOT NAMED — that would be naming on
+correlation, which this project refuses. No link to FUN_18011dd0 (the DMA setup
+log 111 traced) was found either: it does not appear in any lighting closure.
+
+FRAME TIMING, DOUBLE BUFFERING AND THE SCAN-TICK INTERACTION are likewise NOT
+RECOVERED. The frame consumers are not reached from Phase 5C's tick chain, and
+no second buffer or swap was found. Absence in the traced set is not absence in
+the firmware.
+
+
+================================================================================
+STEP 6 — THE SAFE-OMISSION QUESTION
+================================================================================
+Answered in two halves, because only one of them is provable.
+
+PROVABLE — THE BUFFER'S IDLE STATE. The frame lives at 0x1802505e, inside the
+zeroinit region Phase 3 recovered, so it powers up ALL ZERO. Only FUN_1800c132
+ever writes it (the cross-reference above is exhaustive). A firmware that omits
+RGB and never calls that function therefore leaves an all-zero frame, by
+construction and not by convention.
+
+NOT PROVABLE — WHETHER ALL-ZERO MEANS THE LEDS ARE OFF. That depends on the
+driver's polarity, and the driver is unidentified. A common-anode part driven by
+an inverting stage would read all-zero as FULL BRIGHTNESS. Nothing in the
+recovered code settles it.
+
+ALSO NOT ESTABLISHED: whether any clock, pin or controller the lighting path
+initialises is SHARED with a mandatory service. The initialisation is in the
+unreached consumers, so it could not be inspected. A first custom firmware that
+omits RGB must therefore treat this as an open risk rather than a solved one.
+
+
+================================================================================
+STEP 7 — CLASSIFICATION
+================================================================================
+The exit gate asks for RGB to be classified as implemented or safely omitted.
+
+CLASSIFICATION: **IMPLEMENTED**, with a stated ceiling. All six LampArray
+reports are handled, lamps are addressed by LampId through a coordinate table,
+bounds are checked, and a 306-byte frame is written with intensity-scaled RGB —
+enough to reproduce the HOST-FACING protocol exactly. What is missing is the
+final hardware interface, so a replacement firmware built from this evidence
+could satisfy a LampArray host and still light nothing.
+
+SAFE OMISSION IS NOT YET JUSTIFIED, for the reason in step 6: the buffer's idle
+state is provable and the hardware's is not.
+
+$ python3 tool/map_rgb_lamparray.py
+RESULT rgb_ok=True checks=14
+  PASS the descriptor declares six reports, all Feature
+  PASS report ID 1's wire size is the 23 bytes the GET handler returns — 22 payload + 1 = 23
+  PASS report ID 4 carries eight lamps — eight 16-bit LampIds and 32 = 8 x 4 channel bytes
+  PASS every report the descriptor declares is handled by the firmware — 1:GET, 2:SET, 3:GET, 4:SET, 5:SET, 6:SET
+  PASS the frame is 6 x 17 x 3 = 306 bytes
+  PASS every lamp count fits the frame — counts [84, 85, 89, 23, 37, 51, 65, 79] against 102 cells
+  PASS the hardware boundary is NOT identified
+  PASS the buffer idle state is provable but the hardware's is not
+  PASS the load-bearing frame claims are listing-verified
+  PASS spec-derived names are separated from measured sizes
+  PASS every route function has a measured vendor counterpart
+  PASS the arithmetic model reproduces the recovered scaling — (255*255)>>8 = 254, (255*128)>>8 = 127
+  [exit 0]
+
+INSTALLED/VENDOR CORRESPONDENCE is explicit for every route function, looked up
+in Phase 3's measured match table rather than computed from a relocation rule —
+the lesson log 110 learned the hard way.
+
+
+================================================================================
+WHAT WAS VERIFIED AGAINST WHAT
+================================================================================
+  LISTING     the callback registration, the bRequest dispatch, the report-1
+              length, the whole frame arithmetic (geometry, order, intensity,
+              the silent drop)
+  BYTES       the descriptor item walk, the entry-image lamp-count table
+  DECOMPILER  the control-request dispatch, the SET handler's report-ID
+              switch, lamp addressing, the autonomous-mode flags
+  XREF        the frame buffer's users, the hardware-boundary negative
+  SPEC        the usage and report NAMES only, never a size
+
+The decompiler was used to find things and the listing to confirm everything a
+replacement firmware would have to reproduce exactly.
+
+
+================================================================================
+GATES
+================================================================================
+$ python3 -m py_compile tool/map_rgb_lamparray.py tool/test_map_rgb_lamparray.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 617 tests   OK                                                 [exit 0]
+  (587 before this step; +30 in tool/test_map_rgb_lamparray.py)
+$ python3 tool/report_phase3.py --check            reports_current=True stale=0
+$ python3 tool/report_phase4.py --check            reports_current=True stale=0
+$ python3 tool/report_phase5.py --check            reports_current=True stale=0
+$ python3 tool/map_usb_routing.py --check          reports_current=True stale=0
+$ python3 tool/map_scan_pipeline.py --check        reports_current=True stale=0
+$ python3 tool/model_hall_actuation.py --check     reports_current=True stale=0
+$ python3 tool/map_nonvolatile_writes.py --check   reports_current=True stale=0
+$ python3 tool/map_rgb_lamparray.py --check        reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                     all OK            [exit 0]
+$ git diff --check                                 clean             [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - Phase 5G was not begun.
+  - Nothing was committed, staged or unstaged. opencode.json was left alone.
+  - NO MMIO BLOCK WAS NAMED. 0x40022000 stays unnamed despite a per-channel
+    shape that would suit PWM.
+  - No seeding; every Ghidra run was -readOnly; project-step6 is unchanged.
+  - The final hardware interface, frame timing, double buffering, the
+    scan-tick interaction, the physical LED topology and the LEDs' safe idle
+    state remain unrecovered, each with its reason.
+  - NO DEVICE WAS ACCESSED.

@@ -1,0 +1,1109 @@
+{
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "c244aef0a92424cc",
+      "label": "the bootloader slice matches its recorded hash",
+      "ok": true
+    },
+    {
+      "detail": "so the analysed program is the same bytes either way",
+      "label": "bootloader_primary and the installed mirror are byte-identical",
+      "ok": true
+    },
+    {
+      "detail": "0x18012ac8",
+      "label": "the poll's buffer address is read from its own pool",
+      "ok": true
+    },
+    {
+      "detail": "cmp r5,#0x1e then increment",
+      "label": "a match needs 31 consecutive samples",
+      "ok": true
+    },
+    {
+      "detail": "0x4001b000, 0x40018000, 0x40019000",
+      "label": "the bootloader's scan drives the converter trio, not GPIO",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the trio is the same one log 119 recovered in the second context",
+      "ok": true
+    },
+    {
+      "detail": "`cmp r7,#0xf` inner and `cmp r5,#0x5` outer, in the packer",
+      "label": "the bitmap is 5 words of 15 bits",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "75 positions, matching the application's key map dimension",
+      "ok": true
+    },
+    {
+      "detail": "[(0, 5), (0, 7), (4, 8)]",
+      "label": "the pattern decodes to exactly three pressed positions",
+      "ok": true
+    },
+    {
+      "detail": "27 must be released",
+      "label": "exact equality also constrains the other positions in both words",
+      "ok": true
+    },
+    {
+      "detail": "0x180063f6",
+      "label": "the firmware applies the HID modifier rule to the map's values",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "so the key map holds HID usage IDs, not arbitrary indices",
+      "ok": true
+    },
+    {
+      "detail": "8, 6",
+      "label": "two of the three pressed keys are named with a complete chain",
+      "ok": true
+    },
+    {
+      "detail": "0xe8",
+      "label": "the third is reported UNRESOLVED rather than guessed",
+      "ok": true
+    },
+    {
+      "detail": "7",
+      "label": "the key that must stay released is named",
+      "ok": true
+    },
+    {
+      "detail": "so the answer does not depend on the unresolved variant byte",
+      "label": "no variant mask touches any recovery position",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the bootloader holds no key map, which is why a residual remains",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the group correspondence is reported as corroborated, NOT proven",
+      "ok": true
+    },
+    {
+      "detail": "2 observations",
+      "label": "both corroborating observations hold",
+      "ok": true
+    },
+    {
+      "detail": "divisor 1000000",
+      "label": "the delay's unit is established",
+      "ok": true
+    },
+    {
+      "detail": "the prompt's second call site is a caller of the SCAN, not the poll",
+      "label": "the poll has exactly ONE caller",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the poll's position in the boot order is stated",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the poll runs on every boot, not only on a key press",
+      "ok": true
+    },
+    {
+      "detail": "physically holdable",
+      "label": "the combination is physically holdable",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and a citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "The same muxed analog converter path the second execution context uses: strobe 0x4001b000, data-out 0x40018000, data-in 0x40019000, with the identical write-strobe-readback idiom and the identical 0x7c strobe value. It is NOT digital GPIO and NOT a row/column matrix. The bootloader carries its own copy of the driver and does not use the second context.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1",
+        "log 119 step 4"
+      ],
+      "key": "mechanism",
+      "kind_basis": "the census attributes those three registers to FUN_000067a4, and its literal pool holds all three",
+      "question": "What does the bootloader's scan actually sample?"
+    },
+    {
+      "answer": "The buffer is five words of fifteen bits. Bit b of word g is linear scan index g*15 + b, set when that position's level is non-zero and below 0x1300. The dimensions come from the packer's own loop bounds, and they match the application's 5 x 15.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 110"
+      ],
+      "key": "geometry",
+      "kind_basis": "`cmp r7,#0xf` and `cmp r5,#0x5` in FUN_0000350c, with the bit-set/bit-clear stores through the same word index",
+      "question": "What does each bit of the matched buffer mean?"
+    },
+    {
+      "answer": "Three pressed \u2014 group 0 positions 5 and 7, group 4 position 8 \u2014 and, because the compare is exact equality, every other position in groups 0 and 4 released, including group 0 position 6 between the two pressed ones. Groups 1, 2 and 3 are never read.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 101 step 3"
+      ],
+      "key": "positions",
+      "kind_basis": "0xa0 has bits 5 and 7; 0x100 has bit 8; the poll uses `cmp` for equality and never loads +0x4, +0x8 or +0xc",
+      "question": "Which positions does the pattern require?"
+    },
+    {
+      "answer": "Two are named with a complete chain: group 0 position 5 is HID usage 0x25, the '8' key, and group 0 position 7 is usage 0x23, the '6' key; the position between them that must stay released is usage 0x24, the '7' key. The third, group 4 position 8, is vendor code 0xe8, which is NOT a HID usage and is never emitted to the host.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3"
+      ],
+      "key": "keys",
+      "kind_basis": "the application's key map at 0x1801c940 indexed by group*15+position, with the firmware's own modifier rule proving the values are HID usage IDs",
+      "question": "Which physical keys are they?"
+    },
+    {
+      "answer": "Not resolved by name. Code 0xe8 is the only non-HID code in the map, occurs exactly once, in both layers, and sits between Right Control and Right Alt in the bottom row \u2014 the Fn position on this product. That is an inference from layout and from the absence of any emit path, not a recovered name.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "this log step 3"
+      ],
+      "key": "third_key",
+      "kind_basis": "the code is outside both ranges the report builder handles, and its neighbours in the map are 0xe4 and 0xe6",
+      "question": "What is the third key?"
+    },
+    {
+      "answer": "It runs on every boot, after container selection and before all three remaining boot gates, so it is the first thing that can block a boot. The first 100 samples are discarded and a match needs 31 consecutive samples in the second 100. The delays alone are about 200 ms; the scans add an unmeasured amount on top.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4",
+        "log 101"
+      ],
+      "key": "timing",
+      "kind_basis": "FUN_00007ec8's call order, and FUN_000048dc dividing a computed core clock by 1000000, which makes the argument microseconds",
+      "question": "When does the poll matter, and for how long?"
+    },
+    {
+      "answer": "Yes. The scan is per-key analog with one channel per key, so there is no matrix, no ghosting and no mutually exclusive pair. The awkward part is deliberate: two number-row keys with the key between them released.",
+      "confidence": "observed",
+      "evidence": [
+        "this log steps 1 and 5"
+      ],
+      "key": "plausibility",
+      "kind_basis": "the converter drives one channel per position; two positions in a group are separate bits of one word",
+      "question": "Can a user hold the combination?"
+    },
+    {
+      "answer": "PARTIAL. G1 asked which state is sampled and which key positions the pattern corresponds to. The state and the positions are fully resolved. Two of the three keys are named with a complete chain; the third has a matrix coordinate and a strongly-inferred name. The group-index correspondence between bootloader and application is corroborated, not proven.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "this log step 6",
+        "notes/step7-live-experiment-risk-plan.md"
+      ],
+      "key": "g1",
+      "kind_basis": "the chain is complete except for two named links, each of which is reported with what would settle it",
+      "question": "Does this resolve risk-plan gate G1?"
+    }
+  ],
+  "disclaimer": "Offline analysis of preserved images. No device was accessed. This resolves an analysis gate and authorises nothing live.",
+  "gate": "G1 \u2014 physical recovery keys resolved",
+  "gate_status": "PARTIAL",
+  "geometry": {
+    "bitmap": "0x18012ac8",
+    "bounds_evidence": "`cmp r7,#0xf` inner and `cmp r5,#0x5` outer, in the packer",
+    "down_flags": "0x180130e8",
+    "down_rule": "a position's bit is SET when its level is non-zero AND below 0x1300; zero or at/above that reads as up",
+    "groups": 5,
+    "layout": "5 words of 15 bits; bit b of word g is linear index g*15 + b",
+    "level_array": "0x18013134",
+    "packer": "0x0000350c",
+    "positions_per_group": 15,
+    "total_positions": 75
+  },
+  "group_correspondence": {
+    "bootloader_holds_a_key_map": false,
+    "bootloader_references_app_key_map": false,
+    "corroboration": [
+      {
+        "holds": true,
+        "observation": "the packer's 'not 0x49' mask disables position 14 in all five groups, and the application's map has an unused code at position 14 in all five groups",
+        "strength": "consistent, but symmetric across groups, so it does not fix the group permutation"
+      },
+      {
+        "holds": true,
+        "observation": "the packer's 0x44 'D' mask disables exactly (group 2, position 13) and (group 3, position 13), and the application's map holds a skip code at both \u2014 a real key at either would contradict the identity mapping",
+        "strength": "this one DOES depend on the group permutation, so it is genuine corroboration for groups 2 and 3"
+      }
+    ],
+    "proven": false,
+    "residual": "the bootloader contains no key map and never names a key, so the claim that its group index equals the application's rests on both reading the same physical channel grouping, corroborated above but not proven from the images.",
+    "what_would_settle_it": "a recovered table in either image that maps a scan channel to a group index, or an observation of the bitmap with a single known key held."
+  },
+  "key_map": [
+    {
+      "entries": [
+        {
+          "code": "0x2a",
+          "name": "Backspace",
+          "position": 0
+        },
+        {
+          "code": "0x2e",
+          "name": "= and +",
+          "position": 1
+        },
+        {
+          "code": "0x2d",
+          "name": "- and _",
+          "position": 2
+        },
+        {
+          "code": "0x27",
+          "name": "0",
+          "position": 3
+        },
+        {
+          "code": "0x26",
+          "name": "9",
+          "position": 4
+        },
+        {
+          "code": "0x25",
+          "name": "8",
+          "position": 5
+        },
+        {
+          "code": "0x24",
+          "name": "7",
+          "position": 6
+        },
+        {
+          "code": "0x23",
+          "name": "6",
+          "position": 7
+        },
+        {
+          "code": "0x22",
+          "name": "5",
+          "position": 8
+        },
+        {
+          "code": "0x21",
+          "name": "4",
+          "position": 9
+        },
+        {
+          "code": "0x20",
+          "name": "3",
+          "position": 10
+        },
+        {
+          "code": "0x1f",
+          "name": "2",
+          "position": 11
+        },
+        {
+          "code": "0x1e",
+          "name": "1",
+          "position": 12
+        },
+        {
+          "code": "0x29",
+          "name": "Escape",
+          "position": 13
+        },
+        {
+          "code": "0x00",
+          "name": "(unused/skipped)",
+          "position": 14
+        }
+      ],
+      "group": 0
+    },
+    {
+      "entries": [
+        {
+          "code": "0x31",
+          "name": "\\ and |",
+          "position": 0
+        },
+        {
+          "code": "0x30",
+          "name": "] and }",
+          "position": 1
+        },
+        {
+          "code": "0x2f",
+          "name": "[ and {",
+          "position": 2
+        },
+        {
+          "code": "0x13",
+          "name": "P",
+          "position": 3
+        },
+        {
+          "code": "0x12",
+          "name": "O",
+          "position": 4
+        },
+        {
+          "code": "0x0c",
+          "name": "I",
+          "position": 5
+        },
+        {
+          "code": "0x18",
+          "name": "U",
+          "position": 6
+        },
+        {
+          "code": "0x1c",
+          "name": "Y",
+          "position": 7
+        },
+        {
+          "code": "0x17",
+          "name": "T",
+          "position": 8
+        },
+        {
+          "code": "0x15",
+          "name": "R",
+          "position": 9
+        },
+        {
+          "code": "0x08",
+          "name": "E",
+          "position": 10
+        },
+        {
+          "code": "0x1a",
+          "name": "W",
+          "position": 11
+        },
+        {
+          "code": "0x14",
+          "name": "Q",
+          "position": 12
+        },
+        {
+          "code": "0x2b",
+          "name": "Tab",
+          "position": 13
+        },
+        {
+          "code": "0x00",
+          "name": "(unused/skipped)",
+          "position": 14
+        }
+      ],
+      "group": 1
+    },
+    {
+      "entries": [
+        {
+          "code": "0x28",
+          "name": "Enter",
+          "position": 0
+        },
+        {
+          "code": "0x34",
+          "name": "' and \"",
+          "position": 1
+        },
+        {
+          "code": "0x33",
+          "name": "; and :",
+          "position": 2
+        },
+        {
+          "code": "0x0f",
+          "name": "L",
+          "position": 3
+        },
+        {
+          "code": "0x0e",
+          "name": "K",
+          "position": 4
+        },
+        {
+          "code": "0x0d",
+          "name": "J",
+          "position": 5
+        },
+        {
+          "code": "0x0b",
+          "name": "H",
+          "position": 6
+        },
+        {
+          "code": "0x0a",
+          "name": "G",
+          "position": 7
+        },
+        {
+          "code": "0x09",
+          "name": "F",
+          "position": 8
+        },
+        {
+          "code": "0x07",
+          "name": "D",
+          "position": 9
+        },
+        {
+          "code": "0x16",
+          "name": "S",
+          "position": 10
+        },
+        {
+          "code": "0x04",
+          "name": "A",
+          "position": 11
+        },
+        {
+          "code": "0x39",
+          "name": "Caps Lock",
+          "position": 12
+        },
+        {
+          "code": "0x00",
+          "name": "(unused/skipped)",
+          "position": 13
+        },
+        {
+          "code": "0x00",
+          "name": "(unused/skipped)",
+          "position": 14
+        }
+      ],
+      "group": 2
+    },
+    {
+      "entries": [
+        {
+          "code": "0x52",
+          "name": "Up Arrow",
+          "position": 0
+        },
+        {
+          "code": "0xe5",
+          "name": "Right Shift",
+          "position": 1
+        },
+        {
+          "code": "0x38",
+          "name": "/ and ?",
+          "position": 2
+        },
+        {
+          "code": "0x37",
+          "name": ". and >",
+          "position": 3
+        },
+        {
+          "code": "0x36",
+          "name": ", and <",
+          "position": 4
+        },
+        {
+          "code": "0x10",
+          "name": "M",
+          "position": 5
+        },
+        {
+          "code": "0x11",
+          "name": "N",
+          "position": 6
+        },
+        {
+          "code": "0x05",
+          "name": "B",
+          "position": 7
+        },
+        {
+          "code": "0x19",
+          "name": "V",
+          "position": 8
+        },
+        {
+          "code": "0x06",
+          "name": "C",
+          "position": 9
+        },
+        {
+          "code": "0x1b",
+          "name": "X",
+          "position": 10
+        },
+        {
+          "code": "0x1d",
+          "name": "Z",
+          "position": 11
+        },
+        {
+          "code": "0xe1",
+          "name": "Left Shift",
+          "position": 12
+        },
+        {
+          "code": "0xd3",
+          "name": "(unused/skipped)",
+          "position": 13
+        },
+        {
+          "code": "0x00",
+          "name": "(unused/skipped)",
+          "position": 14
+        }
+      ],
+      "group": 3
+    },
+    {
+      "entries": [
+        {
+          "code": "0x49",
+          "name": "Insert",
+          "position": 0
+        },
+        {
+          "code": "0x4c",
+          "name": "Delete Forward",
+          "position": 1
+        },
+        {
+          "code": "0x4b",
+          "name": "Page Up",
+          "position": 2
+        },
+        {
+          "code": "0x4e",
+          "name": "Page Down",
+          "position": 3
+        },
+        {
+          "code": "0x4f",
+          "name": "Right Arrow",
+          "position": 4
+        },
+        {
+          "code": "0x51",
+          "name": "Down Arrow",
+          "position": 5
+        },
+        {
+          "code": "0x50",
+          "name": "Left Arrow",
+          "position": 6
+        },
+        {
+          "code": "0xe4",
+          "name": "Right Control",
+          "position": 7
+        },
+        {
+          "code": "0xe8",
+          "name": "UNKNOWN vendor code 0xe8",
+          "position": 8
+        },
+        {
+          "code": "0xe6",
+          "name": "Right Alt",
+          "position": 9
+        },
+        {
+          "code": "0x2c",
+          "name": "Spacebar",
+          "position": 10
+        },
+        {
+          "code": "0xe2",
+          "name": "Left Alt",
+          "position": 11
+        },
+        {
+          "code": "0xe3",
+          "name": "Left GUI",
+          "position": 12
+        },
+        {
+          "code": "0xe0",
+          "name": "Left Control",
+          "position": 13
+        },
+        {
+          "code": "0x00",
+          "name": "(unused/skipped)",
+          "position": 14
+        }
+      ],
+      "group": 4
+    }
+  ],
+  "modifier_rule_proof": {
+    "address": "0x180063f6",
+    "citation": "USB HID Usage Tables, Keyboard/Keypad page 0x07: usages 0xE0..0xE7 are the eight modifiers, in that bit order",
+    "compares_against_7": true,
+    "proves_hid_usages": true,
+    "rule": "sub #0xe0 / cmp #7 / and #7 / 1 << n / or into the report's modifier byte",
+    "subtracts_0xe0": true
+  },
+  "pattern": {
+    "note": "the compare is exact equality, so within groups 0 and 4 every other position must be released; groups 1..3 are not read",
+    "required_down": [
+      {
+        "group": 0,
+        "linear": 5,
+        "position": 5,
+        "state": "DOWN"
+      },
+      {
+        "group": 0,
+        "linear": 7,
+        "position": 7,
+        "state": "DOWN"
+      },
+      {
+        "group": 4,
+        "linear": 68,
+        "position": 8,
+        "state": "DOWN"
+      }
+    ],
+    "required_up": [
+      {
+        "group": 0,
+        "linear": 0,
+        "position": 0,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 1,
+        "position": 1,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 2,
+        "position": 2,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 3,
+        "position": 3,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 4,
+        "position": 4,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 6,
+        "position": 6,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 8,
+        "position": 8,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 9,
+        "position": 9,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 10,
+        "position": 10,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 11,
+        "position": 11,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 12,
+        "position": 12,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 13,
+        "position": 13,
+        "state": "must be UP"
+      },
+      {
+        "group": 0,
+        "linear": 14,
+        "position": 14,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 60,
+        "position": 0,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 61,
+        "position": 1,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 62,
+        "position": 2,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 63,
+        "position": 3,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 64,
+        "position": 4,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 65,
+        "position": 5,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 66,
+        "position": 6,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 67,
+        "position": 7,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 69,
+        "position": 9,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 70,
+        "position": 10,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 71,
+        "position": 11,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 72,
+        "position": 12,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 73,
+        "position": 13,
+        "state": "must be UP"
+      },
+      {
+        "group": 4,
+        "linear": 74,
+        "position": 14,
+        "state": "must be UP"
+      }
+    ],
+    "unconstrained_groups": [
+      1,
+      2,
+      3
+    ]
+  },
+  "plausibility": {
+    "awkwardness": "the two number-row positions are two apart with a third position between them that must stay released, so the combination is 'press the outer two of three adjacent keys'. That is deliberate-looking and is easy to do with two fingers, but it is not a combination anyone would strike by accident.",
+    "keys_down": 3,
+    "keys_up_required": 1,
+    "physically_separated": true,
+    "simultaneously_readable": true,
+    "verdict": "physically holdable",
+    "why": "the scan is per-key analog, one channel per key, so there is no matrix and no ghosting; two positions in the same group are separate bits of one word, not two ends of one channel"
+  },
+  "poll": {
+    "buffer": "0x18012ac8",
+    "buffer_matches_log101": true,
+    "consecutive_compare": "cmp r5,#0x1e",
+    "consecutive_samples": 31,
+    "cycles_per_loop": 100,
+    "delay_argument": 1000,
+    "function": "0x000029d4",
+    "note": "the poll compares words +0x0 and +0x10 for EXACT equality and never reads +0x4, +0x8 or +0xc, so groups 1, 2 and 3 are unconstrained",
+    "unchecked_words": [
+      "+0x4",
+      "+0x8",
+      "+0xc"
+    ],
+    "word0_expected": "0xa0",
+    "word4_expected": "0x100",
+    "word4_offset": "0x10"
+  },
+  "resolved_keys": [
+    {
+      "basis": "standard HID Keyboard/Keypad usage, and the firmware's modifier rule proves the map holds usage IDs",
+      "code": "0x25",
+      "group": 0,
+      "identity": "observed",
+      "linear": 5,
+      "name": "8",
+      "position": 5
+    },
+    {
+      "basis": "standard HID Keyboard/Keypad usage, and the firmware's modifier rule proves the map holds usage IDs",
+      "code": "0x23",
+      "group": 0,
+      "identity": "observed",
+      "linear": 7,
+      "name": "6",
+      "position": 7
+    },
+    {
+      "basis": "not a HID keyboard usage; the report builder has no path that emits it",
+      "code": "0xe8",
+      "group": 4,
+      "identity": "unresolved",
+      "linear": 68,
+      "name": "UNKNOWN vendor code 0xe8",
+      "position": 8
+    },
+    {
+      "basis": "must be RELEASED: it sits between the two pressed positions and the compare is exact equality",
+      "code": "0x24",
+      "group": 0,
+      "identity": "observed",
+      "linear": 6,
+      "name": "7",
+      "position": 6,
+      "state": "must be UP"
+    }
+  ],
+  "scan_mechanism": {
+    "all_three_present": true,
+    "answer": "the same muxed analog converter path the second execution context uses \u2014 NOT digital GPIO and NOT a row/column matrix",
+    "consequence": "each key is its own analog channel. There is no matrix, so there is no ghosting and no mutually exclusive pair: any set of keys can be read simultaneously.",
+    "converter_function": "0x000067a4",
+    "critical_section": "0x00005272 is `msr primask,r0`, so the poll's 1/0 calls are an interrupt mask, NOT a scan enable",
+    "first_tier": 208,
+    "idiom": "write a 16-bit word to the data-out register, strobe with 0x7c then 0, read the data-in register, store the result \u2014 the identical sequence and the identical strobe value as FUN_1803ae58 in the 0x18038000 image",
+    "matches_log119_trio": true,
+    "registers": {
+      "data_in": "0x40019000",
+      "data_out": "0x40018000",
+      "strobe": "0x4001b000"
+    },
+    "registers_present_in_pool": {
+      "data_in": true,
+      "data_out": true,
+      "strobe": true
+    },
+    "result_array": "0x18012f08",
+    "source_table": "0x18012d28",
+    "stages": [
+      "0x00002780",
+      "0x00007e14",
+      "0x00003b98",
+      "0x0000350c"
+    ]
+  },
+  "summary": {
+    "checks": 28,
+    "failed": 0,
+    "ok": true
+  },
+  "timing": {
+    "boot_cost_note": "both loops run unconditionally when no key is held, so EVERY power-on spends this window in the poll.",
+    "call_site": "0x00007efc",
+    "caller": "0x00007ec8",
+    "callers_total": 1,
+    "delay_divisor": 1000000,
+    "delay_function": "0x000048dc",
+    "delay_unit": "microseconds",
+    "delay_unit_basis": "FUN_000048dc computes (core_clock / 1000000) * argument and then busy-loops. Dividing a measured clock by 1e6 makes the argument microseconds BY CONSTRUCTION, so the unit holds without knowing the clock's numeric value \u2014 which is still unresolved.",
+    "hold_ms": 31.0,
+    "hold_required_samples": 31,
+    "match_samples": 100,
+    "per_sample_us": 1000,
+    "position_in_boot": "AFTER container selection (0x00002af0 at 0x00007ed6 chooses the entry) and BEFORE all three remaining boot gates: the entry-constant compare, the 0x20000ffc one-shot flag (FUN_00002a44) and the checksum (FUN_000026d0). It is the FIRST gate that can block the boot.",
+    "practical_consequence": "the first 100 samples are discarded, so the combination must already be held when the poll starts and must stay held into the second phase for at least 31 consecutive samples. In round numbers: hold the keys from power-on through roughly the first fifth of a second. The delays alone total about 200 ms; the scan itself adds 200 unmeasured conversions on top, so the true window is longer than 200 ms and is not bounded here.",
+    "runs_every_boot": true,
+    "warmup_ms": 100.0,
+    "warmup_samples": 100,
+    "window_ms": 200.0
+  },
+  "unknown_codes": [
+    {
+      "code": "0xe8",
+      "confidence": "strongly-inferred",
+      "emitted_to_host": false,
+      "inference": "a keyboard-local key that is never reported to the host and sits between Right Control and Right Alt in the bottom row. On this product that position is the Fn key.",
+      "neighbours": [
+        {
+          "code": "0xe4",
+          "name": "Right Control",
+          "position": 7
+        },
+        {
+          "code": "0xe6",
+          "name": "Right Alt",
+          "position": 9
+        }
+      ],
+      "occurrences_layer0": [
+        {
+          "group": 4,
+          "position": 8
+        }
+      ],
+      "occurs_in_both_layers": true,
+      "what_would_settle_it": "a recovered consumer of the code that switches the key map's layer, or a capture showing the key produces no HID traffic while changing other keys' output",
+      "why_not_emitted": "outside 0xe0..0xe7, so the modifier rule does not apply, and outside 0xe9..0xeb, which is the only other range the report builder handles"
+    }
+  ],
+  "unresolved": [
+    {
+      "detail": "Code 0xe8 has a matrix coordinate (group 4, position 8) and no recovered name. Fn is an inference from its neighbours and from having no emit path, not a finding.",
+      "key": "third_key_name"
+    },
+    {
+      "detail": "The bootloader holds no key map. That its group index equals the application's is corroborated by the variant masks landing on non-keys, but is not proven from the images.",
+      "key": "group_correspondence"
+    },
+    {
+      "detail": "The delay's UNIT is microseconds by construction, but the core clock's numeric value is still unresolved, so the scan time inside each sample is not bounded and the true poll window is longer than the 200 ms of delays.",
+      "key": "absolute_clock"
+    },
+    {
+      "detail": "The byte at 0x18010b56 selects a layout variant ('D', 'E', 'I' or other). What writes it is not traced. The recovery positions are not masked under any variant, so the answer does not depend on it.",
+      "key": "variant_byte"
+    },
+    {
+      "detail": "A position counts as down when its level is non-zero and below 0x1300. The units of that level are unknown, so no travel distance or force is implied.",
+      "key": "down_ceiling"
+    },
+    {
+      "detail": "The names here come from the published HID usage table via the firmware's own map, NOT from this repository's historical capture labels, which FINDINGS records as not a universal physical layout.",
+      "key": "historical_labels"
+    }
+  ],
+  "variant_masks": {
+    "masked_value": "0xffff, which is at or above the down ceiling and so always reads as up",
+    "masks": [
+      {
+        "positions": [
+          {
+            "group": 2,
+            "position": 13
+          },
+          {
+            "group": 3,
+            "position": 13
+          }
+        ],
+        "variant": "0x44 'D'"
+      },
+      {
+        "positions": [
+          {
+            "group": 1,
+            "position": 13
+          }
+        ],
+        "variant": "0x45 'E'"
+      },
+      {
+        "positions": [
+          {
+            "group": 0,
+            "position": 14
+          },
+          {
+            "group": 1,
+            "position": 14
+          },
+          {
+            "group": 2,
+            "position": 14
+          },
+          {
+            "group": 3,
+            "position": 14
+          },
+          {
+            "group": 4,
+            "position": 14
+          }
+        ],
+        "variant": "not 0x49"
+      },
+      {
+        "positions": [
+          {
+            "group": 0,
+            "position": 14
+          },
+          {
+            "group": 4,
+            "position": 14
+          }
+        ],
+        "variant": "0x49 'I'"
+      }
+    ],
+    "recovery_is_variant_independent": true,
+    "recovery_positions_affected": [],
+    "variant_byte": "0x18010b56"
+  }
+}

@@ -1,0 +1,843 @@
+LOG 126 — THE POLLING-RATE CAPTURE, DECODED
+Date: 2026-09-09
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. NO FRAME WAS CONSTRUCTED
+FOR TRANSMISSION — every byte string in this log, in notes/ and in the tool was
+READ OUT of the capture or the preserved images. Neither evidence binary was
+opened for writing and both hashes are unchanged below. The capture files were
+opened read-only and are unchanged. No historical log and not opencode.json were
+modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EVIDENCE HASHES — the capture, recorded BEFORE analysis
+  $ sha256sum captures/*
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+
+  The .pcap is the ORIGINAL written by USBPcapCMD and is the primary evidence;
+  the .pcapng is an editcap format conversion of it and was not used. Both
+  hashes match the owner's facts file exactly. Only 02-* is in scope:
+  01-first-launch.pcapng belongs to earlier work and was not analysed.
+  SIZE AND STAGING: the .pcap is 17,155,500 bytes — under the 50 MB threshold,
+  and already TRACKED in git. The repository's root .gitignore line 20
+  (`**/*.pcapng`) already excludes both pcapng files, so no .gitignore change
+  was needed and none was made. Nothing was staged.
+
+
+================================================================================
+THE HEADLINE
+================================================================================
+THE POLLING-RATE COMMAND IS `51 31`, WITH A ONE-BYTE INDEX AT PAYLOAD OFFSET 4.
+INDEX 0 IS 1000 Hz AND INDEX 3 IS 8000 Hz — MEASURED FROM THE WIRE, not taken
+from the owner's recollection. The device does NOT re-enumerate. The firmware
+handler, its persistence field and its expansion arithmetic are all recovered.
+
+FOUR THINGS THIS STEP SETTLES THAT NO PRIOR STEP COULD.
+
+  1. The command exists and is captured. Log 124 said a polling-rate opcode
+     "almost certainly EXISTS and was never sent while captures were running".
+     It is now sent, twenty times.
+
+  2. The rate is MEASURED, not asserted. No wall-clock stamps were recorded, so
+     the owner's stated order could not anchor the decode alone. The subject's
+     interrupt-IN report timestamps quantise to a 1 ms grid in one state and a
+     125 us grid in the other, on two independent endpoints. That is what pins
+     the mapping.
+
+  3. HIGH SPEED IS NOW DEMONSTRATED, not inherited. Log 107 asserted high-speed
+     operation and log 124 explicitly recorded that it "inherits rather than
+     re-derives" it. Reports 125 us apart are impossible on a full-speed bus,
+     where the host can only poll once per 1 ms frame. This capture therefore
+     derives what log 124 had to borrow.
+
+  4. notes/ac-profile3-decoded.json's `"pollingRate": "3"` MEANS 8000 Hz, and
+     the index space is FOUR wide, not two. The firmware's own bfi writes a
+     4-bit field, its mask is 0xf, and its expansion is `1 << index`. Indices 1
+     and 2 are 2000 and 4000 Hz BY THAT ARITHMETIC — derived, NOT observed, and
+     labelled so everywhere.
+
+WHAT IT DOES NOT SETTLE, stated up front because the negative is load-bearing.
+The byte the firmware derives from the index has SIX WRITERS AND NO READER in
+any preserved image. Log 124's residual negative therefore survives one level
+deeper: the images still do not show anything turning a stored rate into a timer
+period. LOG 124 IS NOT REWRITTEN. Its negative was correct for the evidence
+state it had, and its scoping — "the negative here is about the FIRMWARE'S
+CONSUMERS, not about the protocol" — is exactly what let this step land cleanly
+on the protocol side without contradicting it.
+
+
+================================================================================
+STEP 0 — ENVIRONMENT VERIFICATION
+================================================================================
+$ tshark --version | head -1
+  TShark (Wireshark) 4.7.3.
+
+  The owner's Windows host used 4.6.8. Field names were DISCOVERED on this
+  build, not assumed, and one of the owner's observations turned out to be
+  build- or scope-dependent (see U8).
+
+$ tshark -G fields | awk -F'\t' '$1=="F"{print $3}'   (filtered to candidates)
+  EXISTS  usb.transfer_type        EXISTS  usb.device_address
+  EXISTS  usb.endpoint_address     EXISTS  usb.data_len
+  EXISTS  usb.bInterfaceNumber     EXISTS  usb.src / usb.dst
+  EXISTS  usb.capdata              EXISTS  usb.bmRequestType
+  EXISTS  usb.data_fragment        EXISTS  usb.setup.bRequest
+  EXISTS  usbhid.data              EXISTS  usb.bDescriptorType
+  EXISTS  usbhid.data.vendor       EXISTS  usb.bInterval
+  EXISTS  data.data                EXISTS  frame.time_epoch
+  EXISTS  usb.idVendor/idProduct   EXISTS  frame.time_relative
+  MISSING usb.endpoint_number      MISSING usb.payload
+  MISSING usb.transfer_flags
+
+  FIELDS ACTUALLY USED: frame.number, frame.time_relative, usb.device_address,
+  usb.endpoint_address, usb.transfer_type, usb.data_len, usb.src, usb.dst,
+  usb.bmRequestType, usb.setup.bRequest, usb.bDescriptorType, usbhid.data —
+  plus usb.idVendor/idProduct/bcdDevice, usb.bEndpointAddress, usb.bInterval
+  and usb.wMaxPacketSize in three narrow follow-up queries. usb.endpoint_number
+  and usb.payload do not exist in this build and were not used.
+  NO PACKAGE WAS INSTALLED. Nothing was parsed with scapy or pip anything.
+
+$ capinfos -c -u -a -e -H captures/02-polling-rate.pcap
+  Number of packets:   232 k
+  Capture duration:    473.772421 seconds
+  Earliest packet time: 2026-09-09 00:06:18.128826
+  Latest packet time:   2026-09-09 00:14:11.901247
+  SHA256:              a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54
+
+  Exactly 232530 frames. Timestamp resolution is microseconds
+  (frame.time_epoch = 1788933978.128826000), which is what makes the 12.5 us
+  discrimination in step 4 possible at all — and the discrimination itself
+  proves the resolution is real, since jitter above 12.5 us would destroy the
+  pattern it finds.
+
+
+================================================================================
+STEP 1 — INVENTORY, DEVICE IDENTIFICATION AND SEPARATION
+================================================================================
+$ tshark -r captures/02-polling-rate.pcap -Y 'usb.idVendor' -T fields \
+    -e frame.number -e frame.time_relative -e usb.device_address \
+    -e usb.idVendor -e usb.idProduct -e usb.bcdDevice
+  2       0.000000000  1  0x174c 0x3074 0x0001
+  8       0.000000000  2  0x1532 0x00e6 0x0101
+  14      0.000000000  5  0x174c 0x2074 0x0001
+  20      0.000000000  6  0x0b05 0x1b7e 0x0159
+  26      0.000000000  3  0x0b05 0x19af 0x0100
+  32      0.000000000  4  0x13d3 0x3614 0x0100
+  76120 185.090034000  7  0x0b05 0x1b7e 0x0159
+
+  DESCRIPTOR INJECTION WORKED: every address resolves to a VID:PID from the
+  wire, so separation rests on identity, not on traffic shape. The frames at
+  t=0 are USBPcapCMD's `--inject-descriptors` synthesis for devices already
+  enumerated when the capture began; frame 76120 at t=185.090 is a REAL
+  descriptor read, after the deliberate replug.
+
+  THE SUBJECT is 0b05:1b7e, bcdDevice 0x0159 — the preserved 1.59 firmware,
+  matching dumps/device/...bcdDevice_1.59... It holds TWO addresses:
+    addr 6   pre-replug,      14 frames
+    addr 7   post-replug,   2134 frames
+  Both are tracked. No address above 7 exists anywhere in the capture.
+
+  EVERYTHING ELSE IS SEPARATED BY ADDRESS AND NEVER MERGED:
+    addr 3  0b05:19af  185372 frames  the other ASUS device — the dominant
+                                      noise source, 79.7% of the capture
+    addr 2  1532:00e6   44986 frames  a Razer device
+    addr 5  174c:2074      12 frames  the ASMedia hub the Falchion hangs off
+    addr 1  174c:3074       6 frames  the ASMedia SuperSpeed hub
+    addr 4  13d3:3614       6 frames  the Bluetooth adapter
+  The tool REFUSES to attribute a frame from an address that never identified
+  itself; a unit test removes one address from the identity map and requires
+  the attribution guard to raise.
+
+$ per-endpoint frame counts, subject only (awk over the field dump)
+  addr 7 EP 0x00 control  192      EP 0x81 interrupt IN   714
+         EP 0x00 type-0xff  4      EP 0x85 interrupt IN   150
+         EP 0x0d interrupt OUT 148 EP 0x8c interrupt IN   718
+         EP 0x80 control  206      EP 0x8e interrupt IN     2
+  USBPcap emits a submit and a completion per URB, so the 148/150 on the vendor
+  pair are 74 requests and 74 replies. NO TRAFFIC AT ALL on EP 0x0f, so there
+  is no LampArray OUT traffic to the keyboard in this capture.
+
+  addr 6 EP 0x00/0x80 control 6, EP 0x81/0x85/0x8c/0x8e 2 each — the injected
+  descriptors plus the URBs pending at capture start. The subject sends nothing
+  from t=0 to t=185.088.
+
+$ per-second frame counts, subject only
+  185:458  286:20  287:36  289:36  297:8  312:8  314:16  315:16  316:24
+  317:64  318:24  322:8  327:8  328:16  329:28  330:56  331:52  332:64
+  333:56 ... 366:36 ... 461:...
+  THE LANDMARKS: one enumeration burst at t=185, two vendor bursts at
+  t=286-289 (the Armoury Crate launch), then 51 31 writes at t=297 onward, with
+  typing activity from t=327.
+
+ANCHOR METHOD: TRAFFIC LANDMARKS. No wall-clock stamps were recorded for the
+rate changes — the owner's facts file says so explicitly. The owner's note
+predicted the changes would show as an 8x packet-rate staircase; THEY DO NOT,
+and that prediction is worth recording as failed. The keyboard was idle for most
+of the capture and an idle HID device sends nothing, so the rate is invisible in
+packet COUNTS. It is visible in packet TIMING, which is what step 4 exploits.
+
+U7 IS RESOLVED THE OTHER WAY: there are MORE than four changes, not fewer.
+Armoury Crate 6.5.7.0 exposes only 1000 and 8000 Hz for this keyboard — the
+owner confirmed this on a fully updated, rebooted install — so the prompt's
+1000 -> 2000 -> 4000 -> 8000 sequence was impossible. Twenty 51 31 writes
+collapse to TWELVE strictly alternating windows. Nothing was invented to reach
+four, and nothing was discarded to reach four either.
+
+
+================================================================================
+STEP 2 — THE POLLING-RATE COMMAND
+================================================================================
+BOTH TRANSPORTS WERE SEARCHED FOR EVERY WINDOW (U1), and the control path is
+eliminated by an interval argument rather than by inspection of a few frames:
+
+$ every control transfer to the subject, min and max timestamp
+  n=402  first=185.087648  last=185.817046
+
+  ALL 402 control frames — 5 GET_DESCRIPTOR(HID), 95 SET_REPORT/SET_IDLE
+  (bmRequestType 0x21), 85 GET_REPORT (0xa1), 1 SET_CONFIGURATION, 4
+  URB_FUNCTION_GET_MS_FEATURE_DESCRIPTOR — lie inside a 0.73 SECOND burst that
+  follows the deliberate replug. The FIRST rate change is at t=297.110, over
+  111 seconds later. No SET_REPORT, no control transfer of any kind, reaches the
+  subject at or after any rate change. The search is not blind: the same filter
+  finds 402 frames, and a unit test requires it to find more than 100.
+
+  Spot-checked raw setup bytes, to be sure the class requests are what they
+  look like:
+    frame 76173  21 0a 00 00 00 00 00 00           SET_IDLE, interface 0
+    frame 76219  21 09 02 03 04 00 03 00 | 02 00 00
+                 SET_REPORT, Feature ID 2, interface 4 (LampArray), 3 bytes
+    frame 76220  21 09 00 02 00 00 01 00 | 00
+                 SET_REPORT, Output ID 0, interface 0 — the keyboard LED byte
+  None carries a rate. All are standard HID class initialisation.
+
+THE VENDOR CHANNEL CARRIES IT. Interface 1, usage page 0xFF00, 64-byte
+unnumbered reports, OUT on EP 0x0d and IN on EP 0x85 — exactly log 107's
+transport, now seen live.
+
+$ every distinct 64-byte payload on EP 0x0d, with counts
+  20  50550000 + 60 zero bytes
+  14  51310000 00 + 59 zero bytes
+   6  51310000 03 + 59 zero bytes
+   5  22010000 ...      5  12140200 ...      5  12120000 ...
+   5  12000000 ...      4  12070000 ...      2  12160000 ...
+   2  12140000 ...      2  12080000 ...      2  12030000 ...
+   1  25010000 ...      1  25000000 ...
+$ the same on EP 0x85 — 74 replies, the same 14 shapes, every 51 31 and 50 55
+  echoed VERBATIM, every 12 xx echoed then extended.
+
+  THE WHOLE VENDOR CONVERSATION IS 74 REQUESTS AND 74 REPLIES. There is no
+  third form of 51 31: the two differ at EXACTLY ONE of 64 bytes, and the other
+  59 non-header bytes are zero in all twenty frames. The tool RAISES if a 51 31
+  frame carries a non-zero byte outside offset 4, so this is enforced rather
+  than eyeballed.
+
+THE TWENTY WRITES, in order (t relative, index at offset 4):
+  297.110=00  312.187=03  314.256=00  315.198=00  316.533=00  316.994=00
+  317.234=00  317.434=00  317.716=00  317.967=00  318.198=00  322.023=03
+  339.029=00  358.093=03  379.571=00  404.046=03  416.655=00  425.323=03
+  438.991=00  449.616=03
+
+  Collapsing consecutive repeats of the same value gives TWELVE WINDOWS that
+  alternate perfectly, starting at 00:
+     1  297.110..312.187  0x00      7  379.571..404.046  0x00
+     2  312.187..314.256  0x03      8  404.046..416.655  0x03
+     3  314.256..322.023  0x00      9  416.655..425.323  0x00
+     4  322.023..339.029  0x03     10  425.323..438.991  0x03
+     5  339.029..358.093  0x00     11  438.991..449.616  0x00
+     6  358.093..379.571  0x03     12  449.616..473.772  0x03
+  Six windows per value. U3's requirement that a candidate byte repeat across
+  at least two windows is satisfied six times over, and the strict alternation
+  is itself asserted by a check — a byte that were not the rate would have no
+  reason to alternate with the owner's clicking.
+
+  THE NINE RAPID 00 WRITES at t=314.3..318.2 are a run of ONE value, not an
+  alternation, so they do not disturb the pattern and are not counted as
+  changes. Their cause stays undetermined, as the owner's facts file asked.
+
+THE ENCODING. Payload offset 4, one byte, values 0x00 and 0x03.
+  RULED OUT BY THE OBSERVED VALUES ALONE:
+    Hz/1000        would be 0x01 / 0x08          — not seen
+    raw Hz LE16    would be e8 03 / 40 1f        — offsets 5..6 are zero
+    a divisor      would need a second value to fit any ladder
+  WHAT FITS: an INDEX. Ascending, since the larger index is the faster state
+  (step 4). And FOUR-WIDE, not two — which is a firmware fact, not a wire fact,
+  and is carried as such (step 5).
+
+A COMMIT FOLLOWS EVERY WRITE, all twenty of them:
+  write -> 50 55 request:  48.9 .. 76.7 ms   (median ~56 ms)
+  50 55 -> its echo:      101.5 .. 116.4 ms  (median ~102 ms)
+  A REFINEMENT OF THE HISTORICAL RECORD: notes/protocol.md records the 50 55
+  reply as "~220 ms later" and log 125 explained 220 ms as five block
+  serialisations. Here it is consistently ~102 ms. Recorded as an observation,
+  NOT as a correction to log 125's mechanism: this capture cannot see how many
+  blocks were dirty, and Armoury Crate 6.5.7.0 is a different version from the
+  one protocol.md recorded. A halved latency is consistent with fewer dirty
+  blocks and equally consistent with a version difference.
+
+RE-ENUMERATION: NONE. This is a first-class fact, recorded because it is
+negative and not omitted for being negative.
+$ tshark -Y 'usb.setup.bRequest==6 && usb.bDescriptorType==0x01' ...
+  frames 1..31 at t=0.000000  addresses 1,2,5,6,3,4   <- INJECTED
+  frame 76117  at t=185.087648  address 7             <- the only real one
+  EXACTLY ONE real GET_DESCRIPTOR(device) in 473 seconds, at the replug. One
+  SET_CONFIGURATION, at t=185.099. Zero descriptor reads after t=185.176. The
+  subject holds address 7 continuously across all twelve windows. The owner
+  heard no reconnect chime, and the wire agrees.
+
+  A CORRECTION TO MY OWN FIRST PASS: I initially counted TWO enumerations,
+  because the t=0 injected frames look identical to a real descriptor read. A
+  check caught it. The tool now excludes t=0 frames explicitly, KEEPS them in
+  the JSON under `injected_at_t0` rather than dropping them, and a test requires
+  the injected set to be strictly larger than the real one — so the exclusion
+  cannot silently become a filter that hides a real event.
+
+CONSEQUENCE FOR bInterval, stated rather than inferred. Because the device never
+re-enumerates, this capture contains NO post-change configuration descriptor,
+and log 107's bInterval table can be neither confirmed nor refuted for the
+post-change state. What the capture DOES give is the pre-change descriptor,
+read off the wire:
+$ tshark -Y 'frame.number==76126' -T fields -e usb.bEndpointAddress \
+    -e usb.bInterval -e usb.wMaxPacketSize
+  0x81,0x85,0x0d,0x8c,0x8e,0x0f | 1,1,4,1,4,4 | 8,64,64,21,19,64
+  wTotalLength 0x008d, bNumInterfaces 5, bMaxPower 0xfa, bmAttributes 0xa0.
+
+  LOG 107 IS CONFIRMED ON THREE POINTS AT ONCE: its rebuilt wTotalLength of
+  141 = 0x8d is the host's; its IN-endpoint interval table (1,1,1,4) matches
+  0x81, 0x85, 0x8c, 0x8e; and its step-9 unresolved item — "the OUT endpoints'
+  bInterval... Both are 4 on the host" — is exactly what 0x0d and 0x0f show.
+
+  AND THE MECHANISM DOES NOT NEED A DESCRIPTOR CHANGE. EP 0x81's bInterval is
+  1, which at high speed means the HOST polls it every 125 us in BOTH states.
+  The rate setting therefore cannot be a host-side interval change; it changes
+  how often the DEVICE has a new report ready, and the device NAKs the rest.
+  That is why no re-enumeration is required, and it independently supports log
+  124's elimination of the descriptor path as the runtime mechanism.
+
+
+================================================================================
+STEP 3 — THE REST OF THE CONVERSATION
+================================================================================
+NO SECOND CAPTURE EXISTS. The owner took no lighting capture, so the lighting
+branch of the analysis is SKIPPED ENTIRELY and nothing is cross-checked against
+log 125's lighting-slot map. Said plainly rather than left implicit.
+
+THE STARTUP HANDSHAKE. Three bursts, all decoded:
+
+  BURST 1, t=185.573..185.905 — the resident ASUS service reacting to device
+  arrival, 11 requests:
+    12 14 (byte2=02), 12 07, 12 14, 12 14, 12 00, 22 01, 12 12,
+    12 14, 12 00, 22 01, 12 07
+
+  BURST 2+3, t=286.644..289.477 — the Armoury Crate launch, 23 requests:
+    12 14, 12 07, 12 00, 22 01, 12 12, 12 12, 12 03, 12 00, 22 01, 12 12,
+    12 07, 12 08, 12 14, 12 16,
+    12 03, 12 00, 22 01, 12 12, 12 08, 12 16, 12 14, 25 00, 25 01
+
+  ITS TAIL IS notes/protocol.md's RECORDED SEQUENCE, EXACTLY:
+    12 03, 12 00, 22 01, 12 12, 12 08, 12 16, 12 14, 25 00, 25 01
+  in that order. THE HISTORICAL RECORD IS CONFIRMED, not corrected, and a check
+  asserts the nine-command tail rather than merely mentioning it.
+
+  WHAT protocol.md DID NOT RECORD, and what the prompt asked to confirm or
+  correct: the prompt expected "the startup query is 12 00". Half right. 12 00
+  is the VERSION query and it is inside the block, but it is NOT the first query
+  of a launch — the launch OPENS with 12 14 carrying request byte 2 = 02, a
+  model-string read, followed by 12 07. And the 12 03 / 12 00 / 22 01 / 12 12
+  group runs more than once per launch.
+
+EVERY QUERY AND ITS REPLY, byte for byte (request | reply, trailing zeros cut):
+  12 14 02 | 12 14 02 00 30 32 34 30 38 30 36 30 30 31 36 37
+              ASCII "024080600167" — THE MODEL STRING, and independently the
+              same model id notes/protocol.md records for the Armoury Crate
+              config filename (model = 024080600167). Confidence: observed.
+  12 00    | 12 00 00 00 59 00 01 00 06 00 03 00
+              0x59 = 89 minor, 01 major = 1.59, matching bcdDevice and the
+              preserved dump. protocol.md's recorded reply, byte for byte.
+  12 07    | 12 07 00 00 01                      one byte, 01. meaning unknown
+  12 08    | 12 08 00 00 01                      one byte, 01. meaning unknown
+  12 12    | 12 12 00 00 01 01                   two bytes, 01 01. unknown
+  12 03    | 12 03 (echo only, all zeros)        unknown
+  12 14 00 | 12 14 (echo only, all zeros)        the same subcommand with
+                                                 byte2=0 returns nothing — so
+                                                 byte 2 is a selector, not padding
+  12 16    | 12 16 (echo only, all zeros)        unknown
+  22 01    | 22 01 (echo)                        init handshake
+  25 00    | 25 00 (echo)                        init handshake
+  25 01    | 25 01 (echo)                        init handshake
+  Five of protocol.md's six "still unknown" query meanings stay unknown. This
+  step does not guess at them.
+
+PERIODIC BACKGROUND TRAFFIC (U6): THERE IS NONE ON THE KEYBOARD.
+  After the last handshake query at t=289.477, EVERY host frame on the subject's
+  vendor channel is a 51 31 or its 50 55 — that is, a deliberate user action.
+  Armoury Crate sends this keyboard NO keepalive, NO status poll, NO battery
+  read and NO periodic profile sync, over 184 seconds of it being the focused
+  application. An application must tolerate nothing from Armoury Crate on this
+  channel.
+  Unsolicited traffic FROM the device exists and is user-driven: 8-byte boot
+  keyboard reports on EP 0x81 and 21-byte vendor-event reports on EP 0x8c,
+  emitted together on every key transition (23 us apart), plus two
+  `03 81 05 00 01` frames on EP 0x8c during enumeration.
+
+  THE HEAVY PERIODIC TRAFFIC IN THIS CAPTURE IS NOT THE KEYBOARD'S, and
+  attributing it would have been the easy error here:
+    addr 3  0b05:19af  92579 host control frames, median period 4.000 ms,
+                       ~195 host frames/s, continuous for the whole capture
+    addr 2  1532:00e6  44957 interrupt-IN frames, median gap 0.370 ms
+  Both are separated by device address and never merged. The AURA LED controller
+  the owner's facts file warned about is the plausible source of the addr-3
+  polling; naming it is not attempted, because a VID:PID is not a role.
+
+
+================================================================================
+STEP 4 — THE MEASUREMENT: WHICH INDEX IS WHICH, FROM THE WIRE
+================================================================================
+THE PROBLEM. With no wall-clock stamps, "index 0 is 1000 Hz" would otherwise
+rest entirely on the owner remembering that they started at 1000 — which is
+exactly the kind of anchor the prompt's fallback clause allows but which cannot
+carry a protocol document.
+
+THE METHOD. A high-speed interrupt IN endpoint with bInterval = 1 is polled
+every 125 us; a full-speed one can only complete on a 1 ms frame boundary. A
+device that only has a new report ready every millisecond can therefore only
+complete on the coarser grid even when the host offers the finer one. So: take
+the gap between consecutive key reports, never crossing a rate change, and ask
+how close it sits to a multiple of 1.000 ms and of 0.125 ms. The measure is a
+PHASE, so it is independent of how fast the owner was typing.
+
+The owner was typing "1 2 3" repeatedly with rollover — payloads 0x1e, 0x1f,
+0x20 plus space and backspace — which supplies gaps short enough to matter.
+
+$ python3 tool/map_polling_rate_protocol.py   (measurement section)
+  EP 0x81 index 0:  121 gaps,  85.1% on the 1 ms grid,  90.9% on the 125 us grid
+  EP 0x81 index 3:  229 gaps,  12.2% on the 1 ms grid,  90.0% on the 125 us grid
+  EP 0x8c index 0:  121 gaps,  82.6% on the 1 ms grid,  83.5% on the 125 us grid
+  EP 0x8c index 3:  229 gaps,  13.1% on the 1 ms grid,  88.6% on the 125 us grid
+
+  Acceptance windows are a tenth of each grid: 50 us of a millisecond, 12.5 us
+  of 125 us. By chance a uniform distribution would land inside them 10% and
+  20% of the time.
+
+  INDEX 0 SITS ON THE MILLISECOND GRID: 85% against a 10% chance level, and the
+  mean distance to the grid is 22 us where uniform would be 250 us.
+  INDEX 3 DOES NOT: 12.2%, i.e. chance, with a mean distance of 249 us — but
+  90% of the same gaps sit within 12.5 us of a 125 us multiple.
+  The 1 ms grid is a SUBSET of the 125 us grid, so index 0 satisfies both; the
+  discriminator is the 1 ms test, and it separates the states by seven to one.
+
+  TWO INDEPENDENT ENDPOINTS AGREE — interface 0's 8-byte boot report and
+  interface 2's 21-byte vendor event report — and both read
+  index 0 = 1000 Hz, index 3 = 8000 Hz.
+
+  PER WINDOW, so the result is not carried by one burst (EP 0x81):
+    window  3  0x00   16 gaps   62.5% on the 1 ms grid
+    window  4  0x03  121 gaps   14.9%
+    window  5  0x00  105 gaps   88.6%
+    window  6  0x03   65 gaps   10.8%
+    window 12  0x03   43 gaps    7.0%
+    (the other seven windows contain no typing and are silent — recorded, not
+     filled in)
+  Each value's reading recurs, and the two groups do not overlap.
+
+WHAT THIS ALSO PROVES: HIGH SPEED. Gaps of 1.752, 2.120 and 2.876 ms occur in
+index 3. On a full-speed bus, where the host polls a bInterval=1 interrupt
+endpoint once per 1 ms frame, a non-integer-millisecond gap between two
+completions cannot happen — and split transactions through a high-speed hub
+would still land on frame boundaries. LOG 107's high-speed reading, which log
+124 flagged as inherited rather than derived, IS NOW DERIVED FROM THE WIRE.
+
+ANTI-VACUITY, because the whole argument is a difference between two numbers:
+the grid predicate is fed a synthetic 1 ms train and required to accept it, and
+a synthetic 125 us train and required to REJECT it on the millisecond grid while
+accepting it on the finer one. A predicate that said "yes" to everything would
+fail the second test.
+
+WHAT IT DOES NOT MEASURE. This is the REPORT DELIVERY CADENCE at the host, not
+IRQ38's period, not the Hall sampling rate, and not the actuation compare rate.
+Log 124's six-client coupling on IRQ38 is untouched by this step.
+
+
+================================================================================
+STEP 5 — FIRMWARE CROSS-REFERENCE
+================================================================================
+METHOD NOTE. The listings below come from the pre-existing read-only Ghidra
+export ghidra/decompiles/dispatcher.txt, and were CROSS-CHECKED instruction for
+instruction against an independent disassembly (llvm-objdump, already installed,
+driven through a minimal ELF wrapper written under the scratch directory — no
+package was installed and no repository file was created for it). The two agree
+byte for byte over the handler; that agreement is the reason a second
+disassembler was used at all.
+
+THE DISPATCH PATH, from the vendor-HID dispatcher FUN_18001fbe:
+  18001fbe  push {...}
+  18001fc2  ldr  r4,[0x18002174]      ; *(0x18002174) = 0x180233a8 — the vendor
+                                      ; request buffer, log 107's exactly
+  18001fd6  movs r6,#0x1              ; r6 = 1, set ONCE, at entry
+  1800201c  cmp  r2,#0x51             ; r2 = request byte 0
+  1800201e  bne  ...
+  18002020  b    0x1800248e
+  1800248e  ldrb r2,[r4,#0x1]         ; the subcommand
+  180024d2  cmp  r2,#0x31
+  180024d4  beq  0x180025c6  ->  b 0x18002b2e
+  r6 IS NOT REASSIGNED ON THIS PATH: the branch chain is 18001ff2 -> 18002014
+  -> 18002020 -> 1800248e -> 180024ba -> 180024d2, and none of those
+  instructions writes r6. That matters, because r6 is the shift base.
+
+THE HANDLER, 0x18002b2e:
+  18002b2e  ldrb   r1,[r4,#0x4]       ; REQUEST BYTE 4 — the index
+  18002b30  cmp    r1,#0x3
+  18002b32  beq    0x18002b38
+  18002b34  cmp    r1,#0x0
+  18002b36  bne    0x18002b6c         ; anything but 0 or 3 leaves the handler
+  18002b38  ldr    r2,[0x18002e40]    ; *(0x18002e40) = 0x18021de0
+  18002b3a  ldrh.w r0,[r2,#0x4f8]
+  18002b3e  bfi    r0,r1,#0x0,#0x4    ; the index into BITS 0..3
+  18002b42  strh.w r0,[r2,#0x4f8]
+  18002b46  and    r1,r0,#0xf
+  18002b4a  lsl.w  r0,r6,r1           ; r0 = 1 << index
+  18002b4e  ldr    r1,[0x18002e44]    ; *(0x18002e44) = 0x1801e736
+  18002b50  strb   r0,[r1,#0x0]       ; the expanded multiplier, one byte
+  18002b52  adr    r0,[0x18002e48]    ; the string "=S_PR_U"
+  18002b54  bl     0x1801bd78         ; the firmware's own logger
+  18002b58  adds   r3,r4,#0x4
+  18002b5a  movs   r2,#0x0
+  18002b5c  movs   r1,#0x31
+  18002b5e  str    r6,[sp,#0x0]       ; response payload length = 1
+  18002b60  b      0x180030c4  ->  movs r0,#0x51 ; b 0x180033a4 ; bl 0x18000a70
+
+  THE LITERALS, read out of the image:
+  $ xxd -s 0x2e40 -l 16 ghidra/imports/installed_app_b_slot1_...bin
+    00002e40: e01d 0218 36e7 0118 3d53 5f50 525f 5500
+    *(0x18002e40) = 0x18021de0  = THE PROFILE BLOCK, log 125's base exactly
+    *(0x18002e44) = 0x1801e736
+     0x18002e48  = "=S_PR_U\0"  — the firmware NAMES THE COMMAND. The prefix
+                   convention matches log 120's "R_NSK_M" and log 125's
+                   "PS_*/PR_*" tags. Read as Set_Polling_Rate_Update. This is
+                   corroboration, not the basis: the basis is byte 4, the bound
+                   of 3 and the profile-block store.
+
+  THE RESPONSE IS EXPLAINED, not just matched. Log 107 recovered
+  FUN_18000a70(a,b,c,buf,len) as: byte 0 = a, byte 1 = b, bytes 2..3 = c as a
+  u16, then len payload bytes from buf, in a 64-byte zero-filled frame. Here
+  a = 0x51, b = 0x31, c = 0, buf = &request[4], len = r6 = 1. That produces
+    51 31 00 00 <request byte 4> 00 ... 00
+  which is EXACTLY the 64-byte reply on the wire. The "verbatim echo" is
+  therefore not a memcpy of the request — it is a reconstruction that happens to
+  coincide, and the coincidence is the confirmation.
+
+THE ACCEPTANCE BOUND, and what it does and does not support.
+  The handler accepts 0 and 3 by explicit comparison and falls through for
+  EVERYTHING ELSE, INCLUDING 1 AND 2. So the four-wide reading does NOT rest on
+  the handler accepting 1 or 2 — it does not. It rests on three independent
+  pieces of the same instruction stream: bfi writes a FOUR-BIT field; the
+  reload path masks with 0xf; and the expansion is `1 << index`, whose useful
+  range is 0..3 for a byte destination holding 1, 2, 4 or 8.
+  1 << 0 = 1, 1 << 1 = 2, 1 << 2 = 4, 1 << 3 = 8. Step 4 measured index 0 as
+  1000 Hz and index 3 as 8000 Hz, so THE UNIT OF THE MULTIPLIER IS 1000 Hz,
+  and indices 1 and 2 are 2000 and 4000 Hz BY ARITHMETIC. Derived. Not observed.
+  Labelled `derived_not_observed` in the JSON and "not observed" in the
+  Markdown, with a test that requires the labelling to be there.
+
+PERSISTENCE — AND A REFINEMENT TO LOG 125.
+  The field is PROFILE BLOCK +0x4f8, BITS 0..3. Log 125 recorded +0x4f8 as
+  "VERSION STAMP, copied from ROM 0x1801bfbc". That reading is REFINED, not
+  withdrawn: the halfword at +0x4f8 holds the version stamp AND, in its low four
+  bits, the polling-rate index. Log 125's own accounting is what makes this
+  consistent — the field is covered by NEITHER checksum (checksum A runs
+  +0x002..+0x4b1, checksum B runs +0x4fc..+0x7bb), so writing four bits of it
+  does not invalidate either sum.
+  AND IT CLOSES ONE OF LOG 125's THREE UNMATCHED ROWS. Log 125 left `speed`,
+  `customPattern` and `pollingRate` unmatched between the Armoury Crate decode
+  and the firmware's format. `pollingRate` is now matched: it is profile block
+  +0x4f8 bits 0..3, and since index 3 measures as 8000 Hz,
+  notes/ac-profile3-decoded.json's `"pollingRate": "3"` MEANS 8000 Hz.
+
+  THE RELOAD PATH proves it survives storage. FUN_18000d56 — log 125's storage
+  state machine — at 0x1800153a:
+    18001536  ldr    r2,[pc,...]      ; 0x1801e736
+    18001538  strb   r0,[r1]
+    1800153a  ldrb.w r1,[r7,#0x4f8]   ; the stored halfword's low byte
+    18001540  and    r1,r1,#0xf       ; the same 4-bit mask
+    18001544  lsl.w  r1,r0,r1         ; the same 1 << index expansion
+    18001548  strb   r1,[r2]          ; into the same byte
+  The load path and the wire handler perform IDENTICAL arithmetic into the same
+  destination. A field that were merely a version stamp would not be expanded
+  through a shift on profile load.
+
+READ-BACK — A COMMAND NOBODY HAD FOUND: `12 15`.
+  1800208c  cmp r2,#0x14 / beq 0x1800217c
+  18002090  cmp r2,#0x15 / beq 0x1800217e
+  1800217e  b   0x18002254
+  18002254  ldr    r0,[0x1800259c]    ; = 0x18021de0, the profile block
+  18002256  adds   r3,r4,#0x4
+  18002258  ldrb.w r0,[r0,#0x4f8]
+  1800225c  and    r0,r0,#0xf         ; the index
+  18002260  strb   r0,[r4,#0x4]       ; into reply byte 4
+  18002262  movs   r0,#0x3c           ; 60-byte payload
+  18002268  movs   r1,#0x15
+  18002250  movs   r0,#0x12           ; -> SendResponse64
+  `12 15` READS THE POLLING-RATE INDEX AND RETURNS IT IN REPLY BYTE 4. It writes
+  nothing. protocol.md's HAL list has had `GetPollingRate` in it all along with
+  no opcode; this is it. Armoury Crate never sent 12 15 in this capture, so no
+  reply was OBSERVED — confidence STRONGLY-INFERRED, kind_basis: the handler is
+  read out of the instruction stream and reaches the same field the set handler
+  writes, but the wire never exercised it. It is the one command in the
+  document an application can use to read the rate without writing anything.
+
+THE CONSUMER — SIX WRITERS, NO READER. Log 124's residual negative survives.
+  $ aligned-word search of every preserved image for 0x1801e736
+    installed_app_b   0x18001344 0x180017c0 0x18001c74 0x18002154 0x18002e44
+                      0x18007d20
+    installed_rec1    the same six (it is app_b plus a header)
+    entry image, bootloader mirror, region, RAM image, both vendor releases:
+                      NONE
+  $ the instruction at each load site
+    1800117c ldr r1,[pc] -> 1800117e strb r0,[r1]        FUN_18000d56  WRITE
+    18001536 ldr r2,[pc] -> 18001548 strb r1,[r2]        FUN_18000d56  WRITE
+    180018f4 ldr r1,[pc] -> 180018f8 strb r0,[r1]        FUN_18000d56  WRITE
+    18001ecc ldr r1,[pc] -> 18001ece strb r0,[r1]        FUN_18000d56  WRITE
+    18002b4e ldr r1,[pc] -> 18002b50 strb r0,[r1]        FUN_18001fbe  WRITE
+    18007a18 ldr r0,[pc] -> 18007a1e strb r6,[r0]        FUN_18007030  WRITE
+    ALL SIX ARE STORES. NOT ONE IS A LOAD.
+  $ a displacement search: every aligned word in the app pointing into the
+    region within 4095 bytes below 0x1801e736 (14 distinct pointers, 147 load
+    sites), checked for a subsequent access at the matching displacement
+    -> two apparent hits at 0x180045b0 and 0x180045c8, both REJECTED on
+       inspection: the base is adjusted by `adds r5,#0x54` first, so the
+       effective address is 0x1801e78a, not 0x1801e736. Recorded because a
+       scan that reports raw hits without reading them is how a false positive
+       becomes a finding.
+  $ a movw/movt immediate search for the construction of 0x1801e736 across all
+    fifteen imported images
+    -> `movw rX,#0xe736` appears NOWHERE. The `movt r12,#0x1801` hits are the
+       entry image's veneer table, pairing with other movw values.
+
+  THE SEARCH IS NOT BLIND, and that is the point: the same three methods find
+  the six writers, find 18 references to the profile block, and find the veneer
+  table. They find nothing that READS the byte.
+
+  WHAT THIS MEANS, and what it does not. The firmware stores the index,
+  persists it, reloads it and expands it to a multiplier — and the preserved
+  images do not show what turns that multiplier into timing. It is NOT evidence
+  that the device ignores the setting: step 4 measured the device obeying it.
+  The reader is somewhere this method cannot see, and log 122 already
+  characterised where that is: of its 657 unresolved accesses, 396 have their
+  base in a PARAMETER register, i.e. the caller's pointer. Log 119's mailbox
+  precedent is the other candidate — a base address delivered at run time in a
+  record, unreachable by any static search of the images.
+
+UNITS — WHAT IS AND IS NOT ATTACHED NOW.
+  ATTACHED: the REPORT DELIVERY CADENCE, measured. 1 ms for index 0 and 125 us
+  for index 3, on two endpoints. And, by combining that with the firmware's
+  `1 << index`, the unit of the multiplier: 1000 Hz.
+  ATTACHED: HIGH-SPEED OPERATION, derived rather than inherited.
+  NOT ATTACHED: IRQ38's period. Nothing in this step reads the tick. The
+  dependency map's clock_frequency entry stays unresolved and is untouched.
+  NOT ATTACHED: the Hall sample rate, the actuation compare rate, the lighting
+  frame rate or the watchdog margin. Log 124's coupling result — that a change
+  to IRQ38 would scale all six clients together — is neither used nor disturbed
+  here, because this step never reaches IRQ38.
+  THE DEPENDENCY MAP IS NOT UPDATED, because the firmware consumer was NOT
+  found. The prompt conditioned that update on finding it.
+
+
+================================================================================
+STEP 6 — THE DELIVERABLES, AND A CHANGE OF DISCIPLINE FROM LOG 124
+================================================================================
+Added tool/map_polling_rate_protocol.py — one data model, notes/
+polling-rate-protocol.{json,md}, with --json, --write and --check. It invokes
+tshark as a subprocess and adds no dependency.
+
+$ python3 tool/map_polling_rate_protocol.py
+  RESULT polling_rate_protocol_ok=True checks=20
+
+Added tool/test_map_polling_rate_protocol.py — 47 tests in four groups.
+
+  FAIL-CLOSED, eleven tests. A missing capture raises; a WRONG CAPTURE HASH
+  raises; a TSV line with the wrong field count raises; a non-numeric frame
+  number raises; a TRUNCATED vendor frame raises naming the size; an OVERSIZED
+  one raises; a non-hex payload raises; a capture with no vendor frames raises;
+  an address carrying frames that never identified itself raises rather than
+  being attributed; a capture without the Falchion raises; and a missing tshark
+  raises with a message that says the tool installs nothing.
+
+  ANTI-VACUITY, six tests, because two of the three load-bearing results are
+  searches that found nothing.
+    - the grid predicate accepts a synthetic 1 ms train AND rejects a synthetic
+      125 us train on the millisecond grid while accepting it on the finer one;
+    - the two states separate on BOTH endpoints and agree on the mapping;
+    - the control-transfer filter that finds no rate command DOES find 402
+      control frames;
+    - the "no reader" claim is required to name the six writers the same
+      method found.
+
+  DISCIPLINE, fourteen tests. Log 124's negative must be preserved and its
+  wording must survive; no tick frequency may be claimed and IRQ38 must still
+  be recorded unresolved; indices 1 and 2 must be labelled unobserved; every
+  state-writing command must be owner-approval-only AND every read-only query
+  must NOT be, so the gate discriminates instead of blanket-marking; the
+  never-send list must name 50 55; the document must state that no device was
+  accessed; all eight uncertainties must be answered; U4 must contain "NOT
+  DETERMINED" and U5 must contain "NOT ANSWERED" for the bInterval gap; the
+  JSON must be deterministic; the notes on disk must match; and --check must
+  report reports_current=True.
+
+A DELIBERATE INVERSION OF ONE OF LOG 124'S RULES, recorded because it looks
+like a regression and is not. Log 124's tool asserts that its generated JSON
+"must contain nothing frame-shaped, so this step cannot leak something
+transmittable". This step's deliverable is a protocol document whose entire
+purpose is to carry exact command bytes for the owner's application, so that
+rule CANNOT hold here. It is replaced, not dropped: every command that writes
+device state must carry `owner_approval_required`, the never-send list must
+cover them, and the read-only queries must be shown NOT to carry the flag so
+the marking means something. Log 124's rule and its test are untouched in its
+own tool.
+
+TWO CHECKS THAT FAILED FOR THE RIGHT REASON, both mine, both leading to better
+evidence than I started with.
+
+  1. "the subject enumerates exactly once" FAILED, reporting two. The t=0
+     injected descriptor frames are indistinguishable from a real read by
+     bRequest and bDescriptorType alone. Fixing it produced a better result
+     than the original claim: the tool now separates injected from real, KEEPS
+     the injected set in the JSON, and a test requires it to be strictly
+     larger — so the exclusion cannot quietly become a filter that hides a real
+     re-enumeration.
+
+  2. "no report lands between a write and its commit" FAILED, and my earlier
+     ad-hoc shell check had said it passed. The shell check was wrong: a zsh
+     `set -- $iv` does not word-split an unquoted parameter, so every interval
+     was compared against a single malformed bound and every window returned
+     zero. FOURTEEN reports do land in those intervals. The corrected finding is
+     SHARPER than the false one: no two CONSECUTIVE reports land there, and only
+     a consecutive pair yields an inter-report gap that a grid can grade — so
+     U4 is blocked by the absence of a pair, not by the absence of reports.
+     A third version of that test was also wrong, claiming all fourteen follow a
+     no-op write; two follow the real 3 -> 0 change at t=314.2555 and are lone
+     reports. The test and the prose now say twelve and two.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_polling_rate_protocol.py \
+      tool/test_map_polling_rate_protocol.py                          [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 1089 tests   OK                                                 [exit 0]
+  (1042 before this step; +47 in tool/test_map_polling_rate_protocol.py)
+$ the nineteen existing --check scripts plus the new one
+                                                   all reports_current=True stale=0
+$ sha256sum -c logs/SHA256SUMS                     all OK              [exit 0]
+$ git diff --check                                 clean               [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+CAPTURE HASHES — AFTER (unchanged)
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+
+
+================================================================================
+EVERY UNCERTAINTY, ANSWERED
+================================================================================
+U1 TRANSPORT — RESOLVED. Interrupt OUT on EP 0x0d, interface 1. All 402 control
+   transfers to the subject lie in a 0.73 s window 111 s before the first rate
+   change. Both paths were searched for every window.
+
+U2 DIRECTION — RESOLVED. Ascending, from the report-grid measurement, not from
+   the owner's stated order.
+
+U3 CARRIER SHAPE — RESOLVED. A dedicated command. The two 51 31 forms differ at
+   exactly one of 64 bytes; the value recurs in six windows per value.
+
+U4 APPLICATION TIMING — PARTIALLY RESOLVED. Not on re-enumeration, because none
+   occurs. Whether the 51 31 write alone suffices or the 50 55 commit is needed
+   is NOT DETERMINED: fourteen reports land inside a write-to-commit interval
+   but never two consecutively, so no gradeable gap exists there, and twelve of
+   the fourteen follow a write of the value the device already held.
+
+U5 RE-ENUMERATION — RESOLVED, NEGATIVE, and the negative is recorded as a fact.
+   One real enumeration in 473 s, at the replug. No address above the subject's.
+   Consequence: no post-change configuration descriptor exists, so the bInterval
+   question is NOT ANSWERED by this capture and is not inferred. The mechanism
+   does not need a descriptor change.
+
+U6 BACKGROUND TRAFFIC — RESOLVED. Nothing periodic from Armoury Crate to this
+   keyboard at all. The capture's heavy periodic traffic is other devices',
+   separated by address.
+
+U7 COALESCING — RESOLVED THE OTHER WAY. More than four changes, not fewer:
+   twenty writes, twelve alternating windows, two reachable values because
+   Armoury Crate 6.5.7.0 exposes only two.
+
+U8 TSHARK QUIRKS — RESOLVED, WITH ONE CORRECTION TO THE OWNER'S NOTE. usbhid.data
+   carries the payload. On the VENDOR ENDPOINTS usb.capdata, data.data and
+   usb.data_fragment are all empty, re-verified on this build. But the owner's
+   blanket "usb.data_fragment returns EMPTY" is NOT true on TShark 4.7.3: it is
+   populated on 90 control transfers, carrying the short SET_REPORT payloads.
+   The check is therefore scoped to the vendor endpoints rather than loosened,
+   and the correction is stated rather than absorbed. Every payload is
+   length-checked to 64 bytes before decoding, and the firmware listing was
+   cross-checked against an independent disassembler.
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THE READER OF 0x1801e736. Six writers, no reader in any preserved image, by
+    three independent search methods each shown non-blind. Log 122's parameter-
+    register accesses and log 119's run-time pointer delivery are the two
+    places it could be, and neither is reachable by a static address search.
+  - 2000 AND 4000 Hz ARE UNVERIFIED. Armoury Crate cannot request them; the
+    handler explicitly rejects indices 1 and 2. They follow from the firmware's
+    own bfi width, mask and shift, and from the two measured endpoints. They
+    are NOT observed and would need either a different host application or an
+    approved device write to confirm.
+  - U4: WRITE-ONLY VERSUS WRITE-PLUS-COMMIT. Needs a capture in which keys are
+    pressed continuously across a rate change.
+  - THE bInterval QUESTION. Unanswerable from this capture, because there is no
+    re-enumeration and therefore no second descriptor.
+  - FIVE QUERY MEANINGS. 12 03, 12 07, 12 08, 12 12 and 12 16 still have
+    unknown semantics. Their replies are recorded byte for byte and not guessed.
+  - THE 50 55 LATENCY DIFFERENCE. ~102 ms here against protocol.md's ~220 ms.
+    Recorded as an observation; this capture cannot see how many blocks were
+    dirty, and the Armoury Crate version differs.
+  - THE NINE RAPID 00 WRITES at t=314.3..318.2. Cause undetermined; the analysis
+    does not depend on them.
+  - IRQ38's PERIOD. Unchanged and unresolved. No real Hz attach to the tick.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - It did not access any device, open any hidraw node, or read USB sysfs.
+  - IT DID NOT CONSTRUCT ANY FRAME FOR TRANSMISSION, and it did not suggest
+    transmitting one. Every byte string in the tool, the notes and this log was
+    read out of the capture or the preserved images. The 50 55 commit and every
+    unlock/erase/program/reset/SPI construction are absent from the code, the
+    tests and the prose except as entries on the NEVER-SEND list.
+  - It did not modify the capture, either evidence binary, any historical log,
+    or opencode.json. Log 124 was NOT rewritten.
+  - It did not update the dependency map, because the firmware consumer was not
+    found.
+  - It did not decode a lighting command, because no lighting capture exists.
+  - It did not analyse 01-first-launch.pcapng, which is out of scope.
+  - It did not install any package. tshark, llvm-objdump and python3 were
+    already present.
+  - The pre-existing ghidra/project falchion-hfx project was never opened; only
+    the existing read-only decompile exports and imported slices were read.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

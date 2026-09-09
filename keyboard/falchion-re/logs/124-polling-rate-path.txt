@@ -1,0 +1,297 @@
+LOG 124 — THE POLLING-RATE PATH
+Date: 2026-09-08
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. NO CONFIG-WRITE FRAME WAS
+CONSTRUCTED — this step reads code. Neither evidence binary was opened for
+writing and both hashes are unchanged below. No historical log and not
+opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE RESULT: NO POLLING-RATE INDEX IS CONSUMED ANYWHERE IN THE PRESERVED IMAGES,
+and no real units are attached to anything. The tick's period remains
+unresolved and the dependency map is untouched.
+
+AN IMPORTANT DISTINCTION HELD THROUGHOUT. The negative here is about the
+FIRMWARE'S CONSUMERS, not about the protocol. The opcode very probably exists
+on the wire — see step 1 — and simply was never captured. Conflating those two
+would be the easy error in this step, and a unit test forbids the wording that
+would make it.
+
+
+================================================================================
+STEP 1 — WHERE THE INDEX COMES FROM, AND WHAT THE WIRE RECORD CAN SETTLE
+================================================================================
+The historical Armoury Crate decode carries, in its entirety:
+
+  "performance": { "pollingRate": "3" }
+
+An INDEX, not a rate. The block contains nothing else — no Hz, no divisor, no
+interval. The provenance is previously-observed-on-hardware and is NOT
+reproducible from the PCAPs in this repository, which is how the plan framed it
+and how it is used here.
+
+THE OBSERVED COMMAND SURFACE, parsed from notes/protocol.md's own table:
+
+  12 <sub>    GET / query; the reply echoes then appends data
+  22 01       init handshake (echo only)
+  25 00 / 25 01  init handshake (echo only)
+  51 21 ...   set Fn-layer key binding
+  51 22 ...   set — exact function unconfirmed, seen with C8 (200)
+  50 55       commit to flash
+
+  NO POLLING-RATE COMMAND APPEARS IN IT.
+
+AND THE NOTE ALREADY SAYS WHY, twice, which strengthens rather than weakens the
+position. Its host-HAL method list records `SetPollingRate` and
+`GetPollingRate`, and its "Still unknown" section reads:
+
+  "Opcodes for actuation, rapid trigger, dead zone, speed tap, profile switch,
+   polling rate. All have known HAL method names; none captured yet."
+
+  So a polling-rate command almost certainly EXISTS and was never sent while
+  captures were running. The wire record therefore cannot settle this question,
+  which is precisely why it had to be answered from code — and why every
+  negative below is scoped to the firmware's consumers.
+
+
+================================================================================
+STEP 2 — THE FIVE CANDIDATES
+================================================================================
+(b) THE PRESCALER LADDER — ELIMINATED.
+
+  FUN_0000042c's five decisions, decoded from the entry image's bytes:
+
+    0x0000043a  0x2808  cmp r0,#0x8      -> /8
+    0x0000044c  0x2805  cmp r0,#0x5      -> /5
+    0x0000045c  0x07c0  lsls r0,r0,#0x1f -> /2, a bit test
+    0x00000474  0x280a  cmp r0,#0xa      -> /10
+    0x00000484  0x280a  cmp r0,#0xa      -> /10
+
+  Every divisor is encoded in the instruction stream. NOT ONE IS LOADED FROM
+  RAM, so no stored index can change the ladder. The ratios 1, 8, 5, 2, 10, 10
+  are fixed at compile time.
+
+(c) THE MAILBOX TO THE SECOND CONTEXT — ELIMINATED.
+
+  Log 121 enumerated it exhaustively. Five fields: a fault counter at +0x27a, a
+  channel table at +0x1e4, a drive table at +0x72c, raw samples at +0x3f2 and
+  travel bytes at +0x35c. All are sized for 75 keys. NONE IS A RATE OR AN
+  INTERVAL.
+
+(d) THE DESCRIPTOR'S bInterval — ELIMINATED AS A RUNTIME MECHANISM.
+
+  The region-resident parameter table's interval bytes, read from the region
+  image at region+0x284 + 0x14 + i*0x18 + 0x14:
+
+    iface 0  bInterval = 1        iface 3  bInterval = 4
+    iface 1  bInterval = 1        iface 4  bInterval = 1
+    iface 2  bInterval = 1
+
+  matching log 107's 1, 1, 1, 4 exactly. The RAM copy at 0x1803435c would put
+  its interval bytes at 0x18034384, 0x1803439c, 0x180343b4, 0x180343cc and
+  0x180343e4, and AN ALIGNED-WORD SEARCH OF THE APPLICATION FINDS NO REFERENCE
+  TO ANY OF THEM. The descriptor builder writes only the descriptor it emits —
+  its `strh [r0,#0x14]` stores are wMaxPacketSize fields in the output buffer,
+  not the parameter table. Changing the rate this way would additionally
+  require a re-enumeration, and nothing triggers one.
+
+  (The search is not blind: the same method DOES find references to the table's
+  own base 0x1803435c, from three sites in the USB stack. A unit test asserts
+  that companion.)
+
+(a) A TIMER RELOAD OR DIVISOR REGISTER — NOT CONFIRMABLE, and this is recorded
+    as unresolved rather than eliminated, because you cannot rule out a block
+    that has never been found.
+
+  The application and entry image touch these peripheral windows:
+
+    0x40010000   the converter trio and its neighbour (logs 119, 122)
+    0x40020000   the bank log 122 excluded from lighting; still unnamed
+    0x40100000   the block the USB stack drives (log 122)
+    0x45000000   the 15-register system-control block log 123 enumerated
+    0x40000000   one access, the reset-path init
+
+  NONE HAS A RELOAD OR DIVISOR SHAPE. Log 109 step 3 already recorded that the
+  timer raising IRQ38 is unidentified, and this step does not change that. A
+  rate index cannot be traced to a timer nobody has found.
+
+(e) MORE THAN ONE — not applicable. Four are eliminated and the fifth is
+    unconfirmable, so no combination survives.
+
+
+================================================================================
+STEP 3 — THE TABLES THAT ARE NOT THERE
+================================================================================
+An index-to-rate mapping would have to live somewhere. Searching all four
+images for any eight-halfword window containing three or more of 125, 250, 500,
+1000, 2000, 4000 and 8000:
+
+  entry 0   app 0   region 0   second 0
+
+  NO INDEX-TO-Hz TABLE EXISTS IN ANY IMAGE. The search is not blind: pointed at
+  a value set that IS present it returns hits immediately, and a unit test
+  pins that.
+
+Divisor-shaped byte runs do exist, and both were examined rather than counted:
+
+  app 0x1800d258   01 02 04 08 10 00 00 00
+      sits in a data area among pointers (0x1801e7e8, 0x1801e6d0, 0x18024f0c)
+      and is a BIT-POSITION table, not a divisor table. No function owns it.
+
+  region 0x1801edf4  01 02 03 04 05 06 07 08
+      an ascending identity run, not divisors, and nothing rate-related indexes
+      it.
+
+  NEITHER IS A RATE TABLE.
+
+
+================================================================================
+STEP 4 — THE SHARED TICK
+================================================================================
+Six subsystems ride IRQ38 and its divide-by-8 job, assembled from prior logs:
+
+  sample fetch                     the /8 job, veneer 0x4044        log 119
+  actuation compare                the /8 job, veneer 0x4062        logs 110, 119
+  watchdog feed                    FUN_00000516                     log 114
+  mailbox cluster                  FUN_00000516, veneer 0x40d0      log 121
+  lighting swap and shadow read    FUN_00000516, veneers 0x40f8/0x4116  log 122
+  report builder                   the every-tick job, veneer 0x4076    log 109
+
+IF the period changed, ALL SIX WOULD SCALE TOGETHER: the Hall sample rate, the
+actuation comparison, the watchdog feed margin, the lighting frame rate and the
+report cadence are all derived from one interrupt through one fixed ladder.
+
+BUT THE QUESTION IS MOOT ON THIS EVIDENCE, and that is itself the answer worth
+recording. No stored value reaches the tick: the ladder is immediates, no timer
+block is identified, the mailbox carries no rate and the descriptor is static.
+The images do not show report timing and acquisition being coupled through a
+configurable rate, because they show no configurable rate at all.
+
+WHAT A REPLACEMENT MUST PRESERVE, and this survives the negative: THE COUPLING
+ITSELF. Anything that changes IRQ38's period changes all six clients at once,
+including the watchdog margin log 114 recorded as riding the divide-by-8 job. A
+replacement that reasons about one client's rate in isolation is reasoning
+wrongly, whether or not a rate setting turns out to exist.
+
+
+================================================================================
+STEP 5 — UNITS
+================================================================================
+NO REAL Hz ARE ATTACHED TO ANYTHING BY THIS STEP.
+
+  IRQ38's period                        UNRESOLVED, unchanged
+  the only unit-bearing timing          log 120's microsecond delay, which
+                                        divides a MEASURED clock by 1000000 and
+                                        is therefore in microseconds BY
+                                        CONSTRUCTION, without the clock's
+                                        numeric value being known
+  dependency map                        UNTOUCHED — clock_frequency stays
+                                        unresolved, and a unit test asserts it
+
+A LEAD RECORDED AS A LEAD, DELIBERATELY NOT AS A FINDING. Log 107 reads EP
+0x81's bInterval=1 as 125 microseconds (8000 Hz) and EP 0x8e's bInterval=4 as
+1 millisecond (1000 Hz), and the divide-by-8 job would turn an 8000 Hz IRQ38
+into exactly 1000 Hz. Three independently recovered numbers line up. THAT IS A
+CONSISTENCY, NOT A MEASUREMENT: it assumes the device enumerates at high speed,
+which log 107 asserted and this step inherits rather than re-derives, and it
+would still not prove IRQ38's period. It is written down so a future step can
+test it instead of inheriting it as fact, and a unit test forbids any claim
+here from stating a tick frequency.
+
+
+================================================================================
+STEP 6 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_polling_rate.py — one data model, notes/polling-rate.{json,md},
+with --json, --write and --check.
+
+$ python3 tool/map_polling_rate.py
+  RESULT polling_rate_ok=True checks=23
+
+Added tool/test_map_polling_rate.py — 32 tests in three groups.
+
+  COMPANIONS FOR EVERY ENUMERATED NEGATIVE, because the headline is an absence:
+    - the rate-table search finds nothing; pointed at a value set that IS
+      present it finds hits, so it is not blind;
+    - no RAM bInterval byte is referenced; the same method DOES find the
+      table's own base, from three USB-stack sites.
+
+  DISCIPLINE, and the first of these is the one that matters most here:
+    - no claim may say the device has no polling-rate command. The firmware
+      negative must not be read as a protocol negative, and the note's own
+      "known HAL method names; none captured yet" is asserted as evidence;
+    - no claim may state a tick frequency;
+    - the 8000/8 alignment must be labelled a consistency and "not a
+      measurement";
+    - the dependency map must be reported as untouched;
+    - the generated JSON must contain nothing frame-shaped, so this step cannot
+      leak something transmittable.
+  Each has an anti-vacuity companion.
+
+  FAIL-CLOSED: a missing profile, a missing protocol note and a missing slice
+  each raise; bodies() raising makes main() return 1 without a traceback.
+
+A CHECK THAT FAILED FOR THE RIGHT REASON. My first version tested "does the
+word 'polling' appear in protocol.md" and failed, because it does — twice, in
+the HAL method list and in the "Still unknown" section. The check was too
+broad, and the failure led me to better evidence than I had started with: the
+note already records the opcode as known-but-never-captured. The check was
+narrowed to the parsed COMMAND TABLE and a second check was ADDED to assert the
+HAL evidence, rather than the original being loosened away.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_polling_rate.py tool/test_map_polling_rate.py
+                                                                       [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 994 tests   OK                                                   [exit 0]
+  (962 before this step; +32 in tool/test_map_polling_rate.py)
+$ the sixteen existing --check scripts plus the new one
+                                                   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                     all OK              [exit 0]
+$ git diff --check                                 clean               [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - WHERE A RATE INDEX GOES, if the device accepts one. It may be handled by a
+    command never captured, by a settings field whose format log 111 could not
+    recover, or not by the device at all.
+  - THE IRQ38 TIMER is still unidentified, so its period cannot be read or
+    reasoned about even in principle from these images.
+  - THE SETTINGS FORMAT remains unrecovered (log 111 step 5). If the rate is
+    persisted, it is persisted somewhere this project cannot yet parse.
+  - THE WIRE RECORD IS A SAMPLE, not a specification. The note itself lists the
+    polling-rate opcode among those with known HAL names and no capture.
+  - THE HIGH-SPEED ASSUMPTION behind reading bInterval=1 as 125 microseconds
+    comes from log 107 and is inherited here, not re-derived.
+  - THE 8000/8 ALIGNMENT is a consistency between independently recovered
+    numbers and is recorded as a lead, not a finding.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - It did not conclude that the device has no polling-rate command; it
+    concluded that no consumer of one appears in the preserved images.
+  - It did not attach Hz to the tick, and it did not touch the dependency map.
+  - NO CONFIG-WRITE FRAME WAS CONSTRUCTED, in the tool, the notes or this log.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

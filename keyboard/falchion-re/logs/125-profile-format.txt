@@ -1,0 +1,586 @@
+LOG 125 — THE SETTINGS / PROFILE FORMAT, READ AGAINST THE ARMOURY CRATE DECODE
+Date: 2026-09-08
+Scope: ONE step. Offline static analysis only. It authorises nothing live and
+changes no decision. Nothing was committed, staged or unstaged. Log 124's
+uncommitted work was present when this step began and was preserved.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool, no
+unlock/erase/program/reset/SPI command construction. THE VENDOR PERSISTENCE
+COMMAND WAS NEVER CONSTRUCTED OR TRANSMITTED; its opcode and subcommand are
+deliberately not spelled out in the new module or in anything it emits, because
+repeating them beside a recovered payload format is exactly the combination this
+project avoids. Neither evidence binary was opened for writing. No historical
+log and not opencode.json were modified. Every Ghidra run was -readOnly
+-noanalysis against the ignored ghidra/project-step6; the pre-existing
+ghidra/project falchion-hfx was never opened. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE QUESTION. Phase 5E (log 111) closed with six blanks — magic, version,
+length, checksum, defaults, migration — and a defensible reason for each. This
+step recovers all six by reading a different branch of the same state machine,
+and uses the decoded Armoury Crate profile as a Rosetta stone for the field
+semantics.
+
+
+================================================================================
+STEP 0 — HOW THE ENTRY POINT WAS FOUND, INCLUDING THE WRONG TURN
+================================================================================
+FINDINGS describes a "configuration-load state machine" that calls
+IsKeyUnsupportedForLayer with selectors 0 and 1. The only callerless function
+carrying R_NSK_M and R_NSK_FnM is FUN_18007e38, so that is where this started.
+
+IT IS THE WRONG SUBSYSTEM. FUN_18007e38 is the macro record/playback state
+machine. Its storage call is
+
+    FUN_18007e0c:  FUN_1800e368(*(byte*)(0x1801e6d6) * 0x80000
+                                + slot * 0x1000 + 0x20000,
+                                0x180225fc, 0x664)
+
+a 0x664-byte payload — four 0x198 macro records plus a four-byte tail — and not
+a profile. Recorded because the next reader will make the same approach.
+
+WHAT ACTUALLY WORKED was the function inventory's `consts` field. Exactly ONE
+function in the installed application mentions 0x320000:
+
+    $ awk '/consts=/{ if ($0 ~ /0x320000/) print }' ghidra/inventories/installed_b.txt
+      entry=18000d56 name=FUN_18000d56
+
+FUN_18000d56 is the state machine log 111 named and read four cases of. It is
+0xf46 bytes and 1426 instructions. Reading the rest of it produced this log.
+
+
+================================================================================
+STEP 1 — SIX REQUEST PRIMITIVES, NOT TWO
+================================================================================
+Log 111 found two primitives, both erases, both filling a one-deep struct at
+0x18025ef4. There are six. They are byte-identical apart from the immediate
+each stores as the opcode:
+
+    FUN_1800e344  0x02   PROGRAM     called by FUN_1800e836
+    FUN_1800e368  0x03   READ        called by FUN_18000d56, 18007e0c, 18007e38
+    FUN_1800e2fc  0x22   WRITE       called by FUN_18000d56, 18007da4
+    FUN_1800e2e0  0x20               called by FUN_18000d56, 1800e776
+    FUN_1800e2a8  0xd8               log 111
+    FUN_1800e2c4  0x52               log 111
+
+FUN_1800e368's listing in full, since two struct fields turn on it:
+
+    1800e368  ldr  r3,[0x1800e3c0]     ; = 0x18025ef4
+    1800e36c  ldrb r4,[r3,#0x0]
+    1800e36e  cbz  r4,0x1800e374       ; busy -> refuse, as log 111 recorded
+    1800e374  movs r4,#0x3             ; <- THE OPCODE
+    1800e376  strb r4,[r3,#0x0]
+    1800e378  str  r1,[r3,#0x4]        ; <- THE BUFFER
+    1800e37a  strd r0,r2,[r3,#0xc]     ; <- THE ADDRESS and THE LENGTH
+    1800e380  str  r0,[r3,#0x14]
+    1800e386  strb r0,[r3,#0x8]
+    1800e388  strb r0,[r3,#0x18]       ; pending = 1
+
+REQUEST STRUCT, EXTENDED: +0x00 opcode, +0x04 BUFFER, +0x08 flag,
++0x0c address, +0x10 LENGTH, +0x18 pending, +0x19 cleared.
+
+The two new fields are the entire reason the payload sizes below are visible.
+
+THE OPCODES ARE NOT DECODED BY HAND. tool/map_profile_format.py searches each
+primitive for the idiom `movs rD,#imm8` immediately followed by
+`strb rD,[rB,#0]` and reads the immediate out of the instruction. The six do
+NOT share one offset — three use r4 at +12 and three use r2 at +10 — which is
+why the idiom is searched for rather than read at a fixed offset, and a test
+feeds the decoder bytes without the idiom and requires it to find nothing.
+
+THE MEDIUM IS STILL NOT IDENTIFIED. 0xd8, 0x52, 0x20, 0x02, 0x03 and 0x22 are
+all recognisable JEDEC SPI-NOR opcodes. That remains RECOGNITION, NOT PROOF,
+exactly as log 111 recorded it, and no block and no part is named here. A test
+asserts the emitted model contains no part number, no bus name and not the word
+JEDEC.
+
+
+================================================================================
+STEP 2 — THE RAM BLOCKS ARE ONE CONTIGUOUS RUN
+================================================================================
+    0x180202d8   0xd84   keymap bank, layer 0
+    0x1802105c   0xd84   keymap bank, layer 1
+    0x18021de0   0x81c   THE PROFILE BLOCK
+    0x180225fc   0x664   macro block
+    0x18022c60           the request-state struct log 111 traced
+
+0x180202d8 + 2*0xd84 = 0x18021de0 exactly, and 0x18021de0 + 0x81c = 0x180225fc
+exactly. Both identities are asserted by the tool. THIS IS WHY THE PROFILE BLOCK
+WAS NEVER SEEN AS A STRUCTURE: several functions reach it as "layer 2" of the
+keymap bank, including the one that loads it.
+
+Three further blocks sit outside the run: 0x1801e6d0 (16-byte device header),
+0x18024f0c (32-byte global block) and 0x1801fef8 (0x3e0, "block D").
+
+A note on the older addresses. FINDINGS and notes/protocol.md give the per-key
+record base as 0x180202ac. The installed image uses 0x180202d8, and the
+difference is exactly 0x2c, the release relocation Phase 3 measured. The two
+are the same table in two releases.
+
+
+================================================================================
+STEP 3 — THE STORED MAP
+================================================================================
+Every base below is a literal in a listing; every stride is an instruction-
+stream multiply.
+
+    0x002000..0x008000   profile settings   0x2000  + profile*0x1000     0x81c
+    0x01c000..0x020000   wear-levelled store, four fixed 4 KiB banks
+    0x020000..0x320000   macros             0x20000 + profile*0x80000
+                                                    + slot*0x1000        0x664
+    0x320000..0x338000   keymap banks       0x320000+ profile*0x4000
+                                                    + layer*0x1000       0xd84
+    0x340000..0x346000   block D            0x340000+ profile*0x1000     0x3e0
+
+SIX PROFILES throughout. The macro region ends exactly where the keymap region
+begins, and the five regions do not overlap each other. Both are asserted.
+
+A CORRECTION TO LOG 111, AND IT IS NOT A COMFORTABLE ONE. Log 111 step 6
+recorded the modifiable ranges as disjoint from the bootloader's application
+region 0x10000..0x7c000. THAT IS TRUE OF THE THREE ADDRESSES THAT LOG HAD AND
+FALSE OF THE STORE AS A WHOLE: the wear-levelled banks (0x1c000..0x20000) and
+the macro region (0x20000..0x320000) are numerically inside it. Whether these
+are the same address space cannot be settled while the medium is unidentified,
+so the reassurance is WITHDRAWN rather than qualified.
+
+WHAT SURVIVES UNTOUCHED is the part that matters. Log 111's omission proof does
+not rest on addresses; it rests on reachability through one command byte and one
+request struct. The write path recovered here uses the SAME funnel — all six
+primitives fill the same struct and all refuse while its byte 0 is non-zero — so
+the four-item never-do list is unchanged and, if anything, better supported.
+
+The tool asserts BOTH halves: that the map does numerically overlap, and that
+log 111's own three erase targets still do not.
+
+ONE CONSISTENCY, RECORDED AS A CONSISTENCY. Six profiles of 0x4000 at 0x320000
+is 0x18000 bytes, which a nominal 64 KiB erase at 0x320000 plus a nominal 32 KiB
+erase at 0x330000 would exactly cover; six of 0x1000 at 0x340000 is 0x6000,
+which a nominal 32 KiB erase would cover. That corroborates the SIZES REQUIRED
+from an independent direction. It does not identify an opcode, and
+map_nonvolatile_writes' limitation line now says exactly that.
+
+
+================================================================================
+STEP 4 — THE CHECKSUM
+================================================================================
+FUN_180088fe, twelve halfwords:
+
+    18008908  ldrb r4,[r3,r2]
+    1800890a  adds r2,r2,#0x1
+    1800890c  add  r0,r4
+    1800890e  uxth r0,r0
+    18008910  cmp  r2,r1
+    18008912  bcc  0x18008908
+
+A 16-BIT ADDITIVE SUM OF BYTES. NOT A CRC. The `uxth` is why it wraps rather
+than saturating. The tool implements it and the tests run it, including that it
+is order-insensitive, which a CRC is not.
+
+Every stored block carries one in its first halfword, over the rest of the
+block. THERE IS NO MAGIC VALUE ANYWHERE. Validity is the erased-pattern test
+(0xffff) plus the checksum.
+
+THE PROFILE BLOCK'S CHECKSUM CARRIES ITS SLOT. The stored value is
+
+    *(u16*)blob = sum16(blob+2, 0x4b0) & (profile | 0xfff0)
+
+so the low nibble of the sum survives only where the profile index has a bit
+set, and a block written for one slot does not validate in another. That is the
+closest thing to a slot identifier the format has; there is no other. A test
+shows a block stamped for profile 3 failing against profile 4.
+
+
+================================================================================
+STEP 5 — THE PROFILE BLOCK, 0x81c BYTES
+================================================================================
+    +0x000  2      checksum A = sum16(blob+2, 0x4b0) & (profile | 0xfff0)
+    +0x002  2      flags; bit 15 marks region B valid
+    +0x004  0xd0   TEN LIGHTING SLOTS, sizes 15/27/38
+    +0x0d4  0x1ee  key table, layer 0 — 247 uint16
+    +0x2c2  0x1ee  key table, layer 1
+    +0x4b0  2      written 0x14 plus a bitfield by FUN_18000420; role NOT known
+    +0x4b2  0x46   five 14-byte selectable rows, copied from ROM 0x1801bfca
+    +0x4f8  2      VERSION STAMP, copied from ROM 0x1801bfbc
+    +0x4fa  2      checksum B = sum16(blob+0x4fc, 0x2c0)
+    +0x4fc  0x2c0  region B — checksummed, NOT DECODED
+    +0x7bc  0x60   tail — covered by NEITHER checksum, NOT DECODED
+
+THE LAYOUT IS ARITHMETICALLY CLOSED, and that is what makes it a reading rather
+than a guess. The ten slot sizes come from the ten cases of FUN_1800075a and
+sum to exactly 0xd0, landing on 0xd4 where the key tables start. Two tables of
+0x1ee land on 0x4b0, exactly where checksum A's 0x4b0-byte run from +2 ends.
+The five 14-byte rows land on 0x4f8, exactly where the version stamp is read.
+Each identity is a separate check, and one test perturbs a slot size and
+requires the tiling check to go red.
+
+THE KEY TABLES. FUN_1800072c fills 0x1ee entries: indices 0..0xf6 with the
+identity map, the rest zero, and 0xa0d3 at index 0xe4 (byte 0x1c8). 0xf7 entries
+is exactly 0x1ee bytes, so layer 0 is an identity map and layer 1 ships zeroed.
+FUN_18007e38 reads them as *(u16*)(0x18021de0 + layer*0x1ee + i*2 + 0xd4).
+
+THE LIGHTING RECORD, 15 bytes, from FUN_1800075a's defaults AND from a wire
+handler that writes the same fields:
+
+    +0  effect       0x0a, 0x0f, 0x14, 0x1e, 0x1f or 0x3c by default
+    +1  brightness   DEFAULT 100
+    +2  unnamed      0, or (profile == 0) for slots 3, 6, 8 and 9
+    +3  0xff
+    +4  0xff
+    +5  r            request byte 4
+    +6  g            request byte 5
+    +7  b            request byte 6
+    +8..+0xe  zero
+
+The wire handler is the one that writes 0x1e/100/0/0xff/0xff then request bytes
+4,5,6 into blob+4..+0xb — so the RGB triple's position is not inferred from
+defaults alone.
+
+
+================================================================================
+STEP 6 — THE KEYMAP BANK, THE GLOBAL BLOCK AND THE SMALL STORE
+================================================================================
+KEYMAP BANK, 0xd84 per layer, two layers. First halfword is
+sum16(bank + layer*0xd84 + 2, 0xd82). It lives in record 0's first four bytes
+because the default initialiser FUN_18000466 writes +4, +6, +7, +8, +0xa, +0x1c
+and beyond, never +0..+3. Records are 0x20 bytes; 75 are initialised (the
+`*puVar1 * 5` loop with *puVar1 = 15, log 110's 5 x 15) and index 0x4b = 75 is
+FINDINGS' fallback candidate.
+
+    rec+0x04  0x00 on layer 0, 0xff on layer 1
+    rec+0x06  bit 7 override, bits 0..2 rapid trigger press,   1..6, default 2
+    rec+0x07  bit 7 override, bits 0..2 rapid trigger release, 1..6, default 2
+    rec+0x08  uint16, bit 15 override, bits 0..6 actuation,    1..40, default 10
+    rec+0x0a  uint16 remap target; the 0x51/0x21 handler writes it
+
+FUN_1800f7fe reads +6/+7 for both layers, resets either to 2 when (v & 7) - 1
+exceeds 5, and writes the result to layer*0x4b + key + 0x5b4 / + 0x64a — 0x4b is
+75 again, from a third direction.
+
+GLOBAL BLOCK, 0x18024f0c, 32 bytes: six packed 32-bit words, one per profile,
+and a 0xa9b8 marker at +0x18 that the demo-mode check owns.
+
+    bits  6..8   selectable index          0..4    default 0
+    bits  9..15  actuation                 1..40   default 10
+    bits 17..19  rapid trigger release     1..6    default 2
+    bits 20..22  rapid trigger press       1..6    default 2
+    bit  16      cleared by one handler; role not recovered
+    bits 0..5, 23..31  not recovered
+
+The factory-reset value is ((slot & 7) << 6 | 0x10) + 0x241400, and 0x241410
+reproduces every default above — 0x1400 >> 9 = 10, (>>17)&7 = 2, (>>20)&7 = 2.
+The tool computes the defaults from that constant and asserts they agree, and a
+second check proves no two fields share a bit.
+
+Ranges are read off comparisons, not assumed: FUN_18006d3c raises the actuation
+while it is below 0x28 and lowers it while it is above 1; FUN_1800f7fe resets a
+rapid-trigger field when its value minus one exceeds 5.
+
+THE WEAR-LEVELLED STORE, read from the region image's own descriptors at
+0x1801e980 rather than transcribed:
+
+    group 0  banks 0x1c000 / 0x1d000   3 items: 64 x 0x10 @ +0,
+                                                32 x 0x20 @ +0x400,
+                                              2048 x 0x01 @ +0x800
+    group 1  banks 0x1e000 / 0x1f000   1 item: 256 x 0x02 @ +0
+
+Asserted: the two banks of each group are one 4 KiB apart; every item's declared
+region length equals capacity x record length; each group's items fit in a bank;
+every item names the group that lists it.
+
+    mount        FUN_1800e4ea, from CandidateB_Main
+    read         FUN_1800e64e — on a never-written item it fills the caller's
+                 buffer with 0xff and logs FR_fail
+    write        FUN_1800e6d6 synchronously; FUN_1800e7ee to stage and mark dirty
+    flush        FUN_1800e836, append-only within a bank
+    compaction   FUN_1800e3c8 — copy each item's newest record to the other
+                 bank, zero the old bank's first four bytes, flip the selector
+    validation   a bank is live when its first four bytes are neither
+                 0xffffffff nor 0. NO MAGIC AND NO CHECKSUM AT THIS LAYER.
+
+Item 0 (16 bytes) carries the device header from 0x1801e6d0, including the
+CURRENT PROFILE INDEX at +6. Item 1 (32 bytes) carries the global block.
+
+
+================================================================================
+STEP 7 — THE LOAD, AND WHAT VALIDATION FAILURE DOES
+================================================================================
+    boot     CandidateB_Main -> FUN_1800e4ea mounts the store.
+    header   FUN_18000d56's init state reads item 0 back and compares its first
+             word against the firmware's own version word at 0x1801e6d0.
+               EQUAL     -> adopt the stored header, profile index included
+               DIFFERENT -> keep only what still agrees, then RE-STAMP both
+                            items through FUN_1800e7ee
+             THAT COMPARISON IS THE MIGRATION PHASE 5E LISTED AS NOT RECOVERED.
+    global   item 1 restores the 32-byte block; the actuation field is then
+             range-checked and repaired in place with + 0x1400, i.e. 10.
+    profile  a two-byte read of 0x2000 + profile*0x1000 tests for 0xffff, then
+             the whole 0x81c block is read and checksum A recomputed and
+             compared against the stored value masked with the profile index.
+             When flags bit 15 is set, checksum B is checked too; a mismatch
+             there only clears the bit (PC_CF_A), it does not reset the block.
+    keymaps  layer 0 then 1: 0xffff probe, 0xd84 read, sum16(bank+2, 0xd82).
+    block D  the same shape at 0x340000 + profile*0x1000, 0x3e0, sum16(+2,0x3de).
+
+ON FAILURE: an erased block and a checksum mismatch take THE SAME ROUTE. The
+defaults are rebuilt in RAM — FUN_1800072c for the key tables, FUN_18000466 and
+FUN_18000584 for the per-key records, FUN_180005c6 for block D, FUN_1800075a for
+the lighting slot — and a diagnostic string is logged (PC_D_A / PC_DF_A,
+PC_AD_A / PC_ADF_A, PC_DD_A / PC_DDF_A). THERE IS NO FACTORY IMAGE AND NO SECOND
+COPY for the four large blocks. The only redundancy in the whole design is the
+wear-levelled store's A/B banking, and that covers 48 bytes of settings.
+
+
+================================================================================
+STEP 8 — THE SAVE, AND WHAT IT SERIALISES
+================================================================================
+Command byte 4, sub-states 0..7, each retried up to three times
+(PS_RT_A / PS_ART_A / PS_MRT_A / PS_DRT_A on retry, PS_F_A / PS_AF_A / PS_MF_A /
+PS_DF_A on give-up):
+
+    0  stage the device header and the global block into the wear-levelled
+       store; set flags bit (1 << lighting_slot), or bit 15 for slot >= 10;
+       recompute checksum A and store it masked with (profile | 0xfff0);
+       recompute checksum B when bit 15 is set;
+       WRITE THE WHOLE 0x81c BLOCK VERBATIM from 0x18021de0 to
+       0x2000 + profile*0x1000.
+    1-3 the macros: FUN_18007da4 recomputes sum16(record+8, record[7]) for each
+       of the four 0x198 records, stores it at record+0x19a — two bytes into the
+       next record's header, and in the block's four-byte tail for the last —
+       then writes all 0x664 bytes.
+    4-5 layer 0 then 1: sum16(bank + layer*0xd84 + 2, 0xd82) into the bank's
+       first halfword, then the whole 0xd84 bytes to
+       0x320000 + profile*0x4000 + layer*0x1000.
+    6  block D: sum16(buf+2, 0x3de) into the first halfword, then 0x3e0 bytes to
+       0x340000 + profile*0x1000.
+    7  the vendor response is sent ONLY NOW.
+
+THE ANSWER TO "WHAT DOES THE COMMIT SERIALISE" IS THEREFORE: not the whole blob
+and not a region, but FIVE WHOLE BLOCKS in sequence, each with its own freshly
+computed 16-bit sum in its own first halfword, no header, no magic, no length
+field (the lengths are compile-time constants) and one version stamp that is
+copied rather than compared.
+
+AND IT INDEPENDENTLY EXPLAINS AN OLD OBSERVATION. notes/protocol.md records the
+persistence command's reply arriving about 220 ms later. The response is emitted
+in sub-state 7, after five block writes and up to three retries per stage.
+
+
+================================================================================
+STEP 9 — THE ARMOURY CRATE DECODE AS A ROSETTA STONE
+================================================================================
+IT WORKS BECAUSE IT IS PROFILE 3. Two firmware ROM tables are indexed by exactly
+that number, and both agree with the decode:
+
+    *(byte*)(0x1801bfbe + 3) = 8    <-> lighting.keyboard.effectID = "8"
+    0x1801c010 + 3*3 = (0,0,255)    <-> pattern.singleColor = blue (0,0,255)
+                                        and backgroundColor = blue
+
+So THE DECODE'S "EFFECT ID" IS THE FIRMWARE'S LIGHTING SLOT INDEX, not a field
+inside any record. Both values are extracted from the image by the tool, and two
+tests move each table pointer by one element and require the match to break — a
+Rosetta stone that agrees by construction is not evidence.
+
+THE TABLE (fourteen rows in notes/profile-format.md; summarised here):
+
+  EXACT
+    lighting.keyboard.effectID          slot index, ROM 0x1801bfbe+profile
+    lighting.keyboard.brightness  100   record +0x01, default 100 in all ten cases
+    pattern.singleColor       (0,0,255) record +0x05..+0x07, ROM 0x1801c010
+    analogTrigger.actuation        10   global word bits 9..15, 1..40, default 10
+    rapidTriggerPress               2   global bits 20..22 / record +0x06, 1..6
+    rapidTriggerRelease             2   global bits 17..19 / record +0x07, 1..6
+    keyboardButton[*].actuation    10   record +0x08 bits 0..6, bit 15 selects it
+
+  STRUCTURAL ONLY
+    direction / random             -1   two 0xff bytes at +0x03 and +0x04; WHICH
+                                        IS WHICH IS NOT ESTABLISHED
+    lever.functionStatusList  5 entries five 14-byte rows at +0x4b2 and a 0..4
+                                        index; ROW CONTENTS NOT DECODED
+    lever.currentFunctionId         0   global bits 6..8; the values agree but
+                                        both are zero, and the same field could
+                                        be a lighting-effect index. BOTH
+                                        READINGS RECORDED, NEITHER CHOSEN
+    button.keyboardButton    136 = 68x2 two layers match; 68, 136 and 189 match
+                                        none of the firmware's 247 or 75, so NO
+                                        per-key mapping is claimed
+
+  UNMATCHED — LEFT UNMATCHED
+    lighting.keyboard.speed         1   neither default (0, or profile==0)
+                                        produces 1
+    lighting.customPattern    7 entries slot 7's setter writes SIX triples.
+                                        Six is not seven.
+    performance.pollingRate         3   nothing here carries it, and log 124
+                                        independently found no consumer for one
+                                        anywhere in the images. Two independent
+                                        negatives from opposite directions.
+
+A test requires at least three unmatched rows: a table with none would mean
+fields had been forced.
+
+
+================================================================================
+STEP 10 — PERSISTED VERSUS RAM-ONLY, AND THE USER'S SENTENCE
+================================================================================
+  PERSISTED   lighting            profile block +0x04..+0xd3, inside checksum A
+              key mappings        both forms — the resolved per-layer tables in
+                                  the profile block, and the 0x20-byte per-key
+                                  records in the two 0xd84 banks
+              performance         global block via the wear-levelled store, plus
+                                  per-key overrides in the keymap banks
+              current profile     device header +6, wear-levelled store item 0
+              macros              four 0x198 records per slot
+              block D             0x3e0 per profile; CONTENTS NOT DECODED
+  RAM-ONLY    Hall calibration    log 121: rebuilt from the same defaults every
+                                  boot; no storage path touches it
+
+THE SENTENCE UNDER TEST: "lighting configuration persists across hosts because
+it is committed to the external flash profile region through the commit path."
+
+CORRECT IN SUBSTANCE, IMPRECISE IN THREE PLACES.
+  1. The command handler does not write. It sets a command byte and returns —
+     log 111's finding, unchanged. A state machine in another context computes
+     the checksums, issues the write requests and retries.
+  2. "The profile region" is FIVE regions. Lighting rides in the profile-
+     settings region at 0x2000 + profile*0x1000, NOT the 0x320000 keymap region
+     that log 111's erase targets named.
+  3. "External flash" is UNPROVEN. The medium is still unidentified.
+Everything else holds: the block is written to the settings store and read back
+at boot before any host has enumerated the device, which is exactly why the
+setting is host-independent.
+
+AND THERE IS A SECOND MECHANISM THE SENTENCE DOES NOT COVER. The reason the
+SELECTED profile survives is not the profile block at all: it is byte +6 of a
+16-byte header in the wear-levelled A/B store, whose first word is compared
+against the firmware's own version word at boot.
+
+
+================================================================================
+STEP 11 — SUPERSEDED CHECKS, REPLACED RATHER THAN DELETED
+================================================================================
+tool/map_nonvolatile_writes.py
+  "no settings-format field is claimed" -> "every settings-format field is now
+  answered" PLUS "the settings format is attributed to the step that recovered
+  it". The old rule stopped Phase 5E inventing a format it had never seen; the
+  new pair keeps the other half of that job, so nothing recovered later can pass
+  itself off as Phase 5E evidence. A third test requires the one field that
+  stayed negative — magic — to stay negative.
+  Its LIMITATION line about erase extents gains the corroboration from step 3
+  and explicitly says corroborating a requirement is not identifying an opcode.
+
+tool/map_platform_dependencies.py
+  The `persistence` service's rationale loses its address half and keeps its
+  reachability half, and gains an evidence_boundary recording the withdrawal.
+
+tool/test_map_platform_dependencies.py
+  "a resolved service may carry a boundary only when the second execution
+  context owns it" is GENERALISED, not bent. A resolved application-owned
+  service may also carry one when the boundary WITHDRAWS A CLAIM AN EARLIER LOG
+  PUBLISHED, and such a boundary must begin "CORRECTED BY LOG ". A companion
+  test requires that boundary to actually say what it takes back. The two
+  grounds are kept as separate sets rather than merged into one permissive one.
+  The markdown report gains an "Evidence boundaries" section, because until now
+  the boundaries existed only in the JSON and the text report.
+
+
+================================================================================
+STEP 12 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_profile_format.py — one data model, notes/profile-format.{json,md},
+with --json, --write and --check.
+
+$ python3 tool/map_profile_format.py
+  RESULT profile_format_ok=True checks=39
+
+Added tool/test_map_profile_format.py — 46 tests in seven groups.
+
+  FAIL-CLOSED. Both dumps are hash-gated through map_second_context.sources().
+  Each imported slice is additionally gated on the SHA-256 prefix ITS OWN
+  FILENAME CLAIMS, with an anti-vacuity companion showing a matching file does
+  load. A missing slice, an out-of-range read and a missing Armoury Crate decode
+  each raise, and bodies() raising makes main() return 1 without a traceback.
+
+  NEVER TRANSMITS. No name may start build_/send_/encode_/transmit_/emit_. The
+  persistence command's byte pair must not appear in the emitted model in any of
+  five shapes. The report must say it never speaks to the device.
+
+  EXECUTABLE MODELS. sum16 and the profile stamp are implemented, not described,
+  and the tests run them: the sum wraps rather than saturates, it is order-
+  insensitive (a CRC is not), and a block stamped for one profile fails against
+  another. The opcode decoder is tested on a hand-built idiom, on two near
+  misses that must NOT match, and on bytes without the idiom at all.
+
+  FALSIFIABILITY. Four tests break one backing fact each and require the
+  corresponding check to go red: a wrong lighting-slot size breaks the tiling,
+  and moving either ROM table pointer breaks its Rosetta match.
+
+  HONESTY. The medium stays unresolved; no part number, bus name or the word
+  JEDEC may appear; "crc" may not appear except in the phrase that denies it;
+  polling rate stays unmatched; at least three rows stay unmatched; the two
+  readings of the selectable index are both kept; the undecoded runs stay
+  labelled unresolved; the numeric overlap with the application region is
+  recorded; and calibration stays the ONLY RAM-only section.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_profile_format.py tool/test_map_profile_format.py \
+    tool/map_nonvolatile_writes.py tool/test_map_nonvolatile_writes.py \
+    tool/map_platform_dependencies.py tool/test_map_platform_dependencies.py
+  [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 1042 tests   OK                                                 [exit 0]
+  (994 before this step; +46 in tool/test_map_profile_format.py, +1 in
+   test_map_nonvolatile_writes.py, +1 in test_map_platform_dependencies.py)
+$ the eighteen existing --check scripts plus the new one   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                             all OK     [exit 0]
+$ git diff --check                                         clean      [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - THE STORAGE MEDIUM. Unchanged from log 111. The format is recovered; the
+    part the DMA path talks to is not, and nothing here names it.
+  - REGION B. 0x2c0 bytes at profile block +0x4fc are checksummed and never
+    decoded. Its checksum is guarded by flags bit 15, so it is optional
+    content of some kind.
+  - THE TAIL. 0x60 bytes at +0x7bc are covered by NEITHER checksum and never
+    decoded.
+  - BLOCK D. 0x3e0 bytes per profile, proven persisted, default setter known,
+    contents not recovered.
+  - THE +0x4b0 PAIR. Two bytes written 0x14 plus a bitfield; role not known.
+  - WHETHER THE STORE SHARES AN ADDRESS SPACE with the bootloader's application
+    region. Unsettleable while the medium is unidentified.
+  - THE FIVE 14-BYTE ROWS at +0x4b2 have a count and an index range that match
+    the decode's lever function list, and could equally be a five-entry
+    lighting-effect list. Neither reading is chosen.
+  - POLLING RATE. Nothing here carries it; log 124 found no consumer.
+  - WHAT RUNS FUN_18000d56 is still not established: log 111 recorded it as
+    callerless in the application call graph and this step did not change that.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NO COMMAND WAS CONSTRUCTED OR TRANSMITTED. The vendor persistence command's
+    opcode and subcommand are not spelled out in the new module or its output.
+  - No historical log was modified. opencode.json was left alone.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - The pre-existing ghidra/project falchion-hfx was never opened; every Ghidra
+    run was -readOnly -noanalysis against ghidra/project-step6.
+  - Nothing was committed, staged or unstaged. Log 124's uncommitted work — its
+    tool, tests, notes, log and its edits to FINDINGS.md, TIMELINE.md,
+    logs/COMMANDS.md and logs/SHA256SUMS — was present at the start of this step
+    and was preserved.
+  - The storage medium was not named, no MMIO block was named, and no unit was
+    attached to anything.
+  - NO DEVICE WAS ACCESSED.
