@@ -2689,6 +2689,219 @@ It does **not** block Path B, because a replacement inherits the bootloader
 rather than replacing it — which is why the ADR's gate 5 is marked satisfied
 with the boundary stated inside it.
 
+### The polling-rate path: no consumer, no units (log 124)
+
+The historical profile carries `performance.pollingRate = "3"` — an index, and
+the block contains nothing else. **Nothing in the preserved images consumes
+it**, and no real units are attached to anything as a result.
+
+**The negative is about the firmware, not the protocol.** The observed command
+table holds a query opcode, two init handshakes, the key-configuration opcodes
+and the commit — no polling-rate command. But `notes/protocol.md` independently
+records `SetPollingRate`/`GetPollingRate` as host HAL method names and lists the
+polling-rate opcode among those that "have known HAL method names; none
+captured yet". So the command very probably exists and was never captured; that
+is exactly why this had to be answered from code.
+
+**All five candidates tested:**
+
+| candidate | verdict |
+|---|---|
+| the prescaler ladder | **eliminated** — all five decisions are instruction-stream immediates (`cmp #8`, `cmp #5`, `lsls #0x1f`, `cmp #0xa`, `cmp #0xa`); nothing loaded from RAM |
+| the mailbox | **eliminated** — log 121's five fields are all sized for 75 keys; none is a rate |
+| the descriptor's `bInterval` | **eliminated as runtime** — static in the region (1,1,1,4,1), and **no aligned word references any RAM `bInterval` byte**; the builder writes only the descriptor it emits |
+| a timer register | **unresolved, not eliminated** — no timer block is identified in any image, and you cannot rule out what was never found |
+| more than one | n/a |
+
+**No index-to-Hz table exists in any of the four images.** Two divisor-shaped
+byte runs were examined individually and rejected: an application bit-position
+table `01 02 04 08 10` in a data area, and a region identity run `01..08`.
+
+**The shared tick.** Six subsystems ride IRQ38 and its `/8` job — sample fetch,
+actuation compare, watchdog feed, mailbox cluster, lighting swap, report
+builder. If the period changed they would all scale together. But no stored
+value reaches the tick, so the images show no configurable rate to couple
+anything to. **What a replacement must preserve is the coupling itself**: any
+change to IRQ38's period moves all six at once, including the watchdog margin.
+
+**Units: none added.** IRQ38's period stays unresolved and the dependency map's
+`clock_frequency` entry is untouched, as the step required.
+
+**A lead, recorded as a lead.** Log 107 reads EP `0x81`'s `bInterval=1` as
+125 µs (8000 Hz) and EP `0x8e`'s `bInterval=4` as 1 ms (1000 Hz), and `/8` would
+turn 8000 Hz into exactly 1000 Hz. Three independently recovered numbers line
+up — a **consistency, not a measurement**. It rests on log 107's high-speed
+reading and would still not prove the period. Written down so a future step can
+test it rather than inherit it.
+
+### The settings/profile format, recovered against the Armoury Crate decode (log 125)
+
+Phase 5E recorded the format's magic, version, length, checksum, defaults and
+migration as **NOT RECOVERED**. That negative was correct for the branch it had
+traced — the erase branch really does construct nothing — but the same state
+machine `FUN_18000d56` has **save** and **load** branches that call a *write*
+and a *read* request primitive and compute a checksum first. Reproducible model:
+`tool/map_profile_format.py`, generated notes `notes/profile-format.{md,json}`.
+
+**Six request primitives, one struct.** Log 111 found two erase primitives; there
+are six, byte-identical apart from the opcode each stores, and all fill the same
+one-deep struct at `0x18025ef4`:
+
+```
+FUN_1800e344  0x02  PROGRAM        FUN_1800e2e0  0x20
+FUN_1800e368  0x03  READ           FUN_1800e2a8  0xd8   (log 111)
+FUN_1800e2fc  0x22  WRITE          FUN_1800e2c4  0x52   (log 111)
+```
+
+The struct map therefore extends by two fields: **`+0x04` is the buffer and
+`+0x10` the length**, which is how the payload sizes become visible at all.
+The opcodes keep log 111's "matches the JEDEC …" wording; **the medium is still
+not identified and nothing here names it.**
+
+**The RAM blocks are contiguous, which is why one of them was hiding.**
+
+```
+0x180202d8  0xd84   keymap bank, layer 0
+0x1802105c  0xd84   keymap bank, layer 1
+0x18021de0  0x81c   THE PROFILE BLOCK      (= bank + 2*0xd84, so code reaches it as "layer 2")
+0x180225fc  0x664   macro block
+0x18022c60          the request-state struct log 111 traced
+```
+plus `0x1801e6d0` (16-byte device header), `0x18024f0c` (32-byte global block)
+and `0x1801fef8` (0x3e0 block D).
+
+**The stored map, every base a literal in the listings:**
+
+| region | range | formula | record |
+|---|---|---|---|
+| profile settings | `0x2000..0x8000` | `0x2000 + profile*0x1000` | `0x81c` |
+| wear-levelled store | `0x1c000..0x20000` | four fixed 4 KiB banks, two A/B pairs | 16/32/1/2 B |
+| macros | `0x20000..0x320000` | `0x20000 + profile*0x80000 + slot*0x1000` | `0x664` |
+| keymap banks | `0x320000..0x338000` | `0x320000 + profile*0x4000 + layer*0x1000` | `0xd84` |
+| block D | `0x340000..0x346000` | `0x340000 + profile*0x1000` | `0x3e0` |
+
+Six profiles throughout. The five regions do not overlap each other, and the
+map is self-consistent: the macro region ends exactly where the keymap region
+begins.
+
+**A CORRECTION TO LOG 111.** Log 111 recorded the modifiable ranges as *disjoint
+from the bootloader's application region* `0x10000..0x7c000`. That was true of
+the three addresses it had traced; it is **not true of the store as a whole** —
+the wear-levelled banks and the macro region are numerically inside it. Whether
+these are the same address space cannot be settled while the medium is
+unidentified, so **the disjointness reassurance must not be relied on**. Log
+111's *omission* proof is unaffected: it rests on reachability through one
+command byte and one request struct, not on addresses, and the recovered write
+path uses the same funnel. The dependency map's `persistence` service now
+carries that correction as its evidence boundary.
+
+**The checksum is a 16-bit additive sum of bytes** (`FUN_180088fe`: `ldrb` /
+`add` / `uxth`), not a CRC. `tool/map_profile_format.py` implements it and the
+tests run it. Every stored block carries one in its first halfword, over the
+remainder of the block. **There is no magic value anywhere**; validity is the
+erased-pattern test (`0xffff`) plus the checksum.
+
+**The profile block, `0x81c` bytes:**
+
+| offset | size | field |
+|---|---|---|
+| `+0x000` | 2 | checksum A = `sum16(blob+2, 0x4b0) & (profile \| 0xfff0)` |
+| `+0x002` | 2 | flags; bit 15 marks region B valid |
+| `+0x004` | `0xd0` | ten lighting slots, sizes 15/27/38 |
+| `+0x0d4` | `0x1ee` | key table, layer 0 — 247 uint16 |
+| `+0x2c2` | `0x1ee` | key table, layer 1 |
+| `+0x4b0` | 2 | written `0x14` plus a bitfield; role not recovered |
+| `+0x4b2` | `0x46` | five 14-byte selectable rows, copied verbatim from ROM `0x1801bfca` |
+| `+0x4f8` | 2 | **version stamp**, copied from ROM `0x1801bfbc` |
+| `+0x4fa` | 2 | checksum B = `sum16(blob+0x4fc, 0x2c0)` |
+| `+0x4fc` | `0x2c0` | region B — checksummed, **not decoded** |
+| `+0x7bc` | `0x60` | tail — covered by **neither** checksum, **not decoded** |
+
+The layout is arithmetically closed and the tool asserts it: the ten slots tile
+`0x04..0xd3` exactly, two key tables end exactly where checksum A's coverage
+ends, and the block ends `0x60` bytes past checksum B's run.
+
+**The checksum carries the slot it belongs to.** The stored value is the sum
+ANDed with `(profile | 0xfff0)`, so a block written for one profile does not
+validate in another. That is the closest thing to a slot identifier in the
+format; there is no other.
+
+**The lighting record, 15 bytes:** `effect`, `brightness` (default 100),
+one unnamed byte, two `0xff` bytes, `r`, `g`, `b`, six zero bytes.
+
+**Version and migration, which 5E listed as not recovered.** At boot the 16-byte
+device header is read back and its first word compared against the firmware's
+own version word at `0x1801e6d0`. Equal → adopt the stored header, including the
+current profile index at `+6`. Different → keep only what still agrees and
+**re-stamp** the header and the global block. The profile block additionally
+carries the ROM version stamp at `+0x4f8`, which is covered by neither checksum
+and is copied rather than compared on the paths traced here.
+
+**Validation failure means defaults, not a factory image.** An erased block
+(`0xffff`) and a checksum mismatch take the same route: the defaults are rebuilt
+in RAM by per-section initialisers (`FUN_1800072c` key tables, `FUN_18000466` /
+`FUN_18000584` per-key records, `FUN_180005c6` block D, `FUN_1800075a` lighting)
+and a diagnostic string is logged. **There is no second copy and no factory
+image.** The one exception is the wear-levelled store, which is A/B banked: a
+bank is live when its first four bytes are neither `0xffffffff` nor `0`,
+compaction copies the newest record of each item to the other bank and zeroes the
+old bank's head, and a never-written item reads back as `0xff` fill with
+`FR_fail`.
+
+**What the save path serialises**, in order, each stage retried up to three
+times: stage the device header and global block into the wear-levelled store →
+recompute checksum A (and B when flags bit 15 is set) and write the **whole**
+`0x81c` profile block verbatim → the four macro records → each `0xd84` keymap
+bank with its checksum → block D. **The vendor response is sent only after the
+last stage completes**, which independently explains the historical capture's
+"reply ~220 ms later".
+
+**The Armoury Crate decode is a usable Rosetta stone because it is profile 3.**
+Two firmware ROM tables are indexed by exactly that number and both agree with
+the decode:
+
+- `0x1801bfbe + 3` = **8**, and the decode's `lighting.keyboard.effectID` is
+  `"8"`. The decode's "effect ID" is the firmware's **lighting slot index**.
+- `0x1801c010 + 3*3` = **(0, 0, 255)**, and the decode's
+  `pattern.singleColor` and `backgroundColor` are both blue `(0,0,255)`.
+
+Both are read from the image by the tool, and a test moves each table pointer
+and requires the match to break.
+
+**Field-by-field** (full table in `notes/profile-format.md`): **exact** —
+`effectID`, `brightness` (100), `singleColor`, `analogTrigger.actuation` (10,
+global word bits 9..15, range 1..40), `rapidTriggerPress`/`Release` (2, bits
+20..22 and 17..19, range 1..6), per-key `actuation` (record `+0x08`, bit 15
+selects the override). **Structural only** — `direction`/`random` (both map to a
+`0xff` byte and which is which is not established), `lever.functionStatusList`
+(five rows and a 0..4 index agree; row contents are not decoded),
+`currentFunctionId` (agrees, but both values are zero and the same field could
+be a lighting-effect index), `keyboardButton` (the two-layer count matches; 68,
+136 and 189 match none of the firmware's 247 or 75). **Unmatched** —
+`lighting.keyboard.speed`, `customPattern` (seven entries against six default
+triples), and `performance.pollingRate`, which log 124 independently found has
+no consumer either.
+
+**Proven persisted:** lighting, key mappings (both forms), performance
+(actuation and rapid trigger, global and per-key), the current profile index,
+macros, block D. **Proven RAM-only:** the per-key Hall calibration (log 121).
+
+**The user's observation, answered.** *"Lighting configuration persists across
+hosts because it is committed to the external flash profile region through the
+commit path."* **Correct in substance, imprecise in two places.** First, the
+command handler only sets a command byte; a state machine in another context
+computes the checksums, issues the write requests and retries. Second, "the
+profile region" is five regions, and lighting rides in the profile-settings
+region at `0x2000 + profile*0x1000`, not in the `0x320000` keymap region. The
+reason the *selected* profile also survives is separate: the profile index is
+byte `+6` of a 16-byte header in the wear-levelled store. "External flash"
+remains **unproven** — the medium is still unidentified.
+
+**Still unresolved:** the storage medium; region B (`0x2c0` bytes) and the tail
+(`0x60` bytes) of the profile block; block D's contents; the `+0x4b0` pair; and
+whether the store shares an address space with the bootloader's application
+region.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

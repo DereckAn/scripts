@@ -490,14 +490,28 @@ SERVICES = (
             "observed", safe_idle_proven=True),
     Service("persistence", "nonvolatile settings and the commit path",
             "may-omit",
-            "omission is provably safe: every route into an erase runs through "
-            "one command byte and a one-deep request struct, and the target "
-            "ranges are disjoint from the application region. A prototype that "
-            "writes neither cannot corrupt existing configuration.",
+            "omission is provably safe on REACHABILITY, not on addresses: "
+            "every route into an erase or a write runs through one command "
+            "byte and a one-deep request struct, and a prototype that fills "
+            "neither cannot reach the storage layer at all. Log 125 removes "
+            "the address half of the old rationale — the full stored map "
+            "reaches down to 0x2000 and numerically overlaps the application "
+            "region — so the argument now rests on the single funnel alone.",
             ("log 111 step 7: the omit-all-writes proof",
-             "log 111 step 6: the ranges start at 0x320000, disjoint from "
-             "0x10000..0x7c000"),
-            "strongly-inferred", safe_idle_proven=True),
+             "log 125: the six request primitives all fill the same struct at "
+             "0x18025ef4, so the funnel is one struct wide for writes as well "
+             "as erases",
+             "log 125: the stored map is 0x2000..0x8000, 0x1c000..0x20000, "
+             "0x20000..0x320000, 0x320000..0x338000 and 0x340000..0x346000"),
+            "strongly-inferred", safe_idle_proven=True,
+            evidence_boundary="CORRECTED BY LOG 125. Log 111 recorded the "
+            "erase targets as disjoint from the bootloader's application "
+            "region 0x10000..0x7c000, which was true of the three addresses "
+            "it had traced. The read and write sides show three further "
+            "regions below 0x320000 that numerically overlap it. Whether the "
+            "two are the same address space cannot be settled while the "
+            "storage medium is unidentified, so the disjointness reassurance "
+            "must not be relied on."),
     Service("rgb", "RGB / LampArray lighting",
             "unresolved",
             "NOT safely omittable on current evidence. The protocol is fully "
@@ -894,6 +908,12 @@ def markdown():
         lines.append(f"| {service.name} | **{service.classification}** | "
                      f"{service.confidence} | "
                      f"{'yes' if service.safe_idle_proven else '—'} |")
+    lines += ["", "## Evidence boundaries", "",
+              "Every service that still carries a caveat, resolved or not.",
+              ""]
+    for service in SERVICES:
+        if service.evidence_boundary:
+            lines.append(f"- **{service.name}** — {service.evidence_boundary}")
     lines += ["", "## Blockers for a first typing prototype", ""]
     for item in payload["prototype"]["blockers"]:
         lines.append(f"- **{item['name']}** — {item['boundary']}")

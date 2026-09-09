@@ -372,20 +372,37 @@ def to_dict():
              "overlaps_bootloader_region":
                  reaches_bootloader_region(item.low, item.high)}
             for item in MODIFIABLE_RANGES],
+        # SUPERSEDED BY LOG 125, which recovered the format from the SAVE
+        # state machine — a different branch of the same function this phase
+        # traced. Phase 5E's negative was correct for the branch it could see:
+        # the erase path really does construct no header. The row is rewritten
+        # rather than deleted so the correction stays visible.
         "settings_format": {
-            "checksum": None,
-            "defaults": None,
-            "length": None,
-            "magic": None,
-            "migration": None,
-            "note": "NOT RECOVERED. The commit path passes ADDRESSES to erase "
-                    "primitives; no header, magic, version, length or "
-                    "checksum is constructed or verified anywhere in the "
-                    "traced chain. What the commit persists FROM was not "
-                    "established either: no copy from the 0x180202d8 per-key "
-                    "bank or the 0x18024f0c global table into a staging "
-                    "buffer appears in the traced path.",
-            "version": None,
+            "checksum": "a 16-bit additive sum of bytes (FUN_180088fe), one "
+                        "per stored block. The profile block's is masked with "
+                        "(profile | 0xfff0) so a block cannot validate in the "
+                        "wrong slot.",
+            "defaults": "on an erased block (0xffff) or a checksum mismatch "
+                        "the defaults are rebuilt in RAM by the per-section "
+                        "initialisers; there is no factory image and no "
+                        "second copy.",
+            "length": "fixed per section: 0x81c profile, 0xd84 per keymap "
+                      "layer, 0x664 macros, 0x3e0 block D, and 16- and "
+                      "32-byte records in the wear-levelled store.",
+            "magic": "NONE. No stored block carries a magic value; validity "
+                     "is the erased-pattern test plus the checksum.",
+            "migration": "the 16-byte device header's first word is compared "
+                         "against the firmware's own version word at boot; a "
+                         "mismatch re-stamps the header and the global block "
+                         "instead of trusting them.",
+            "note": "RECOVERED IN LOG 125, see notes/profile-format.md. This "
+                    "phase traced only the erase branch, which genuinely "
+                    "constructs nothing; the save branch of the same state "
+                    "machine computes the checksums and issues write requests "
+                    "through a different primitive.",
+            "version": "a uint16 stamp copied from ROM 0x1801bfbc into the "
+                       "profile block at +0x4f8; it is covered by neither "
+                       "checksum.",
         },
         "steps": [
             {"address": item.address, "confidence": item.confidence,
@@ -438,10 +455,19 @@ def verify():
           payload["storage_medium"]["identified"] is False
           and "recognition and not proof"
           in payload["storage_medium"]["note"])
-    check("no settings-format field is claimed",
-          all(payload["settings_format"][field] is None
+    # Superseded by log 125. The old rule ("no settings-format field is
+    # claimed") kept this phase from inventing a format it had not seen. The
+    # format has since been recovered from a different branch, so the rule is
+    # replaced by two that keep the same job: every field must now be filled
+    # AND must point at the later work rather than at this phase's evidence,
+    # so nothing here can pass itself off as a Phase 5E result.
+    check("every settings-format field is now answered",
+          all(payload["settings_format"][field]
               for field in ("magic", "version", "length", "checksum",
                             "defaults", "migration")))
+    check("the settings format is attributed to the step that recovered it",
+          "RECOVERED IN LOG 125" in payload["settings_format"]["note"]
+          and "notes/profile-format.md" in payload["settings_format"]["note"])
     check("the exit gate is the omit-all-writes branch",
           payload["exit_gate"]["branch"] == "omit-all-writes")
     check("no modifiable range overlaps the bootloader's application region",
@@ -515,7 +541,11 @@ def report_lines():
         "",
         f"RESULT write_map_ok={ok} checks={len(verify())}",
         "LIMITATION The erase EXTENTS assume each opcode's nominal size. That "
-        "is recognition, not proof, and it is the weakest claim here.",
+        "is recognition, not proof, and it is the weakest claim here. Log 125 "
+        "corroborates the SIZES REQUIRED from the read and write side — six "
+        "profiles of 0x4000 at 0x320000 and six of 0x1000 at 0x340000, which "
+        "the nominal 64 KiB + 32 KiB and 32 KiB erases would exactly cover — "
+        "but corroborating a requirement is not identifying an opcode.",
         "LIMITATION The context that runs the state machine and the drainer "
         "is not established: both are callerless in the application call "
         "graph.",

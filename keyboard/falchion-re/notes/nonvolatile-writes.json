@@ -150,13 +150,13 @@
     }
   ],
   "settings_format": {
-    "checksum": null,
-    "defaults": null,
-    "length": null,
-    "magic": null,
-    "migration": null,
-    "note": "NOT RECOVERED. The commit path passes ADDRESSES to erase primitives; no header, magic, version, length or checksum is constructed or verified anywhere in the traced chain. What the commit persists FROM was not established either: no copy from the 0x180202d8 per-key bank or the 0x18024f0c global table into a staging buffer appears in the traced path.",
-    "version": null
+    "checksum": "a 16-bit additive sum of bytes (FUN_180088fe), one per stored block. The profile block's is masked with (profile | 0xfff0) so a block cannot validate in the wrong slot.",
+    "defaults": "on an erased block (0xffff) or a checksum mismatch the defaults are rebuilt in RAM by the per-section initialisers; there is no factory image and no second copy.",
+    "length": "fixed per section: 0x81c profile, 0xd84 per keymap layer, 0x664 macros, 0x3e0 block D, and 16- and 32-byte records in the wear-levelled store.",
+    "magic": "NONE. No stored block carries a magic value; validity is the erased-pattern test plus the checksum.",
+    "migration": "the 16-byte device header's first word is compared against the firmware's own version word at boot; a mismatch re-stamps the header and the global block instead of trusting them.",
+    "note": "RECOVERED IN LOG 125, see notes/profile-format.md. This phase traced only the erase branch, which genuinely constructs nothing; the save branch of the same state machine computes the checksums and issues write requests through a different primitive.",
+    "version": "a uint16 stamp copied from ROM 0x1801bfbc into the profile block at +0x4f8; it is covered by neither checksum."
   },
   "steps": [
     {

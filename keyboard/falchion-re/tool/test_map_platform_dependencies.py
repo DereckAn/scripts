@@ -50,14 +50,34 @@ class GateRules(unittest.TestCase):
         # rule is not "at most one" — it is that a resolved service may carry
         # a boundary ONLY when the second execution context owns it, because
         # those are exactly the services a replacement inherits rather than
-        # implements. Anything the application owns and that is resolved has
-        # nothing left to caveat.
+        # implements.
         second_context_owned = {"hall_acquisition", "calibration"}
-        self.assertEqual(with_boundary, second_context_owned)
+        # GENERALISED AGAIN by log 125, and for a different reason, so the two
+        # grounds are kept apart rather than merged into one permissive set.
+        # A resolved, application-owned service may also carry a boundary when
+        # that boundary WITHDRAWS A CLAIM AN EARLIER LOG PUBLISHED — here, log
+        # 111's "the target ranges are disjoint from the application region",
+        # which the recovered stored map contradicts. Silently rewriting the
+        # rationale would leave a reader of log 111 believing the old
+        # reassurance. The teeth are kept by requiring such a boundary to name
+        # the correcting log, so it cannot be used as ordinary hedging.
+        corrections = {"persistence"}
+        self.assertEqual(with_boundary, second_context_owned | corrections)
+        for key in corrections:
+            service = next(s for s in pd.SERVICES if s.key == key)
+            self.assertTrue(service.evidence_boundary.startswith(
+                "CORRECTED BY LOG "), key)
         for service in resolved:
             if service.evidence_boundary:
                 self.assertGreater(len(service.evidence_boundary), 60,
                                    service.key)
+
+    def test_a_correcting_boundary_must_actually_withdraw_something(self):
+        """Anti-hedging companion to the rule above: the text has to say what
+        it takes back, not merely wave at a later log."""
+        service = next(s for s in pd.SERVICES if s.key == "persistence")
+        self.assertIn("must not be relied on", service.evidence_boundary)
+        self.assertIn("0x10000..0x7c000", service.evidence_boundary)
 
     def test_may_omit_requires_a_proven_safe_idle_state(self):
         for service in pd.SERVICES:

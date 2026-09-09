@@ -122,3 +122,5 @@ c8c4bab7e6333577c523ff9e6527d28b37e943e535f3c710500b0d303f1e9a20  logs/117-phase
 f68c04e6880a55fd5920d0a19214a8738daf417219ebede3b29bffcda3c79489  logs/121-calibration-lifecycle.txt
 15ce79db953dd776990c65b45958a39e8dd91284b4d3c2ae5cfe7430de67d3e4  logs/122-rgb-driver-hunt.txt
 9f039ef5ee8cbea66ed2a90d35e43935024de2a9a8d30a45e7bfc5683f4c56d6  logs/123-address-zero-remap.txt
+38d8aacf38521e3ed21097d82f7fd02d2b3ed288811f546223a8b8a6b43eaaf4  logs/124-polling-rate-path.txt
+2c34ed887f128f3bcfea0c95076b8a99078fe4fddec6e52dcdaaeb5e9537d084  logs/125-profile-format.txt

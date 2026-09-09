@@ -240,6 +240,8 @@ Major regions:
 
 | File range | Current interpretation |
 |---|---|
+| Log 111's "the modifiable ranges are disjoint from the application region" | True of the three erase addresses it had traced, false of the store as a whole: the wear-levelled banks and the macro region sit numerically inside `0x10000..0x7c000`. Whether that is the same address space is unsettleable while the medium is unidentified, so the reassurance is withdrawn. The omission proof, which rests on reachability rather than addresses, is unaffected (log 125) |
+| Phase 5E's "the settings format was NOT RECOVERED" | Correct for the erase branch it traced, which constructs nothing. The same state machine's save and load branches compute a 16-bit additive checksum and issue read/write requests; the format, its defaults and its migration are recovered (log 125) |
 | `0x00000–0x0ffff` | Primary bootloader/container |
 | `0x10000` | `SN_FWIN` application header |
 | `0x11000–0x168ab` | Candidate application A |
@@ -2532,6 +2534,158 @@ re-run against AIRCR, which is written; and the base-address detector fed a
 synthetic 0x18000000 store, which it duly reports.
 
 962 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — Chasing the polling rate, and not finding it (log 124)
+
+One step. Offline; authorises nothing; no frame constructed. Nothing committed
+or staged.
+
+The hope was that the polling-rate setting would finally put units on the tick.
+Everything in this project's timing is ratios — IRQ38 divided by eight, five,
+two, ten — and a setting that says "1000 Hz" would anchor the whole ladder. It
+does not, and establishing that carefully turned out to be the work.
+
+The profile field is an index, "3", and nothing else lives in that block. So I
+went looking for what consumes an index, and tested all five candidates the
+plan named.
+
+The prescaler ladder fell first and cleanly: all five of its decisions are
+immediates in the instruction stream, four compares and a bit test, with
+nothing loaded from RAM. A stored index cannot touch it. The mailbox fell to
+log 121's own enumeration — five fields, all sized for 75 keys, none a rate.
+The descriptor took a little more care: the bIntervals are fixed in the region
+image, and an aligned-word search finds no reference at all to the RAM copy's
+interval bytes, while the builder's stores at +0x14 turn out to be
+wMaxPacketSize fields in the output buffer rather than writes back into the
+parameter table. I checked the search wasn't blind by confirming it does find
+the table's own base, from three USB-stack sites.
+
+The timer candidate I deliberately did not eliminate. There is no timer block
+identified in any image — log 109 said as much about IRQ38 and this step
+doesn't improve on it — and you cannot rule out a peripheral nobody has found.
+Unresolved is the honest label, not "eliminated".
+
+I also went looking for the table an index would need, and there is none: no
+window in any of the four images holds three or more of the plausible rate
+values. Two divisor-shaped byte runs did turn up and both are something else —
+a bit-position table sitting among pointers in a data area, and a plain
+ascending 1..8 identity run in the region.
+
+The most useful thing that happened was a check of mine failing. I had written
+"no polling-rate command appears in the observed wire record" and implemented
+it as "the word 'polling' does not appear in protocol.md". It does appear,
+twice — and both mentions say the opposite of what I feared. The note lists
+SetPollingRate and GetPollingRate among the host HAL's methods, and its "Still
+unknown" section says plainly that the polling-rate opcode has a known HAL name
+and was never captured. My check was too broad; the evidence it surfaced was
+better than what I had. I narrowed the check to the parsed command table and
+added a second one asserting the HAL fact, rather than loosening the first away.
+
+That distinction became the spine of the log. The negative here is about the
+firmware's consumers, not about the protocol. A polling-rate command very
+probably exists on the wire; it simply was never sent while anyone was
+capturing. Writing it the other way round would have been a real overclaim, and
+there is now a test forbidding the wording.
+
+On the big question — whether the rate changes the same tick that drives
+everything else — the answer is that it is moot on this evidence, which is
+still worth recording. Six subsystems ride IRQ38 and its divide-by-eight job,
+and if the period ever moved they would all move together, watchdog margin
+included. What survives for a replacement is exactly that: the coupling is
+real whether or not a rate setting exists, and reasoning about one client's
+rate in isolation would be wrong.
+
+No units were attached. The one alignment that tempts — 8000 divided by 8 is
+1000, and two independently recovered bIntervals read as 8000 Hz and 1000 Hz —
+is a consistency between three numbers, not a measurement, and it inherits log
+107's high-speed reading rather than proving anything. I wrote it down as a
+lead for a future step and added a test that stops any claim from stating a
+tick frequency. The dependency map's clock entry is untouched.
+
+994 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — The settings format, read against the Armoury Crate decode (log 125)
+
+One step. Offline; authorises nothing; no command constructed; nothing
+committed or staged. Log 124's uncommitted work was left untouched.
+
+Phase 5E ended with six blanks in a row — magic, version, length, checksum,
+defaults, migration, all NOT RECOVERED — and a good reason for each: the commit
+branch it traced hands addresses to erase primitives and constructs nothing.
+That was true. It was also only one branch. The same state machine has save and
+load branches, and those call a *write* and a *read* primitive and compute a
+checksum before they do.
+
+Finding them started from the wrong end. I went looking for the configuration
+loader FINDINGS describes and landed on `FUN_18007e38`, which turned out to be
+the macro subsystem — the right shape, the wrong subsystem, and half an hour
+spent before its `0x664` payload stopped matching anything a profile should
+contain. What actually pointed the way was mundane: the inventory's `consts`
+field. Exactly one function in the image mentions `0x320000`, and it is
+`FUN_18000d56`, the state machine log 111 had already named but only read four
+cases of. Reading the rest of it produced the whole format.
+
+Six request primitives, not two. They are byte-identical apart from the opcode
+each stores, and all six fill the same one-deep struct log 111 mapped — which
+means the struct has two more fields than that log could see, a buffer at `+4`
+and a length at `+0x10`. Those two fields are the entire reason payload sizes
+became visible. The medium is still not identified and I named nothing.
+
+The RAM side then fell out as one contiguous run: two `0xd84` keymap banks, an
+`0x81c` profile block, a `0x664` macro block, and log 111's request struct
+immediately after. The profile block sits at bank + two strides, which is why
+several functions reach it as "layer 2" of the keymap bank and why it had never
+been noticed as a separate structure.
+
+The Armoury Crate decode earned its keep twice, and only because it happens to
+be profile 3. The firmware has two per-profile ROM tables. The one at
+`0x1801bfbe` gives profile 3 a default lighting slot of **8**, and the decode's
+`effectID` is `"8"`. The one at `0x1801c010` gives profile 3 the colour
+**(0, 0, 255)**, and the decode's single colour is blue. Two independent tables,
+one index, two exact hits — that is what turned a plausible layout into a read
+one. Both are extracted from the image by the tool, and two tests move each
+pointer and require the match to break, because a Rosetta stone that agrees by
+construction is not evidence.
+
+Not everything matched, and the table says so in fourteen rows. `speed` is 1 in
+the decode and neither default produces 1. `customPattern` has seven entries
+and the default setter writes six triples; six is not seven and I left it. The
+key counts do not reconcile at all — 68 physical keys, 136 file entries, 189
+wire IDs, against the firmware's 247 table entries and 75 records — so only the
+layer count is claimed. And `direction` and `random` both land on a `0xff`
+byte, so I recorded that two bytes hold `-1` and refused to say which is which.
+
+Polling rate matched nothing here, which is the second independent negative on
+it in an hour: log 124 was searching for a consumer at the same time I was
+searching for a stored field, and neither of us found one.
+
+One correction, and it goes the wrong way for comfort. Log 111 reassured a
+reader that the modifiable ranges are disjoint from the bootloader's
+application region. They are, for the three addresses that log had. The full
+stored map reaches down to `0x2000`, and the wear-levelled banks and the macro
+region are numerically inside `0x10000..0x7c000`. Whether that is the same
+address space cannot be settled while the medium is unidentified, so the
+reassurance has to be withdrawn rather than qualified. What survives untouched
+is the part that actually matters: log 111's omission proof rests on
+reachability through one command byte and one request struct, and the write
+path I recovered uses the same funnel. The dependency map's persistence service
+now carries the withdrawal as its evidence boundary, and the rule about which
+services may carry a boundary was generalised — with its reason stated in the
+test — rather than bent.
+
+The user's sentence was right and imprecise. Lighting does persist because it
+is written to the settings store and read back before any host enumerates the
+device. But the command handler writes nothing; it sets a byte. And "the
+profile region" is five regions, of which lighting is in none of the ones
+previously named. The reason the *selected* profile survives is a different
+mechanism again: a sixteen-byte header in a wear-levelled A/B store, whose
+first word is compared against the firmware's own version word at boot and
+re-stamped when it disagrees. That comparison is the migration Phase 5E listed
+as not recovered.
+
+1042 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
 ## Corrections retained for auditability

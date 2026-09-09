@@ -1,0 +1,1055 @@
+{
+  "answer_to_the_host_question": "Lighting configuration persists across hosts because the whole 0x81c profile block, lighting slots included, is written to the external settings store by the vendor persistence path and read back at boot before any host has enumerated the device. The sentence is CORRECT in substance and imprecise in two places. First, the write is not part of the command handler: the handler only sets a command byte, and a state machine in another context performs the checksum, the write request and the retries. Second, 'the profile region' is five regions, not one, and lighting rides in the profile-settings region at 0x2000 + profile*0x1000, not in the 0x320000 keymap region. The reason the SELECTED profile also survives is separate: the current profile index is byte +6 of a 16-byte header kept in a wear-levelled A/B store at 0x1c000..0x20000.",
+  "armoury_crate_matches": [
+    {
+      "ac_field": "lighting.keyboard.effectID",
+      "ac_value": "8",
+      "blob": "profile block",
+      "confidence": "exact",
+      "evidence": "the ROM per-profile default lighting slot for profile 3 is 8, read from 0x1801bfbe+3",
+      "note": "the decode's effectID is the firmware's slot index, not a field inside the record",
+      "offset": "slot index -> +0x0b6"
+    },
+    {
+      "ac_field": "lighting.keyboard.brightness",
+      "ac_value": "100",
+      "blob": "lighting slot record",
+      "confidence": "exact",
+      "evidence": "every one of the ten default-setter cases writes 100 to the record's second byte",
+      "note": "range is not proven from the setter; only the default is",
+      "offset": "+0x01"
+    },
+    {
+      "ac_field": "lighting.keyboard.pattern.singleColor",
+      "ac_value": "[0, 0, 255]",
+      "blob": "lighting slot record",
+      "confidence": "exact",
+      "evidence": "the ROM per-profile colour for profile 3 is [0, 0, 255], read from 0x1801c010+3*3; the 0xfa/1/0 handler writes request bytes 4,5,6 to the same three record bytes",
+      "note": "",
+      "offset": "+0x05..+0x07"
+    },
+    {
+      "ac_field": "lighting.keyboard.direction",
+      "ac_value": "-1",
+      "blob": "lighting slot record",
+      "confidence": "structural",
+      "evidence": "the default-setter writes 0xff, the byte-width form of -1",
+      "note": "0xff is also written to +0x04, so which of the two is direction is not established",
+      "offset": "+0x03"
+    },
+    {
+      "ac_field": "lighting.keyboard.random",
+      "ac_value": "-1",
+      "blob": "lighting slot record",
+      "confidence": "structural",
+      "evidence": "the default-setter writes 0xff, the byte-width form of -1",
+      "note": "same ambiguity as direction",
+      "offset": "+0x04"
+    },
+    {
+      "ac_field": "lighting.keyboard.speed",
+      "ac_value": "1",
+      "blob": "lighting slot record",
+      "confidence": "unmatched",
+      "evidence": "the default-setter writes 0 for slots 0-2 and (profile == 0) for slots 3,6,8,9; the decode holds 1 for profile 3, which neither default produces",
+      "note": "",
+      "offset": "+0x02"
+    },
+    {
+      "ac_field": "lighting.customPattern",
+      "ac_value": "7 entries",
+      "blob": "lighting slot record",
+      "confidence": "unmatched",
+      "evidence": "slot 7's default-setter writes six RGB triples; the decode has seven entries",
+      "note": "six is not seven, so no correspondence is claimed",
+      "offset": "slot 7, +0x05..+0x16"
+    },
+    {
+      "ac_field": "performance.pollingRate",
+      "ac_value": "3",
+      "blob": "-",
+      "confidence": "unmatched",
+      "evidence": "no field in any block recovered here carries it, and log 124 searched from the other end and found no consumer either: no index-to-Hz table in any of the four images, a prescaler ladder built entirely from immediates, no rate in the mailbox and a static descriptor bInterval",
+      "note": "the two negatives are independent \u2014 this one is about the stored blocks, log 124's is about the consumers",
+      "offset": "-"
+    },
+    {
+      "ac_field": "button.analogTrigger.actuation",
+      "ac_value": "10",
+      "blob": "global block word",
+      "confidence": "exact",
+      "evidence": "the boot repair writes +0x1400, i.e. 10; FUN_18006d3c bounds the field to 1..40",
+      "note": "",
+      "offset": "bits 9..15"
+    },
+    {
+      "ac_field": "button.analogTrigger.rapidTriggerPress",
+      "ac_value": "2",
+      "blob": "global block word / per-key record",
+      "confidence": "exact",
+      "evidence": "FUN_1800f7fe resets both to 2 when the value minus one exceeds 5, so the default is 2 and the range 1..6",
+      "note": "",
+      "offset": "bits 20..22 / record +0x06"
+    },
+    {
+      "ac_field": "button.analogTrigger.rapidTriggerRelease",
+      "ac_value": "2",
+      "blob": "global block word / per-key record",
+      "confidence": "exact",
+      "evidence": "the same reset, on the neighbouring field",
+      "note": "",
+      "offset": "bits 17..19 / record +0x07"
+    },
+    {
+      "ac_field": "lever.currentFunctionId",
+      "ac_value": "0",
+      "blob": "global block word",
+      "confidence": "structural",
+      "evidence": "the ROM per-profile default is 0; FUN_18007030 cycles the field 0..4",
+      "note": "the values agree, but both are zero, which is weak evidence; and the same field could equally be a lighting-effect index. Both readings are recorded and neither is chosen",
+      "offset": "bits 6..8"
+    },
+    {
+      "ac_field": "lever.functionStatusList",
+      "ac_value": "5 entries",
+      "blob": "profile block",
+      "confidence": "structural",
+      "evidence": "5 rows of 14 bytes, each gated on a non-zero first byte; the counts and the 0..4 index agree",
+      "note": "row contents are not decoded, so the correspondence is on count and index range only",
+      "offset": "+0x4b2"
+    },
+    {
+      "ac_field": "button.keyboardButton",
+      "ac_value": "136 entries = 68 keys x 2 layers",
+      "blob": "profile block key tables / keymap banks",
+      "confidence": "structural",
+      "evidence": "the firmware keeps 2 layers, 247 uint16 per layer, and 75 per-key records per bank; none of 68, 136 or 189 equals any of those",
+      "note": "the layer count matches and the entry counts do not, so no per-key mapping is claimed",
+      "offset": "+0x0d4 and +0x2c2"
+    },
+    {
+      "ac_field": "button.keyboardButton[*].actuation",
+      "ac_value": "10",
+      "blob": "per-key record",
+      "confidence": "exact",
+      "evidence": "bit 15 selects the per-key value over the global one; the field is bounded to 1..40 by the same comparison",
+      "note": "",
+      "offset": "+0x08 bits 0..6"
+    }
+  ],
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved dump hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "0x04 + 0xd0 == 0xd4",
+      "label": "the ten lighting slots exactly fill the gap before the key tables",
+      "ok": true
+    },
+    {
+      "detail": "0xd4 + 2*0x1ee == 0x4b0",
+      "label": "two key-table layers end where checksum A's coverage ends",
+      "ok": true
+    },
+    {
+      "detail": "+2 .. +0x4b2",
+      "label": "checksum A covers exactly flags, lighting and the key tables",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the selectable rows end where the version stamp begins",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the version stamp and checksum B sit between the two covered runs",
+      "ok": true
+    },
+    {
+      "detail": "0x60 bytes uncovered",
+      "label": "checksum B's run ends inside the block, leaving an uncovered tail",
+      "ok": true
+    },
+    {
+      "detail": "247 uint16 == 0x1ee bytes",
+      "label": "the key table's entry count and byte stride agree",
+      "ok": true
+    },
+    {
+      "detail": "0x180202d8 + 2*0xd84 == 0x18021de0",
+      "label": "the profile block begins exactly after the two keymap banks",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the macro block begins exactly after the profile block",
+      "ok": true
+    },
+    {
+      "detail": "4*0x198 + 4 == 0x664",
+      "label": "four macro records plus a four-byte tail fill the macro block",
+      "ok": true
+    },
+    {
+      "detail": "record i's sum16 is stored at i*0x198+0x19a, which is two bytes into the NEXT record's header and, for the last record, in the four-byte tail",
+      "label": "every macro checksum slot lies inside the block",
+      "ok": true
+    },
+    {
+      "detail": "offsets +10/r2, +10/r2, +10/r2, +12/r4, +12/r4, +12/r4",
+      "label": "every request primitive's opcode is decoded from its own instruction and matches",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the six primitives carry six distinct opcodes",
+      "ok": true
+    },
+    {
+      "detail": "the six do not share a single offset/register pair",
+      "label": "the idiom is searched for, not read at one fixed offset",
+      "ok": true
+    },
+    {
+      "detail": "anti-vacuity for the search",
+      "label": "the opcode decoder finds nothing in bytes that do not carry the idiom",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "each wear-levelled group's two banks are one 4 KiB apart",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "each group's items fit inside one bank",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every item's declared region length is capacity x record length",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every item names the group that lists it",
+      "ok": true
+    },
+    {
+      "detail": "the descriptors point at private staging buffers; FUN_1800e7ee copies the caller's block into them",
+      "label": "the two staged blocks are named by their callers, not by the descriptors",
+      "ok": true
+    },
+    {
+      "detail": "[0, 0, 255] from 0x1801c010",
+      "label": "the ROM colour for profile 3 equals the decode's single colour",
+      "ok": true
+    },
+    {
+      "detail": "slot 8",
+      "label": "the ROM lighting slot for profile 3 equals the decode's effectID",
+      "ok": true
+    },
+    {
+      "detail": "[4, 2, 6, 8, 9, 3]",
+      "label": "every per-profile default slot is one the setter implements",
+      "ok": true
+    },
+    {
+      "detail": "5",
+      "label": "the ROM row count equals the decode's function-list length",
+      "ok": true
+    },
+    {
+      "detail": "0x241410",
+      "label": "the factory-reset word reproduces every field's default",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "no two global-word fields share a bit",
+      "ok": true
+    },
+    {
+      "detail": "sum16(0xff * 0x1000) == 0xf000",
+      "label": "the checksum model wraps at 16 bits rather than saturating",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the stored checksum carries the profile index in its low nibble",
+      "ok": true
+    },
+    {
+      "detail": "anti-vacuity for the stamp",
+      "label": "a block stamped for one profile does not validate in another",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the five stored regions do not overlap each other",
+      "ok": true
+    },
+    {
+      "detail": "['small_store', 'macros']",
+      "label": "the stored map DOES numerically overlap the bootloader's application region, so log 111's disjointness does not generalise",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "log 111's own three erase targets remain above the application region, so its narrower claim still holds",
+      "ok": true
+    },
+    {
+      "detail": "a table with no unmatched rows would mean fields were forced",
+      "label": "at least one Armoury Crate field is left unmatched",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every match row cites evidence",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "polling rate stays unmatched",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the persistence table records both verdicts",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the host-independence answer both confirms and corrects the sentence it was asked about",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the storage medium stays unresolved",
+      "ok": true
+    }
+  ],
+  "checksum": {
+    "algorithm": "16-bit additive sum of bytes; not a CRC",
+    "function": 402688254,
+    "listing": "ldrb r4,[r3,r2] / add r0,r4 / uxth r0,r0, bounded by r1",
+    "stamp": "the profile block's stored value is the sum ANDed with (profile | 0xfff0)"
+  },
+  "global_block": {
+    "address": 402804492,
+    "fields": [
+      {
+        "default": 0,
+        "mask": 448,
+        "max": 4,
+        "min": 0,
+        "name": "function_index",
+        "note": "cycled 0..4 by FUN_18007030, which then persists the whole block",
+        "reset_value": 0,
+        "shift": 6,
+        "width": 3
+      },
+      {
+        "default": 10,
+        "mask": 65024,
+        "max": 40,
+        "min": 1,
+        "name": "actuation",
+        "note": "FUN_18006d3c raises while <0x28 and lowers while >1; the boot repair writes +0x1400, i.e. 10",
+        "reset_value": 10,
+        "shift": 9,
+        "width": 7
+      },
+      {
+        "default": 2,
+        "mask": 917504,
+        "max": 6,
+        "min": 1,
+        "name": "rapid_trigger_release",
+        "note": "FUN_1800f7fe resets the field to 2 when (v)-1 > 5",
+        "reset_value": 2,
+        "shift": 17,
+        "width": 3
+      },
+      {
+        "default": 2,
+        "mask": 7340032,
+        "max": 6,
+        "min": 1,
+        "name": "rapid_trigger_press",
+        "note": "FUN_1800f7fe resets the field to 2 when (v)-1 > 5",
+        "reset_value": 2,
+        "shift": 20,
+        "width": 3
+      }
+    ],
+    "marker": 43448,
+    "marker_offset": 24,
+    "profiles": 6,
+    "reset_word": 2364432,
+    "size": 32
+  },
+  "keymap_bank": {
+    "address": 402784984,
+    "checksum": "sum16(bank + layer*0xd84 + 2, 0xd82) in the bank's first halfword, which lives in record 0's first four bytes because the default setter never writes them",
+    "fallback_index": 75,
+    "initialised_records": 75,
+    "layers": 2,
+    "record_fields": [
+      {
+        "detail": "0x00 on layer 0, 0xff on layer 1",
+        "offset": 4
+      },
+      {
+        "detail": "bit 7 override, bits 0..2 rapid trigger press, 1..6, default 2",
+        "offset": 6
+      },
+      {
+        "detail": "bit 7 override, bits 0..2 rapid trigger release, 1..6, default 2",
+        "offset": 7
+      },
+      {
+        "detail": "uint16, bit 15 override, bits 0..6 actuation, 1..40, default 10",
+        "offset": 8
+      },
+      {
+        "detail": "uint16 remap target; the 0x51/0x21 handler writes it",
+        "offset": 10
+      }
+    ],
+    "record_len": 32,
+    "stride": 3460
+  },
+  "load_chain": [
+    {
+      "confidence": "observed",
+      "detail": "CandidateB_Main calls FUN_1800e4ea, which mounts the wear-levelled store: for each of two groups it reads the first four bytes of both banks, picks the one that is neither 0xffffffff nor 0, and scans that bank backwards for the newest record of each item.",
+      "stage": "boot"
+    },
+    {
+      "confidence": "observed",
+      "detail": "FUN_18000d56's init state reads item 0 back and compares its first word against the firmware's own version word at 0x1801e6d0. EQUAL -> adopt the stored header, including the current profile index at +6. DIFFERENT -> keep only what still agrees and re-stage both items, which is the migration step.",
+      "stage": "header"
+    },
+    {
+      "confidence": "observed",
+      "detail": "item 1 restores the 32-byte global block. The actuation field is then range-checked and repaired to 10 in place.",
+      "stage": "global"
+    },
+    {
+      "confidence": "observed",
+      "detail": "a two-byte read of 0x2000 + profile*0x1000 tests for 0xffff; if it is erased the defaults path runs, otherwise the whole 0x81c block is read and checksum A is recomputed and compared against the stored value masked with the profile index.",
+      "stage": "profile"
+    },
+    {
+      "confidence": "observed",
+      "detail": "for layer 0 then 1: a two-byte read tests for 0xffff, then 0xd84 bytes are read and sum16(bank+2, 0xd82) is compared against the bank's first halfword.",
+      "stage": "keymaps"
+    },
+    {
+      "confidence": "observed",
+      "detail": "the same shape at 0x340000 + profile*0x1000, 0x3e0 bytes, sum16(buf+2, 0x3de).",
+      "stage": "block_d"
+    },
+    {
+      "confidence": "observed",
+      "detail": "every mismatch takes the same route as an erased block: the defaults are rebuilt in RAM (FUN_1800072c for the key tables, FUN_18000466/FUN_18000584 for the per-key records, FUN_180005c6 for block D, FUN_1800075a for the lighting slot) and a diagnostic string is logged. There is no factory image to fall back to and no second copy is consulted.",
+      "stage": "failure"
+    }
+  ],
+  "persistence": [
+    {
+      "detail": "the lighting slots live at +0x04..+0xd3 of the profile block, inside checksum A's coverage, and the whole block is written to 0x2000 + profile*0x1000 by the save path.",
+      "section": "lighting",
+      "verdict": "persisted"
+    },
+    {
+      "detail": "two forms: the resolved per-layer uint16 tables inside the profile block, and the 0x20-byte per-key records in the two 0xd84 banks written to 0x320000 + profile*0x4000 + layer*0x1000.",
+      "section": "key mappings",
+      "verdict": "persisted"
+    },
+    {
+      "detail": "the global 32-byte block is staged into the wear-levelled store on every save and restored at boot; the per-key overrides ride in the keymap banks.",
+      "section": "performance (actuation, rapid trigger)",
+      "verdict": "persisted"
+    },
+    {
+      "detail": "byte +6 of the 16-byte device header, item 0 of the wear-levelled store.",
+      "section": "current profile index",
+      "verdict": "persisted"
+    },
+    {
+      "detail": "four 0x198 records written to 0x20000 + profile*0x80000 + slot*0x1000.",
+      "section": "macros",
+      "verdict": "persisted"
+    },
+    {
+      "detail": "0x3e0 bytes per profile; contents not decoded.",
+      "section": "block D",
+      "verdict": "persisted"
+    },
+    {
+      "detail": "log 121: rebuilt from the same defaults every boot, and no storage path touches the calibration block.",
+      "section": "per-key Hall calibration",
+      "verdict": "RAM-only"
+    }
+  ],
+  "primitives": [
+    {
+      "function": 402711208,
+      "opcode": 216,
+      "opcode_matches_expected": true,
+      "register": 2,
+      "role": null,
+      "store_offset": 10
+    },
+    {
+      "function": 402711236,
+      "opcode": 82,
+      "opcode_matches_expected": true,
+      "register": 2,
+      "role": null,
+      "store_offset": 10
+    },
+    {
+      "function": 402711264,
+      "opcode": 32,
+      "opcode_matches_expected": true,
+      "register": 2,
+      "role": null,
+      "store_offset": 10
+    },
+    {
+      "function": 402711292,
+      "opcode": 34,
+      "opcode_matches_expected": true,
+      "register": 4,
+      "role": "WRITE",
+      "store_offset": 12
+    },
+    {
+      "function": 402711364,
+      "opcode": 2,
+      "opcode_matches_expected": true,
+      "register": 4,
+      "role": "PROGRAM",
+      "store_offset": 12
+    },
+    {
+      "function": 402711400,
+      "opcode": 3,
+      "opcode_matches_expected": true,
+      "register": 4,
+      "role": "READ",
+      "store_offset": 12
+    }
+  ],
+  "profile_block": {
+    "address": 402791904,
+    "layout": [
+      {
+        "confidence": "observed",
+        "detail": "sum16(blob+2, 0x4b0) masked with (profile | 0xfff0)",
+        "name": "checksum_a",
+        "offset": 0,
+        "size": 2
+      },
+      {
+        "confidence": "observed",
+        "detail": "bit 15 marks region B valid; the save path also sets 1 << lighting_slot for slots below 10",
+        "name": "flags",
+        "offset": 2,
+        "size": 2
+      },
+      {
+        "confidence": "observed",
+        "detail": "10 variable-length records; sizes [15, 27, 38]",
+        "name": "lighting_slots",
+        "offset": 4,
+        "size": 208
+      },
+      {
+        "confidence": "observed",
+        "detail": "247 uint16 plus padding; the initialiser writes the identity map and 0xa0d3 at entry 0xe4",
+        "name": "key_table_layer0",
+        "offset": 212,
+        "size": 494
+      },
+      {
+        "confidence": "observed",
+        "detail": "the same shape; the initialiser leaves it zero",
+        "name": "key_table_layer1",
+        "offset": 706,
+        "size": 494
+      },
+      {
+        "confidence": "unresolved",
+        "detail": "FUN_18000420 writes 0x14 and a bitfield here; role not recovered",
+        "name": "pair_4b0",
+        "offset": 1200,
+        "size": 2
+      },
+      {
+        "confidence": "observed",
+        "detail": "5 rows of 14 bytes copied verbatim from ROM 0x1801bfca; FUN_18007030 treats a non-zero first byte as selectable",
+        "name": "selectable_rows",
+        "offset": 1202,
+        "size": 70
+      },
+      {
+        "confidence": "observed",
+        "detail": "copied from ROM 0x1801bfbc; not covered by either checksum",
+        "name": "version_stamp",
+        "offset": 1272,
+        "size": 2
+      },
+      {
+        "confidence": "observed",
+        "detail": "sum16(blob+0x4fc, 0x2c0), recomputed only when flags bit 15 is set",
+        "name": "checksum_b",
+        "offset": 1274,
+        "size": 2
+      },
+      {
+        "confidence": "unresolved",
+        "detail": "covered by checksum_b; contents not decoded",
+        "name": "region_b",
+        "offset": 1276,
+        "size": 704
+      },
+      {
+        "confidence": "unresolved",
+        "detail": "covered by NEITHER checksum; contents not decoded",
+        "name": "tail",
+        "offset": 1980,
+        "size": 96
+      }
+    ],
+    "lighting_record": [
+      {
+        "detail": "0x0a, 0x0f, 0x14, 0x1e, 0x1f or 0x3c by default",
+        "name": "effect",
+        "offset": 0
+      },
+      {
+        "detail": "default 100",
+        "name": "brightness",
+        "offset": 1
+      },
+      {
+        "detail": "0, or (profile == 0) for slots 3, 6, 8 and 9",
+        "name": "unnamed",
+        "offset": 2
+      },
+      {
+        "detail": "0xff",
+        "name": "minus_one_a",
+        "offset": 3
+      },
+      {
+        "detail": "0xff",
+        "name": "minus_one_b",
+        "offset": 4
+      },
+      {
+        "detail": "request byte 4",
+        "name": "r",
+        "offset": 5
+      },
+      {
+        "detail": "request byte 5",
+        "name": "g",
+        "offset": 6
+      },
+      {
+        "detail": "request byte 6",
+        "name": "b",
+        "offset": 7
+      }
+    ],
+    "lighting_slots": [
+      {
+        "offset": 4,
+        "size": 15,
+        "slot": 0
+      },
+      {
+        "offset": 19,
+        "size": 15,
+        "slot": 1
+      },
+      {
+        "offset": 34,
+        "size": 15,
+        "slot": 2
+      },
+      {
+        "offset": 49,
+        "size": 38,
+        "slot": 4
+      },
+      {
+        "offset": 87,
+        "size": 38,
+        "slot": 5
+      },
+      {
+        "offset": 125,
+        "size": 15,
+        "slot": 3
+      },
+      {
+        "offset": 140,
+        "size": 15,
+        "slot": 6
+      },
+      {
+        "offset": 155,
+        "size": 27,
+        "slot": 7
+      },
+      {
+        "offset": 182,
+        "size": 15,
+        "slot": 8
+      },
+      {
+        "offset": 197,
+        "size": 15,
+        "slot": 9
+      }
+    ],
+    "size": 2076
+  },
+  "request_struct": {
+    "address": 402808564,
+    "fields": {
+      "0x00": "opcode",
+      "0x04": "buffer",
+      "0x08": "flag",
+      "0x0c": "address",
+      "0x10": "length",
+      "0x18": "pending",
+      "0x19": "cleared"
+    },
+    "note": "log 111 mapped +0, +8, +0xc, +0x18 and +0x19 from the two erase primitives. The read and write primitives fill two more fields, which is how the length and the source buffer become visible."
+  },
+  "rom_defaults": {
+    "colour_per_profile": [
+      [
+        255,
+        255,
+        255
+      ],
+      [
+        255,
+        0,
+        0
+      ],
+      [
+        255,
+        0,
+        255
+      ],
+      [
+        0,
+        0,
+        255
+      ],
+      [
+        0,
+        255,
+        0
+      ],
+      [
+        255,
+        255,
+        0
+      ]
+    ],
+    "function_index_per_profile": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "light_slot_per_profile": [
+      4,
+      2,
+      6,
+      8,
+      9,
+      3
+    ],
+    "selectable_rows": [
+      [
+        1,
+        245,
+        246,
+        65535,
+        65535,
+        65535,
+        244
+      ],
+      [
+        1,
+        242,
+        243,
+        65535,
+        65535,
+        65535,
+        240
+      ],
+      [
+        1,
+        45057,
+        45056,
+        65535,
+        65535,
+        65535,
+        45058
+      ],
+      [
+        1,
+        45121,
+        45120,
+        65535,
+        65535,
+        65535,
+        45122
+      ],
+      [
+        1,
+        489,
+        488,
+        65535,
+        65535,
+        65535,
+        498
+      ]
+    ],
+    "version_stamp": 3
+  },
+  "runtime_blocks": [
+    {
+      "address": 402777808,
+      "name": "device_header",
+      "size": 16
+    },
+    {
+      "address": 402784984,
+      "name": "keymap_layer0",
+      "size": 3460
+    },
+    {
+      "address": 402788444,
+      "name": "keymap_layer1",
+      "size": 3460
+    },
+    {
+      "address": 402791904,
+      "name": "profile_block",
+      "size": 2076
+    },
+    {
+      "address": 402793980,
+      "name": "macro_block",
+      "size": 1636
+    },
+    {
+      "address": 402804492,
+      "name": "global_block",
+      "size": 32
+    },
+    {
+      "address": 402783992,
+      "name": "block_d",
+      "size": 992
+    }
+  ],
+  "save_chain": [
+    {
+      "confidence": "observed",
+      "detail": "the device header and the global block are handed to FUN_1800e7ee, which copies them into the wear-levelled store's staging buffers and marks them dirty.",
+      "stage": "stage"
+    },
+    {
+      "confidence": "observed",
+      "detail": "checksum A is recomputed over blob+2 for 0x4b0 bytes and stored masked with (profile | 0xfff0); checksum B is recomputed over blob+0x4fc for 0x2c0 bytes only when flags bit 15 is set; then the WHOLE 0x81c block is written verbatim from 0x18021de0.",
+      "stage": "profile"
+    },
+    {
+      "confidence": "observed",
+      "detail": "FUN_18007da4 recomputes sum16(record+8, record[7]) for each of the four 0x198 records and stores it at record+0x19a \u2014 two bytes into the next record's header, and in the block's four-byte tail for the last \u2014 then writes all 0x664 bytes.",
+      "stage": "macros"
+    },
+    {
+      "confidence": "observed",
+      "detail": "for layer 0 then 1: sum16(bank + layer*0xd84 + 2, 0xd82) is stored in the bank's first halfword and the whole 0xd84 bytes are written.",
+      "stage": "keymaps"
+    },
+    {
+      "confidence": "observed",
+      "detail": "sum16(buf+2, 0x3de) into the first halfword, then 0x3e0 bytes.",
+      "stage": "block_d"
+    },
+    {
+      "confidence": "observed",
+      "detail": "each stage retries up to three times before giving up; the vendor response is sent only after the last stage completes, which is why the historical capture recorded the reply arriving about 220 ms late.",
+      "stage": "retry"
+    }
+  ],
+  "small_store": {
+    "compaction": "FUN_1800e3c8 copies each item's newest record to the other bank, zeroes the old bank's first four bytes and flips the selector",
+    "groups": [
+      {
+        "bank_a": 114688,
+        "bank_b": 118784,
+        "index": 0,
+        "item_count": 3,
+        "items": [
+          {
+            "bank_offset": 0,
+            "capacity": 64,
+            "counter": 0,
+            "descriptor": 402778428,
+            "dirty": 0,
+            "group": 0,
+            "ram_buffer": 402809836,
+            "record_len": 16,
+            "region_len": 1024
+          },
+          {
+            "bank_offset": 1024,
+            "capacity": 32,
+            "counter": 0,
+            "descriptor": 402778476,
+            "dirty": 0,
+            "group": 0,
+            "ram_buffer": 402809852,
+            "record_len": 32,
+            "region_len": 1024
+          },
+          {
+            "bank_offset": 2048,
+            "capacity": 2048,
+            "counter": 0,
+            "descriptor": 402778528,
+            "dirty": 0,
+            "group": 0,
+            "ram_buffer": 402778584,
+            "record_len": 1,
+            "region_len": 2048
+          }
+        ],
+        "items_ptr": 402778548,
+        "selector": 2
+      },
+      {
+        "bank_a": 122880,
+        "bank_b": 126976,
+        "index": 1,
+        "item_count": 1,
+        "items": [
+          {
+            "bank_offset": 0,
+            "capacity": 256,
+            "counter": 0,
+            "descriptor": 402778560,
+            "dirty": 0,
+            "group": 1,
+            "ram_buffer": 402778585,
+            "record_len": 2,
+            "region_len": 512
+          }
+        ],
+        "items_ptr": 402778580,
+        "selector": 2
+      }
+    ],
+    "mount": "FUN_1800e4ea, from CandidateB_Main",
+    "read": "FUN_1800e64e; on a never-written item it fills the caller's buffer with 0xff and logs FR_fail",
+    "validation": "a bank is live when its first four bytes are neither 0xffffffff nor 0. There is no magic and no checksum at this layer.",
+    "write": "FUN_1800e6d6 synchronously, FUN_1800e7ee to stage"
+  },
+  "stored_map": [
+    {
+      "evidence": "FUN_1800e368(profile*0x1000+0x2000, 0x18021de0, 0x81c) on the load side and FUN_1800e2fc with the same address on the save side",
+      "formula": "0x2000 + profile * 0x1000",
+      "hi": 32768,
+      "lo": 8192,
+      "name": "profile_settings",
+      "ram": 402791904,
+      "record_len": 2076
+    },
+    {
+      "evidence": "the group descriptors at 0x1801e980 in the region image",
+      "formula": "four fixed 4 KiB banks, two A/B pairs",
+      "hi": 131072,
+      "lo": 114688,
+      "name": "small_store",
+      "ram": null,
+      "record_len": null
+    },
+    {
+      "evidence": "FUN_18007e0c and FUN_18007da4, both with movw r2,#0x664",
+      "formula": "0x20000 + profile * 0x80000 + slot * 0x1000",
+      "hi": 3276800,
+      "lo": 131072,
+      "name": "macros",
+      "ram": 402793980,
+      "record_len": 1636
+    },
+    {
+      "evidence": "FUN_1800e368(..., bank + layer*0xd84, 0xd84) and FUN_1800e2fc with the same address",
+      "formula": "0x320000 + profile * 0x4000 + layer * 0x1000",
+      "hi": 3375104,
+      "lo": 3276800,
+      "name": "keymap_banks",
+      "ram": 402784984,
+      "record_len": 3460
+    },
+    {
+      "evidence": "FUN_1800e368(profile*0x1000+0x340000, 0x1801fef8, 0x3e0) and FUN_1800e2fc with the same address",
+      "formula": "0x340000 + profile * 0x1000",
+      "hi": 3432448,
+      "lo": 3407872,
+      "name": "block_d",
+      "ram": 402783992,
+      "record_len": 992
+    }
+  ],
+  "unresolved": [
+    {
+      "detail": "unchanged from log 111. The format is recovered; the part the DMA path talks to is still not identified and is not named here.",
+      "key": "storage_medium"
+    },
+    {
+      "detail": "0x2c0 bytes at +0x4fc are checksummed and never decoded.",
+      "key": "region_b"
+    },
+    {
+      "detail": "0x60 bytes at +0x7bc are covered by neither checksum and never decoded.",
+      "key": "tail"
+    },
+    {
+      "detail": "block D is proven persisted per profile and its default setter is known; what it holds is not recovered.",
+      "key": "block_d_contents"
+    },
+    {
+      "detail": "no recovered field carries it, and log 124 found no consumer for one anywhere in the preserved images.",
+      "key": "polling_rate"
+    },
+    {
+      "detail": "the stored map's low regions numerically overlap the bootloader's application region 0x10000..0x7c000. Log 111's 'disjoint address ranges' held for the three erase targets it traced and does NOT generalise. Whether the two are the same address space cannot be settled while the medium is unidentified.",
+      "key": "numeric_overlap"
+    }
+  ]
+}

@@ -57,12 +57,25 @@ class ModelHonesty(unittest.TestCase):
             self.assertTrue(note.startswith("matches the JEDEC"), note)
         self.assertNotIn("is the JEDEC", " ".join(nv.OPCODES.values()))
 
-    def test_no_settings_format_field_is_claimed(self):
+    def test_the_settings_format_row_is_answered_and_attributed(self):
+        """SUPERSEDED, NOT DELETED. Until log 125 this asserted that no
+        settings-format field was claimed, which is what stopped Phase 5E
+        inventing a format it had never seen. Log 125 recovered the format
+        from the SAVE branch of the same state machine, so the rule now does
+        the opposite half of the same job: every field must be answered, and
+        the row must point at the step that recovered it rather than letting a
+        later reader take it for Phase 5E evidence."""
         fmt = nv.to_dict()["settings_format"]
         for field in ("magic", "version", "length", "checksum", "defaults",
                       "migration"):
-            self.assertIsNone(fmt[field], field)
-        self.assertIn("NOT RECOVERED", fmt["note"])
+            self.assertTrue(fmt[field], field)
+        self.assertIn("RECOVERED IN LOG 125", fmt["note"])
+        self.assertIn("notes/profile-format.md", fmt["note"])
+        self.assertNotIn("NOT RECOVERED", fmt["note"])
+
+    def test_the_recovered_format_still_reports_no_magic(self):
+        """The one field that stayed negative must stay negative."""
+        self.assertIn("NONE", nv.to_dict()["settings_format"]["magic"])
 
     def test_the_dispatch_answer_is_queueing(self):
         answer = nv.to_dict()["answer_to_the_dispatch_question"]
