@@ -2878,9 +2878,9 @@ selects the override). **Structural only** — `direction`/`random` (both map to
 `currentFunctionId` (agrees, but both values are zero and the same field could
 be a lighting-effect index), `keyboardButton` (the two-layer count matches; 68,
 136 and 189 match none of the firmware's 247 or 75). **Unmatched** —
-`lighting.keyboard.speed`, `customPattern` (seven entries against six default
-triples), and `performance.pollingRate`, which log 124 independently found has
-no consumer either.
+`lighting.keyboard.speed` and `customPattern` (seven entries against six default
+triples). **`performance.pollingRate` is no longer unmatched** — log 126 matched
+it to profile block `+0x4f8` bits 0..3, so `"3"` means 8000 Hz; see below.
 
 **Proven persisted:** lighting, key mappings (both forms), performance
 (actuation and rapid trigger, global and per-key), the current profile index,
@@ -2901,6 +2901,126 @@ remains **unproven** — the medium is still unidentified.
 (`0x60` bytes) of the profile block; block D's contents; the `+0x4b0` pair; and
 whether the store shares an address space with the bootloader's application
 region.
+
+### The polling-rate protocol, from the wire (log 126)
+
+A USB capture of Armoury Crate 6.5.7.0 changing this keyboard's polling rate
+supplies the command log 124 recorded as almost certainly existing and never
+captured.
+
+**The command is `51 31`, with a one-byte index at payload offset 4.** Interface
+1, usage page `0xFF00`, interrupt OUT on EP `0x0d`, 64-byte unnumbered report.
+Twenty writes appear in the capture in exactly two 64-byte forms differing at
+**one** of 64 bytes; the other 59 non-header bytes are zero in every frame.
+Collapsing repeats gives **twelve strictly alternating windows**, six per value.
+The reply is `51 31 00 00 <index>` and the rest zero — and it is not a copy of
+the request: `FUN_18000a70` rebuilds it from `&request[4]` with length 1, which
+is why it coincides.
+
+| index | rate | how known |
+|---|---|---|
+| 0 | 1000 Hz | **measured on the wire** |
+| 1 | 2000 Hz | derived from the firmware's `1 << index`; **not observed** |
+| 2 | 4000 Hz | derived from the firmware's `1 << index`; **not observed** |
+| 3 | 8000 Hz | **measured on the wire** |
+
+**The rate is measured, not assumed.** No wall-clock stamps were recorded, so
+the owner's stated order could not anchor the mapping. The subject's
+interrupt-IN report timestamps can: a high-speed endpoint with `bInterval = 1`
+is polled every 125 us, so a device that only has a new report each millisecond
+can only complete on the coarser grid. Grading the gap between consecutive key
+reports, never crossing a change:
+
+| endpoint | index | gaps | on the 1 ms grid | on the 125 us grid |
+|---|---|---|---|---|
+| `0x81` | 0 | 121 | 85.1% | 90.9% |
+| `0x81` | 3 | 229 | 12.2% | 90.0% |
+| `0x8c` | 0 | 121 | 82.6% | 83.5% |
+| `0x8c` | 3 | 229 | 13.1% | 88.6% |
+
+Chance levels are 10% and 20%. Two independent endpoints agree.
+
+**High-speed operation is now demonstrated, not inherited.** Log 107 asserted it
+and log 124 explicitly recorded that it inherited the reading rather than
+deriving it. Gaps of 1.752, 2.120 and 2.876 ms occur in index 3, and a
+full-speed bus cannot produce a non-integer-millisecond gap between two
+completions of a `bInterval = 1` interrupt endpoint.
+
+**No re-enumeration.** Exactly one real `GET_DESCRIPTOR(device)` in 473 seconds,
+at the deliberate replug; no device address above the subject's; the subject
+holds one address across all twelve windows. The mechanism does not need one:
+the host already polls EP `0x81` every 125 us in both states, and the rate
+setting changes how often the *device* has a new report ready. Consequently this
+capture provides **no post-change configuration descriptor**, so whether any
+`bInterval` would change is **not answered** and is not inferred. The
+pre-change descriptor read off the wire does confirm log 107 on three points at
+once: rebuilt `wTotalLength` 0x8d, IN intervals 1/1/1/4, and its step-9
+unresolved OUT intervals both being 4.
+
+**The handler, at `0x18002b2e`.** `ldrb r1,[r4,#0x4]` reads request byte 4;
+`cmp #3` / `cmp #0` accept only 0 and 3; `bfi r0,r1,#0,#4` writes a **four-bit**
+field into the profile block halfword at `+0x4f8`; `and r1,r0,#0xf` then
+`lsl.w r0,r6,r1` with `r6 = 1` (set once at `0x18001fd6` and not reassigned on
+this path) expands it to `1 << index`, stored as one byte at `0x1801e736`; then
+the firmware logs its own name for the command, the string `=S_PR_U`. Combined
+with the measured endpoints, the multiplier's unit is **1000 Hz** — which is
+where 2000 and 4000 come from, and why they are labelled derived.
+
+**A refinement to log 125, not a withdrawal.** Log 125 read profile block
+`+0x4f8` as the version stamp copied from ROM `0x1801bfbc`. It is that *and*, in
+its low four bits, the polling-rate index. Log 125's own accounting is what
+makes this consistent: `+0x4f8` is covered by **neither** checksum (A runs
+`+0x002..+0x4b1`, B runs `+0x4fc..+0x7bb`). The reload path proves the field
+survives storage — `FUN_18000d56` at `0x1800153a` performs the *identical*
+mask-and-shift into the *same* destination byte on profile load.
+
+**A read-back command nobody had found: `12 15`.** At `0x18002254` it reads
+`+0x4f8`, masks with `0xf` and returns the index in reply byte 4, writing
+nothing. `notes/protocol.md`'s HAL list has carried `GetPollingRate` with no
+opcode since the earliest work; this is it. **Strongly-inferred** — Armoury
+Crate never sent it, so no reply was observed.
+
+**Log 124's residual negative survives one level deeper.** The byte at
+`0x1801e736` has **six writers and no reader** in any preserved image, by three
+independent searches each shown non-blind: an aligned-word search of all
+fifteen imported images, a displacement search over every region pointer within
+4095 bytes below it (two apparent hits rejected on inspection — the base is
+adjusted by `adds r5,#0x54` first), and a `movw`/`movt` immediate search. So the
+images still do not show what turns a stored rate into a timer period. That is
+**not** evidence the device ignores it: the wire shows it obeying. Log 122's 396
+parameter-register accesses and log 119's run-time pointer delivery are the two
+places the reader can be, and neither is reachable by a static address search.
+
+**Units.** Attached now: the report delivery cadence, and high-speed operation.
+Still unresolved: **IRQ38's period**. The dependency map's `clock_frequency`
+entry is untouched, and the dependency map itself was **not** updated, because
+the firmware consumer was not found.
+
+**Armoury Crate sends this keyboard no periodic traffic at all.** After the
+startup handshake, every host frame on the vendor channel over 184 seconds is a
+user action. The heavy periodic traffic in the capture is other devices' —
+`0b05:19af` at ~195 host control frames/s and a Razer device at ~99 frames/s —
+separated by device address and never merged.
+
+**The startup handshake is confirmed, not corrected.** The Armoury Crate launch
+burst *ends* with exactly `notes/protocol.md`'s recorded nine-command block, in
+order. What was not recorded: the burst is longer, it opens with `12 14` byte
+2 = `02` (a model-string read returning the ASCII `024080600167`, the same model
+id as the config filename) followed by `12 07`, and the
+`12 03`/`12 00`/`22 01`/`12 12` group repeats within one launch.
+
+**Still unresolved:** the reader of `0x1801e736`; 2000 and 4000 Hz, which
+Armoury Crate cannot request and the handler explicitly rejects; whether the
+`51 31` write alone applies the rate or the `50 55` commit is required (fourteen
+reports land inside a write-to-commit interval but never two consecutively, so
+no gradeable gap exists there); the `bInterval` question; and the meanings of
+`12 03`, `12 07`, `12 08`, `12 12` and `12 16`.
+
+**Never send without explicit approval:** `50 55` (the commit), any `51 xx`
+write, and any erase/program/unlock/reset/SPI framing. The full machine-readable
+surface is `notes/polling-rate-protocol.json`, generated with
+`notes/polling-rate-protocol.md` from one data model by
+`tool/map_polling_rate_protocol.py`.
 
 ### Firmware modification roadmap (offline-first)
 

@@ -2688,12 +2688,116 @@ as not recovered.
 1042 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-09 — The polling rate, on the wire and in the code (log 126)
+
+One step. Offline; authorises nothing; no frame constructed for transmission;
+nothing committed or staged. Log 124 and log 125 were left untouched.
+
+The owner captured Armoury Crate 6.5.7.0 changing this keyboard's polling rate
+with `USBPcapCMD -A --inject-descriptors`, deliberately without an address
+filter in case a rate change re-enumerated the device onto a new address. It
+did not, but the decision was the right one and the capture would have caught it.
+
+**The command is `51 31`, with a one-byte index at payload offset 4.** Twenty
+writes, two 64-byte forms differing at exactly one of 64 bytes, twelve strictly
+alternating windows once repeats are collapsed. Every write is followed by a
+`50 55` commit. The reply is a byte-for-byte echo — and the firmware proves it
+is not a copy: `FUN_18000a70` rebuilds the frame from `&request[4]` with length
+1, which is why it coincides.
+
+**Two premises in the prompt were wrong, and the owner said so before I
+started.** Armoury Crate 6.5.7.0 exposes only 1000 and 8000 Hz for this
+keyboard, so the planned `1000 -> 2000 -> 4000 -> 8000` sequence was impossible;
+U7 governs that and the instruction was to decode what is there. It also
+predicted the changes would show as an 8x packet-rate staircase. **They do not**
+— an idle HID keyboard emits nothing, so the rate is invisible in packet counts.
+It turned out to be visible in packet *timing*, which is a better anchor than
+the staircase would have been.
+
+**The measurement is the part I did not expect to get.** With no wall-clock
+stamps, "index 0 is 1000 Hz" would have rested entirely on the owner
+remembering they started at 1000. It does not have to. A high-speed interrupt
+endpoint with `bInterval = 1` is polled every 125 us, so a device that only has
+a new report each millisecond can only complete on the coarser grid even when
+offered the finer one. Grading the gap between consecutive key reports — a
+*phase* measurement, so it is independent of typing speed — index 0 sits within
+50 us of a millisecond multiple 85% of the time against a 10% chance level,
+while index 3 does so 12% of the time and instead sits within 12.5 us of a
+125 us multiple 90% of the time. Two independent endpoints agree. The owner
+happened to be typing "1 2 3" with rollover, which is what supplied gaps short
+enough to matter.
+
+**A by-product worth more than the mapping.** Reports 125 us apart are
+impossible on a full-speed bus. Log 107 asserted high-speed operation and log
+124 explicitly recorded that it "inherits rather than re-derives" it. This
+capture derives it.
+
+**The firmware handler was where log 124's dispatcher work said it would be.**
+`0x18002b2e`: read request byte 4, accept only 0 or 3, `bfi` the value into a
+**four-bit** field of the profile block halfword at `+0x4f8`, mask with `0xf`,
+expand to `1 << index` and store one byte at `0x1801e736` — then log the
+firmware's own name for the command, `=S_PR_U`. With the measured endpoints, the
+multiplier's unit is 1000 Hz, so indices 1 and 2 are 2000 and 4000 Hz **by
+arithmetic**. Derived, not observed, and labelled that way everywhere with a
+test that requires the labelling.
+
+**Two prior logs are refined without being rewritten.** Log 125 read `+0x4f8` as
+the version stamp; it is that *and* the rate index in its low four bits, and log
+125's own checksum accounting is what makes that consistent — the field is
+covered by neither sum. Log 125's unmatched `performance.pollingRate` row is now
+matched, which means `notes/ac-profile3-decoded.json`'s `"pollingRate": "3"`
+means 8000 Hz. And `12 15` turns out to be `GetPollingRate`, an opcode
+`notes/protocol.md` has listed by HAL name and never by number.
+
+**Log 124's negative survives one level deeper, and that matters.** The byte at
+`0x1801e736` has six writers and no reader in any preserved image, by three
+independent searches each shown non-blind. So the images still do not show what
+turns a stored rate into a timer period — but this is emphatically *not*
+evidence the device ignores it, because the wire shows it obeying. Log 124's
+careful scoping ("the negative here is about the FIRMWARE'S CONSUMERS, not about
+the protocol") is what let this step land on the protocol side without
+contradicting it. IRQ38's period is still unresolved and the dependency map was
+**not** updated, because the consumer was not found.
+
+**Two of my own checks failed for the right reason.** The first counted two
+enumerations, because USBPcap's `--inject-descriptors` synthesis at t=0 is
+indistinguishable from a real descriptor read by `bRequest` alone; the fix keeps
+the injected set in the output and asserts it is strictly larger than the real
+one, so the exclusion cannot quietly hide a real re-enumeration. The second
+caught a genuine error in my own earlier shell analysis: `set -- $iv` does not
+word-split in zsh, so an ad-hoc interval check had compared every window against
+one malformed bound and reported zero reports everywhere. Fourteen reports do
+land between a write and its commit. The corrected finding is sharper than the
+false one — no two *consecutive* reports land there, and only a consecutive pair
+yields a gradeable gap, so U4 is blocked by the absence of a pair rather than
+the absence of reports. A third version of that test was also wrong, claiming
+all fourteen followed a no-op write; two follow the real change at t=314.2555.
+
+**One of log 124's rules is deliberately inverted here.** Log 124's tool asserts
+its JSON contains "nothing frame-shaped, so this step cannot leak something
+transmittable". This step's deliverable exists to carry exact command bytes for
+the owner's application, so that rule cannot hold. It is replaced rather than
+dropped: every state-writing command must carry `owner_approval_required`, the
+never-send list must cover them, and the read-only queries must be shown *not*
+to carry the flag, so the marking discriminates instead of blanket-gating. Log
+124's own rule and test are untouched.
+
+1089 offline tests pass, both evidence hashes are unchanged, the capture is
+unchanged, and no device was accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| My own ad-hoc check "no report lands between a `51 31` write and its `50 55` commit" | **False, and my own error.** A zsh `set -- $iv` does not word-split an unquoted parameter, so every interval was compared against one malformed bound. Fourteen reports do land there; the real blocker for U4 is that no two are *consecutive*, so no inter-report gap lies wholly inside one (log 126) |
+| My own first count of "two enumerations" in the polling-rate capture | One. USBPcap's `--inject-descriptors` synthesis at t=0 looks identical to a real `GET_DESCRIPTOR(device)` by `bRequest` and `bDescriptorType`. The injected set is now kept in the output and asserted strictly larger than the real one (log 126) |
+| Log 125's "profile block `+0x4f8` is the version stamp" | **Refined, not withdrawn.** The halfword is the version stamp *and* carries the polling-rate index in bits 0..3; it is covered by neither of the block's two checksums, which is what makes both readings consistent (log 126) |
+| Log 125's `performance.pollingRate` listed as unmatched | Matched: profile block `+0x4f8` bits 0..3, so the decode's `"3"` means 8000 Hz (log 126) |
+| Log 107's high-speed reading, which log 124 recorded as inherited rather than derived | **Now derived.** Reports 125 us apart cannot occur on a full-speed bus, where a `bInterval = 1` interrupt endpoint completes only on 1 ms frame boundaries (log 126) |
+| The owner's capture note "`usb.data_fragment` returns EMPTY" | True on the vendor endpoints, **false in general** on TShark 4.7.3: it carries the short `SET_REPORT` payloads on 90 control transfers. The check was scoped to the vendor endpoints rather than loosened (log 126) |
+| The owner's prediction that the rate changes would appear as an 8x packet-rate staircase | They do not — an idle HID keyboard emits almost nothing. The rate is visible in report *timing*, not in packet counts (log 126) |
 | Decompressed region "mapped, not known" | Reconstructed from the firmware's own handler; it is the USB/HID descriptor set, and its content carries the device's own VID/PID/bcdDevice (log 105) |
 | "The decoder consumed the compressed source exactly" | Failed at `0x3fd` of `0x400`. The premise was wrong, not the decoder: the compressed length is derived and word-aligned, so an all-zero tail is expected. Replaced by two checks that state the real invariant (log 105) |
 | Table `0x5680` read as three indirect roots | Its middle entry `0x4018` was absorbed into `PtrTarget_00004004`'s body extent, so it contributes two. Roots naming no function are now reported, not dropped (log 105) |
