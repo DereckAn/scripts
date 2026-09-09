@@ -415,6 +415,32 @@ SERVICES = (
             "normalisation uses are written by something not yet traced. A "
             "replacement can satisfy the mailbox side; it cannot reimplement "
             "the acquisition, and nothing here says it could."),
+    Service("calibration", "per-key Hall calibration",
+            "must-neutralize",
+            "OWNED ENTIRELY BY THE SECOND CONTEXT, and not reproducible. Log "
+            "121 recovered the whole lifecycle: hard-coded defaults installed "
+            "once at second-context startup, a 600-pass settling window during "
+            "which every key reads released, continuous baseline-drift and "
+            "floor tracking thereafter, and NO persistence — it is rebuilt "
+            "from the same defaults every boot. A replacement application "
+            "neither computes nor stores calibration; it supplies a structure "
+            "pointer and consumes what appears. The obligation is to "
+            "ACCOMMODATE it: respect the settling window and never treat a "
+            "travel byte as meaningful before it ends. Trying to implement or "
+            "shortcut calibration is the failure mode this class exists to "
+            "prevent.",
+            ("log 121: only three functions write the arrays, all inside the "
+             "0x18038000 image, found by an exhaustive pool scan",
+             "log 121: scale = 0x200000/(reference - floor), and the formula "
+             "reproduces the hard-coded default exactly",
+             "log 121: no mailbox opcode and no host command reaches either "
+             "writer; the trigger is the prescaler's divide-by-8 job"),
+            "observed",
+            evidence_boundary="the CONTRACT is recovered; the physics is not. "
+            "Reference, floor and scale carry no units, the sample's relation "
+            "to travel distance is unknown, and what the drift constants are "
+            "tuned for cannot be recovered from code. A replacement can "
+            "accommodate calibration; it cannot re-derive it."),
     Service("key_state", "key-state generation from travel bytes",
             "must-implement",
             "the comparison, the hold band and the bitmap update are recovered "

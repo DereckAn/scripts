@@ -2516,6 +2516,75 @@ the outer two of three adjacent number-row keys, with the middle one released.
 **Not a verified recovery procedure.** Nothing here was exercised on hardware,
 and G1 is PARTIAL for the two reasons above. G3 stays a live decision.
 
+### The calibration lifecycle (log 121)
+
+The last open piece of the acquisition story. The second context calibrates
+itself from hard-coded defaults at every startup, tracks drift continuously,
+**persists nothing**, and fails safe.
+
+**Three of four candidate origins are eliminated by evidence.** The arrays are
+`reference` u16[75] at `0x1803ca08`, `floor` u16[75] at `0x1803caa0`, and
+`scale` u32[75] at `0x1803cd90`. All three are **zero in the image**, which
+kills the static-table hypothesis. An exhaustive scan of every literal-pool
+word pointing into the calibration block finds **exactly four functions** — an
+initialiser, a runtime tracker, the converter (read-only) and a settle-timer
+helper. No mailbox handler and no storage path appears, so *sent by the app*
+and *loaded from storage* both fall too. Opcodes `0x0b` and `0x0f` fill the
+converter's **drive** arrays, which is channel configuration, not calibration.
+
+**The scale formula, and why it is trustworthy.** The tracker recomputes
+`scale = 0x200000 / (reference - floor)` at five `sdiv` sites. The boot
+defaults are immediates: reference `0x15e0`, floor `0xdac`, scale `0x3e6`.
+Feeding the formula the default span of 2100 yields **998 = 0x3e6 exactly**,
+and full travel then converts to 1278, where the travel curve reads 200 — its
+maximum, and twice the actuation threshold. Three independently written
+constants agree, and log 119's opaque `>> 21` is now fully explained: the
+conversion is just `1279 × (reference − sample) / span`.
+
+**Runtime updates are continuous**, not one-shot: the reference drifts in steps
+of 5 and 10 behind consecutive-sample gates with an 8-sample average, the floor
+is pulled toward observed minima, and the scale is recomputed on every change.
+
+**There is no recalibrate command.** The initialiser has one caller (the
+service loop's startup), the tracker has one (the converter). No mailbox opcode
+and no vendor-HID command reaches either — so **there are no command bytes to
+recover**, which is the safest possible answer to that question.
+
+**Two long-standing orphans fall out.** `FUN_18001fbe` and `FUN_18008c16`,
+callerless since log 106 and still open after log 119, are both reached from
+the entry image's `FUN_00000516` — the prescaler's divide-by-8 job — through
+veneers `0x40d0` and `0x4116`. The calibration-adjacent traffic rides the same
+IRQ38/8 cadence as everything else.
+
+**Invalid calibration always fails toward RELEASED**, and that is a property of
+the code:
+
+- the `0xffff` sentinel is compared **before** the subtraction, so it never
+  wraps; the key is skipped entirely and no travel byte is produced;
+- for the first **600 conversion passes** the converter forces every travel
+  byte to zero while still updating calibration — an uncalibrated keyboard
+  emits no keystrokes and cannot emit spurious ones;
+- samples outside `0x80..0x2329` are ignored by the tracker's guard;
+- fifteen samples below `0xfa` flag the key and reset its floor to the default
+  rather than leaving a nonsense span. That counter lives in the *application's*
+  structure at `+0x27a` — the array opcode `0x07` carries, so the fault count is
+  the one calibration-adjacent value visible to both sides, and it is a symptom
+  count rather than a coefficient.
+
+**Dependency map:** a new `calibration` service, **must-neutralize** — the same
+class as `hall_acquisition`, for the same reason. A replacement supplies a
+structure pointer and consumes what appears; the obligation is to respect the
+settling window, never to implement or shortcut it. The gate is now 6
+must-implement, 5 must-neutralize, 5 may-omit, 2 unresolved.
+
+**A rule generalised rather than loosened.** Log 119 had narrowed the
+boundary-field rule to "at most one resolved service, and it must be
+`hall_acquisition`". A second such service broke it. The rule is now
+principled: a resolved service may carry an evidence boundary **only when the
+second context owns it**, because those are exactly the services a replacement
+inherits. The test asserts set equality, so a boundary on any other service
+still fails.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes

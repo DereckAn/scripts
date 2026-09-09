@@ -2313,6 +2313,88 @@ are inferred. G3 stays a live decision rather than a formality.
 865 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-08 — How the keyboard calibrates itself (log 121)
+
+One step, the last open piece of the acquisition story. Offline; authorises
+nothing; no command of any kind constructed. Nothing committed or staged.
+
+Logs 118 through 120 recovered the converter, the delivery, the travel curve
+and the recovery keys, and left one question: where do the per-key reference
+and scale values come from. Four candidates were on the table and three of them
+died to a single scan.
+
+The cheapest test came first. Both arrays are zero in the image, so there is no
+static default table. Then the exhaustive one: every literal-pool word in the
+second-context image that points into the calibration block, attributed to its
+owning function. Four functions, and only four — an initialiser, a runtime
+tracker, the converter reading, and a helper that touches only a settle timer.
+No mailbox handler appears anywhere in that list, which kills "the app sends
+it", and the arrays live in RAM the app cannot address and no storage path
+reaches, which kills "loaded from flash". What is left is that the second
+context calibrates itself, and now I could go and read exactly how.
+
+The moment that made me trust the reading was arithmetic. The tracker
+recomputes the scale with an sdiv whose numerator is 0x200000, dividing by
+reference minus floor. The boot defaults are immediates in the initialiser —
+0x15e0, 0xdac, 0x3e6 — and feeding the formula the default span of 2100 gives
+998, which is 0x3e6 exactly. Substituting that back into log 119's conversion
+collapses the opaque shift-by-21 into something plain: travel is just 1279
+times the fraction of the span the key has moved. Full travel lands on 1278,
+and the curve there reads 200, its maximum and twice the actuation threshold.
+Three constants written in three different places agree. That is not what a
+misreading produces.
+
+The updates turned out to be continuous rather than one-shot — baseline drift
+with hysteresis and consecutive-sample gates, floor tracking toward observed
+minima, and a scale recompute after every move. So I went looking for a
+recalibrate command, and there is none. The initialiser has exactly one caller
+and the tracker has exactly one, and neither is reachable from any mailbox
+opcode or host command. That is the safest possible answer to a question the
+prompt was careful about: there are no command bytes to recover, so nothing
+transmittable could leak into the output even by accident. I added a test that
+asserts the generated JSON contains nothing frame-shaped, to keep it that way.
+
+Chasing the trigger closed two old wounds. FUN_18001fbe and FUN_18008c16 have
+been listed as callerless since log 106 and were still open after log 119. Both
+are called from the entry image's divide-by-8 job through veneers — the same
+prescaler job that feeds the watchdog. The last large orphans are gone.
+
+The failure behaviour is the part I most wanted to get right, and it is
+uniformly safe. The 0xffff sentinel is compared before the subtraction, so it
+never wraps; the key is simply skipped. For the first 600 conversion passes the
+converter keeps updating calibration while forcing every travel byte to zero,
+so a keyboard that has not settled emits nothing at all rather than emitting
+nonsense. Samples outside a sanity window are ignored, and fifteen implausibly
+low ones flag the key and reset its floor to the default instead of leaving a
+nonsense span. Since actuation is travel >= 100 and travel is zero, an
+uncalibrated key reads released. That direction is a property of the code, not
+a hope, and I said so in those words.
+
+One nice cross-link: the fault counter the tracker increments does not live in
+the second context at all — it lives in the application's structure at +0x27a,
+which is the array mailbox opcode 0x07 carries. It is the only
+calibration-adjacent value that crosses the boundary, and it is a symptom count
+rather than a coefficient.
+
+Calibration enters the dependency map as must-neutralize, the same class as the
+acquisition and for the same reason: a replacement inherits it rather than
+implementing it, and the real obligation is to respect the settling window. That
+forced a rule I had narrowed in log 119 to be generalised. I had written "at
+most one resolved service may carry an evidence boundary, and it must be
+hall_acquisition", which was true when there was one. Rather than bump the
+number I made the rule say what it actually means: a resolved service may carry
+a boundary only when the second context owns it, because those are exactly the
+ones a replacement inherits. The test asserts set equality, so the teeth stay.
+
+My own anti-vacuity test caught me out. I asserted that perturbing the span by
+one would change the computed scale, and it does not — integer division at that
+magnitude absorbs it. The finding was fine; the test was wrong. It now asserts
+both facts, the insensitivity to one unit and the sensitivity to a hundred,
+which is more informative than what I originally intended.
+
+898 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

@@ -1,0 +1,562 @@
+{
+  "arrays": [
+    {
+      "address": "0x1803ca08",
+      "bytes": 150,
+      "element": "u16",
+      "entries": 75,
+      "extent": "0x1803ca08..0x1803ca9d",
+      "initialised_in_image": false,
+      "name": "reference",
+      "nonzero_bytes_in_image": 0,
+      "role": "the released-end baseline; delta = reference - sample",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803caa0",
+      "bytes": 150,
+      "element": "u16",
+      "entries": 75,
+      "extent": "0x1803caa0..0x1803cb35",
+      "initialised_in_image": false,
+      "name": "floor",
+      "nonzero_bytes_in_image": 0,
+      "role": "the pressed-end reference; span = reference - floor",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803cd90",
+      "bytes": 300,
+      "element": "u32",
+      "entries": 75,
+      "extent": "0x1803cd90..0x1803cebb",
+      "initialised_in_image": false,
+      "name": "scale",
+      "nonzero_bytes_in_image": 0,
+      "role": "0x200000 / span, recomputed on every reference or floor change",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803cb38",
+      "bytes": 300,
+      "element": "u32",
+      "entries": 75,
+      "extent": "0x1803cb38..0x1803cc63",
+      "initialised_in_image": false,
+      "name": "accumulator",
+      "nonzero_bytes_in_image": 0,
+      "role": "the learn path's running sum of 8 samples",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803cebc",
+      "bytes": 75,
+      "element": "u8",
+      "entries": 75,
+      "extent": "0x1803cebc..0x1803cf06",
+      "initialised_in_image": false,
+      "name": "step_counter",
+      "nonzero_bytes_in_image": 0,
+      "role": "samples seen above the reference",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803d038",
+      "bytes": 75,
+      "element": "u8",
+      "entries": 75,
+      "extent": "0x1803d038..0x1803d082",
+      "initialised_in_image": false,
+      "name": "fault_flag",
+      "nonzero_bytes_in_image": 0,
+      "role": "set after 15 implausibly low samples",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803d11c",
+      "bytes": 75,
+      "element": "u8",
+      "entries": 75,
+      "extent": "0x1803d11c..0x1803d166",
+      "initialised_in_image": false,
+      "name": "deep_press",
+      "nonzero_bytes_in_image": 0,
+      "role": "the last travel value above 0x96, used to gate the fault path",
+      "storage_class": "BSS (zero)"
+    },
+    {
+      "address": "0x1803d200",
+      "bytes": 150,
+      "element": "u16",
+      "entries": 75,
+      "extent": "0x1803d200..0x1803d295",
+      "initialised_in_image": false,
+      "name": "gate_timer",
+      "nonzero_bytes_in_image": 0,
+      "role": "per-key settle countdown, floored at 0x12c",
+      "storage_class": "BSS (zero)"
+    }
+  ],
+  "checks": [
+    {
+      "detail": "",
+      "label": "both preserved source hashes match the allowlist",
+      "ok": true
+    },
+    {
+      "detail": "0x1803ca08..0x1803ca9d",
+      "label": "the reference array is BSS, so no static default table exists",
+      "ok": true
+    },
+    {
+      "detail": "0x1803cd90..0x1803cebb",
+      "label": "the scale array is BSS too",
+      "ok": true
+    },
+    {
+      "detail": "0x1803caa0..0x1803cb35",
+      "label": "the floor array is BSS too",
+      "ok": true
+    },
+    {
+      "detail": "FUN_18039a48, FUN_1803a6c4, FUN_1803aa1c, FUN_1803aaa6",
+      "label": "exactly four functions reference the calibration block",
+      "ok": true
+    },
+    {
+      "detail": "0x1803aa1c",
+      "label": "the initialiser is among them",
+      "ok": true
+    },
+    {
+      "detail": "0x1803aaa6",
+      "label": "the runtime tracker is among them",
+      "ok": true
+    },
+    {
+      "detail": "0x1803a6c4",
+      "label": "the converter is among them",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every function touching the block has a recovered role",
+      "ok": true
+    },
+    {
+      "detail": "0x200000/2100 = 998",
+      "label": "the recovered scale formula reproduces the hard-coded default",
+      "ok": true
+    },
+    {
+      "detail": "LUT[1278] = 200",
+      "label": "default full travel lands on the travel curve's maximum",
+      "ok": true
+    },
+    {
+      "detail": "200 = 2 x 100",
+      "label": "and that maximum is twice the actuation threshold",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "no lifecycle stage loads calibration from storage",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "no lifecycle stage persists calibration",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the defaults come from instruction immediates, not a table",
+      "ok": true
+    },
+    {
+      "detail": "the safe direction",
+      "label": "an uncalibrated key reads RELEASED",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the failure direction is recorded as safe, from code not hope",
+      "ok": true
+    },
+    {
+      "detail": "the compare happens first",
+      "label": "the sentinel never reaches the subtraction",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "both flag arrays have a recovered gate",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "no mailbox opcode carries a calibration coefficient",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "there is no recalibrate opcode",
+      "ok": true
+    },
+    {
+      "detail": "so no command bytes exist to recover",
+      "label": "no host command triggers calibration",
+      "ok": true
+    },
+    {
+      "detail": "FUN_00000516",
+      "label": "both orphan roots resolve to the divide-by-8 tick job",
+      "ok": true
+    },
+    {
+      "detail": "must-neutralize",
+      "label": "the dependency-map entry uses a known classification",
+      "ok": true
+    },
+    {
+      "detail": "the contract is recovered; the physics is not",
+      "label": "the service names an evidence boundary despite being observed",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a known confidence label",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "every claim carries a kind_basis and a citation",
+      "ok": true
+    },
+    {
+      "detail": "6 entries",
+      "label": "the unresolved boundaries are enumerated",
+      "ok": true
+    }
+  ],
+  "claims": [
+    {
+      "answer": "The second context, and nothing else. Exactly three functions touch the calibration block: an initialiser that installs hard-coded defaults once at startup, a runtime tracker, and the converter that only reads. No mailbox handler, no storage path and no static table participates.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1"
+      ],
+      "key": "origin",
+      "kind_basis": "an exhaustive scan of every literal-pool word in the image that points into 0x1803ca08..0x1803d300 finds four functions, one of which touches only the settle timer",
+      "question": "Who writes the reference and scale values?"
+    },
+    {
+      "answer": "Immediate operands in the initialiser's instruction stream: reference 0x15e0, floor 0xdac, scale 0x3e6. Both arrays are all-zero BSS in the image, so there is no static default table.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1"
+      ],
+      "key": "defaults",
+      "kind_basis": "the initialiser's listing, and a byte scan showing the arrays are zero in the image",
+      "question": "Where do the boot defaults come from?"
+    },
+    {
+      "answer": "scale = 0x200000 / (reference - floor), recomputed by an sdiv on every reference or floor change. Feeding it the boot defaults reproduces the hard-coded default scale exactly, and full travel then lands on the travel curve's maximum, which is twice the actuation threshold.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 1",
+        "log 119"
+      ],
+      "key": "formula",
+      "kind_basis": "five sdiv sites with the same numerator, plus a numeric check against three independently written constants",
+      "question": "How is scale derived?"
+    },
+    {
+      "answer": "Yes. The reference drifts toward the observed released level in steps of 5 and 10 behind consecutive-sample gates, and the floor is pulled down toward observed minima. Both recompute the scale. This is baseline drift compensation, not a one-shot calibration.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2"
+      ],
+      "key": "runtime",
+      "kind_basis": "the updater's listing: the +0xf/-0x5 hysteresis, the 8-sample average, and the 10-and-16-and-5 consecutive-count gates",
+      "question": "Do the values change after boot?"
+    },
+    {
+      "answer": "No. The initialiser has one caller \u2014 the service loop's startup \u2014 and the updater has one caller, the converter. No mailbox opcode and no vendor-HID command reaches either. The trigger is the prescaler's divide-by-8 tick job. There are no command bytes to recover.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 2",
+        "log 109",
+        "log 114"
+      ],
+      "key": "no_command",
+      "kind_basis": "the call graph, plus the entry-image veneers that resolve both long-standing orphan roots to the /8 job",
+      "question": "Is there a recalibrate command?"
+    },
+    {
+      "answer": "No. It lives in the second context's RAM, which has no storage path; no opcode reads it back; and the log-111 commit path copies from no staging buffer. It is rebuilt from the same defaults on every boot and re-learned by drift.",
+      "confidence": "strongly-inferred",
+      "evidence": [
+        "this log step 1",
+        "log 111 step 5"
+      ],
+      "key": "persistence",
+      "kind_basis": "the absence of any writer or reader outside the three recovered functions, bounded by the second context's 484 unresolved accesses",
+      "question": "Is calibration stored?"
+    },
+    {
+      "answer": "Every failure mode resolves to RELEASED. A sentinel sample skips both the update and the conversion; during the 600-pass settling window every travel byte is forced to zero; a sample outside the sanity window is ignored; and a persistently implausible sample flags the key and resets its floor to the default. An uncalibrated keyboard emits no keystrokes and cannot emit spurious ones.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 3",
+        "log 110"
+      ],
+      "key": "invalid",
+      "kind_basis": "the converter's sentinel compare, the settling branch's forced zero stores, the guard's range test and the fault path's floor reset",
+      "question": "What happens when calibration is missing or invalid?"
+    },
+    {
+      "answer": "Accommodate it, never implement it. Supply a valid structure pointer in opcode 0x0d, then treat travel bytes as meaningless until the settling window ends. Classified MUST-NEUTRALIZE for the same reason the acquisition is: it is satisfied by inheriting vendor code, not by reproducing it.",
+      "confidence": "observed",
+      "evidence": [
+        "this log step 4",
+        "log 119"
+      ],
+      "key": "prototype",
+      "kind_basis": "the lifecycle above, and the dependency map's existing convention for services the second context owns",
+      "question": "What must a custom firmware do about calibration?"
+    }
+  ],
+  "dependency_service": {
+    "classification": "must-neutralize",
+    "confidence": "observed",
+    "evidence": [
+      "log 121: only three functions write the arrays, all inside the 0x18038000 image",
+      "log 121: the defaults are immediates, the scale formula is 0x200000/span, and the formula reproduces the default exactly",
+      "log 121: no mailbox opcode and no host command reaches either writer"
+    ],
+    "evidence_boundary": "the CONTRACT is recovered; the physics is not. The reference, floor and scale carry no units, the sample's relationship to travel distance is unknown, and what the drift constants are tuned for cannot be recovered from code. A replacement can accommodate calibration; it cannot re-derive it.",
+    "key": "calibration",
+    "name": "per-key Hall calibration",
+    "rationale": "OWNED ENTIRELY BY THE SECOND CONTEXT, and not reproducible. A replacement application neither computes nor stores calibration: it supplies a structure pointer and consumes what appears. The obligation is therefore to ACCOMMODATE it \u2014 respect the settling window during which every key reads released, and never assume a travel byte is meaningful before it ends. Treating calibration as something to implement, or trying to shortcut the settling window, is the failure mode this classification exists to prevent."
+  },
+  "disclaimer": "Offline analysis of preserved images. No device was accessed and no command of any kind was constructed. This authorises nothing live.",
+  "invalid_behaviour": {
+    "flag_bytes": [
+      {
+        "array": "0x1803d038",
+        "gates": "routes the key to a path that stores the raw sample instead of a converted travel byte",
+        "name": "fault_flag",
+        "set_when": "15 samples below 0xfa"
+      },
+      {
+        "array": "0x1803d11c",
+        "gates": "checked BEFORE the fault flag, so a key that has been pressed deeply is not treated as faulted",
+        "name": "deep_press",
+        "set_when": "a converted travel value above 0x96"
+      }
+    ],
+    "low_sample_path": "a sample below 0xfa increments a per-key counter in the APPLICATION's structure at +0x27a \u2014 the same array mailbox opcode 0x07 carries, so the fault count is visible to both sides. After 0xf of them the key's fault flag is set, a global flag byte is raised, the floor is reset to the default 0xdac and the scale is recomputed.",
+    "safe_direction": true,
+    "sanity_window": "the updater guard proceeds only when the sample lies in 0x80..0x2329; outside that the update is skipped entirely",
+    "sentinel": "0xffff",
+    "sentinel_effect": "the converter compares each sample against the sentinel FIRST. A sentinel sample skips the calibration update AND skips the conversion for that key, so no travel byte is produced. The subtraction reference - 0xffff never happens.",
+    "sentinel_wraps": false,
+    "sentinel_written_by": "opcode 0x0d's memset over the app's sample array at +0x3f2",
+    "settling_effect": "while the counter at 0x1803c4b4 is non-zero the converter forces every travel byte to 0 and every raw word at +0x2c6 to 0, for all 75 keys, regardless of sample.",
+    "uncalibrated_key_reads": "RELEASED",
+    "why_safe": "the actuation comparison is travel >= 100, and an uncalibrated or unsampled key yields travel 0 or no write at all. A keyboard that has not finished calibrating emits no keystrokes; it cannot emit spurious ones. That is the correct failure direction and it is a property of the code, not a hope.",
+    "xor_staging_check": "the staging validity check in the opcode handler (log 118) runs BEFORE delivery: a sample failing it is replaced by a default, so the calibration path never sees a corrupted word. It does not reject calibration itself."
+  },
+  "lifecycle": [
+    {
+      "confidence": "observed",
+      "source": "immediate operands in the instruction stream, not a data table",
+      "stage": "boot defaults",
+      "what": "reference = 0x15e0, floor = 0xdac, scale = 0x3e6 for all 75 keys, plus eight state arrays zeroed",
+      "when": "once, at second-context startup",
+      "writer": "FUN_1803aa1c, called only from the service loop at FUN_1803af90 before the first command"
+    },
+    {
+      "confidence": "observed",
+      "source": "the arrays live in the second context's RAM; that image has no storage path, no mailbox opcode carries them, and the log-111 commit path copies from no staging buffer",
+      "stage": "storage load",
+      "what": "no calibration value is read from or written to nonvolatile storage",
+      "when": "never",
+      "writer": "none"
+    },
+    {
+      "confidence": "observed",
+      "source": "the counter at 0x1803c4b4 is seeded with the initialiser's return value 600 and decremented per pass",
+      "stage": "settling",
+      "what": "calibration is updated from every valid sample, and EVERY travel byte is forced to zero \u2014 all keys read released",
+      "when": "the first 600 conversion passes after startup",
+      "writer": "FUN_1803a6c4 takes the settling branch"
+    },
+    {
+      "confidence": "observed",
+      "source": "listing",
+      "stage": "runtime tracking",
+      "what": "the reference drifts toward the observed released level in steps of 5 and 10 behind consecutive-sample gates; the floor is pulled down toward observed minima; scale is recomputed on every change",
+      "when": "every conversion pass thereafter, per key",
+      "writer": "FUN_1803aaa6 via the guard FUN_1803aa98"
+    },
+    {
+      "confidence": "strongly-inferred",
+      "source": "no writer outside the two functions above, and no reader that copies the arrays anywhere",
+      "stage": "persistence",
+      "what": "calibration is discarded at power-off and rebuilt from the same hard-coded defaults on the next boot",
+      "when": "never",
+      "writer": "none"
+    }
+  ],
+  "mailbox": {
+    "carries_calibration": false,
+    "fields": [
+      {
+        "content": "channel selection bytes, packed with 0x8800 into the converter's drive arrays \u2014 configuration, not calibration",
+        "direction": "app -> second",
+        "offset": "0x1e4",
+        "opcode": "0x0b"
+      },
+      {
+        "content": "the five-group drive table the converter writes out \u2014 configuration, not calibration",
+        "direction": "app -> second",
+        "offset": "0x72c",
+        "opcode": "0x0f"
+      },
+      {
+        "content": "a per-key fault counter the app can seed and the second context increments. The only calibration-adjacent value that crosses, and it is a symptom count, not a coefficient.",
+        "direction": "BOTH",
+        "offset": "0x27a",
+        "opcode": "0x07"
+      },
+      {
+        "content": "raw samples",
+        "direction": "second -> app",
+        "offset": "0x3f2",
+        "opcode": "0x01/0x02/0x0c"
+      },
+      {
+        "content": "converted travel bytes",
+        "direction": "second -> app",
+        "offset": "0x35c",
+        "opcode": "0x01/0x02/0x0c"
+      }
+    ],
+    "host_command": null,
+    "host_command_note": "no vendor-HID command triggers calibration. The whole mailbox cluster hangs off FUN_18001fbe, which the entry image calls from FUN_00000516 \u2014 the prescaler's divide-by-8 job \u2014 through veneer 0x40d0, and the sample requester through veneer 0x4116. The trigger is the tick, not the host. NO COMMAND BYTES EXIST TO RECOVER, which is the safest possible outcome for this question.",
+    "orphans_resolved": [
+      {
+        "function": "FUN_18001fbe",
+        "reached_from": "entry FUN_00000516 via veneer 0x40d0"
+      },
+      {
+        "function": "FUN_18008c16",
+        "reached_from": "entry FUN_00000516 via veneer 0x4116"
+      }
+    ],
+    "recalibrate_opcode": null,
+    "recalibrate_opcode_note": "there is none. The initialiser has exactly ONE caller \u2014 the service loop's startup path \u2014 and the updater has exactly ONE caller, the converter. No mailbox opcode reaches either."
+  },
+  "scale_formula": {
+    "actuation_threshold": 100,
+    "clamp": 1279,
+    "default_floor": 3500,
+    "default_reference": 5600,
+    "default_scale_from_formula": 998,
+    "default_scale_hardcoded": 998,
+    "default_span": 2100,
+    "formula": "scale[key] = 0x200000 / (reference[key] - floor[key])",
+    "formula_reproduces_the_default": true,
+    "full_travel_raw": 1278,
+    "full_travel_reaches_the_curve_maximum": true,
+    "instruction": "sdiv r1,r9,r1 with r9 = 0x200000, at 0x1803ab62, 0x1803abe0, 0x1803ac24, 0x1803ac76 and 0x1803acca",
+    "lut_maximum": 200,
+    "lut_value_at_full_travel": 200,
+    "why_it_matters": "the conversion is (reference - sample) * 1279 * scale >> 21. Substituting scale = 0x200000/span makes it 1279 * (reference - sample) / span \u2014 a normalised 0..1279 position that spans the travel curve exactly. The scale is not a magic number; it is the reciprocal of the measured span."
+  },
+  "summary": {
+    "checks": 28,
+    "failed": 0,
+    "ok": true
+  },
+  "unresolved": [
+    {
+      "detail": "Reference, floor and scale carry no units. The span 2100 is a raw converter range, not a distance, and nothing relates it to millimetres or to force.",
+      "key": "physical_units"
+    },
+    {
+      "detail": "The +0xf/-0x5 hysteresis, the 8-sample average and the 10/16/5 consecutive-count gates are recovered as arithmetic. What they are tuned for \u2014 thermal drift, magnet ageing, mechanical settling \u2014 is not recoverable from code.",
+      "key": "drift_constants"
+    },
+    {
+      "detail": "The settling window is 600 conversion passes on the divide-by-8 tick. IRQ38's period is still unknown, so that is a count, not a duration.",
+      "key": "settling_duration"
+    },
+    {
+      "detail": "The second context increments the app-side fault counter at +0x27a and opcode 0x07 can seed it, but what the APPLICATION does with the count is not traced here.",
+      "key": "fault_counter_consumer"
+    },
+    {
+      "detail": "The word at 0x1803c4b0+4 is the settling counter and the byte at +1 is a global fault flag. What reads that flag is not recovered.",
+      "key": "mode_word"
+    },
+    {
+      "detail": "484 of the second context's accesses still have an unresolved base, so every negative here remains a 'not resolved'.",
+      "key": "unresolved_accesses"
+    }
+  ],
+  "writers": [
+    {
+      "detail": "floors the per-key settle timer only; touches no calibration value",
+      "entry": "0x18039a48",
+      "function": "FUN_18039a48",
+      "role": "writer",
+      "touches": [
+        "0x1803d200"
+      ]
+    },
+    {
+      "detail": "the only reader; turns a sample into a travel byte",
+      "entry": "0x1803a6c4",
+      "function": "FUN_1803a6c4",
+      "role": "reader",
+      "touches": [
+        "0x1803ca08",
+        "0x1803caa0",
+        "0x1803cd90",
+        "0x1803d038",
+        "0x1803d0d0",
+        "0x1803d11c",
+        "0x1803d168",
+        "0x1803d200"
+      ]
+    },
+    {
+      "detail": "installs every default, once, at second-context startup before any mailbox command is served",
+      "entry": "0x1803aa1c",
+      "function": "FUN_1803aa1c",
+      "role": "writer",
+      "touches": [
+        "0x1803ca08",
+        "0x1803cfa0"
+      ]
+    },
+    {
+      "detail": "the runtime tracker: baseline drift, floor tracking, fault detection, and the scale recompute",
+      "entry": "0x1803aaa6",
+      "function": "FUN_1803aaa6",
+      "role": "writer",
+      "touches": [
+        "0x1803caa0",
+        "0x1803cd90",
+        "0x1803cebc",
+        "0x1803d038",
+        "0x1803d084",
+        "0x1803d168",
+        "0x1803d200"
+      ]
+    }
+  ]
+}

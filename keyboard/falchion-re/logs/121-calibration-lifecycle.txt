@@ -1,0 +1,371 @@
+LOG 121 — THE PER-KEY CALIBRATION LIFECYCLE
+Date: 2026-09-08
+Scope: ONE step, the last open piece of the acquisition story. Offline only.
+It authorises nothing live. Nothing was committed, staged or unstaged.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader tool. NO CALIBRATION,
+UNLOCK, ERASE, PROGRAM, RESET OR SPI COMMAND WAS CONSTRUCTED — this phase reads
+code and never speaks to the device. Neither evidence binary was opened for
+writing and both hashes are unchanged below. No historical log and not
+opencode.json were modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+THE ANSWER IN ONE LINE: the second context calibrates itself from hard-coded
+defaults at every startup, tracks drift continuously, persists nothing, and
+fails safe — an uncalibrated key reads RELEASED.
+
+
+================================================================================
+STEP 1 — WHERE THE VALUES LIVE, AND WHO WRITES THEM
+================================================================================
+Resolved from FUN_1803a6c4's pool, which log 119 left as bare DAT_ names:
+
+  0x1803ca08  u16[75]  REFERENCE   the released-end baseline   (r10)
+  0x1803caa0  u16[75]  FLOOR       the pressed-end reference   (lr)
+  0x1803cd90  u32[75]  SCALE       lr + 0x2f0
+  0x1803cb38  u32[75]  accumulator      0x1803cebc  u8[75]  step counter
+  0x1803d038  u8[75]   fault flag       0x1803d11c  u8[75]  deep-press latch
+  0x1803d200  u16[75]  gate timer
+
+CANDIDATE (d), STATIC IMAGE DATA, IS ELIMINATED FIRST because it is cheapest to
+test. Every one of those arrays is ZERO in the image:
+
+  reference  0x1803ca08..0x1803ca9d  150 bytes  nonzero 0   BSS
+  floor      0x1803caa0..0x1803cb35  150 bytes  nonzero 0   BSS
+  scale      0x1803cd90..0x1803cebb  300 bytes  nonzero 0   BSS
+
+The only initialised tables nearby are two 6-entry u16 preset tables at
+0x1803c386 = {15, 45, 55, 85, 110} and 0x1803c392 = {250, 650, 1000, 1350,
+1700}, both indexed by a per-key setting byte from the APPLICATION's structure.
+Those are per-key actuation-point configuration, not calibration.
+
+THE EXHAUSTIVE SCAN. Every literal-pool word in the image that points anywhere
+into 0x1803ca08..0x1803d300, attributed to its owning function:
+
+  FUN_18039a48   0x1803d200                                    gate timer only
+  FUN_1803a6c4   ca08 caa0 cd90 d038 d0d0 d11c d168 d200       READER
+  FUN_1803aa1c   0x1803ca08, 0x1803cfa0                        WRITER
+  FUN_1803aaa6   caa0 cd90 cebc d038 d084 d168 d200            WRITER
+
+FOUR FUNCTIONS, AND NO OTHERS. That single result eliminates two more
+candidates at once:
+
+  (b) SENT BY THE APP OVER THE MAILBOX — ELIMINATED. No mailbox handler
+      appears. Opcode 0x0b's handler FUN_18039a64 reads the app's +0x1e4 bytes
+      and packs them with `orr #0x8800` into the converter's DRIVE arrays;
+      opcode 0x0f's handler fills the same drive arrays from +0x72c. Both are
+      channel configuration. Neither touches reference or scale.
+  (c) LOADED FROM NONVOLATILE STORAGE — ELIMINATED. The arrays live in the
+      second context's RAM; that image has no storage path (log 118's census
+      resolves only two flash-window registers, in the fault handler); no
+      opcode reads them back; and log 111 step 5 already recorded that the
+      commit path copies from no staging buffer.
+
+  (a) COMPUTED BY THE SECOND CONTEXT — CONFIRMED, and now traced.
+
+THE INITIALISER, FUN_1803aa1c, one caller: the service loop FUN_1803af90, at
+startup, before the first mailbox command is served.
+
+    1803aa20  ldr r4,[0x1803aa90]        ; r4 = 0x1803ca08
+    1803aa22  mov.w r0,#0x258            ; the return value, 600
+    1803aa30  mov.w r12,#0x15e0          ; DEFAULT REFERENCE
+    1803aa34  movw r5,#0xdac             ; DEFAULT FLOOR
+    1803aa38  add.w r6,r4,#0x98          ; -> 0x1803caa0
+    1803aa3c  movw r7,#0x3e6             ; DEFAULT SCALE
+    1803aa40  add.w r8,r4,#0x388         ; -> 0x1803cd90
+    1803aa54  strh.w r12,[r4,r0,lsl #0x1]   ; reference[key] = 0x15e0
+    1803aa58  strh.w r5,[r6,r0,lsl #0x1]    ; floor[key]     = 0xdac
+    1803aa5c  str.w r7,[r8,r0,lsl #0x2]     ; scale[key]     = 0x3e6
+    ...       six more arrays zeroed
+    1803aa86  cmp r0,#0x4b                  ; all 75 keys
+
+  THE DEFAULTS ARE IMMEDIATE OPERANDS, not a data table. There is nothing to
+  load and nothing to corrupt.
+
+THE ARITHMETIC SELF-CHECK, and this is what makes the reading trustworthy. The
+updater recomputes scale with an sdiv at five sites, numerator 0x200000:
+
+    scale[key] = 0x200000 / (reference[key] - floor[key])
+
+  span    = 0x15e0 - 0xdac = 2100
+  0x200000 / 2100 = 998 = 0x3e6      <- EXACTLY the hard-coded default scale
+
+  and the conversion then reads, substituting that scale:
+
+    travel_raw = (reference - sample) * 1279 * (0x200000/span) >> 21
+               = 1279 * (reference - sample) / span
+
+  a normalised 0..1279 position. Full travel gives 1278, and the travel curve
+  at 1278 is 200 — its maximum, and exactly twice log 110's actuation
+  threshold of 100.
+
+  THREE CONSTANTS WRITTEN INDEPENDENTLY AGREE: the default scale, the sdiv
+  numerator, and the curve's length and maximum. A misreading does not produce
+  that. The scale is not a magic number; it is the reciprocal of the measured
+  span, and log 119's opaque ">> 21" is now fully explained.
+
+
+================================================================================
+STEP 2 — RUNTIME UPDATES, AND WHETHER ANYTHING COMMANDS THEM
+================================================================================
+THE TRACKER, FUN_1803aaa6, reached only through the guard FUN_1803aa98, which
+is called only from the converter. The guard is a sanity window:
+
+    1803aa98  sub.w r2,r1,#0x80
+    1803aa9c  movw r3,#0x22a9
+    1803aaa0  cmp r3,r2
+    1803aaa2  bx.ls lr                   ; outside 0x80..0x2329 -> do nothing
+
+BASELINE DRIFT, when the sample is above the reference:
+
+    1803ab18  ldrh.w r6,[r2,r0,lsl #0x1]    ; reference[key]
+    1803ab1c  add.w r7,r6,#0xf
+    1803ab20  cmp r7,r1
+    1803ab24  add.cc r1,r6,#0x5             ; step UP by 5, capped
+    1803ab28  adds r1,#0xf
+    1803ab2e  sub.hi r1,r6,#0x5             ; step DOWN by 5, capped
+    1803ab32  strh.w r1,[r2,r0,lsl #0x1]    ; reference[key] = tracked
+
+and on the learn path a running sum of 8 samples is averaged
+(`lsr.w r8,r1,#0x3`), then gated by consecutive counts of 10 or 16-then-5
+before the reference moves by 0xa or 0x5. Every change is followed by:
+
+    1803ab58  ldrh.w r1,[r2,r0,lsl #0x1]    ; reference
+    1803ab5c  ldrh.w r2,[r5,r0,lsl #0x1]    ; floor
+    1803ab60  subs r1,r1,r2                 ; span
+    1803ab62  sdiv r1,r9,r1                 ; 0x200000 / span
+    1803ab66  str.w r1,[r10,r0,lsl #0x2]    ; scale[key]
+
+FLOOR TRACKING, when the sample is at or below the reference: the floor is
+pulled down toward observed minima in steps of 0x190 behind a 0x3e8 threshold,
+with the same scale recompute after each move.
+
+SO THE ANSWER TO "DO THEY CHANGE AFTER BOOT" IS YES — this is continuous
+baseline-drift compensation, not a one-shot calibration.
+
+IS THERE A RECALIBRATE COMMAND? NO, and the call graph is small enough to say
+so exhaustively:
+
+    FUN_1803aa1c  callers = 1   (FUN_1803af90, the service loop's startup)
+    FUN_1803aa98  callers = 1   (FUN_1803a6c4, the converter)
+    FUN_1803aaa6  callers = 0   (falls through from the guard)
+    FUN_1803a6c4  called by FUN_1803901c, the opcode 0x01/0x02/0x0c handler
+
+  No mailbox opcode reaches either writer. NO VENDOR-HID COMMAND TRIGGERS
+  CALIBRATION, SO THERE ARE NO COMMAND BYTES TO RECOVER — which is the safest
+  possible outcome for that question, and it is why nothing transmittable
+  appears anywhere in this step's output. A unit test asserts the generated
+  JSON contains no frame-shaped content.
+
+WHAT TRIGGERS IT IS THE TICK, AND TWO OLD ORPHANS FALL OUT. The app-side
+mailbox cluster hangs off FUN_18001fbe, and the sample requester's caller is
+FUN_18008c16 — both recorded as callerless since log 106 and still open after
+log 119. Both are reached from the ENTRY image through veneers:
+
+    entry FUN_00000516 + 0x50  bl  -> veneer 0x40d0 -> FUN_18001fbe
+    entry FUN_00000516 + 0x60  b.w -> veneer 0x4116 -> FUN_18008c16
+
+  FUN_00000516 is the prescaler's divide-by-8 job, identified in log 109 step 4
+  and reused in log 114 as the watchdog feed. So the calibration-adjacent
+  mailbox traffic rides the same IRQ38/8 cadence as everything else, and the
+  last two large orphans from log 106 are now explained.
+
+
+================================================================================
+STEP 3 — WHAT HAPPENS WHEN CALIBRATION IS MISSING OR INVALID
+================================================================================
+Every failure mode resolves in the same direction, and it is the safe one.
+
+THE 0xffff SENTINEL does not wrap the subtraction, because the comparison
+happens first:
+
+    1803a702  ldrh.w r1,[r5,r4,lsl #0x1]    ; sample from appptr+0x3f2
+    1803a706  cmp r1,r9                     ; r9 = 0xffff
+    1803a70c  bl.ne 0x1803aa98              ; update only if NOT the sentinel
+    ...
+    1803a758  ldrh.w r1,[r5,r4,lsl #0x1]
+    1803a75c  cmp r1,r9
+    1803a760  mov.eq r10,#0x0
+    1803a764  beq 0x1803a842                ; sentinel -> skip this key entirely
+
+  `reference - 0xffff` is never evaluated. A key with no sample yet produces no
+  travel byte at all.
+
+THE SETTLING WINDOW is the part that matters most for a replacement. The
+initialiser RETURNS 0x258 = 600, the service loop stores it at 0x1803c4b4, and
+the converter branches on it:
+
+    1803a6dc  ldr r0,[0x1803a938]        ; = 0x1803c4b0
+    1803a6de  ldr r0,[r0,#0x4]           ; = *(0x1803c4b4), the counter
+    1803a6ea  beq 0x1803a74a             ; zero -> the normal path
+    1803a6f2  str r0,[r1,#0x4]           ; otherwise decrement and...
+    1803a724  strh.w r6,[r2,#0x2c6]      ; ...force every raw word to 0
+    1803a72e  strb.w r6,[r2,#0x35c]      ; ...and every TRAVEL BYTE to 0
+
+  FOR THE FIRST 600 CONVERSION PASSES, CALIBRATION IS UPDATED FROM EVERY VALID
+  SAMPLE AND ALL 75 KEYS READ RELEASED. Since actuation is travel >= 100 and
+  travel is forced to 0, an uncalibrated keyboard emits NO keystrokes and
+  CANNOT emit spurious ones. That is a property of the code, not a hope.
+
+IMPLAUSIBLE SAMPLES. Below 0xfa the tracker increments a per-key counter — and
+it does so in the APPLICATION's structure:
+
+    1803ac44  ldr r1,[0x1803ad50]        ; the saved app pointer
+    1803ac4a  ldrb.w r3,[r1,#0x27a]      ; appptr + 0x27a + key
+    1803ac4e  cmp r3,#0xf
+    1803ac52  pop.cs                     ; saturate at 15
+    1803ac5c  strb.w r3,[r1,#0x27a]
+
+  +0x27a is the array mailbox opcode 0x07 carries, so the fault count is
+  visible to BOTH sides — the app can seed it and the second context increments
+  it. It is the only calibration-adjacent value that crosses the mailbox, and
+  it is a symptom count, not a coefficient.
+
+  Once the count reaches 15:
+
+    1803ac64  strb r1,[r3,#0x1]          ; a global fault flag byte
+    1803ac68  strb r1,[r3,r0]            ; per-key fault flag 0x1803d038
+    1803ac6a  strh.w r11,[r5,r0,lsl #0x1]; floor[key] = 0xdac, the DEFAULT
+    1803ac76  sdiv r1,r9,r1              ; and the scale is recomputed
+
+  A faulted key is returned to the default floor rather than left with a
+  nonsense span.
+
+THE TWO FLAG BYTES THE PROMPT ASKED ABOUT:
+  0x1803d038  the fault flag, set as above; routes the key to a path that
+              stores the raw sample instead of a converted travel byte
+  0x1803d11c  a deep-press latch, written when a converted travel exceeds 0x96,
+              and checked BEFORE the fault flag — so a key that has been
+              pressed hard is not treated as faulted
+
+THE XOR STAGING CHECK from log 118 sits upstream of all this: a sample failing
+it is replaced by a default before delivery, so the calibration path never sees
+a corrupted word. It does not reject calibration itself.
+
+
+================================================================================
+STEP 4 — THE LIFECYCLE, AND THE DEPENDENCY MAP
+================================================================================
+  boot defaults      once, at second-context startup
+                     FUN_1803aa1c writes reference 0x15e0, floor 0xdac,
+                     scale 0x3e6 for all 75 keys, from immediates   OBSERVED
+  storage load       NEVER. No reader, no writer, no opcode          OBSERVED
+  settling           the first 600 conversion passes; calibration updates,
+                     every key reads released                       OBSERVED
+  runtime tracking   every pass thereafter; drift and floor tracking,
+                     scale recomputed on each change                OBSERVED
+  persistence        NEVER. Rebuilt from the same defaults each boot
+                                                          STRONGLY-INFERRED
+
+WHAT A CUSTOM FIRMWARE MUST DO: accommodate calibration, never implement it.
+Supply a valid structure pointer in opcode 0x0d so the second context has
+somewhere to write, then treat travel bytes as meaningless until the settling
+window ends. Attempting to shortcut the window, or to write the arrays from the
+application side, has no supported path — the app cannot even address them.
+
+DEPENDENCY MAP: a new service `calibration`, classified MUST-NEUTRALIZE, for
+the same reason `hall_acquisition` is — it is satisfied by inheriting vendor
+code, not by reproducing it. The gate is now 6 must-implement, 5
+must-neutralize, 5 may-omit, 2 unresolved.
+
+A RULE GENERALISED RATHER THAN LOOSENED. Log 119 refined "a resolved service
+needs no boundary" to "at most ONE resolved service may carry one, and it must
+be hall_acquisition". Adding a second such service broke that. The rule is now
+principled instead of numeric: a resolved service may carry an evidence
+boundary ONLY when the second execution context owns it, because those are
+exactly the services a replacement inherits rather than implements. Anything
+the application owns and that is resolved has nothing left to caveat. The test
+asserts set equality against {hall_acquisition, calibration}, so a boundary
+appearing on any other service still fails.
+
+
+================================================================================
+STEP 5 — THE TOOL AND THE TESTS
+================================================================================
+Added tool/map_calibration_flow.py — one data model, notes/calibration-flow.
+{json,md}, with --json, --write and --check.
+
+$ python3 tool/map_calibration_flow.py
+  RESULT calibration_ok=True checks=28
+
+Added tool/test_map_calibration_flow.py — 33 tests in three groups.
+
+  FAIL-CLOSED: a read outside the image raises; a missing inventory raises; a
+  wrong source hash raises through the shared allowlist; bodies() raising makes
+  main() return 1 without a traceback.
+
+  ANTI-VACUITY, three of them, because three claims here are negatives:
+    - the BSS check is re-run against the travel curve, which IS initialised,
+      so the predicate is shown able to report both ways;
+    - the exhaustiveness scan is re-run with a wider block and must find MORE
+      than four functions, proving it is a search and not a fixed list;
+    - the scale identity is re-run with a perturbed span. A one-unit change is
+      absorbed by integer division — worth knowing, and asserted explicitly —
+      so the test uses a difference the quotient actually resolves.
+
+  DISCIPLINE: no claim may say calibration is reproducible; no claim may state
+  the settling window as a duration, since 600 passes on an unknown tick is a
+  count; and the generated JSON must contain nothing frame-shaped, so this step
+  cannot leak something transmittable.
+
+A CHECK CAUGHT AN ERROR OF MINE. My first anti-vacuity test perturbed the span
+by one and asserted the scale would change. It does not: 0x200000/2101 is still
+998. The test was wrong, not the finding — integer division at that magnitude
+absorbs a unit — so it now asserts BOTH facts, the insensitivity to one unit
+and the sensitivity to a hundred.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m py_compile tool/map_calibration_flow.py \
+    tool/test_map_calibration_flow.py tool/map_platform_dependencies.py \
+    tool/test_map_platform_dependencies.py                             [exit 0]
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"
+  Ran 898 tests   OK                                                   [exit 0]
+  (865 before this step; +33 in tool/test_map_calibration_flow.py)
+$ the thirteen existing --check scripts plus the new one
+                                                   all reports_current=True
+$ sha256sum -c logs/SHA256SUMS                     all OK              [exit 0]
+$ git diff --check                                 clean               [exit 0]
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+
+================================================================================
+UNRESOLVED BOUNDARIES
+================================================================================
+  - PHYSICAL UNITS. Reference, floor and scale carry none. The span 2100 is a
+    raw converter range, not a distance, and nothing relates it to millimetres
+    or to force.
+  - THE DRIFT CONSTANTS. The +0xf/-0x5 hysteresis, the 8-sample average and the
+    10/16/5 consecutive gates are recovered as arithmetic. What they are tuned
+    for — thermal drift, magnet ageing, mechanical settling — is not
+    recoverable from code.
+  - THE SETTLING DURATION. 600 passes on the divide-by-8 tick. IRQ38's period
+    is still unknown, so that is a COUNT, not a duration.
+  - THE FAULT COUNTER'S CONSUMER. The second context increments the app-side
+    counter at +0x27a and opcode 0x07 can seed it; what the APPLICATION does
+    with the count is not traced here.
+  - THE GLOBAL FAULT FLAG at 0x1803c4b0+1 is written; what reads it is not
+    recovered.
+  - 484 of the second context's accesses still have an unresolved base, so
+    every negative here remains a "not resolved".
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NO COMMAND OF ANY KIND WAS CONSTRUCTED. No calibration, unlock, erase,
+    program, reset or SPI sequence appears in the tool, the notes or this log.
+  - The pre-existing ghidra/project falchion-hfx project was never opened.
+  - Neither evidence binary was opened for writing; both hashes are unchanged.
+  - No historical log was modified. opencode.json was left alone.
+  - Nothing was committed, staged or unstaged.
+  - NO DEVICE WAS ACCESSED.

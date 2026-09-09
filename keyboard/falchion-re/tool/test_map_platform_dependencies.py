@@ -45,12 +45,19 @@ class GateRules(unittest.TestCase):
         resolved = [s for s in pd.SERVICES
                     if s.classification != "unresolved"]
         self.assertTrue(resolved)
-        with_boundary = [s for s in resolved if s.evidence_boundary]
-        self.assertLessEqual(len(with_boundary), 1,
-                             [s.key for s in with_boundary])
-        for service in with_boundary:
-            self.assertEqual(service.key, "hall_acquisition")
-            self.assertGreater(len(service.evidence_boundary), 60)
+        with_boundary = {s.key for s in resolved if s.evidence_boundary}
+        # GENERALISED by log 121, which added the second such service. The
+        # rule is not "at most one" — it is that a resolved service may carry
+        # a boundary ONLY when the second execution context owns it, because
+        # those are exactly the services a replacement inherits rather than
+        # implements. Anything the application owns and that is resolved has
+        # nothing left to caveat.
+        second_context_owned = {"hall_acquisition", "calibration"}
+        self.assertEqual(with_boundary, second_context_owned)
+        for service in resolved:
+            if service.evidence_boundary:
+                self.assertGreater(len(service.evidence_boundary), 60,
+                                   service.key)
 
     def test_may_omit_requires_a_proven_safe_idle_state(self):
         for service in pd.SERVICES:
