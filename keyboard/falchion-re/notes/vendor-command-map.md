@@ -48,58 +48,58 @@ The dispatcher at `0x18001fbe` accepts **17** top-level opcodes. Only `0x12` and
 | sub | handler | confidence | what it does | storage |
 |---|---|---|---|---|
 | `0x00` | `0x18002514` | `static-handler-proven` | PROFILE SWITCH (indirect). Request byte 4 is the profile, accepted 0..5 with 6 folded to 0; anything else is refused at 0x1800251e. The handler does NOT write the selection byte — it posts opcode 2 into the storage request struct at +0x84 with the profile at +0x85 and returns. | storage request struct -> device header +6 |
-| `0x0c` | `0x18002d8e` | `static-located-only` | reaches the shared per-key/global writer tail at 0x18002cdc, which writes keymap record +0x06/+0x07 bits 0..2 and the global block's bits 9..15 and calls the actuation clamp. Which of those this subcommand selects is NOT established. | unestablished |
-| `0x18` | `0x18002c9a` | `static-located-only` | enters the same shared writer tail. Semantics NOT established. | unestablished |
+| `0x0c` | `0x18002d8e` | `static-handler-proven` | request bytes 2-3 are a 16-bit selector: value 0 stores 1000 (0x3e8) into the word at 0x1801e6c8; either value then stores 1 and request byte 4 into 0x18025aa0 +1 and +2. Replies 51 0c with a ONE-byte payload. The consumers of 0x1801e6c8 and 0x18025aa0 are NOT identified, so what the 1000 counts is unknown. | 0x1801e6c8 and 0x18025aa0 (RAM, consumers unknown) |
+| `0x18` | `0x18002c9a` | `static-handler-proven` | the firmware names it =MS_A. Stores request byte 2 and request byte 4 into the runtime struct at 0x18022d44 at +0x05/+0x06 AND again at +0x19d/+0x19e — one live copy and one shadow 0x198 apart — and, when *(0x18024ebc+0x30) is 1, writes 5 to +0x38. Replies 51 18 with a TWO-byte payload. What MS_A stands for is NOT established. | 0x18022d44 +0x05/+0x06 and +0x19d/+0x19e (RAM) |
 | `0x20` | `0x1800253e` | `static-handler-proven` | the key-remap family's third entry: byte 2 is the source (<= 0xbc), byte 3 must be 0x00 or 0x9f, bytes 4-5 are a 16-bit target. Writes the profile block's key table. | profile block +0xd4 (+ layer*0x1ee) |
 | `0x21` | `0x18002662` | `wire-proven` | SET Fn-LAYER KEY BINDING (historical [C][V]). Byte 2 source <= 0xbc, byte 3 in {0x00, 0x9f}, bytes 4-5 the 16-bit target; targets <= 0xbc go through the translation table, 0xff/0xc7/0xc8/0xd3 take separate paths. The store is a halfword into the profile block's key table. | profile block +0xd4 + layer*0x1ee + xlate[src]*2 |
 | `0x22` | `0x18002662` | `static-handler-proven` | shares 0x21's handler entry at 0x18002662 — the two compare sites both branch to it. FINDINGS records 0x22 as the variant that SETS the per-key mode byte and stores an actuation value, where 0x21 clears it. | profile block key table + keymap record |
-| `0x23` | `0x180027d6` | `static-located-only` | byte 2 <= 0xbc and byte 3 in {0x00,0x9f} — the same source/layer guard as the remap family — then calls 0x18004a1c. Store target NOT established. | unestablished |
-| `0x24` | `0x1800289a` | `static-located-only` | same source/layer guard, then a sequence of stores through a base this scan did not resolve. NOT established. | unestablished |
+| `0x23` | `0x180027d6` | `static-handler-proven` | the firmware names it =KC_S,T_A — key code, source and target. Byte 2 is the source (<= 0xbc), byte 3 the layer (0x00 or 0x9f); the handler resolves the per-key record and writes THREE fields: record +0x04 = 1 (the mode byte 0x21 clears), +0x0e = request byte 4 and +0x0f = request byte 5, then a 16-bit target from bytes 6-7 through the same translation table and the same 0xff/0xc7/0xc8/0xd3 special cases as the remap family. Records +0x0e and +0x0f are OUTSIDE log 125's field map and are not named here. | keymap record +0x04, +0x0e, +0x0f and the remap target |
+| `0x24` | `0x1800289a` | `static-handler-proven` | the same source/layer guard as the remap family, then record +0x04 = 2 — a THIRD value of the mode byte, where 0x21 clears it and 0x23 writes 1 — followed by a 16-bit target from bytes 5-6 through the translation table with the 0xff/0xc7/0xc8/0xd3 special cases. So the mode byte is at least four-valued. | keymap record +0x04 and the remap target |
 | `0x2c` | `0x18002970` | `static-handler-proven` | byte 2 is compared against 4, 5 and 7; the handler calls a copy routine and the storage request primitive at 0x18000b28, and writes the device header +5 and the byte at 0x1801e6b7. | device header +5 |
 | `0x2d` | `0x18002aca` | `static-handler-proven` | LIGHTING. Byte 2 is compared against 2 and 4; the handler reads and rewrites the profile block's flags halfword at +0x02 and calls the lighting default setter FUN_1800075a that log 125 recovered. | profile block +0x02 and the lighting slots at +0x04 |
 | `0x31` | `0x18002b2e` | `wire-proven` | SET POLLING RATE. Byte 4 is a 4-bit index, accepted only 0 and 3; writes profile block +0x4f8 bits 0..3 and caches 1 << index at 0x1801e736. Fully decoded in logs 126 and 127. | profile block +0x4f8 bits 0..3 |
 | `0x42` | `0x18003310` | `static-handler-proven` | writes the global block's halfword at +0x18 — the marker log 125 records the demo-mode check owning — from request byte 4, and calls the wear-levelled store's write primitive. | global block +0x18, wear-levelled store |
-| `0x4f` | `0x18002b62` | `static-located-only` | reads request byte 5 and compares it against 0x9f. NOT established. | unestablished |
+| `0x4f` | `0x18002b62` | `static-handler-proven` | PER-KEY ACTUATION, the exact counterpart of 0x50. Byte 5 is the layer (0x00 or 0x9f), byte 4 the key (<= 0xbc), byte 6 the value: the handler writes bits 0..6 of the per-key record's halfword at +0x08 — log 125's per-key actuation, range 1..40 — then compares it against the profile's ALL-KEY value in global bits 9..15 and CLEARS the +0x08 bit-15 override when they are equal, SETS it when they differ. Log 125 recovered that field and that override bit independently. | keymap record +0x08 bits 0..6 plus the bit-15 override |
 | `0x50` | `0x180026ec` | `static-handler-proven` | ALL-KEY ACTUATION. Indexes the global block by the CURRENT PROFILE (device header +6) and inserts request byte 4 into bits 9..15 — log 125's actuation field, range 1..40 — then calls the clamp at 0x18006d3c that log 125 showed raising values below 0x28 and lowering above 1. This is the strongest match in the table to a HAL name (SetActuation_AllKey), and it is offered as a match, not as the command's name. | global block, bits 9..15 of the profile's word |
 | `0x51` | `0x180026ea` | `static-handler-proven` | stores the constant 0x3c into the word at 0x1801e7b8 and replies. The cell's consumer is NOT identified. | 0x1801e7b8 (RAM, consumer unknown) |
-| `0x52` | `0x180026e8` | `static-located-only` | byte 2 selects one of five sub-paths through a byte table at 0x18002c24, and byte 4 is then tested against 0, 1 and 2. Failure calls the short responder. Field meanings NOT established. | unestablished |
+| `0x52` | `0x180026e8` | `static-located-only` | byte 2 selects one of five paths through a byte table at 0x18002c24 (targets 0x18002c2a, 0x18002c38, 0x18002c3e, 0x18002c4a and 0x18002c60), each loading a different set of small constants into r0 and the stack frame; the paths converge at 0x18002c6c, which reads request byte (4 + r0) and switches on 0, 1 and 2, calling the short responder on any other value. The constants are opaque and the store target is NOT established — this is the one subcommand this step could not decode. | unestablished |
 | `0x53` | `0x180026e6` | `static-handler-proven` | byte 7 selects a layer (0 or 1, anything else rejected) and byte 6 gates a per-key record update at keymap + layer*0xd84 + key*0x20 + 0x0a. | keymap record +0x0a |
-| `0x54` | `0x180026e4` | `static-located-only` | branches to 0x18002fe4. Semantics NOT established. | unestablished |
-| `0x55` | `0x18002dc6` | `static-located-only` | handler entry proven; semantics NOT established. | unestablished |
-| `0x56` | `0x18002dca` | `static-located-only` | handler entry proven; semantics NOT established. | unestablished |
+| `0x54` | `0x180026e4` | `static-handler-proven` | byte 5 is the layer, byte 4 the key (<= 0xbc), byte 8 a gate; the handler writes bits 14..15 of the per-key record's halfword at +0x0a from request byte 7 plus one. Those are exactly the two bits the shared writer tail clears with bic #0xc000 at 0x18002d08, so +0x0a carries a 2-bit mode above its 7-bit fields. What the mode selects is NOT established. | keymap record +0x0a bits 14..15 |
+| `0x55` | `0x18002dc6` | `static-handler-proven` | the firmware names its two halves =TEMP1_S_KC and =TEMP2_S_KC. Bytes 4-5 and bytes 6-7 are TWO 16-bit key codes, each bounded at 0xbc and passed through the translation table, and each result is then range-checked to HID usage 0x04..0x91 or 0xe0..0xe7 — the printable block and the eight modifiers — with byte 8 gating the write. So it configures a PAIR of key codes. Which feature consumes the pair is NOT established. | unestablished (a validated key-code pair) |
+| `0x56` | `0x18002dca` | `static-handler-proven` | SETTINGS FACTORY DEFAULT, and the firmware says so: the handler passes BLOCK D to 0x180005c6 and then to 0x1800aadc with r1 = 1, sets the byte at 0x1801e737 to 1, replies 51 56 with a 60-byte payload and logs S_ST_DEF. It is the only located command that reinitialises block D, which otherwise has no USB writer at all. | block D (0x1801fef8) via its initialisers |
 | `0x57` | `0x18002cda` | `static-handler-proven` | enters the shared per-key writer tail at 0x18002cdc, which updates keymap record +0x08 (bits 0..6, clearing bit 15) and +0x0a (two 7-bit fields, clearing bits 14-15) for BOTH layers under flag control. | keymap records +0x06/+0x07/+0x08/+0x0a, both layers |
-| `0x58` | `0x18002dc8` | `static-located-only` | handler entry proven; semantics NOT established. | unestablished |
-| `0x59` | `0x18002dcc` | `static-located-only` | handler entry proven; semantics NOT established. | unestablished |
-| `0x90` | `0x18002d0e` | `static-located-only` | branches to 0x1800322a. Semantics NOT established. | unestablished |
+| `0x58` | `0x18002dc8` | `static-handler-proven` | ALL-KEY RAPID TRIGGER. Bytes 4 and 5 are the press and release values, each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; the handler calls 0x1800f948 with mode 0, which range-checks each value to 1..6 (substituting the default 2) and inserts them into the profile's global word at BITS 20..22 and BITS 17..19 — log 125's rapid-trigger press and release fields, with its stated range and its stated default. | global block, bits 20..22 and 17..19 of the profile's word |
+| `0x59` | `0x18002dcc` | `static-handler-proven` | PER-KEY RAPID TRIGGER, the exact counterpart of 0x58. Byte 5 is the layer (0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 the press and release values under the same 1..6 rule; it calls 0x1800f948 with mode 1, which writes bits 0..2 of the per-key record at +0x06 and +0x07 and sets the 0x80 override bit when the value differs from the profile's all-key value, clearing it when they match — the same override discipline 0x4f uses for actuation, and exactly log 125's field map. | keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override |
+| `0x90` | `0x18002d0e` | `static-handler-proven` | the firmware names it SC_S_A. Gated on bit 1 of the byte at 0x1801e6b7 — if clear the handler does nothing but reply — it passes request byte 4 to 0x1800c184 and request byte 5 to 0x1800c1a0, then replies 51 90 with a 60-byte payload and logs both bytes. The two callees are NOT traced, so what SC_S_A sets is NOT established. | unestablished (two untraced setters) |
 
 ### Evidence for each row
 
 | sub | instructions |
 |---|---|
 | `0x00` | `0x18002514 ldrb [r4,#4]; 0x18002516/0x1800251e cmp #6; 0x1800252c movs r2,#2; 0x1800252e/0x18002530 strb into REQSTRUCT+0x84/85` |
-| `0x0c` | `0x180024a6 cmp #0x0c -> 0x18002d8e` |
-| `0x18` | `0x180024aa cmp #0x18 -> 0x18002c9a` |
+| `0x0c` | `0x180033b2 ldrh [r4,#2]; 0x180033c2 str 0x3e8 -> 0x1801e6c8; 0x180033c6/0x180033ca strb into 0x18025aa0+1/+2` |
+| `0x18` | `0x18003260..0x1800328a; 0x18003272/0x18003276 strb +5/+6; 0x18003278/0x1800327c strb +0x19d/+0x19e; 0x1800329a adr '=MS_A'` |
 | `0x20` | `0x1800253e ldrb [r4,#4]/[r4,#5]; 0x1800254e cmp #0xbc; 0x18002556 cmp #0x9f` |
 | `0x21` | `0x18002662 ldrb [r4,#2]; 0x18002664 cmp #0xbc; 0x1800266c cmp #0x9f; 0x18002686 cmp #0xbc; 0x180026d2 strh.w [r2,#0xd4]` |
 | `0x22` | `0x180024b0/0x180024b4 both -> 0x180024b8 -> 0x18002662` |
-| `0x23` | `0x180027d6 cmp #0xbc; 0x180027e0 cmp #0x9f` |
-| `0x24` | `0x1800289a; 0x180028a8 cmp #0x9f` |
+| `0x23` | `0x180027d8 cmp #0xbc; 0x180027e0 cmp #0x9f; 0x18002814 strb rec+0x04; 0x1800281a strb rec+0x0e; 0x1800281e strb rec+0x0f; 0x180027d2 adr '=KC_S,T_A'` |
+| `0x24` | `0x1800289e cmp #0xbc; 0x180028a8 cmp #0x9f; 0x180028ec strb r2(=2) into rec+0x04; 0x18002908 the translation table` |
 | `0x2c` | `0x18002972/0x18002976/0x1800297a cmp #4/#5/#7; 0x180029a0 strb [r7,#5]` |
 | `0x2d` | `0x18002ace cmp #2; 0x18002ad2 cmp #4; 0x18002af6 strh.w profile+0x2; bl 0x1800075a` |
 | `0x31` | `0x18002b2e ldrb [r4,#4]; 0x18002b30 cmp #3; 0x18002b3e bfi #0,#4` |
 | `0x42` | `0x18003310; 0x18003316/0x1800331c strh global+0x18; bl 0x1800e6d6` |
-| `0x4f` | `0x18002b62; 0x18002b68 cmp #0x9f` |
+| `0x4f` | `0x18002b68 cmp #0x9f; 0x18002b76 cmp #0xbc; 0x18002ba4 ldrh rec+0x08; 0x18002ba6 bfi #0,#7; 0x18002bba ubfx #9,#7; 0x18002bc6 bic #0x8000; 0x18002bcc orr #0x8000` |
 | `0x50` | `0x18002be4 ldrb [r7,#6]; 0x18002be8 ldrb [r4,#4]; 0x18002bee bfi #9,#7; bl 0x18006d3c` |
 | `0x51` | `0x18002c0a ldr r1,[pc] -> 0x1801e7b8; 0x18002c10 str r0,[r1]` |
-| `0x52` | `0x18002c1a ldrb [r4,#2]; 0x18002c1c cmp #5; 0x18002c20 tbb` |
+| `0x52` | `0x18002c1c cmp #0x5; 0x18002c20 tbb; the five targets above` |
 | `0x53` | `0x18002efa ldrb [r4,#7]; 0x18002f1a movw #0x361; 0x18002f36 bfi #14,#2` |
-| `0x54` | `tbb entry -> 0x18002ee4 -> 0x18002fe4` |
-| `0x55` | `0x180024dc cmp #0x55 -> 0x18002dc6` |
-| `0x56` | `0x180024fc cmp #0x56 -> 0x18002dca` |
+| `0x54` | `0x18002fe8 cmp #0x9f; 0x18002ff2 cmp #0xbc; 0x18003028 bfi #14,#2; 0x1800302c strh rec+0x0a` |
+| `0x55` | `0x180030e2/0x18003104 cmp #0xbc; 0x1800311c cmp #0x8d; 0x18003122 cmp #0x7; 0x180030f0 adr '=TEMP1_S_KC'; 0x18003112 adr '=TEMP2_S_KC'` |
+| `0x56` | `0x180031bc ldr -> 0x1801fef8; bl 0x180005c6; bl 0x1800aadc; 0x180031d0 strb 1 -> 0x1801e737; 0x180031e2 adr 'S_ST_DEF'` |
 | `0x57` | `0x18002500 cmp #0x57 -> 0x180031e6; the tail at 0x18002cdc..0x18002dc0` |
-| `0x58` | `0x180024f6 cmp #0x58 -> 0x18002dc8` |
-| `0x59` | `0x1800250a cmp #0x59 -> 0x18002dcc` |
-| `0x90` | `0x1800250e cmp #0x90 -> 0x18002d0e -> 0x1800322a` |
+| `0x58` | `0x18003334/0x18003336 the 0-folds-to-6 and > 5 refusal; 0x1800334c bl 0x1800f948; 0x1800f976 cmp #6; 0x1800f97c movs #2; 0x1800f9d0 bfi #20,#3; 0x1800f9fc ubfx #17,#3` |
+| `0x59` | `0x18003368 cmp #0x9f; 0x18003380 cmp #0xbc; 0x1800338c bl 0x1800f948; 0x1800f9a8 bic #0x80; 0x1800f9b0 strb rec+0x06; 0x1800fa26 strb rec+0x07` |
+| `0x90` | `0x1800322a ldr -> 0x1801e6b9-2; 0x18003230 lsls #0x1e; 0x18003236 bl 0x1800c184; 0x1800323c bl 0x1800c1a0; 0x1800325c adr 'SC_S_A'` |
 
 ## The `0x12` query family — safe to issue
 
@@ -113,7 +113,7 @@ The dispatcher at `0x18001fbe` accepts **17** top-level opcodes. Only `0x12` and
 | `0x07` | `0x180020ea` | `wire-proven` | returns the constant 1 in payload byte 0. The handler stores r6, which the dispatcher sets to 1 at entry and never reassigns on this path. |
 | `0x08` | `0x180020f6` | `wire-proven` | returns 1 or 0 according to whether bits 0x30 of the byte at 0x1801e6b7 are set — a state flag, not a capability constant. |
 | `0x12` | `0x18002118` | `wire-proven` | calls 0x1800ea36 with a pointer to payload byte 0. On the branch the capture took it replies 12 12 with 01 01; the other branch replies with SUBCOMMAND 0x13, so this query has two reply shapes. |
-| `0x13` | `0x1800211a` | `static-located-only` | a compare site and handler entry of its own at 0x1800211a. Note that 12 12's success path REPLIES with subcommand 0x13, so the two are related; the request handler's semantics are NOT established. |
+| `0x13` | `0x1800211a` | `static-handler-proven` | the SAME handler body as 12 12, entered two instructions earlier so that r2 is 1 instead of 0: both call 0x1800ea36 with a pointer to reply byte 0 and that mode flag, and both reply with subcommand 0x13 on the success path. So 12 12 and 12 13 are one query with two modes, and the 12 12 reply the capture observed is its FAILURE branch at 0x18003ff8. |
 | `0x14` | `0x180021d4` | `wire-proven` | MULTIPLEXED. Request byte 2 selects: 0 compares the global block's +0x18 marker against bytes 4-5; 1 takes a third path; 2 returns the ASCII model string 024080600167, which is the form the capture used. |
 | `0x15` | `0x18002254` | `static-handler-proven` | GET POLLING RATE. Reads profile block +0x4f8, masks 0xf, returns the index in reply byte 4. Recovered in log 126; Armoury Crate never sent it, so no reply was observed. |
 | `0x16` | `0x1800226c` | `wire-proven` | returns 1 if the device header's byte 7 equals 0xb5, else 0. The capture saw 0, so that byte was not 0xb5. |
@@ -149,7 +149,7 @@ the dispatcher's write at 0x180035dc stores one byte at +0 and one at +7, then c
 
 `0x1801fef8`, `0x3e0` bytes, flash home `0x340000 + profile*0x1000 (log 125)`, 14 resolved accesses.
 
-**BLOCK D HAS NO USB WRITER. Its only writer is the storage state machine FUN_18000d56, at 0x18001be0. Its fields are NOT decoded here; what is established is that it persists (log 125's flash home), that the storage machine owns it, and that the report path reads two bytes of it.**
+**BLOCK D IS A PER-KEY ENTRY ARRAY, and it still has no USB writer except the factory-default command 51 56. Its only direct writer is the storage state machine FUN_18000d56 at 0x18001be0.**
 
 FUN_180057fe reads +0x4 and +0x5 — and FUN_180057fe is veneer 0x406c, one of the four calls in the rate-gated tick block log 127 mapped. So block D is read on the report path, not just at load time.
 
@@ -165,7 +165,7 @@ FUN_180057fe reads +0x4 and +0x5 — and FUN_180057fe is veneer 0x406c, one of t
 
 **HAL name: none assigned.** hypothesis — the behaviour is a hold-to-emit timer, which fits all four of those names. Nothing here distinguishes them, so NO NAME IS ASSIGNED. Candidates: `ChangeKey_ModTap`, `ChangeKey_Toggle`, `ChangeKey_DKS`, `SetSpeedTap`.
 
-**Not established:** 600 bytes per layer = 300 halfwords; 75 keys x 8 is the same 600, so the stride is per-key-times-eight. Whether the ring is per layer or per scan group is NOT established.
+**Not established:** 600 bytes per bank = 300 halfwords; the consumer reads at most 120 of them.
 
 ## The nine rapid writes at t = 314–318
 
@@ -189,6 +189,75 @@ the burst is not a batched apply of several settings, so it cannot be read as ev
 | macro block | `0x180225fc` | `0x20000 + profile*0x80000 + slot*0x1000` | the block's own first halfword | yes | `an unresolved dispatcher branch at 0x180035dc` |
 | block D | `0x1801fef8` | `0x340000 + profile*0x1000` | the block's own first halfword | yes | — |
 
+## Block D's layout
+
+| offset | size | type | role | confidence |
+|---|---|---|---|---|
+| `+0x000` | `2` | u16 | the block's own additive checksum, the shape log 125 showed every stored block carrying in its first halfword; read nine times and written once, all inside FUN_18000d56 | `strongly-inferred` |
+| `+0x004` | `0x1ee` | 247 x 2-byte entry | entry i is {+0: a value byte, +1: a flags byte}, indexed 0..0xf6 by the reader's own loop bound. 247 is exactly log 125's key-table entry count, and 4 + 247*2 = 0x1f2 | `observed` |
+| `+0x1f2` | `0x1ee` | 247 x 2-byte entry | the second table. 0x1f2 + 0x1ee = 0x3e0 EXACTLY, the block's declared size, so the block closes on two equal-sized per-key tables — the same two-table shape as the profile block's key tables at +0xd4 and +0x2c2. Which index selects which table is NOT established | `strongly-inferred` |
+
+**Reader.** FUN_180057fe walks i = 0..0xf6. It tests bits 3..7 of entry i's flags byte (lsrs #3), and when they are non-zero it scans an existing byte list for entry i's value byte, appending i and bumping a count only if the value is not already present. So the pass builds a DE-DUPLICATED list of the currently active entries, once per divide-by-eight tick.
+
+**Defaults.** NOT RECOVERED. The block is zero-initialised RAM in the image, so no static default is readable; 51 56 restores it through 0x180005c6 and 0x1800aadc, neither traced here.
+
+**Persistence.** Log 125 gives it a flash home at 0x340000 + profile*0x1000 — one 0x3e0 block per profile, six profiles. Combined with the layout that means a per-profile, per-key table of 247 two-byte entries survives a power cycle and is re-read into RAM on profile load, like the keymap bank and the profile block.
+
+**Armoury Crate match.** NO MATCH IS CLAIMED. Log 125's decode of notes/ac-profile3-decoded.json has no 247-entry two-byte-per-key structure left unmatched, and matching on size alone is exactly the resemblance rule this project forbids.
+
+## The dual-role timer, mechanism complete
+
+**Dual-role, hold-to-alternate, threshold in 10 ms units.**
+
+| | |
+|---|---|
+| base | 0x18024000 |
+| stride | 600 |
+| stride arithmetic | k*15, then *5, then <<3 — the writer at 0x180054c8..0x180054d2 and the consumer at 0x18006084..0x18006094 compute it identically |
+| entry | one halfword per slot; 600 bytes is 300 slots |
+| index | a per-bank word counter, read and incremented in place by the writer (0x180054d6 / 0x180054de / 0x180054e0) |
+| wrap | NONE FOUND. The writer increments the counter with no modulo and no bound test at the append site; the consumer stops at 120 (cmp r1,#0x78). Whether anything resets the counter each pass is NOT established, and no wrap behaviour should be assumed. |
+| selector | NOT the layer. Log 128 recorded 'a per-layer output ring'; the consumer FUN_180061c2 computes the SAME stride from two different indices — one at struct +0x80 and one at +0x7c — and compares the two banks entry by entry. That is a current/previous double-buffer, so the multiplier is a BANK SELECTOR and its identification as the layer is WITHDRAWN. |
+| consumer | FUN_180061c2, the report builder — veneer 0x4076, the last call in log 127's rate-gated tick block. It reads bank[current][i] and bank[previous][i] and sets a change flag when they differ. |
+
+**Release before expiry.** NOT ESTABLISHED. The append at 0x180054da is on the expiry branch only; no reset of the per-key counter on release was traced, and the tap-side path was not followed. What happens to a key released early is therefore an open question, not an inference.
+
+**Which command sets the threshold.** NOT ESTABLISHED. The threshold byte is at record +0x22 of the key*0x20 array, i.e. offset +0x02 of the record one stride on; the located 0x51 subcommands write +0x04, +0x06, +0x07, +0x08, +0x0a, +0x0e and +0x0f of a record, and NONE of them was shown writing +0x00 or +0x02. Which command sets the hold time is open.
+
+**HAL name: none assigned.** hypothesis — the behaviour is a hold-to-emit timer, which fits all four of those names. Nothing here distinguishes them, so NO NAME IS ASSIGNED. Candidates: `ChangeKey_ModTap`, `ChangeKey_Toggle`, `ChangeKey_DKS`, `SetSpeedTap`.
+
+## HAL disposition
+
+Every HAL method `notes/protocol.md` leaves without an opcode, with the located subcommand that could carry it — or the finding that none could.
+
+| HAL name | candidate carrier | evidence | confidence |
+|---|---|---|---|
+| `SetActuation_AllKey` | `51 50` | global bits 9..15 written from request byte 4 at 0x18002bee, with log 125's clamp at 0x18006d3c | `strongly-inferred` |
+| `SetActuation_PreKey` | `51 4f` | per-key record +0x08 bits 0..6 at 0x18002ba6 with the bit-15 override resolved against global bits 9..15 at 0x18002bba | `strongly-inferred` |
+| `SetRapidTrigger_AllKey` | `51 58` | 0x1800f948 mode 0 writes global bits 20..22 and 17..19 at 0x1800f9d0 and 0x1800f9fc, with log 125's 1..6 range and default 2 at 0x1800f976 | `strongly-inferred` |
+| `SetRapidTrigger_PreKey` | `51 59` | 0x1800f948 mode 1 writes record +0x06 and +0x07 bits 0..2 at 0x1800f9b0 and 0x1800fa26 with the 0x80 override | `strongly-inferred` |
+| `Reset_Actuation_RapidTrigger` | `51 56` | the only located command that reinitialises a settings block, logging S_ST_DEF at 0x180031e2 — but it reinitialises BLOCK D, and actuation and rapid trigger live in the global block and the keymap bank, so the match is by role and not by target | `hypothesis` |
+| `Reset` | `51 56` | same handler, same caveat | `hypothesis` |
+| `SetProfile` | `51 00` | posts storage opcode 2 with the profile at REQSTRUCT+0x85 at 0x18002530; the state machine stores it to the device header at 0x180011bc | `strongly-inferred` |
+| `IsDefaultProfile` | **none** | no located handler reads a default-profile flag. 12 16 returns a device header byte compared against 0xb5 and 12 08 a bit of 0x1801e6b7; neither is shown to mean this | `no plausible carrier found` |
+| `SetDeadZone_AllKey` | **none** | no located handler writes a third all-key numeric field. The global word's recovered fields are the selectable index, actuation and the two rapid-trigger values; log 125 left bits 0..5 and 23..31 unrecovered, and no located command writes them | `no plausible carrier found` |
+| `SetDeadZone_PreKey` | **none** | same, for the per-key record: +0x06, +0x07, +0x08, +0x0a, +0x0e and +0x0f all have writers with other roles | `no plausible carrier found` |
+| `SetSpeedTap` | `51 55 or 51 54` | 51 55 configures a validated PAIR of HID usage codes (=TEMP1_S_KC / =TEMP2_S_KC) and 51 54 writes a 2-bit mode at record +0x0a bits 14..15. Speed tap is a two-code-per-key feature, so both are shapes that could carry it — and neither is shown to | `hypothesis` |
+| `SwitchSpeedTap` | `51 54` | a 2-bit mode field is the shape of an on/off/variant switch; not shown | `hypothesis` |
+| `ResetSpeedTap` | **none** | no located handler clears such a pair | `no plausible carrier found` |
+| `ChangeKey_DKS` | `51 23` | =KC_S,T_A writes record +0x04 = 1 plus TWO extra bytes at +0x0e and +0x0f alongside a translated target — more per-key state than a plain remap needs. DKS is the multi-code-per-key feature, so the shape fits; the field roles are not established | `hypothesis` |
+| `ChangeKey_ModTap` | `51 23 or 51 24` | both write distinct values of the record +0x04 mode byte (1 and 2) that 0x21 clears, so the mode byte is at least four-valued and mod-tap is one of the values it could select; which is not established | `hypothesis` |
+| `ChangeKey_Toggle` | `51 24` | record +0x04 = 2, a second mode value; same caveat | `hypothesis` |
+| `ChangeKey_Normal` | `51 21` | already wire-proven as the remap that clears the mode byte | `strongly-inferred` |
+| `WriteMacroFlash` | **none** | the macro block's USB writer at 0x180035dc is in a dispatcher branch this step did not attribute to a subcommand, so no located subcommand can be named as its carrier | `no plausible carrier found` |
+| `WriteMacroFlash_SupportFn` | **none** | same | `no plausible carrier found` |
+| `SetLeverMode` | **none** | no located handler writes a lever field; log 125 matched the AC decode's lever.functionStatusList only structurally | `no plausible carrier found` |
+| `SetLeverSwitch` | **none** | same | `no plausible carrier found` |
+| `SetLeverChange` | **none** | same | `no plausible carrier found` |
+| `GetLeverMode` | **none** | none of the ten located queries returns a lever field | `no plausible carrier found` |
+| `SetKeyLog` | **none** | the dispatcher carries the strings KL_D_A and KL_E_A at 0x1800232e and 0x1800234c — disable and enable, on the 0x12 opcode's side of the body — but this step did not attribute them to a located subcommand, so no carrier is named | `no plausible carrier found` |
+| `GetKeyStats` | **none** | none of the ten located queries returns a statistics payload | `no plausible carrier found` |
+
 ## HAL names still without an opcode
 
 `SetRapidTrigger_AllKey`, `SetRapidTrigger_PreKey`, `SetDeadZone_AllKey`, `SetDeadZone_PreKey`, `SetSpeedTap`, `SwitchSpeedTap`, `ResetSpeedTap`, `ChangeKey_DKS`, `ChangeKey_ModTap`, `ChangeKey_Toggle`, `WriteMacroFlash`, `WriteMacroFlash_SupportFn`, `SetLeverMode`, `SetLeverSwitch`, `SetLeverChange`, `GetLeverMode`, `SetKeyLog`, `GetKeyStats`, `Reset`, `IsDefaultProfile`
@@ -204,7 +273,7 @@ the burst is not a batched apply of several settings, so it cannot be read as ev
 
 ## Coverage
 
-**static-handler-proven**: 12, **static-located-only**: 13, **wire-proven**: 9
+**static-handler-proven**: 24, **static-located-only**: 1, **wire-proven**: 9
 
 ## Checks
 
@@ -217,6 +286,8 @@ the burst is not a batched apply of several settings, so it cannot be read as ev
 | PASS | the instruction at 0x180020a2 is the one this model cites | e9d9 6007 == e9d9 6007 |
 | PASS | the instruction at 0x180020a6 is the one this model cites | e9c1 600d == e9c1 600d |
 | PASS | the instruction at 0x180020ae is the one this model cites | 2006 == 2006 |
+| PASS | the instruction at 0x180021b4 is the one this model cites | 2201 == 2201 |
+| PASS | the instruction at 0x180021d0 is the one this model cites | 2113 == 2113 |
 | PASS | the instruction at 0x18002250 is the one this model cites | 2012 == 2012 |
 | PASS | the instruction at 0x18002258 is the one this model cites | f890 04f8 == f890 04f8 |
 | PASS | the instruction at 0x1800225c is the one this model cites | f000 000f == f000 000f |
@@ -231,19 +302,67 @@ the burst is not a batched apply of several settings, so it cannot be read as ev
 | PASS | the instruction at 0x1800266c is the one this model cites | 289f == 289f |
 | PASS | the instruction at 0x18002686 is the one this model cites | 2bbc == 2bbc |
 | PASS | the instruction at 0x180026d2 is the one this model cites | f8a2 30d4 == f8a2 30d4 |
+| PASS | the instruction at 0x180027d2 is the one this model cites | a07e == a07e |
+| PASS | the instruction at 0x18002814 is the one this model cites | f886 9004 == f886 9004 |
+| PASS | the instruction at 0x1800281a is the one this model cites | 73b7 == 73b7 |
+| PASS | the instruction at 0x1800281e is the one this model cites | 73f7 == 73f7 |
+| PASS | the instruction at 0x180028ec is the one this model cites | 713a == 713a |
+| PASS | the instruction at 0x18002ba4 is the one this model cites | 8910 == 8910 |
+| PASS | the instruction at 0x18002ba6 is the one this model cites | f36c 0006 == f36c 0006 |
+| PASS | the instruction at 0x18002bba is the one this model cites | f3c7 2746 == f3c7 2746 |
+| PASS | the instruction at 0x18002bcc is the one this model cites | f440 4000 == f440 4000 |
 | PASS | the instruction at 0x18002be4 is the one this model cites | 79b9 == 79b9 |
 | PASS | the instruction at 0x18002be8 is the one this model cites | 7923 == 7923 |
 | PASS | the instruction at 0x18002bee is the one this model cites | f363 224f == f363 224f |
 | PASS | the instruction at 0x18002bfa is the one this model cites | f004 f89f == f004 f89f |
+| PASS | the instruction at 0x18003028 is the one this model cites | f367 3c8f == f367 3c8f |
+| PASS | the instruction at 0x1800302c is the one this model cites | f8a2 c00a == f8a2 c00a |
 | PASS | the instruction at 0x180030c4 is the one this model cites | 2051 == 2051 |
+| PASS | the instruction at 0x180030f0 is the one this model cites | a070 == a070 |
+| PASS | the instruction at 0x18003112 is the one this model cites | a06b == a06b |
+| PASS | the instruction at 0x1800311c is the one this model cites | 298d == 298d |
+| PASS | the instruction at 0x18003122 is the one this model cites | 2907 == 2907 |
+| PASS | the instruction at 0x180031bc is the one this model cites | 4843 == 4843 |
+| PASS | the instruction at 0x180031d0 is the one this model cites | 7006 == 7006 |
+| PASS | the instruction at 0x180031e2 is the one this model cites | a03e == a03e |
+| PASS | the instruction at 0x1800322a is the one this model cites | 481d == 481d |
+| PASS | the instruction at 0x1800325c is the one this model cites | a026 == a026 |
+| PASS | the instruction at 0x18003260 is the one this model cites | 4827 == 4827 |
+| PASS | the instruction at 0x1800329a is the one this model cites | a01b == a01b |
 | PASS | the instruction at 0x18003316 is the one this model cites | 8308 == 8308 |
+| PASS | the instruction at 0x18003332 is the one this model cites | 7923 == 7923 |
+| PASS | the instruction at 0x18003336 is the one this model cites | 2b05 == 2b05 |
+| PASS | the instruction at 0x1800334c is the one this model cites | f00c fafc == f00c fafc |
+| PASS | the instruction at 0x18003364 is the one this model cites | 7960 == 7960 |
+| PASS | the instruction at 0x1800338c is the one this model cites | f00c fadc == f00c fadc |
 | PASS | the instruction at 0x180033a4 is the one this model cites | f7fd fb64 == f7fd fb64 |
+| PASS | the instruction at 0x180033b2 is the one this model cites | 8862 == 8862 |
+| PASS | the instruction at 0x180033c2 is the one this model cites | 6008 == 6008 |
 | PASS | the instruction at 0x180035dc is the one this model cites | 7008 == 7008 |
 | PASS | the instruction at 0x180035e0 is the one this model cites | 71cd == 71cd |
 | PASS | the instruction at 0x180035e2 is the one this model cites | f44f 71c8 == f44f 71c8 |
 | PASS | the instruction at 0x180054c4 is the one this model cites | 8c13 == 8c13 |
+| PASS | the instruction at 0x180054d0 is the one this model cites | 4974 == 4974 |
 | PASS | the instruction at 0x180054da is the one this model cites | f82c 3011 == f82c 3011 |
 | PASS | the instruction at 0x180054de is the one this model cites | 1c49 == 1c49 |
+| PASS | the instruction at 0x18005830 is the one this model cites | eb0a 0741 == eb0a 0741 |
+| PASS | the instruction at 0x18005834 is the one this model cites | 797a == 797a |
+| PASS | the instruction at 0x18005840 is the one this model cites | f897 c004 == f897 c004 |
+| PASS | the instruction at 0x1800585a is the one this model cites | 29f7 == 29f7 |
+| PASS | the instruction at 0x18006094 is the one this model cites | eb09 00c0 == eb09 00c0 |
+| PASS | the instruction at 0x1800609c is the one this model cites | f830 0012 == f830 0012 |
+| PASS | the instruction at 0x180060a4 is the one this model cites | 42a8 == 42a8 |
+| PASS | the instruction at 0x1800f972 is the one this model cites | f1a2 0c01 == f1a2 0c01 |
+| PASS | the instruction at 0x1800f976 is the one this model cites | f1bc 0f06 == f1bc 0f06 |
+| PASS | the instruction at 0x1800f97c is the one this model cites | 2202 == 2202 |
+| PASS | the instruction at 0x1800f9a8 is the one this model cites | f022 0280 == f022 0280 |
+| PASS | the instruction at 0x1800f9ac is the one this model cites | f368 0202 == f368 0202 |
+| PASS | the instruction at 0x1800f9b0 is the one this model cites | f88c 2006 == f88c 2006 |
+| PASS | the instruction at 0x1800f9cc is the one this model cites | f854 c025 == f854 c025 |
+| PASS | the instruction at 0x1800f9d0 is the one this model cites | f362 5c16 == f362 5c16 |
+| PASS | the instruction at 0x1800f9fc is the one this model cites | f3c4 4442 == f3c4 4442 |
+| PASS | the instruction at 0x1800fa0a is the one this model cites | 79da == 79da |
+| PASS | the instruction at 0x1800fa26 is the one this model cites | 71e2 == 71e2 |
 | PASS | the top-level compare for opcode 0x52 is at 0x18001ff2 | 2a52 == 2a52 |
 | PASS | the top-level compare for opcode 0x41 is at 0x18001ffc | 2a41 == 2a41 |
 | PASS | the top-level compare for opcode 0x04 is at 0x18002002 | 2a04 == 2a04 |
@@ -284,7 +403,7 @@ the burst is not a batched apply of several settings, so it cannot be read as ev
 | PASS | every 0x51 subcommand is marked owner-approval-required | 24 write-capable |
 | PASS | no 0x12 query is gated — the marking discriminates | 10 read-only queries |
 | PASS | the 0x12 family has ten reachable subcommands | 0x00, 0x03, 0x05, 0x07, 0x08, 0x12, 0x13, 0x14, 0x15, 0x16 |
-| PASS | the table admits how much is NOT decoded | static-handler-proven=12, static-located-only=13, wire-proven=9 |
+| PASS | the table admits how much is NOT decoded | static-handler-proven=24, static-located-only=1, wire-proven=9 |
 | PASS | and the wire-proven rows are the ones a capture exercised | 9 rows |
 | PASS | the profile selection byte has exactly two writers | 0x180011bc, 0x18001df8 |
 | PASS | both are in the storage state machine, not the dispatcher | func 0x18000d56 |
@@ -298,5 +417,16 @@ the burst is not a batched apply of several settings, so it cannot be read as ev
 | PASS | the block-range filter finds accesses in both blocks, so a 'no USB writer' answer is a real absence | macro 53, block D 14 |
 | PASS | the vendor release's dispatcher has the same top-level compares | 17/17 |
 | PASS | HAL names with no opcode are listed rather than guessed at | 20 unmatched |
+| PASS | only 0x52 is still located-only after this step | 0x52 |
+| PASS | the other thirty-three commands carry decoded semantics | {"static-handler-proven": 24, "static-located-only": 1, "wire-proven": 9} |
+| PASS | block D's layout closes on its declared size — 4 + 2*0x1ee = 0x3e0 | two 247-entry tables plus a 2-byte checksum |
+| PASS | block D's fields are laid out and NO Armoury Crate field is matched to them | 3 regions, 0 matches |
+| PASS | the dual-role timer is recorded as a mechanism, not a HAL name | dual-role, hold-to-alternate, threshold in 10 ms units |
+| PASS | log 128's 'per-layer ring' reading is withdrawn — the multiplier is a bank selector | the consumer diffs two banks |
+| PASS | the three things the timer analysis could not settle say so | wrap, release-before-expiry, threshold writer |
+| PASS | every HAL name protocol.md leaves without an opcode gets a disposition | 25 dispositions |
+| PASS | and a name with no plausible carrier is recorded as a finding, not hidden | 12 with no carrier found |
+| PASS | every disposition carries one of three confidences | hypothesis, no plausible carrier found, strongly-inferred |
+| PASS | every named carrier cites instructions | 13 named |
 
-`RESULT vendor_command_map_ok=True checks=88`
+`RESULT vendor_command_map_ok=True checks=149`

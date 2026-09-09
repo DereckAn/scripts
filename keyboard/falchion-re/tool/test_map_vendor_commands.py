@@ -169,11 +169,20 @@ class Discipline(unittest.TestCase):
         self.doc = m.to_dict()
         self.md = m.markdown()
 
-    def test_most_of_the_table_is_admitted_undecoded(self):
+    def test_the_table_admits_whatever_is_still_undecoded(self):
+        """Log 128 asserted more than ten located-only rows, which was the
+        honest state then. Log 130 decoded twelve of the thirteen, so the
+        assertion is re-anchored rather than dropped: whatever remains must
+        still be reported, and the coverage must still name all three grades
+        the model uses."""
         cov = self.doc["coverage"]
-        self.assertGreater(cov["static-located-only"], 10)
         self.assertIn("static-handler-proven", cov)
         self.assertIn("wire-proven", cov)
+        left = [r["subcommand"] for r in
+                self.doc["subcommands_51"] + self.doc["queries_12"]
+                if r["confidence"] == "static-located-only"]
+        self.assertEqual(cov.get("static-located-only", 0), len(left))
+        self.assertEqual(len(left), 1)
 
     def test_every_write_is_gated_and_no_query_is(self):
         for r in self.doc["subcommands_51"]:
@@ -253,3 +262,143 @@ class Discipline(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LogOneThirtyEvidence(unittest.TestCase):
+    """Log 130: the located-only remainder, block D, the dual-role banks."""
+
+    def setUp(self):
+        self.doc = m.to_dict()
+        self.subs = {r["subcommand"]: r for r in self.doc["subcommands_51"]}
+        self.queries = {r["subcommand"]: r for r in self.doc["queries_12"]}
+
+    def test_only_one_subcommand_is_still_located_only(self):
+        left = [r["subcommand"] for r in
+                self.doc["subcommands_51"] + self.doc["queries_12"]
+                if r["confidence"] == "static-located-only"]
+        self.assertEqual(left, ["0x52"])
+
+    def test_the_four_actuation_and_rapid_trigger_carriers(self):
+        """All-key and per-key, actuation and rapid trigger — the four HAL
+        names that had no opcode before this step."""
+        for sub, needle in (("0x50", "bits 9..15"), ("0x4f", "+0x08"),
+                            ("0x58", "20..22"), ("0x59", "+0x06")):
+            self.assertIn(needle, self.subs[sub]["meaning"], sub)
+            self.assertEqual(self.subs[sub]["confidence"],
+                             "static-handler-proven", sub)
+
+    def test_the_shared_rapid_trigger_helper_bytes(self):
+        """0x58 and 0x59 differ only in the mode they pass to 0x1800f948."""
+        self.assertEqual(m.halfwords(0x1800334C, 2), "f00c fafc")
+        self.assertEqual(m.halfwords(0x1800338C, 2), "f00c fadc")
+        self.assertEqual(m.halfwords(0x1800F9D0, 2), "f362 5c16")   # bfi #20,#3
+        self.assertEqual(m.halfwords(0x1800F9FC, 2), "f3c4 4442")   # ubfx #17,#3
+
+    def test_the_per_key_override_discipline_is_the_same_in_both_families(self):
+        """0x4f clears/sets bit 15 of record +0x08; 0x1800f948 clears/sets bit
+        7 of +0x06 and +0x07. Same rule, two fields."""
+        self.assertEqual(m.halfwords(0x18002BCC, 2), "f440 4000")   # orr 0x8000
+        self.assertEqual(m.halfwords(0x1800F9A8, 2), "f022 0280")   # bic 0x80
+
+    def test_the_mode_byte_is_at_least_four_valued(self):
+        for sub in ("0x23", "0x24"):
+            self.assertIn("+0x04", self.subs[sub]["meaning"], sub)
+        self.assertEqual(m.halfwords(0x18002814, 2), "f886 9004")
+        self.assertEqual(m.halfwords(0x180028EC, 1), "713a")
+
+    def test_the_firmware_named_handlers_carry_their_strings(self):
+        for sub, name in (("0x18", "=MS_A"), ("0x23", "=KC_S,T_A"),
+                          ("0x55", "=TEMP1_S_KC"), ("0x56", "S_ST_DEF"),
+                          ("0x90", "SC_S_A")):
+            self.assertIn(name, self.subs[sub]["meaning"]
+                          + self.subs[sub]["evidence"], sub)
+
+    def test_the_key_code_pair_range_check(self):
+        """0x55 validates each translated code to HID 0x04..0x91 or
+        0xe0..0xe7."""
+        self.assertEqual(m.halfwords(0x1800311C, 1), "298d")
+        self.assertEqual(m.halfwords(0x18003122, 1), "2907")
+        self.assertIn("0xe0..0xe7", self.subs["0x55"]["meaning"])
+
+    def test_the_two_queries_are_one_query(self):
+        self.assertEqual(self.queries["0x13"]["confidence"],
+                         "static-handler-proven")
+        self.assertIn("two modes", self.queries["0x13"]["meaning"])
+        self.assertEqual(m.halfwords(0x180021B4, 1), "2201")
+
+    def test_block_d_layout_closes_on_its_declared_size(self):
+        bd = self.doc["block_d"]
+        self.assertTrue(bd["arithmetic_closes"])
+        self.assertEqual(4 + 2 * 0x1EE, 0x3E0)
+        self.assertEqual([r["offset"] for r in bd["layout"]],
+                         ["+0x000", "+0x004", "+0x1f2"])
+
+    def test_block_d_entry_count_is_read_from_the_loop_bound(self):
+        self.assertEqual(m.halfwords(0x1800585A, 1), "29f7")        # cmp #0xf7
+        self.assertEqual(m.halfwords(0x18005830, 2), "eb0a 0741")   # + i*2
+        self.assertIn("247", self.doc["block_d"]["layout"][1]["role"])
+
+    def test_block_d_names_no_armoury_crate_field(self):
+        self.assertIsNone(self.doc["block_d"]["ac_profile_match"])
+        self.assertIn("NO MATCH IS CLAIMED",
+                      self.doc["block_d"]["ac_profile_match_note"])
+
+    def test_block_d_defaults_are_not_invented(self):
+        self.assertIn("NOT RECOVERED", self.doc["block_d"]["defaults"])
+
+    def test_the_bank_selector_is_not_claimed_to_be_the_layer(self):
+        """Log 128 called it per-layer; the consumer diffs two banks."""
+        sel = self.doc["hold_timer"]["buffer"]["selector"]
+        self.assertIn("WITHDRAWN", sel)
+        self.assertIn("BANK SELECTOR", sel)
+        self.assertEqual(m.halfwords(0x18006094, 2), "eb09 00c0")
+        self.assertEqual(m.halfwords(0x180060A4, 1), "42a8")
+
+    def test_the_three_open_timer_questions_say_they_are_open(self):
+        ht = self.doc["hold_timer"]
+        self.assertIn("NONE FOUND", ht["buffer"]["wrap"])
+        self.assertIn("NOT ESTABLISHED", ht["release_before_expiry"])
+        self.assertIn("NOT ESTABLISHED", ht["threshold_writer"])
+
+    def test_the_timer_mechanism_is_the_agreed_wording(self):
+        self.assertEqual(self.doc["hold_timer"]["mechanism"],
+                         "dual-role, hold-to-alternate, threshold in 10 ms "
+                         "units")
+        self.assertIsNone(self.doc["hold_timer"]["hal_match"])
+
+    def test_every_hal_name_gets_a_disposition(self):
+        disp = {d["hal_name"] for d in self.doc["hal_disposition"]}
+        for name in self.doc["hal_names_without_an_opcode"]:
+            self.assertIn(name, disp, name)
+
+    def test_a_hal_name_with_no_carrier_is_a_finding(self):
+        none_found = [d for d in self.doc["hal_disposition"]
+                      if d["candidate_carrier"] is None]
+        self.assertGreaterEqual(len(none_found), 10)
+        for d in none_found:
+            self.assertEqual(d["confidence"], "no plausible carrier found")
+            self.assertTrue(d["evidence"])
+
+    def test_named_carriers_are_graded_and_cited(self):
+        for d in self.doc["hal_disposition"]:
+            if d["candidate_carrier"] is not None:
+                self.assertIn(d["confidence"],
+                              ("strongly-inferred", "hypothesis"))
+                self.assertTrue(d["evidence"], d["hal_name"])
+
+    def test_speed_tap_and_dks_stay_hypotheses(self):
+        by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
+        for name in ("SetSpeedTap", "ChangeKey_DKS", "ChangeKey_ModTap"):
+            self.assertEqual(by[name]["confidence"], "hypothesis", name)
+
+    def test_the_four_new_carriers_are_strongly_inferred(self):
+        by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
+        for name in ("SetActuation_AllKey", "SetActuation_PreKey",
+                     "SetRapidTrigger_AllKey", "SetRapidTrigger_PreKey"):
+            self.assertEqual(by[name]["confidence"], "strongly-inferred", name)
+            self.assertIsNotNone(by[name]["candidate_carrier"], name)
+
+    def test_dead_zone_has_no_carrier(self):
+        by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
+        for name in ("SetDeadZone_AllKey", "SetDeadZone_PreKey"):
+            self.assertIsNone(by[name]["candidate_carrier"], name)

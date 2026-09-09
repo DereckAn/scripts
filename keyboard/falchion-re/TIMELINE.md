@@ -2976,12 +2976,89 @@ guard refused to emit the table until it got one.
 1176 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-09 — The strings were in the binary all along (log 130)
+
+One step. Offline; authorises nothing; **no frame constructed**; nothing
+committed or staged.
+
+Log 128 bounded the command surface and admitted that thirteen of thirty-four
+commands were nothing but an address. This step went back with two things log
+128 had not used: linear handler tracing with literal resolution, and — the one
+that actually mattered — a harvest of every `adr`-loaded string inside the
+dispatcher body.
+
+`=S_PR_U` was already known to name the polling-rate handler. **The same
+convention names ten more**: `=KC_S,T_A`, `=ES_A`, `=TEMP1_S_KC`,
+`=TEMP2_S_KC`, `S_ST_A`, `S_ST_DEF`, `=S_ST_SW`, `SC_S_A`, `=MS_A`, plus
+`KL_D_A`/`KL_E_A` and a whole `FT_*` cluster sitting in the opcode range nobody
+has opened. Five of the twelve decodes below are anchored by one of them. They
+had been in the image since the first import.
+
+**Twelve of the thirteen fell.** Coverage goes 9/12/13 → 9/24/1. The one that
+survives is `51 52`, five paths of opaque constants, and it stays
+`static-located-only` because promoting it would have been exactly the
+vibes-based promotion the step forbade.
+
+**The best of it is a family the firmware built as two symmetric pairs.**
+`51 50` writes all-key actuation into global bits 9..15; `51 4f` writes per-key
+actuation into record `+0x08` bits 0..6 and resolves the bit-15 override against
+the global value. `51 58` and `51 59` do the same for rapid trigger — and they
+are *one helper* called with a mode flag, `bl 0x1800f948` with r0 = 0 or 1,
+which range-checks to 1..6, substitutes the default 2, and writes global bits
+20..22 / 17..19 or record `+0x06`/`+0x07` with a `0x80` override. Every field,
+every range, every default, every override rule is one **log 125 recovered
+independently from the storage side, months of analysis earlier and from the
+opposite direction.** Four HAL names that had never had an opcode got one in a
+single afternoon, and the corroboration was already sitting in another note.
+
+**Block D turned out to close on its own arithmetic.** Its reader walks
+`i = 0..0xf6`, tests bits 3..7 of a flags byte at `base + i*2 + 5`, and builds a
+de-duplicated active-set list once per ÷8 tick. That makes the block a 2-byte
+checksum plus 247 two-byte entries — and `4 + 0x1ee = 0x1f2`, `0x1f2 + 0x1ee =
+0x3e0`, the declared size, exactly. 247 is log 125's key-table count, read here
+from the loop bound rather than borrowed. Its defaults stay unrecovered and **no
+Armoury Crate field is matched to it**, because the only thing that would
+justify a match is a field, and there isn't one spare.
+
+**And log 128 got something wrong, which this step withdraws.** It called
+`0x18024000 + k*600` "a per-layer output ring". The report builder computes the
+same stride from *two* different indices, at struct `+0x80` and `+0x7c`, and
+diffs the banks entry by entry. It is a current/previous double buffer; `k` is a
+bank selector. The per-layer reading is withdrawn.
+
+**The disposition list is the part I expected to be a failure and wasn't.** Six
+HAL names now have carriers at strongly-inferred, seven have plausible ones as
+hypotheses — and **ten have no plausible carrier at all** among thirty-four
+located commands: both dead-zone variants, both macro-flash variants, all four
+lever methods, `ResetSpeedTap`, `IsDefaultProfile`, `SetKeyLog`, `GetKeyStats`.
+Either they live behind the eleven top-level opcodes still unopened — where
+`KL_D_A`/`KL_E_A` and the `FT_*` strings sit, which is suggestive — or they are
+not implemented on this model. A HAL name with no carrier is a finding, and the
+list says which of the two it cannot decide.
+
+**A check failed for the right reason and was re-anchored, not dropped.** Log
+128's `test_most_of_the_table_is_admitted_undecoded` asserted more than ten
+located-only rows — honest then, the wrong shape now. Deleting it would have
+removed the discipline it existed for, so it was rewritten to assert that the
+coverage figure *equals* the actual number of undecoded rows. It still fails if
+the model ever hides one, and it now pins the remaining one by name. Two of my
+own patches also broke mid-edit — one left the thirteen rows untouched while the
+new checks were already written, and the new checks named all thirteen
+immediately; the other ran off the end of a tuple and swallowed a header, caught
+by py_compile before anything reached `notes/`.
+
+1197 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| Log 128's "a per-layer output ring at `0x18024000 + layer*600`" | Not the layer. The report builder computes the same stride from two different indices and diffs the banks — a current/previous double buffer, so `k` is a bank selector (log 130) |
+| Log 128's thirteen `static-located-only` rows | Twelve are decoded; only `51 52` remains, and log 128's own coverage test was re-anchored to assert the figure equals the real remainder rather than deleted (log 130) |
+| "The dispatcher's handlers are anonymous" | They are not. The firmware `adr`-loads its own name for at least eleven of them — `=KC_S,T_A`, `S_ST_DEF`, `SC_S_A`, `=MS_A`, `=TEMP1_S_KC` and more — and the strings had been in the image since the first import (log 130) |
 | `notes/protocol.md`'s six-row command table read as the command surface | It is the *captured* surface. The dispatcher accepts seventeen top-level opcodes, twenty-four `0x51` subcommands and ten `0x12` queries; thirteen of the thirty-four remain located-only (log 128) |
 | "Profile switching may be Fn-key-only, since no command writes the selection byte" | Half right. No command writes it — the dispatcher never does, in 13 accesses — but `51 00` posts a request that the storage state machine consumes and stores (log 128) |
 | "Macros are recorded on-device only" | False. `0x180035dc` writes the macro block from the dispatcher (log 128) |

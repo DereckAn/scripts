@@ -175,6 +175,59 @@ CITED = {
     0x180035DC: "7008",
     0x180035E0: "71cd",
     0x180035E2: "f44f 71c8",         # mov.w r1,#0x190   400 bytes cleared
+    # --- log 130: the located-only remainder ---
+    0x18002BA4: "8910",          # 51 4f  ldrh r0,[r2,#0x8]   per-key record +0x08
+    0x18002BA6: "f36c 0006",     # 51 4f  bfi  r0,r12,#0,#7   actuation, 1..40
+    0x18002BBA: "f3c7 2746",     # 51 4f  ubfx r7,r7,#9,#7    the global all-key value
+    0x18002BCC: "f440 4000",     # 51 4f  orr  r0,r0,#0x8000  the override bit
+    0x18003332: "7923",          # 51 58  ldrb r3,[r4,#0x4]
+    0x18003336: "2b05",          # 51 58  cmp  r3,#0x5
+    0x1800334C: "f00c fafc",     # 51 58  bl   0x1800f948, mode 0 (all-key)
+    0x18003364: "7960",          # 51 59  ldrb r0,[r4,#0x5]   the layer selector
+    0x1800338C: "f00c fadc",     # 51 59  bl   0x1800f948, mode 1 (per-key)
+    0x1800F972: "f1a2 0c01",     # f948   subs r12,r2,#0x1
+    0x1800F976: "f1bc 0f06",     # f948   cmp  r12,#0x6       range 1..6
+    0x1800F97C: "2202",          # f948   movs r2,#0x2        else the default
+    0x1800F9A8: "f022 0280",     # f948   bic  r2,r2,#0x80    clear the override
+    0x1800F9AC: "f368 0202",     # f948   bfi  r2,r8,#0,#3
+    0x1800F9B0: "f88c 2006",     # f948   strb r2,[r12,#0x6]  record +0x06, press
+    0x1800F9CC: "f854 c025",     # f948   ldr  r12,[r4,r5,lsl #2]  the global word
+    0x1800F9D0: "f362 5c16",     # f948   bfi  r12,r2,#20,#3  global bits 20..22
+    0x1800F9FC: "f3c4 4442",     # f948   ubfx r4,r4,#17,#3   global bits 17..19
+    0x1800FA0A: "79da",          # f948   ldrb r2,[r3,#0x7]   record +0x07, release
+    0x1800FA26: "71e2",          # f948   strb r2,[r4,#0x7]
+    0x180031BC: "4843",          # 51 56  ldr  r0,[pc] -> block D
+    0x180031D0: "7006",          # 51 56  strb r6,[r0]
+    0x180031E2: "a03e",          # 51 56  adr  -> "S_ST_DEF"
+    0x1800322A: "481d",          # 51 90
+    0x1800325C: "a026",          # 51 90  adr  -> "SC_S_A"
+    0x18003260: "4827",          # 51 18
+    0x1800329A: "a01b",          # 51 18  adr  -> "=MS_A"
+    0x180027D2: "a07e",          # 51 23  adr  -> "=KC_S,T_A"
+    0x18002814: "f886 9004",     # 51 23  strb r9,[r6,#0x4]   record +0x04 = 1
+    0x1800281A: "73b7",          # 51 23  strb r7,[r6,#0xe]
+    0x1800281E: "73f7",          # 51 23  strb r7,[r6,#0xf]
+    0x180028EC: "713a",          # 51 24  strb r2,[r7,#0x4]   record +0x04 = 2
+    0x18003028: "f367 3c8f",     # 51 54  bfi  r12,r7,#14,#2
+    0x1800302C: "f8a2 c00a",     # 51 54  strh.w r12,[r2,#0xa]
+    0x180030F0: "a070",          # 51 55  adr  -> "=TEMP1_S_KC"
+    0x18003112: "a06b",          # 51 55  adr  -> "=TEMP2_S_KC"
+    0x1800311C: "298d",          # 51 55  cmp  r1,#0x8d       usage 0x04..0x91
+    0x18003122: "2907",          # 51 55  cmp  r1,#0x7        or 0xe0..0xe7
+    0x180033B2: "8862",          # 51 0c  ldrh r2,[r4,#0x2]
+    0x180033C2: "6008",          # 51 0c  str  r0,[r1]        0x3e8 -> 0x1801e6c8
+    0x180021B4: "2201",          # 12 13  movs r2,#0x1
+    0x180021D0: "2113",          # 12 13  movs r1,#0x13
+    # --- log 130: block D's entry array ---
+    0x18005830: "eb0a 0741",     # add.w  r7,r10,r1,lsl #1    block D + i*2
+    0x18005834: "797a",          # ldrb   r2,[r7,#0x5]        entry +1, the flags
+    0x18005840: "f897 c004",     # ldrb.w r12,[r7,#0x4]       entry +0, the value
+    0x1800585A: "29f7",          # cmp    r1,#0xf7            247 entries
+    # --- log 130: the dual-role banks ---
+    0x180054D0: "4974",          # the writer's literal -> 0x18024000
+    0x18006094: "eb09 00c0",     # the consumer's add.w r0,r9,r0,lsl #3
+    0x1800609C: "f830 0012",     # ldrh.w r0,[r0,r2,lsl #1]
+    0x180060A4: "42a8",          # cmp    r0,r5   current vs previous bank
 }
 
 ACCESS_RE = re.compile(
@@ -295,14 +348,24 @@ SUBCOMMANDS = (
      "0x18002514 ldrb [r4,#4]; 0x18002516/0x1800251e cmp #6; "
      "0x1800252c movs r2,#2; 0x1800252e/0x18002530 strb into REQSTRUCT+0x84/85",
      "storage request struct -> device header +6"),
-    (0x0C, "static-located-only", W,
-     "reaches the shared per-key/global writer tail at 0x18002cdc, which writes "
-     "keymap record +0x06/+0x07 bits 0..2 and the global block's bits 9..15 and "
-     "calls the actuation clamp. Which of those this subcommand selects is NOT "
-     "established.", "0x180024a6 cmp #0x0c -> 0x18002d8e", "unestablished"),
-    (0x18, "static-located-only", W,
-     "enters the same shared writer tail. Semantics NOT established.",
-     "0x180024aa cmp #0x18 -> 0x18002c9a", "unestablished"),
+    (0x0C, "static-handler-proven", W,
+     "request bytes 2-3 are a 16-bit selector: value 0 stores 1000 (0x3e8) into "
+     "the word at 0x1801e6c8; either value then stores 1 and request byte 4 "
+     "into 0x18025aa0 +1 and +2. Replies 51 0c with a ONE-byte payload. The "
+     "consumers of 0x1801e6c8 and 0x18025aa0 are NOT identified, so what the "
+     "1000 counts is unknown.",
+     "0x180033b2 ldrh [r4,#2]; 0x180033c2 str 0x3e8 -> 0x1801e6c8; "
+     "0x180033c6/0x180033ca strb into 0x18025aa0+1/+2",
+     "0x1801e6c8 and 0x18025aa0 (RAM, consumers unknown)"),
+    (0x18, "static-handler-proven", W,
+     "the firmware names it =MS_A. Stores request byte 2 and request byte 4 "
+     "into the runtime struct at 0x18022d44 at +0x05/+0x06 AND again at "
+     "+0x19d/+0x19e — one live copy and one shadow 0x198 apart — and, when "
+     "*(0x18024ebc+0x30) is 1, writes 5 to +0x38. Replies 51 18 with a TWO-byte "
+     "payload. What MS_A stands for is NOT established.",
+     "0x18003260..0x1800328a; 0x18003272/0x18003276 strb +5/+6; "
+     "0x18003278/0x1800327c strb +0x19d/+0x19e; 0x1800329a adr '=MS_A'",
+     "0x18022d44 +0x05/+0x06 and +0x19d/+0x19e (RAM)"),
     (0x20, "static-handler-proven", W,
      "the key-remap family's third entry: byte 2 is the source (<= 0xbc), byte "
      "3 must be 0x00 or 0x9f, bytes 4-5 are a 16-bit target. Writes the profile "
@@ -323,14 +386,28 @@ SUBCOMMANDS = (
      "mode byte and stores an actuation value, where 0x21 clears it.",
      "0x180024b0/0x180024b4 both -> 0x180024b8 -> 0x18002662",
      "profile block key table + keymap record"),
-    (0x23, "static-located-only", W,
-     "byte 2 <= 0xbc and byte 3 in {0x00,0x9f} — the same source/layer guard as "
-     "the remap family — then calls 0x18004a1c. Store target NOT established.",
-     "0x180027d6 cmp #0xbc; 0x180027e0 cmp #0x9f", "unestablished"),
-    (0x24, "static-located-only", W,
-     "same source/layer guard, then a sequence of stores through a base this "
-     "scan did not resolve. NOT established.",
-     "0x1800289a; 0x180028a8 cmp #0x9f", "unestablished"),
+    (0x23, "static-handler-proven", W,
+     "the firmware names it =KC_S,T_A — key code, source and target. Byte 2 is "
+     "the source (<= 0xbc), byte 3 the layer (0x00 or 0x9f); the handler "
+     "resolves the per-key record and writes THREE fields: record +0x04 = 1 "
+     "(the mode byte 0x21 clears), +0x0e = request byte 4 and +0x0f = request "
+     "byte 5, then a 16-bit target from bytes 6-7 through the same translation "
+     "table and the same 0xff/0xc7/0xc8/0xd3 special cases as the remap family. "
+     "Records +0x0e and +0x0f are OUTSIDE log 125's field map and are not "
+     "named here.",
+     "0x180027d8 cmp #0xbc; 0x180027e0 cmp #0x9f; 0x18002814 strb rec+0x04; "
+     "0x1800281a strb rec+0x0e; 0x1800281e strb rec+0x0f; 0x180027d2 adr "
+     "'=KC_S,T_A'",
+     "keymap record +0x04, +0x0e, +0x0f and the remap target"),
+    (0x24, "static-handler-proven", W,
+     "the same source/layer guard as the remap family, then record +0x04 = 2 — "
+     "a THIRD value of the mode byte, where 0x21 clears it and 0x23 writes 1 — "
+     "followed by a 16-bit target from bytes 5-6 through the translation table "
+     "with the 0xff/0xc7/0xc8/0xd3 special cases. So the mode byte is at least "
+     "four-valued.",
+     "0x1800289e cmp #0xbc; 0x180028a8 cmp #0x9f; 0x180028ec strb r2(=2) into "
+     "rec+0x04; 0x18002908 the translation table",
+     "keymap record +0x04 and the remap target"),
     (0x2C, "static-handler-proven", W,
      "byte 2 is compared against 4, 5 and 7; the handler calls a copy routine "
      "and the storage request primitive at 0x18000b28, and writes the device "
@@ -355,9 +432,18 @@ SUBCOMMANDS = (
      "wear-levelled store's write primitive.",
      "0x18003310; 0x18003316/0x1800331c strh global+0x18; bl 0x1800e6d6",
      "global block +0x18, wear-levelled store"),
-    (0x4F, "static-located-only", W,
-     "reads request byte 5 and compares it against 0x9f. NOT established.",
-     "0x18002b62; 0x18002b68 cmp #0x9f", "unestablished"),
+    (0x4F, "static-handler-proven", W,
+     "PER-KEY ACTUATION, the exact counterpart of 0x50. Byte 5 is the layer "
+     "(0x00 or 0x9f), byte 4 the key (<= 0xbc), byte 6 the value: the handler "
+     "writes bits 0..6 of the per-key record's halfword at +0x08 — log 125's "
+     "per-key actuation, range 1..40 — then compares it against the profile's "
+     "ALL-KEY value in global bits 9..15 and CLEARS the +0x08 bit-15 override "
+     "when they are equal, SETS it when they differ. Log 125 recovered that "
+     "field and that override bit independently.",
+     "0x18002b68 cmp #0x9f; 0x18002b76 cmp #0xbc; 0x18002ba4 ldrh rec+0x08; "
+     "0x18002ba6 bfi #0,#7; 0x18002bba ubfx #9,#7; 0x18002bc6 bic #0x8000; "
+     "0x18002bcc orr #0x8000",
+     "keymap record +0x08 bits 0..6 plus the bit-15 override"),
     (0x50, "static-handler-proven", W,
      "ALL-KEY ACTUATION. Indexes the global block by the CURRENT PROFILE "
      "(device header +6) and inserts request byte 4 into bits 9..15 — log 125's "
@@ -373,36 +459,85 @@ SUBCOMMANDS = (
      "0x18002c0a ldr r1,[pc] -> 0x1801e7b8; 0x18002c10 str r0,[r1]",
      "0x1801e7b8 (RAM, consumer unknown)"),
     (0x52, "static-located-only", W,
-     "byte 2 selects one of five sub-paths through a byte table at 0x18002c24, "
-     "and byte 4 is then tested against 0, 1 and 2. Failure calls the short "
-     "responder. Field meanings NOT established.",
-     "0x18002c1a ldrb [r4,#2]; 0x18002c1c cmp #5; 0x18002c20 tbb",
+     "byte 2 selects one of five paths through a byte table at 0x18002c24 "
+     "(targets 0x18002c2a, 0x18002c38, 0x18002c3e, 0x18002c4a and 0x18002c60), "
+     "each loading a different set of small constants into r0 and the stack "
+     "frame; the paths converge at 0x18002c6c, which reads request byte "
+     "(4 + r0) and switches on 0, 1 and 2, calling the short responder on any "
+     "other value. The constants are opaque and the store target is NOT "
+     "established — this is the one subcommand this step could not decode.",
+     "0x18002c1c cmp #0x5; 0x18002c20 tbb; the five targets above",
      "unestablished"),
     (0x53, "static-handler-proven", W,
      "byte 7 selects a layer (0 or 1, anything else rejected) and byte 6 gates "
      "a per-key record update at keymap + layer*0xd84 + key*0x20 + 0x0a.",
      "0x18002efa ldrb [r4,#7]; 0x18002f1a movw #0x361; 0x18002f36 bfi #14,#2",
      "keymap record +0x0a"),
-    (0x54, "static-located-only", W,
-     "branches to 0x18002fe4. Semantics NOT established.",
-     "tbb entry -> 0x18002ee4 -> 0x18002fe4", "unestablished"),
-    (0x55, "static-located-only", W, "handler entry proven; semantics NOT "
-     "established.", "0x180024dc cmp #0x55 -> 0x18002dc6", "unestablished"),
-    (0x56, "static-located-only", W, "handler entry proven; semantics NOT "
-     "established.", "0x180024fc cmp #0x56 -> 0x18002dca", "unestablished"),
+    (0x54, "static-handler-proven", W,
+     "byte 5 is the layer, byte 4 the key (<= 0xbc), byte 8 a gate; the handler "
+     "writes bits 14..15 of the per-key record's halfword at +0x0a from request "
+     "byte 7 plus one. Those are exactly the two bits the shared writer tail "
+     "clears with bic #0xc000 at 0x18002d08, so +0x0a carries a 2-bit mode "
+     "above its 7-bit fields. What the mode selects is NOT established.",
+     "0x18002fe8 cmp #0x9f; 0x18002ff2 cmp #0xbc; 0x18003028 bfi #14,#2; "
+     "0x1800302c strh rec+0x0a",
+     "keymap record +0x0a bits 14..15"),
+    (0x55, "static-handler-proven", W,
+     "the firmware names its two halves =TEMP1_S_KC and =TEMP2_S_KC. Bytes 4-5 "
+     "and bytes 6-7 are TWO 16-bit key codes, each bounded at 0xbc and passed "
+     "through the translation table, and each result is then range-checked to "
+     "HID usage 0x04..0x91 or 0xe0..0xe7 — the printable block and the eight "
+     "modifiers — with byte 8 gating the write. So it configures a PAIR of key "
+     "codes. Which feature consumes the pair is NOT established.",
+     "0x180030e2/0x18003104 cmp #0xbc; 0x1800311c cmp #0x8d; 0x18003122 cmp "
+     "#0x7; 0x180030f0 adr '=TEMP1_S_KC'; 0x18003112 adr '=TEMP2_S_KC'",
+     "unestablished (a validated key-code pair)"),
+    (0x56, "static-handler-proven", W,
+     "SETTINGS FACTORY DEFAULT, and the firmware says so: the handler passes "
+     "BLOCK D to 0x180005c6 and then to 0x1800aadc with r1 = 1, sets the byte "
+     "at 0x1801e737 to 1, replies 51 56 with a 60-byte payload and logs "
+     "S_ST_DEF. It is the only located command that reinitialises block D, "
+     "which otherwise has no USB writer at all.",
+     "0x180031bc ldr -> 0x1801fef8; bl 0x180005c6; bl 0x1800aadc; 0x180031d0 "
+     "strb 1 -> 0x1801e737; 0x180031e2 adr 'S_ST_DEF'",
+     "block D (0x1801fef8) via its initialisers"),
     (0x57, "static-handler-proven", W,
      "enters the shared per-key writer tail at 0x18002cdc, which updates keymap "
      "record +0x08 (bits 0..6, clearing bit 15) and +0x0a (two 7-bit fields, "
      "clearing bits 14-15) for BOTH layers under flag control.",
      "0x18002500 cmp #0x57 -> 0x180031e6; the tail at 0x18002cdc..0x18002dc0",
      "keymap records +0x06/+0x07/+0x08/+0x0a, both layers"),
-    (0x58, "static-located-only", W, "handler entry proven; semantics NOT "
-     "established.", "0x180024f6 cmp #0x58 -> 0x18002dc8", "unestablished"),
-    (0x59, "static-located-only", W, "handler entry proven; semantics NOT "
-     "established.", "0x1800250a cmp #0x59 -> 0x18002dcc", "unestablished"),
-    (0x90, "static-located-only", W,
-     "branches to 0x1800322a. Semantics NOT established.",
-     "0x1800250e cmp #0x90 -> 0x18002d0e -> 0x1800322a", "unestablished"),
+    (0x58, "static-handler-proven", W,
+     "ALL-KEY RAPID TRIGGER. Bytes 4 and 5 are the press and release values, "
+     "each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; "
+     "the handler calls 0x1800f948 with mode 0, which range-checks each value "
+     "to 1..6 (substituting the default 2) and inserts them into the profile's "
+     "global word at BITS 20..22 and BITS 17..19 — log 125's rapid-trigger "
+     "press and release fields, with its stated range and its stated default.",
+     "0x18003334/0x18003336 the 0-folds-to-6 and > 5 refusal; 0x1800334c bl "
+     "0x1800f948; 0x1800f976 cmp #6; 0x1800f97c movs #2; 0x1800f9d0 bfi #20,#3; "
+     "0x1800f9fc ubfx #17,#3",
+     "global block, bits 20..22 and 17..19 of the profile's word"),
+    (0x59, "static-handler-proven", W,
+     "PER-KEY RAPID TRIGGER, the exact counterpart of 0x58. Byte 5 is the layer "
+     "(0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 the press and "
+     "release values under the same 1..6 rule; it calls 0x1800f948 with mode 1, "
+     "which writes bits 0..2 of the per-key record at +0x06 and +0x07 and sets "
+     "the 0x80 override bit when the value differs from the profile's all-key "
+     "value, clearing it when they match — the same override discipline 0x4f "
+     "uses for actuation, and exactly log 125's field map.",
+     "0x18003368 cmp #0x9f; 0x18003380 cmp #0xbc; 0x1800338c bl 0x1800f948; "
+     "0x1800f9a8 bic #0x80; 0x1800f9b0 strb rec+0x06; 0x1800fa26 strb rec+0x07",
+     "keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override"),
+    (0x90, "static-handler-proven", W,
+     "the firmware names it SC_S_A. Gated on bit 1 of the byte at 0x1801e6b7 — "
+     "if clear the handler does nothing but reply — it passes request byte 4 to "
+     "0x1800c184 and request byte 5 to 0x1800c1a0, then replies 51 90 with a "
+     "60-byte payload and logs both bytes. The two callees are NOT traced, so "
+     "what SC_S_A sets is NOT established.",
+     "0x1800322a ldr -> 0x1801e6b9-2; 0x18003230 lsls #0x1e; 0x18003236 bl "
+     "0x1800c184; 0x1800323c bl 0x1800c1a0; 0x1800325c adr 'SC_S_A'",
+     "unestablished (two untraced setters)"),
 )
 
 QUERIES = (
@@ -436,11 +571,14 @@ QUERIES = (
      "capture took it replies 12 12 with 01 01; the other branch replies with "
      "SUBCOMMAND 0x13, so this query has two reply shapes.",
      "0x180021b4; bl 0x1800ea36; 0x180021d0 movs r1,#0x13", None),
-    (0x13, "static-located-only", Q,
-     "a compare site and handler entry of its own at 0x1800211a. Note that "
-     "12 12's success path REPLIES with subcommand 0x13, so the two are "
-     "related; the request handler's semantics are NOT established.",
-     "0x18002088 cmp #0x13 -> 0x1800211a", None),
+    (0x13, "static-handler-proven", Q,
+     "the SAME handler body as 12 12, entered two instructions earlier so that "
+     "r2 is 1 instead of 0: both call 0x1800ea36 with a pointer to reply byte 0 "
+     "and that mode flag, and both reply with subcommand 0x13 on the success "
+     "path. So 12 12 and 12 13 are one query with two modes, and the 12 12 "
+     "reply the capture observed is its FAILURE branch at 0x18003ff8.",
+     "0x180021b4 movs r2,#1 for 12 13; 0x180021ba bl 0x1800ea36; 0x180021d0 "
+     "movs r1,#0x13", None),
     (0x14, "wire-proven", Q,
      "MULTIPLEXED. Request byte 2 selects: 0 compares the global block's +0x18 "
      "marker against bytes 4-5; 1 takes a third path; 2 returns the ASCII model "
@@ -466,6 +604,93 @@ HAL_UNMATCHED = (
     "WriteMacroFlash", "WriteMacroFlash_SupportFn",
     "SetLeverMode", "SetLeverSwitch", "SetLeverChange", "GetLeverMode",
     "SetKeyLog", "GetKeyStats", "Reset", "IsDefaultProfile",
+)
+
+# Step 4: a disposition for every HAL name protocol.md lists without an opcode.
+# A name with no plausible carrier is a finding, not a failure.
+HAL_DISPOSITION = (
+    ("SetActuation_AllKey", "51 50",
+     "global bits 9..15 written from request byte 4 at 0x18002bee, with log "
+     "125's clamp at 0x18006d3c", "strongly-inferred"),
+    ("SetActuation_PreKey", "51 4f",
+     "per-key record +0x08 bits 0..6 at 0x18002ba6 with the bit-15 override "
+     "resolved against global bits 9..15 at 0x18002bba", "strongly-inferred"),
+    ("SetRapidTrigger_AllKey", "51 58",
+     "0x1800f948 mode 0 writes global bits 20..22 and 17..19 at 0x1800f9d0 and "
+     "0x1800f9fc, with log 125's 1..6 range and default 2 at 0x1800f976",
+     "strongly-inferred"),
+    ("SetRapidTrigger_PreKey", "51 59",
+     "0x1800f948 mode 1 writes record +0x06 and +0x07 bits 0..2 at 0x1800f9b0 "
+     "and 0x1800fa26 with the 0x80 override", "strongly-inferred"),
+    ("Reset_Actuation_RapidTrigger", "51 56",
+     "the only located command that reinitialises a settings block, logging "
+     "S_ST_DEF at 0x180031e2 — but it reinitialises BLOCK D, and actuation and "
+     "rapid trigger live in the global block and the keymap bank, so the match "
+     "is by role and not by target", "hypothesis"),
+    ("Reset", "51 56", "same handler, same caveat", "hypothesis"),
+    ("SetProfile", "51 00",
+     "posts storage opcode 2 with the profile at REQSTRUCT+0x85 at 0x18002530; "
+     "the state machine stores it to the device header at 0x180011bc",
+     "strongly-inferred"),
+    ("IsDefaultProfile", None,
+     "no located handler reads a default-profile flag. 12 16 returns a device "
+     "header byte compared against 0xb5 and 12 08 a bit of 0x1801e6b7; neither "
+     "is shown to mean this", "no plausible carrier found"),
+    ("SetDeadZone_AllKey", None,
+     "no located handler writes a third all-key numeric field. The global "
+     "word's recovered fields are the selectable index, actuation and the two "
+     "rapid-trigger values; log 125 left bits 0..5 and 23..31 unrecovered, and "
+     "no located command writes them", "no plausible carrier found"),
+    ("SetDeadZone_PreKey", None,
+     "same, for the per-key record: +0x06, +0x07, +0x08, +0x0a, +0x0e and "
+     "+0x0f all have writers with other roles",
+     "no plausible carrier found"),
+    ("SetSpeedTap", "51 55 or 51 54",
+     "51 55 configures a validated PAIR of HID usage codes (=TEMP1_S_KC / "
+     "=TEMP2_S_KC) and 51 54 writes a 2-bit mode at record +0x0a bits 14..15. "
+     "Speed tap is a two-code-per-key feature, so both are shapes that could "
+     "carry it — and neither is shown to", "hypothesis"),
+    ("SwitchSpeedTap", "51 54",
+     "a 2-bit mode field is the shape of an on/off/variant switch; not shown",
+     "hypothesis"),
+    ("ResetSpeedTap", None, "no located handler clears such a pair",
+     "no plausible carrier found"),
+    ("ChangeKey_DKS", "51 23",
+     "=KC_S,T_A writes record +0x04 = 1 plus TWO extra bytes at +0x0e and +0x0f "
+     "alongside a translated target — more per-key state than a plain remap "
+     "needs. DKS is the multi-code-per-key feature, so the shape fits; the "
+     "field roles are not established", "hypothesis"),
+    ("ChangeKey_ModTap", "51 23 or 51 24",
+     "both write distinct values of the record +0x04 mode byte (1 and 2) that "
+     "0x21 clears, so the mode byte is at least four-valued and mod-tap is one "
+     "of the values it could select; which is not established", "hypothesis"),
+    ("ChangeKey_Toggle", "51 24",
+     "record +0x04 = 2, a second mode value; same caveat", "hypothesis"),
+    ("ChangeKey_Normal", "51 21",
+     "already wire-proven as the remap that clears the mode byte",
+     "strongly-inferred"),
+    ("WriteMacroFlash", None,
+     "the macro block's USB writer at 0x180035dc is in a dispatcher branch this "
+     "step did not attribute to a subcommand, so no located subcommand can be "
+     "named as its carrier", "no plausible carrier found"),
+    ("WriteMacroFlash_SupportFn", None, "same", "no plausible carrier found"),
+    ("SetLeverMode", None,
+     "no located handler writes a lever field; log 125 matched the AC decode's "
+     "lever.functionStatusList only structurally",
+     "no plausible carrier found"),
+    ("SetLeverSwitch", None, "same", "no plausible carrier found"),
+    ("SetLeverChange", None, "same", "no plausible carrier found"),
+    ("GetLeverMode", None,
+     "none of the ten located queries returns a lever field",
+     "no plausible carrier found"),
+    ("SetKeyLog", None,
+     "the dispatcher carries the strings KL_D_A and KL_E_A at 0x1800232e and "
+     "0x1800234c — disable and enable, on the 0x12 opcode's side of the body — "
+     "but this step did not attribute them to a located subcommand, so no "
+     "carrier is named", "no plausible carrier found"),
+    ("GetKeyStats", None,
+     "none of the ten located queries returns a statistics payload",
+     "no plausible carrier found"),
 )
 
 NEVER_SEND = (
@@ -627,11 +852,56 @@ def block_d():
                           "is veneer 0x406c, one of the four calls in the "
                           "rate-gated tick block log 127 mapped. So block D is "
                           "read on the report path, not just at load time.",
-        "verdict": "BLOCK D HAS NO USB WRITER. Its only writer is the storage "
-                   "state machine FUN_18000d56, at 0x18001be0. Its fields are "
-                   "NOT decoded here; what is established is that it persists "
-                   "(log 125's flash home), that the storage machine owns it, "
-                   "and that the report path reads two bytes of it.",
+        "verdict": "BLOCK D IS A PER-KEY ENTRY ARRAY, and it still has no USB "
+                   "writer except the factory-default command 51 56. Its only "
+                   "direct writer is the storage state machine FUN_18000d56 at "
+                   "0x18001be0.",
+        "layout": [
+            {"offset": "+0x000", "size": 2, "type": "u16",
+             "role": "the block's own additive checksum, the shape log 125 "
+                     "showed every stored block carrying in its first "
+                     "halfword; read nine times and written once, all inside "
+                     "FUN_18000d56",
+             "confidence": "strongly-inferred"},
+            {"offset": "+0x004", "size": "0x1ee", "type": "247 x 2-byte entry",
+             "role": "entry i is {+0: a value byte, +1: a flags byte}, indexed "
+                     "0..0xf6 by the reader's own loop bound. 247 is exactly "
+                     "log 125's key-table entry count, and 4 + 247*2 = 0x1f2",
+             "confidence": "observed"},
+            {"offset": "+0x1f2", "size": "0x1ee", "type": "247 x 2-byte entry",
+             "role": "the second table. 0x1f2 + 0x1ee = 0x3e0 EXACTLY, the "
+                     "block's declared size, so the block closes on two "
+                     "equal-sized per-key tables — the same two-table shape as "
+                     "the profile block's key tables at +0xd4 and +0x2c2. Which "
+                     "index selects which table is NOT established",
+             "confidence": "strongly-inferred"},
+        ],
+        "arithmetic_closes": True,
+        "reader_behaviour": "FUN_180057fe walks i = 0..0xf6. It tests bits 3..7 "
+                            "of entry i's flags byte (lsrs #3), and when they "
+                            "are non-zero it scans an existing byte list for "
+                            "entry i's value byte, appending i and bumping a "
+                            "count only if the value is not already present. So "
+                            "the pass builds a DE-DUPLICATED list of the "
+                            "currently active entries, once per divide-by-eight "
+                            "tick.",
+        "defaults": "NOT RECOVERED. The block is zero-initialised RAM in the "
+                    "image, so no static default is readable; 51 56 restores it "
+                    "through 0x180005c6 and 0x1800aadc, neither traced here.",
+        "persistence_meaning": "log 125 gives it a flash home at 0x340000 + "
+                               "profile*0x1000 — one 0x3e0 block per profile, "
+                               "six profiles. Combined with the layout that "
+                               "means a per-profile, per-key table of 247 "
+                               "two-byte entries survives a power cycle and is "
+                               "re-read into RAM on profile load, like the "
+                               "keymap bank and the profile block.",
+        "ac_profile_match": None,
+        "ac_profile_match_note": "NO MATCH IS CLAIMED. Log 125's decode of "
+                                 "notes/ac-profile3-decoded.json has no "
+                                 "247-entry two-byte-per-key structure left "
+                                 "unmatched, and matching on size alone is "
+                                 "exactly the resemblance rule this project "
+                                 "forbids.",
     }
 
 
@@ -661,10 +931,48 @@ def hold_timer():
                                 "timer, which fits all four of those names. "
                                 "Nothing here distinguishes them, so NO NAME IS "
                                 "ASSIGNED.",
-        "ring_capacity": "600 bytes per layer = 300 halfwords; 75 keys x 8 is "
-                         "the same 600, so the stride is per-key-times-eight. "
-                         "Whether the ring is per layer or per scan group is "
-                         "NOT established.",
+        "buffer": {
+            "base": "0x18024000",
+            "stride": 600,
+            "stride_arithmetic": "k*15, then *5, then <<3 — the writer at "
+                                 "0x180054c8..0x180054d2 and the consumer at "
+                                 "0x18006084..0x18006094 compute it identically",
+            "entry": "one halfword per slot; 600 bytes is 300 slots",
+            "index": "a per-bank word counter, read and incremented in place by "
+                     "the writer (0x180054d6 / 0x180054de / 0x180054e0)",
+            "wrap": "NONE FOUND. The writer increments the counter with no "
+                    "modulo and no bound test at the append site; the consumer "
+                    "stops at 120 (cmp r1,#0x78). Whether anything resets the "
+                    "counter each pass is NOT established, and no wrap "
+                    "behaviour should be assumed.",
+            "selector": "NOT the layer. Log 128 recorded 'a per-layer output "
+                        "ring'; the consumer FUN_180061c2 computes the SAME "
+                        "stride from two different indices — one at struct "
+                        "+0x80 and one at +0x7c — and compares the two banks "
+                        "entry by entry. That is a current/previous "
+                        "double-buffer, so the multiplier is a BANK SELECTOR "
+                        "and its identification as the layer is WITHDRAWN.",
+            "consumer": "FUN_180061c2, the report builder — veneer 0x4076, the "
+                        "last call in log 127's rate-gated tick block. It reads "
+                        "bank[current][i] and bank[previous][i] and sets a "
+                        "change flag when they differ.",
+        },
+        "release_before_expiry": "NOT ESTABLISHED. The append at 0x180054da is "
+                                 "on the expiry branch only; no reset of the "
+                                 "per-key counter on release was traced, and "
+                                 "the tap-side path was not followed. What "
+                                 "happens to a key released early is therefore "
+                                 "an open question, not an inference.",
+        "threshold_writer": "NOT ESTABLISHED. The threshold byte is at record "
+                            "+0x22 of the key*0x20 array, i.e. offset +0x02 of "
+                            "the record one stride on; the located 0x51 "
+                            "subcommands write +0x04, +0x06, +0x07, +0x08, "
+                            "+0x0a, +0x0e and +0x0f of a record, and NONE of "
+                            "them was shown writing +0x00 or +0x02. Which "
+                            "command sets the hold time is open.",
+        "mechanism": "dual-role, hold-to-alternate, threshold in 10 ms units",
+        "ring_capacity": "600 bytes per bank = 300 halfwords; the consumer "
+                         "reads at most 120 of them.",
     }
 
 
@@ -845,6 +1153,55 @@ def verify():
     check(bool(HAL_UNMATCHED),
           "HAL names with no opcode are listed rather than guessed at",
           f"{len(HAL_UNMATCHED)} unmatched")
+
+    # --- log 130 -----------------------------------------------------------
+    cov = Counter(r["confidence"] for r in subs + queries)
+    check(cov["static-located-only"] == 1,
+          "only 0x52 is still located-only after this step",
+          ", ".join(r["subcommand"] for r in subs + queries
+                    if r["confidence"] == "static-located-only"))
+    check(cov["static-handler-proven"] + cov["wire-proven"] == 33,
+          "the other thirty-three commands carry decoded semantics",
+          json.dumps(dict(cov), sort_keys=True))
+
+    bd = block_d()
+    check(bd["arithmetic_closes"],
+          "block D's layout closes on its declared size — 4 + 2*0x1ee = 0x3e0",
+          "two 247-entry tables plus a 2-byte checksum")
+    check(len(bd["layout"]) == 3 and bd["ac_profile_match"] is None,
+          "block D's fields are laid out and NO Armoury Crate field is matched "
+          "to them", "3 regions, 0 matches")
+
+    ht = hold_timer()
+    check(ht["hal_match"] is None
+          and ht["mechanism"] == "dual-role, hold-to-alternate, threshold in "
+                                 "10 ms units",
+          "the dual-role timer is recorded as a mechanism, not a HAL name",
+          ht["mechanism"])
+    check("WITHDRAWN" in ht["buffer"]["selector"],
+          "log 128's 'per-layer ring' reading is withdrawn — the multiplier is "
+          "a bank selector", "the consumer diffs two banks")
+    check("NONE FOUND" in ht["buffer"]["wrap"]
+          and "NOT ESTABLISHED" in ht["release_before_expiry"]
+          and "NOT ESTABLISHED" in ht["threshold_writer"],
+          "the three things the timer analysis could not settle say so",
+          "wrap, release-before-expiry, threshold writer")
+
+    disp = HAL_DISPOSITION
+    named = [d for d in disp if d[1] is not None]
+    none_found = [d for d in disp if d[1] is None]
+    check(len(disp) >= len(HAL_UNMATCHED),
+          "every HAL name protocol.md leaves without an opcode gets a "
+          "disposition", f"{len(disp)} dispositions")
+    check(len(none_found) >= 10,
+          "and a name with no plausible carrier is recorded as a finding, not "
+          "hidden", f"{len(none_found)} with no carrier found")
+    check(all(d[3] in ("strongly-inferred", "hypothesis",
+                       "no plausible carrier found") for d in disp),
+          "every disposition carries one of three confidences",
+          ", ".join(sorted({d[3] for d in disp})))
+    check(all(d[2] for d in named),
+          "every named carrier cites instructions", f"{len(named)} named")
     return checks
 
 
@@ -874,6 +1231,9 @@ def to_dict():
         "rapid_burst": rapid_burst(),
         "storage_map": storage_map(),
         "hal_names_without_an_opcode": list(HAL_UNMATCHED),
+        "hal_disposition": [{"hal_name": n, "candidate_carrier": c,
+                             "evidence": e, "confidence": k}
+                            for n, c, e, k in HAL_DISPOSITION],
         "never_send": [{"frame": f, "why": w} for f, w in NEVER_SEND],
         "coverage": dict(Counter(r["confidence"] for r in subs + queries)),
         "checks": checks,
@@ -1022,6 +1382,44 @@ def markdown():
                    f"{f['checksum']} | {'yes' if f['covered'] else '**no**'} | "
                    + (", ".join(f"`{w}`" for w in f["written_by"]) or "—")
                    + " |")
+    out += ["", "## Block D's layout", "",
+            "| offset | size | type | role | confidence |",
+            "|---|---|---|---|---|"]
+    for r in d["block_d"]["layout"]:
+        out.append(f"| `{r['offset']}` | `{r['size']}` | {r['type']} | "
+                   f"{r['role']} | `{r['confidence']}` |")
+    out += ["", f"**Reader.** {d['block_d']['reader_behaviour']}", "",
+            f"**Defaults.** {d['block_d']['defaults']}", "",
+            "**Persistence.** "
+            + d["block_d"]["persistence_meaning"][:1].upper()
+            + d["block_d"]["persistence_meaning"][1:], "",
+            f"**Armoury Crate match.** {d['block_d']['ac_profile_match_note']}",
+            "", "## The dual-role timer, mechanism complete", "",
+            f"**{d['hold_timer']['mechanism'].capitalize()}.**", "",
+            "| | |", "|---|---|"]
+    b = d["hold_timer"]["buffer"]
+    for k in ("base", "stride", "stride_arithmetic", "entry", "index", "wrap",
+              "selector", "consumer"):
+        out.append(f"| {k.replace('_', ' ')} | {b[k]} |")
+    out += ["", f"**Release before expiry.** "
+            f"{d['hold_timer']['release_before_expiry']}", "",
+            f"**Which command sets the threshold.** "
+            f"{d['hold_timer']['threshold_writer']}", "",
+            f"**HAL name: none assigned.** "
+            f"{d['hold_timer']['hal_match_confidence']} Candidates: "
+            + ", ".join(f"`{c}`" for c in d["hold_timer"]["hal_candidates"])
+            + ".", "",
+            "## HAL disposition", "",
+            "Every HAL method `notes/protocol.md` leaves without an opcode, "
+            "with the located subcommand that could carry it — or the finding "
+            "that none could.", "",
+            "| HAL name | candidate carrier | evidence | confidence |",
+            "|---|---|---|---|"]
+    for r in d["hal_disposition"]:
+        carrier = f"`{r['candidate_carrier']}`" if r["candidate_carrier"] \
+            else "**none**"
+        out.append(f"| `{r['hal_name']}` | {carrier} | {r['evidence']} | "
+                   f"`{r['confidence']}` |")
     out += ["", "## HAL names still without an opcode", "",
             ", ".join(f"`{n}`" for n in d["hal_names_without_an_opcode"]), "",
             "## NEVER SEND without explicit owner approval", "",

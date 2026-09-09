@@ -3259,6 +3259,95 @@ entry format; block D's fields; the hold timer's HAL name; the consumer of
 `0x1801e7b8`; and sixteen HAL method names that still have no opcode, listed
 rather than guessed at.
 
+### Closing the static remainder of the command map (log 130)
+
+Twelve of log 128's thirteen located-only commands are decoded. Coverage moves
+from 9 / 12 / 13 to **9 wire-proven, 24 static-handler-proven, 1
+static-located-only** — and the one that remains (`51 52`) says so.
+
+**Four HAL names that had no opcode now have one, in a symmetric family.**
+
+| command | field | log 125's independent record |
+|---|---|---|
+| `51 50` all-key actuation | global word bits 9..15 | "bits 9..15 actuation 1..40" |
+| `51 4f` per-key actuation | record `+0x08` bits 0..6 + bit-15 override | "rec+0x08 uint16, bit 15 override, bits 0..6 actuation, 1..40" |
+| `51 58` all-key rapid trigger | global bits 20..22 / 17..19 | "bits 20..22 press, 17..19 release, 1..6, default 2" |
+| `51 59` per-key rapid trigger | record `+0x06`/`+0x07` bits 0..2 + `0x80` override | "rec+0x06 bit 7 override, bits 0..2 press, 1..6, default 2" |
+
+`0x58` and `0x59` are one helper called with a mode flag — `bl 0x1800f948` at
+`0x1800334c` (mode 0) and `0x1800338c` (mode 1) — and the helper carries log
+125's range check and default in the instruction stream: `cmp #6` at
+`0x1800f976`, `movs r2,#2` at `0x1800f97c`. Every field, range, default and
+override rule matches what log 125 recovered from the storage side. Two
+analyses, opposite directions, one map.
+
+**The firmware names its own handlers, and nobody had harvested the strings:**
+`=KC_S,T_A`, `=ES_A`, `=S_PR_U`, `=TEMP1_S_KC`, `=TEMP2_S_KC`, `S_ST_A`,
+`S_ST_DEF`, `=S_ST_SW`, `SC_S_A`, `=MS_A`, plus `KL_D_A`/`KL_E_A` and an `FT_*`
+cluster in the still-unopened opcode range. Five of the twelve decodes are
+anchored by one.
+
+Also decoded: **`51 56` = settings factory default** (`S_ST_DEF`; the only
+located command that reinitialises block D) · **`51 23`** (`=KC_S,T_A`, writes
+record `+0x04` = 1 plus `+0x0e`/`+0x0f`, outside log 125's map) · **`51 24`**
+(record `+0x04` = 2 — with `0x21` clearing it, **the mode byte is at least
+four-valued**) · **`51 54`** (record `+0x0a` bits 14..15, exactly the two bits
+the shared writer tail clears) · **`51 55`** (a validated *pair* of key codes,
+each range-checked to HID `0x04..0x91` or `0xe0..0xe7`) · **`51 90`**
+(`SC_S_A`) · **`51 18`** (`=MS_A`) · **`51 0c`** · and **`12 13`**, which turns
+out to be the *second mode of `12 12`* — so the `12 12` reply log 126 observed
+is that query's **failure** branch.
+
+**Block D is a per-key table, and the arithmetic closes exactly.**
+
+| offset | size | contents |
+|---|---|---|
+| `+0x000` | 2 | the block's own additive checksum |
+| `+0x004` | `0x1ee` | 247 × 2-byte entries `{value, flags}` |
+| `+0x1f2` | `0x1ee` | a second 247-entry table |
+
+`4 + 2 × 0x1ee = 0x3e0`, the declared size. 247 is log 125's key-table entry
+count, read here from the reader's own loop bound (`cmp r1,#0xf7` at
+`0x1800585a`). The ÷8-tick reader `FUN_180057fe` tests bits 3..7 of each entry's
+flags byte and builds a **de-duplicated list of active entries** once per pass.
+Defaults are **not recovered** (the block is zero-init RAM), and **no Armoury
+Crate field is matched to it** — log 125's decode leaves no 247-entry
+two-byte-per-key structure unmatched, and matching on size alone is the
+resemblance rule this project forbids. Its flash home `0x340000 + p*0x1000`
+means one such table per profile, six profiles, restored on profile load.
+
+**The dual-role timer, and a correction to log 128.** Mechanism: *dual-role,
+hold-to-alternate, threshold in 10 ms units.* The threshold is record `+0x22`,
+the emitted payload the halfword at `+0x20`, and on expiry it is appended to a
+600-byte bank at `0x18024000 + k*600` with the bank's index bumped. **`k` is not
+the layer.** The report builder `FUN_180061c2` computes the same stride from two
+different indices (struct `+0x80` and `+0x7c`) and diffs the banks entry by entry
+(`0x18006094`, `0x1800609c`, `0x180060a4`) — a **current/previous double
+buffer**. Log 128's "per-layer output ring" reading is **withdrawn**. Still open,
+and stated as open: no wrap behaviour was found; the release-before-expiry path
+was not traced; and **no located subcommand was shown writing record `+0x00` or
+`+0x02`**, so which command sets the hold time is unknown. **No HAL name is
+assigned.**
+
+**HAL disposition.** Six names now have a carrier at strongly-inferred
+(`SetActuation_AllKey/_PreKey`, `SetRapidTrigger_AllKey/_PreKey`, `SetProfile`,
+`ChangeKey_Normal`); seven have a plausible one as a hypothesis
+(`Reset`/`Reset_Actuation_RapidTrigger` → `51 56` by role not target;
+`SetSpeedTap`/`SwitchSpeedTap` → `51 55`/`51 54`; `ChangeKey_DKS`/`_ModTap`/
+`_Toggle` → `51 23`/`51 24`); and **ten have no plausible carrier among the
+thirty-four located commands** — both `SetDeadZone` variants, `ResetSpeedTap`,
+`IsDefaultProfile`, both `WriteMacroFlash` variants, all four lever methods,
+`SetKeyLog` and `GetKeyStats`. That last group is a finding: either they live
+behind the eleven still-unopened top-level opcodes — where the `FT_*` and
+`KL_D_A`/`KL_E_A` strings sit — or they are not implemented on this model.
+Nothing here decides which.
+
+**Still unresolved:** `51 52`; the eleven unopened top-level opcodes; the ten
+carrierless HAL names; what `=MS_A`, `SC_S_A` and `51 0c`'s two cells do; record
+`+0x0e`/`+0x0f` and `+0x0a`'s 2-bit mode; block D's second table and defaults;
+the timer's wrap, release path and threshold writer; and which subcommand
+reaches the macro writer.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
