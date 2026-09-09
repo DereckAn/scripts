@@ -110,9 +110,11 @@ Not an evidence gate but a design one, listed because it is easy to miss: a repl
 
 ### what makes address 0 writable
 
-The boot handoff copies the entry image to address 0 and then resets, so some remap or alias must exist. The register that arranges it is not identified, and a replacement's entry image has to live under the same arrangement.
+SATISFIED by log 123, and the answer is that there is nothing to reproduce. There is NO remap. Address 0 is ordinary writable RAM by hardware arrangement: no preserved image writes a remap, alias or base-address register, and VTOR is read ten times across four images and written zero times. The handoff is a 0x50-byte RAM stub that masks interrupts, word-copies to address 0, and issues an AIRCR system reset — it configures nothing. A replacement entry image must sit at 0x60011000, fit the fixed 0x10000-byte copy, put its vector table at image offset 0 and its stack in the 0x18000000 window, and then LEAVE THE ARRANGEMENT ALONE. WHAT REMAINS UNRESOLVED is only what places the BOOTLOADER at address 0 before any preserved image runs — a ROM or hardware stage outside the preserved set — and a replacement never has to reproduce that, because the bootloader is the component it inherits.
 
 - log 101: recorded as an unresolved boot-acceptance item
+- log 123: the handoff stub in full, the enumerated 0x45000000 block, and zero VTOR writes
+- log 123: address 0 is not an alias of 0x18000000, because the entry image's scatter loader would overwrite itself mid-copy
 
 ## Candidate first targets under Path A
 

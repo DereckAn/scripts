@@ -2395,6 +2395,145 @@ which is more informative than what I originally intended.
 898 offline tests pass, both evidence hashes are unchanged, and no device was
 accessed.
 
+## 2026-09-08 — Hunting the RGB driver (log 122)
+
+One step. Offline; authorises nothing. Nothing committed or staged.
+
+Log 112 left the lighting hardware boundary as "both frame consumers reach zero
+resolved MMIO", with 79 and 91 unresolved-base accesses, and that phrasing had
+been quietly bothering me. An unresolved count sounds like something is hiding.
+The first thing worth doing was finding out what those accesses actually are.
+
+They are not a hidden driver. Across the whole closure there are 657 of them,
+and the census's own reason field splits them into stack-relative locals,
+indexing into arrays whose base is perfectly well known, and — the largest
+group by far — accesses whose base sits in an ARM parameter register, which
+means the pointer belongs to the caller. A function that takes a buffer and
+indexes it looks exactly like this. Log 112's counts were right; the inference
+that a peripheral might be lurking behind them was the part worth testing.
+
+So I computed the closure properly instead of sampling reachability: 42
+application functions from eleven roots, plus three entry-image library
+routines reached through veneers. Zero peripheral accesses anywhere in it. I
+made a point of checking that the same machinery finds MMIO when it is there —
+re-rooted at one of the 0x40022000 users it does, immediately — because a
+negative from a blind tool is worth nothing.
+
+The second-context hypothesis was the one I most expected to pay off. That
+image owns windows the app never touches and already ferries one peripheral's
+data across the mailbox, so ferrying a second would have been elegant. It does
+not. No reference to either frame buffer, none to the lighting RAM region at
+all, and not a single 306 anywhere — not as a word, not as an immediate. Its
+mailbox fields are all sized for 75 keys. Dead.
+
+Then the 0x40022000 bank, which log 112 had flagged as PWM-shaped and correctly
+declined to name. Its users form a tight cluster in the 0x18011xxx range and
+the intersection with the lighting closure is empty. The DMA setup from log 111
+is not in the closure either. And a window I had not seen before, 0x40100000,
+turned out to have 27 users almost all in the USB stack's range; the only
+lighting contact is a single status read.
+
+Two things did fall out, and both correct log 112. There IS double buffering: a
+306-byte copy from the live frame to a shadow exactly one frame below it, gated
+on two flag bits. And the frame timing IS recoverable — all three lighting
+roots are called from the prescaler's divide-by-8 job through veneers. The
+lighting subsystem is not on its own timer at all; it is one more client of the
+same IRQ38/8 tick that feeds the watchdog and fetches key samples. Log 112 had
+recorded the consumers as not reached from the tick chain, which was true of
+what could be seen before logs 119 to 121 taught this project to decode the
+veneer table.
+
+The safe-idle question still cannot be answered, but the reason is now much
+sharper than "unresolved". An output-enable line, a brightness register and a
+driver reset sequence would every one of them be an MMIO write, and the closure
+performs none. There is nothing to inspect — not something unrecognised. That
+is a better boundary than a count of unresolved accesses, and it is honest
+about what would be needed.
+
+So RGB stays unresolved. The step's own precondition was that it moves only
+with the safe-idle proof, and a tighter negative is not a proof. A common-anode
+part behind an inverting stage would still read an all-zero frame as full
+brightness. I rewrote the dependency map's boundary text and left the
+classification alone, with a test asserting both.
+
+Because the headline result is a negative, every "found nothing" check in the
+new tests has a companion that makes the same machinery find something. That
+felt like the only responsible way to publish an absence.
+
+931 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
+## 2026-09-08 — There is no remap (log 123)
+
+One step, closing the last boot-acceptance item from log 101 and Path B's fifth
+gate. Offline; authorises nothing. Nothing committed or staged.
+
+The question was framed as "find the remap control", with three candidates to
+discriminate. The right answer turned out to be that there is not one to find,
+and getting there was a matter of enumerating carefully enough to be entitled
+to say so.
+
+The premise needed correcting before anything else. The prompt said the series
+brief documents ROM/RAM remapping as a series feature. It does not — the word
+does not appear in notes/references.md at all, which lists dual cores, USB,
+GPIO, timers and PWM, two watchdogs, SPI NOR and a SAR ADC. I recorded that and
+made sure nothing downstream leaned on it, which was easy, because the evidence
+went the other way anyway.
+
+Then the enumeration. All fifteen registers of the 0x45000000 block, across all
+four images, 210 accesses: not one write stores anything that looks like a base
+address. Every value is a small bitmask or enable field. A register that
+relocated a 64 KiB window would have to be told where to put it, and none is.
+VTOR settled the third candidate just as quickly: ten reads across four images,
+zero writes. Nobody relocates the vector table.
+
+What actually resolved it was reading the handoff properly. The bootloader
+doesn't copy to address 0 itself — it calls a veneer into a fifty-byte RAM stub,
+which makes obvious sense once you see it, because the copy overwrites the code
+doing the copying. The stub masks interrupts, word-copies, issues a barrier,
+reads AIRCR while preserving PRIGROUP, ors in the vector key and SYSRESETREQ,
+writes it, and spins. Its only two literals are AIRCR and the key, both
+architectural. It configures nothing at all. Address 0 is simply already
+writable.
+
+There is a small pleasure in the call just before it: 0x00000ffc, which the
+bootloader invokes with dst=0 right before the copy, is a bare `bx lr`. It is
+the hook where a remap or a cache operation would go on a part that needed one.
+This part does not.
+
+A second witness fell out on the way. The bootloader passes the selected entry
+address to the next stage by storing it into vector slot 7 — Reserved7, shipped
+as zero in both images — reached through VTOR. That the store works at all is
+independent evidence that the vector table is in writable RAM.
+
+The one inference I was careful to label as such is that address 0 is not an
+alias of 0x18000000. If it were, the entry image's own scatter loader would copy
+the application over 0x18000000 while executing from that very memory, and would
+destroy itself mid-copy. That is a strong argument but it is an argument, so the
+claim is strongly-inferred rather than observed. Both stages stacking in the
+0x18000000 window while running code at 0 corroborates it.
+
+So the answer for a replacement is unusually pleasant: sit at 0x60011000, fit
+the fixed 0x10000 copy, put the vector table at offset 0 and the stack in the
+0x18000000 window, and then leave everything alone. The gate asked which
+register arrangement must be preserved. None.
+
+What stays unresolved is what puts the bootloader at address 0 in the first
+place, before any preserved image runs. That is a ROM or hardware stage nobody
+can read. It does not block Path B, because a replacement inherits the
+bootloader rather than replacing it — the unread stage hands address 0 to the
+bootloader and everything after that is now understood. I marked the ADR gate
+satisfied on exactly that reasoning, with the boundary written inside the gate
+rather than dropped from it.
+
+Since the conclusion is a negative reached by enumeration, each enumeration got
+a companion that proves it can find what it says is absent: the VTOR filter
+re-run against AIRCR, which is written; and the base-address detector fed a
+synthetic 0x18000000 store, which it duly reports.
+
+962 offline tests pass, both evidence hashes are unchanged, and no device was
+accessed.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

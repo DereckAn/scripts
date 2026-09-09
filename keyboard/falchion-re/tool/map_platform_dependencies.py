@@ -505,14 +505,27 @@ SERVICES = (
             "whether an all-zero frame means the LEDs are OFF depends on a "
             "driver polarity nobody has established. Omission could leave the "
             "array at full brightness.",
-            ("log 112 step 5: both frame consumers reach zero resolved MMIO",
-             "log 112 step 6: the buffer's idle state is provable, the "
-             "hardware's is not"),
+            ("log 112 step 6: the buffer's idle state is provable, the "
+             "hardware's is not",
+             "log 122: the lighting closure is exhaustively 45 functions and "
+             "resolves ZERO peripheral accesses; four candidate transports are "
+             "individually eliminated",
+             "log 122: double buffering and frame timing ARE recovered, which "
+             "narrows what remains missing to the final transport alone"),
             "unresolved",
-            evidence_boundary="the LED driver is unidentified, so its idle "
-            "polarity is unknown and no shared clock, pin or controller "
-            "initialisation could be inspected. Proving safe omission requires "
-            "identifying the consumer of the 306-byte frame at 0x1802505e."),
+            evidence_boundary="TIGHTENED BY LOG 122 AND STILL UNRESOLVED. The "
+            "driver is not merely unrecognised, it is absent from both "
+            "analysed images: an exhaustive call-graph closure of 45 functions "
+            "resolves no peripheral access at all, and its unresolved accesses "
+            "are stack locals, indexed offsets and caller-supplied pointers "
+            "rather than a concealed base. The second execution context, the "
+            "0x40022000 bank, log 111's DMA setup and the 0x40100000 block are "
+            "each eliminated. What survives is exactly one gap: the frame is "
+            "produced, scaled, double-buffered and swapped on the divide-by-8 "
+            "tick, and then its data path leaves the analysed set. Because an "
+            "output-enable, a brightness register and a driver reset would all "
+            "be MMIO writes, there is nothing left to inspect — so the idle "
+            "polarity cannot be settled from these images at all."),
     Service("media_nkro", "interface 2 and 3, media and NKRO reports",
             "may-omit",
             "both are built and sent by the same function as the boot report, "

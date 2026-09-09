@@ -2585,6 +2585,110 @@ second context owns it**, because those are exactly the services a replacement
 inherits. The test asserts set equality, so a boundary on any other service
 still fails.
 
+### The RGB driver hunt: a tighter negative, and two recoveries (log 122)
+
+The lighting driver is **still not found**, but the boundary is now far
+sharper, and two things log 112 recorded as not recovered are recovered.
+
+**The closure is exhaustive and empty of hardware.** The lighting subsystem is
+42 application functions plus 3 entry-image library routines, and it resolves
+**zero** peripheral accesses. The same census resolves plenty of RAM in the
+same closure, so this is a real negative and not a silent tool.
+
+**The unresolved counts do not hide a driver.** Of 657 unresolved accesses,
+112 are stack-relative locals, 54 index arrays whose base is known, and 396
+have their base in an ARM *parameter* register — the caller's pointer. Log
+112's 79 and 91 were correct; reading them as a concealed peripheral base
+would not be.
+
+**Four candidate transports, individually eliminated:**
+
+| candidate | verdict |
+|---|---|
+| the second execution context | no reference to either frame buffer, none to the lighting RAM region, no `0x132` in any word or immediate |
+| the `0x40022000` bank | its users cluster at `0x18011886..0x18011bbe`; intersection with the lighting closure is **empty** |
+| log 111's DMA setup | not in the closure |
+| the `0x40100000` block | the USB stack's; lighting touches it only via one status read |
+
+**Recovered — double buffering.** `FUN_1800aab0` copies **306 bytes** from the
+live frame `0x1802505e` to a shadow at `0x18024f2c` — exactly one frame below —
+gated on bits 4 and 5 of `0x1801e6b7`, then tail-calls `FUN_180089a8`. Five
+functions read the shadow. Log 112 recorded "no second buffer or swap was
+found."
+
+**Recovered — frame timing.** All three lighting roots are called from entry
+`FUN_00000516`, the prescaler's divide-by-8 job, through veneers `0x40d0`,
+`0x40f8` and `0x4116`. The lighting subsystem rides **IRQ38 / 8** — the same
+tick that feeds the watchdog and fetches key samples. Log 112 had recorded the
+consumers as *not* reached from the tick chain; the veneer mechanism logs
+119–121 established is what makes the link visible. The absolute rate stays
+unresolved.
+
+**Safe idle: still unanswerable, for a sharper reason.** An output-enable line,
+a brightness register and a driver reset would all be MMIO writes, and the
+closure contains none — so there is *nothing to inspect*, not something
+unrecognised. The buffer's all-zero idle state remains provable; what the
+hardware does with it does not.
+
+**RGB stays `unresolved`.** Tighter ignorance is not the safe-idle proof the
+move requires. The dependency map's boundary text is rewritten to the sharper
+statement; the classification is untouched, and a test asserts both.
+
+### Address 0: there is no remap (log 123)
+
+The last boot-acceptance item log 101 left open, and Path B's fifth gate.
+**The answer is that there is nothing to reproduce.**
+
+**A correction first.** The premise that the series brief documents ROM/RAM
+remapping is not supported: `notes/references.md` lists dual Cortex-M3 cores,
+USB host/device, GPIO, timers and PWM, two watchdogs, SPI NOR and a 10-bit
+six-channel SAR ADC. The word "remap" does not appear in it. Nothing here rests
+on that lead.
+
+**Three candidates, two eliminated outright:**
+
+| candidate | verdict |
+|---|---|
+| a system-control remap register | **eliminated** — 15 registers and 210 accesses in the `0x45000000` block, and **not one write stores a base-address-shaped value**; every stored value is a small bitmask or enable field |
+| VTOR plus a copy | **eliminated** — VTOR is read **10 times** across four images and written **zero** times |
+| a fixed hardware alias | what remains, and it requires nothing of the software |
+
+**The handoff stub settles it.** `FUN_00007ec8` calls `0x00000ffc` — *a bare
+`bx lr`*, a no-op hook this SoC needs nothing in — then veneers into a 0x50-byte
+RAM stub at `0x18010000`. That stub masks interrupts, word-copies into address
+0, `dsb`, reads AIRCR preserving PRIGROUP, ors the vector key and SYSRESETREQ,
+writes it, and spins. Its only two literals are `0xe000ed0c` and `0x05fa0000`,
+both ARMv7-M architectural. **It configures nothing.** Address 0 is already
+writable when it runs.
+
+**A second, independent witness.** `FUN_00007fa8` reads VTOR and stores the
+selected entry at `VTOR+0x1c` — the Reserved7 vector slot, shipped as zero in
+both images. That the write works at all means the vector table is in writable
+RAM.
+
+**Address 0 is not an alias of `0x18000000`** (strongly-inferred): if it were,
+the entry image's own scatter loader at `0x148` would copy the application over
+`0x18000000` — over itself — while executing from it. Corroborating this, both
+stages run code at 0 while stacking in the `0x18000000` window (`0x1802b230`
+and `0x18036168`), and the entry image's init faults if MSP is outside it.
+
+**Nothing maintains the arrangement after the app starts**, because nothing
+established it. The entry image's table stays at 0 and the application's
+handlers are entered through it.
+
+**What a replacement must reproduce:** sit at `0x60011000`, fit the fixed
+`0x10000`-byte copy, put its vector table at image offset 0 and its stack in
+the `0x18000000` window, configure no remap, never write VTOR, and not assume
+slot 7 is zero at runtime. **Preserving the arrangement means leaving it
+alone** — the gate asked which register arrangement must be preserved, and the
+answer is none.
+
+**Still unresolved:** what places the *bootloader* at address 0 before any
+preserved image runs. That is a ROM or hardware stage outside the preserved set.
+It does **not** block Path B, because a replacement inherits the bootloader
+rather than replacing it — which is why the ADR's gate 5 is marked satisfied
+with the boundary stated inside it.
+
 ### Firmware modification roadmap (offline-first)
 
 Now that both integrity mechanisms are recomputable, a modified image that passes
