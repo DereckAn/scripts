@@ -1,4 +1,4 @@
-import { ArrowRight, Globe, Image, Zap, Camera, Brain } from "lucide-react";
+import { ArrowRight, Globe, Image, Music, Zap, Camera, Brain } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -142,6 +142,27 @@ export default function Home() {
                     Analiza imágenes con IA local sin censura. Compatible con Ollama, LM Studio y más.
                   </p>
                   <div className="inline-flex items-center text-purple-600 dark:text-purple-400 font-medium text-sm group-hover:text-purple-700 dark:group-hover:text-purple-300">
+                    Comenzar
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/svg-to-pdf" className="group">
+              <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl p-8 border border-stone-200/60 dark:border-stone-800/60 hover:bg-white dark:hover:bg-stone-900 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <Music className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-3">
+                    Partituras a PDF
+                  </h3>
+                  <p className="text-stone-600 dark:text-stone-400 mb-6 text-sm leading-relaxed">
+                    Convierte partituras SVG a PDF vectorial y únelas en un solo
+                    archivo, ordenado por nombre y listo para imprimir.
+                  </p>
+                  <div className="inline-flex items-center text-indigo-600 dark:text-indigo-400 font-medium text-sm group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
                     Comenzar
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </div>

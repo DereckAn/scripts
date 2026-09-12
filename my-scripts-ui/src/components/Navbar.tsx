@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Image, Menu, Palette, X, Zap, Camera, Brain } from "lucide-react";
+import { Globe, Image, Menu, Music, Palette, X, Zap, Camera, Brain } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -41,6 +41,12 @@ export default function Navbar() {
       icon: Brain,
       color: "purple",
     },
+    {
+      name: "Partituras a PDF",
+      href: "/svg-to-pdf",
+      icon: Music,
+      color: "indigo",
+    },
   ];
 
   const toggleNavbar = () => {
@@ -55,6 +61,7 @@ export default function Navbar() {
         amber: "bg-amber-600 text-white shadow-lg shadow-amber-600/25",
         pink: "bg-pink-600 text-white shadow-lg shadow-pink-600/25",
         purple: "bg-purple-600 text-white shadow-lg shadow-purple-600/25",
+        indigo: "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25",
       }[color];
     }
     return {
@@ -68,6 +75,8 @@ export default function Navbar() {
         "hover:bg-pink-50 dark:hover:bg-pink-950/30 hover:text-pink-700 dark:hover:text-pink-300",
       purple:
         "hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300",
+      indigo:
+        "hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-700 dark:hover:text-indigo-300",
     }[color];
   };
 
