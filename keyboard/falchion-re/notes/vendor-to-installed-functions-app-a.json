@@ -1,10 +1,10 @@
 {
   "counts": {
-    "identical": 129,
+    "identical": 127,
     "structural": 5,
-    "tentative": 10
+    "tentative": 9
   },
-  "data_region_bytes": 122,
+  "data_region_bytes": 124,
   "data_regions": [
     {
       "flash_hi": 69633,
@@ -597,6 +597,16 @@
       "vendor_lo": 16554
     },
     {
+      "flash_hi": 86198,
+      "flash_lo": 86196,
+      "installed_hi": 16566,
+      "installed_lo": 16564,
+      "length": 2,
+      "shift": 0,
+      "vendor_hi": 16566,
+      "vendor_lo": 16564
+    },
+    {
       "flash_hi": 86207,
       "flash_lo": 86206,
       "installed_hi": 16575,
@@ -1008,8 +1018,8 @@
     }
   ],
   "discontiguous_bodies": {
-    "installed": 26,
-    "vendor": 26
+    "installed": 25,
+    "vendor": 25
   },
   "dominant_shift": 0,
   "header": {
@@ -1018,7 +1028,7 @@
     "installed_program": "installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin",
     "vendor_program": "vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin"
   },
-  "installed_count": 144,
+  "installed_count": 141,
   "matches": [
     {
       "confidence": "identical",
@@ -1749,25 +1759,25 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
-        "blocks": 7,
-        "bytes_sha": "9d5d2a761b5c256489b8ed745f72d18aad920654aa04cd89ee6079a816639656",
-        "entry": 2572,
-        "insns": 26,
-        "name": "PtrTarget_00000a0c",
-        "shape_sha": "dd757b217bf07dca2db31e18b5aa4e7ecb81ea9cbd60d25c24f29f3d59fd436a",
-        "size": 58
+        "blocks": 8,
+        "bytes_sha": "33d237810050ef8bb0d4d4eeb25eab6ff0fb14afebaac258cae8e29897fb92f1",
+        "entry": 2556,
+        "insns": 34,
+        "name": "Orphan_000009fc",
+        "shape_sha": "f2c1d53e4d76ddfee7706e849615a4b37d8e3e9971f1d2b113635865b68fe34a",
+        "size": 74
       },
       "moved": false,
       "reason": "same body bytes",
       "score": 1.0,
       "vendor": {
-        "blocks": 7,
-        "bytes_sha": "9d5d2a761b5c256489b8ed745f72d18aad920654aa04cd89ee6079a816639656",
-        "entry": 2572,
-        "insns": 26,
-        "name": "PtrTarget_00000a0c",
-        "shape_sha": "dd757b217bf07dca2db31e18b5aa4e7ecb81ea9cbd60d25c24f29f3d59fd436a",
-        "size": 58
+        "blocks": 8,
+        "bytes_sha": "33d237810050ef8bb0d4d4eeb25eab6ff0fb14afebaac258cae8e29897fb92f1",
+        "entry": 2556,
+        "insns": 34,
+        "name": "Orphan_000009fc",
+        "shape_sha": "f2c1d53e4d76ddfee7706e849615a4b37d8e3e9971f1d2b113635865b68fe34a",
+        "size": 74
       }
     },
     {
@@ -4199,100 +4209,25 @@
       "confidence": "identical",
       "differing_bytes": 0,
       "installed": {
-        "blocks": 11,
-        "bytes_sha": "19379b6cbc2bf64e7c2b5f85043e4b9c16315e63dc3065fc4c10a2201dc72862",
+        "blocks": 12,
+        "bytes_sha": "7b9da2c26bfbca6a5da282504d0fd6cdb534e4d5de7b749cf9a2b78c9c3c408e",
         "entry": 15832,
-        "insns": 152,
+        "insns": 160,
         "name": "FUN_00003dd8",
-        "shape_sha": "74f1655d1e7f23287e83effb420f97abce4531fe50ef84da63928c4a8024cd2c",
-        "size": 556
+        "shape_sha": "da69c233c9ae5276713d2ce976be5a89731b3d17d7c1947e1ab51f17813b8430",
+        "size": 580
       },
       "moved": false,
       "reason": "same body bytes",
       "score": 1.0,
       "vendor": {
-        "blocks": 11,
-        "bytes_sha": "19379b6cbc2bf64e7c2b5f85043e4b9c16315e63dc3065fc4c10a2201dc72862",
+        "blocks": 12,
+        "bytes_sha": "7b9da2c26bfbca6a5da282504d0fd6cdb534e4d5de7b749cf9a2b78c9c3c408e",
         "entry": 15832,
-        "insns": 152,
+        "insns": 160,
         "name": "FUN_00003dd8",
-        "shape_sha": "74f1655d1e7f23287e83effb420f97abce4531fe50ef84da63928c4a8024cd2c",
-        "size": 556
-      }
-    },
-    {
-      "confidence": "identical",
-      "differing_bytes": 0,
-      "installed": {
-        "blocks": 2,
-        "bytes_sha": "8c580f264c33cfbbcfccb44aa70d2b7c438a02b95a749d336524123e7b7f4e96",
-        "entry": 16388,
-        "insns": 8,
-        "name": "PtrTarget_00004004",
-        "shape_sha": "3c9ef10c76bafd99a7384af6349638bf4ec82e728902174c30a788d51187dada",
-        "size": 23
-      },
-      "moved": false,
-      "reason": "same body bytes",
-      "score": 1.0,
-      "vendor": {
-        "blocks": 2,
-        "bytes_sha": "8c580f264c33cfbbcfccb44aa70d2b7c438a02b95a749d336524123e7b7f4e96",
-        "entry": 16388,
-        "insns": 8,
-        "name": "PtrTarget_00004004",
-        "shape_sha": "3c9ef10c76bafd99a7384af6349638bf4ec82e728902174c30a788d51187dada",
-        "size": 23
-      }
-    },
-    {
-      "confidence": "identical",
-      "differing_bytes": 0,
-      "installed": {
-        "blocks": 0,
-        "bytes_sha": "333e0a1e27815d0ceee55c473fe3dc93d56c63e3bee2b3b4aee8eed6d70191a3",
-        "entry": 16562,
-        "insns": 0,
-        "name": "FUN_000040b2",
-        "shape_sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size": 1
-      },
-      "moved": false,
-      "reason": "same body bytes",
-      "score": 1.0,
-      "vendor": {
-        "blocks": 0,
-        "bytes_sha": "333e0a1e27815d0ceee55c473fe3dc93d56c63e3bee2b3b4aee8eed6d70191a3",
-        "entry": 16562,
-        "insns": 0,
-        "name": "FUN_000040b2",
-        "shape_sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size": 1
-      }
-    },
-    {
-      "confidence": "tentative",
-      "differing_bytes": 2,
-      "installed": {
-        "blocks": 1,
-        "bytes_sha": "55c6a5e321bf9528dc523677d9f0803f7b40fcd041a45a136032834eec5f8f1d",
-        "entry": 16564,
-        "insns": 3,
-        "name": "PtrTarget_000040b4",
-        "shape_sha": "b337dac07324cf7dc9567741073c40d40f36cd7937006c10ec1b4e319c878c59",
-        "size": 8
-      },
-      "moved": false,
-      "reason": "scored 0.905 with a 0.905 lead over the next candidate",
-      "score": 0.904762,
-      "vendor": {
-        "blocks": 1,
-        "bytes_sha": "6ca3df2e3815f0d1d3e7e683d3aab556178087a0f9e26435c00c786405a49cc0",
-        "entry": 16564,
-        "insns": 3,
-        "name": "PtrTarget_000040b4",
-        "shape_sha": "81ee59b866468b3e701045f5b04e067e2f9485a500c9d0deb2b00da35cf43d6a",
-        "size": 8
+        "shape_sha": "da69c233c9ae5276713d2ce976be5a89731b3d17d7c1947e1ab51f17813b8430",
+        "size": 580
       }
     },
     {
@@ -4666,21 +4601,10 @@
       "installed": 14468,
       "reason": "tentative match only; the correspondence is not proven",
       "vendor": 14468
-    },
-    {
-      "installed": 16564,
-      "reason": "tentative match only; the correspondence is not proven",
-      "vendor": 16564
     }
   ],
   "program": "app_a",
   "review_ranking": [
-    {
-      "confidence": "tentative",
-      "differing_bytes": 2,
-      "installed_entry": 16564,
-      "vendor_entry": 16564
-    },
     {
       "confidence": "structural",
       "differing_bytes": 2,
@@ -4714,11 +4638,11 @@
   ],
   "unaligned_gaps": [],
   "uncovered_span_counts": {
-    "compared": 95,
-    "installed": 95,
-    "vendor": 95
+    "compared": 91,
+    "installed": 91,
+    "vendor": 91
   },
   "uncovered_span_counts_equal": true,
   "uncovered_spans_fully_compared": true,
-  "vendor_count": 144
+  "vendor_count": 141
 }

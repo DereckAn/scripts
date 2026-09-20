@@ -129,7 +129,7 @@ its own basis and confidence.
 
 ### The unnamed block at 0x40100000 is the one the live interrupt serves.
 
-- basis: 20 registers, 139 accesses, touched from Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,table@0x18016d44 — that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.
+- basis: 20 registers, 139 accesses, touched from Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994 — that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.
 - confidence: high for the association, none for the identity
 
 ## Register map
@@ -137,12 +137,12 @@ its own basis and confidence.
 ### Candidate A (entry image)
 
 - slice `installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin` at base `0x00000000`
-- 144 functions, 101 reached from a vector root, 43 unreached
-- 206 accesses with a resolved base; 363 unresolved
+- 141 functions, 96 reached from a vector root, 45 unreached
+- 319 accesses with a resolved base; 420 unresolved
 
-Unresolved reasons: `base_lr_unknown` 3, `base_r0_unknown` 72, `base_r1_unknown` 41, `base_r2_unknown` 17, `base_r3_unknown` 7, `base_r4_unknown` 105, `base_r5_unknown` 16, `base_r6_unknown` 3, `base_r7_unknown` 1, `base_r8_unknown` 6, `base_r9_unknown` 3, `register_offset` 43, `stack_relative` 46.
+Unresolved reasons: `base_lr_unknown` 3, `base_r0_unknown` 91, `base_r1_unknown` 47, `base_r2_unknown` 18, `base_r3_unknown` 9, `base_r4_unknown` 105, `base_r5_unknown` 16, `base_r6_unknown` 3, `base_r7_unknown` 1, `base_r8_unknown` 6, `base_r9_unknown` 3, `register_offset` 43, `stack_relative` 75.
 
-#### `0x08000000` — unknown, 1 registers, 1 accesses
+#### `0x08000000` — unknown, 1 registers, 2 accesses
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
@@ -150,7 +150,7 @@ Contexts: IRQ63, Reset.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
-| `0x0800fff8` | unknown | — | 4 | 1 | 0 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x0800fff8` | unknown | — | 4 | 2 | 0 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
@@ -166,13 +166,21 @@ Contexts: Reset.
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
-#### `0x18000000` — runtime-ram, 39 registers, 88 accesses
+#### `0x18000000` — mixed, 56 registers, 139 accesses
 
-inside the proven scatter runtime range 0x18000000..0x1801e380; inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168
+inside the proven scatter runtime range 0x18000000..0x1801e380; inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
-Contexts: HardFault, IRQ63, NMI, PendSV, Reset, SVCall, table@0x00001404, task OEM_MAIN_SERVICE_TASK created at 0x1800007e.
+Contexts: HardFault, IRQ63, NMI, PendSV, Reset, SVCall, task OEM_MAIN_SERVICE_TASK created at 0x1800007e.
 
-#### `0x20000000` — unknown, 5 registers, 5 accesses
+55 of these addresses are RAM, own-image or propagation artifacts and are omitted here; the complete list is in the JSON.
+
+| address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
+|---|---|---|---|---|---|---|---|---|---|
+| `0x18038020` | unknown | — | 4 | 0 | 1 | `0x1010101` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+
+`reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
+
+#### `0x20000000` — unknown, 5 registers, 45 accesses
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
@@ -180,15 +188,15 @@ Contexts: IRQ63, Reset.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
-| `0x20000000` | unknown | — | 4 | 0 | 1 | `0x0` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x20000004` | unknown | — | 4 | 0 | 1 | `0x0` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x20000008` | unknown | — | 4 | 0 | 1 | `0x0` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x20000000` | unknown | — | 4 | 24 | 9 | `0x0`, `0x1` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x20000004` | unknown | — | 4 | 6 | 1 | `0x0` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x20000008` | unknown | — | 4, 8 | 0 | 2 | `0x0`, `0x11` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x2000000c` | unknown | — | 4 | 0 | 1 | `0x0` | `0x0` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x20000010` | unknown | — | 4 | 1 | 0 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x20000010` | unknown | — | 4 | 2 | 0 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
-#### `0x40000000` — unknown, 7 registers, 17 accesses
+#### `0x40000000` — unknown, 10 registers, 25 accesses
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
@@ -200,13 +208,16 @@ Contexts: Reset.
 | `0x4000800c` | unknown | — | 4 | 0 | 2 | `0x5afa55aa` | `0x5afa55aa` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40009000` | unknown | — | 4 | 0 | 2 | `0x5afa0000` | `0x5afa0000` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x4000900c` | unknown | — | 4 | 0 | 2 | `0x5afa55aa` | `0x5afa55aa` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40019004` | unknown | — | 4 | 2 | 2 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40019024` | unknown | — | 4 | 1 | 1 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40019028` | unknown | — | 4 | 1 | 1 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40022000` | unknown | — | 4 | 3 | 3 | — | — | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x4002f000` | unknown | — | 4 | 0 | 1 | `0x3` | `0x3` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x4002f004` | unknown | — | 4 | 0 | 2 | `0x60021000` | `0x60021000` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
-#### `0x45000000` — unknown, 11 registers, 66 accesses
+#### `0x45000000` — unknown, 11 registers, 74 accesses
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
@@ -214,16 +225,16 @@ Contexts: IRQ3, IRQ63, Reset.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
-| `0x45000000` | unknown | — | 4 | 10 | 4 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x45000000` | unknown | — | 4 | 11 | 4 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000004` | unknown | — | 4 | 10 | 7 | — | — | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000008` | unknown | — | 4 | 1 | 0 | — | — | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x4500000c` | unknown | — | 4 | 14 | 4 | `0x0` | `0x0` | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x4500000c` | unknown | — | 4 | 15 | 4 | `0x0` | `0x0` | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000010` | unknown | — | 4 | 1 | 1 | `0x0` | `0x0` | IRQ63, Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000018` | unknown | — | 4 | 2 | 2 | — | — | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000020` | unknown | — | 4 | 1 | 1 | — | — | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000050` | unknown | — | 4 | 1 | 1 | — | — | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x45000100` | unknown | — | 4 | 0 | 1 | `0x9fff` | `0x9fff` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x4500010c` | unknown | — | 4 | 1 | 2 | `0xfffd` | `0xfffd` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x45000100` | unknown | — | 4 | 2 | 3 | `0x9fff` | `0x9fff` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x4500010c` | unknown | — | 4 | 2 | 3 | `0xfffd` | `0xfffd` | Reset | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x45000300` | unknown | — | 4 | 1 | 1 | — | — | IRQ3 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
@@ -242,33 +253,35 @@ Contexts: HardFault, Reset.
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
-#### `0xe0000000` — arm-core, 12 registers, 24 accesses
+#### `0xe0000000` — arm-core, 14 registers, 29 accesses
 
 ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
 
-Contexts: HardFault, IRQ63, NMI, Reset, SysTick, table@0x00001404.
+Contexts: HardFault, IRQ63, NMI, Reset, SysTick.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
 | `0xe000e010` | arm-core | SYST_CSR | 4 | 3 | 2 | — | — | unreached | high — architectural register, named from the ARM reference |
 | `0xe000e014` | arm-core | SYST_RVR | 4 | 1 | 2 | — | — | unreached | high — architectural register, named from the ARM reference |
 | `0xe000e018` | arm-core | SYST_CVR | 4 | 1 | 1 | `0x0` | — | unreached | high — architectural register, named from the ARM reference |
-| `0xe000e406` | arm-core | NVIC_IPR1 | 1 | 0 | 1 | `0x30` | `0x30` | Reset | high — architectural register, named from the ARM reference |
-| `0xe000ed04` | arm-core | ICSR | 4 | 0 | 1 | `0x10000000` | — | SysTick | high — architectural register, named from the ARM reference |
-| `0xe000ed08` | arm-core | VTOR | 4 | 3 | 0 | — | — | HardFault, IRQ63, Reset | high — architectural register, named from the ARM reference |
+| `0xe000e100` | arm-core | NVIC_ISER0 | 4 | 0 | 1 | `0x40` | — | unreached | high — architectural register, named from the ARM reference |
+| `0xe000e180` | arm-core | NVIC_ICER0 | 4 | 0 | 1 | `0x40` | — | unreached | high — architectural register, named from the ARM reference |
+| `0xe000e406` | arm-core | NVIC_IPR1 | 1 | 0 | 2 | `0x30`, `0x50` | `0x30` | Reset | high — architectural register, named from the ARM reference |
+| `0xe000ed04` | arm-core | ICSR | 4 | 1 | 1 | `0x10000000` | — | SysTick | high — architectural register, named from the ARM reference |
+| `0xe000ed08` | arm-core | VTOR | 4 | 4 | 0 | — | — | HardFault, IRQ63, Reset | high — architectural register, named from the ARM reference |
 | `0xe000ed0c` | arm-core | AIRCR | 4 | 1 | 1 | `0x5fa0004` | — | NMI | high — architectural register, named from the ARM reference |
 | `0xe000ed1a` | arm-core | SHPR1+2 | 1 | 0 | 1 | `0x30` | `0x30` | Reset | high — architectural register, named from the ARM reference |
 | `0xe000ed28` | arm-core | CFSR | 4 | 3 | 0 | — | — | HardFault | high — architectural register, named from the ARM reference |
 | `0xe000ed34` | arm-core | MMFAR | 4 | 1 | 0 | — | — | HardFault | high — architectural register, named from the ARM reference |
 | `0xe000ed38` | arm-core | BFAR | 4 | 1 | 0 | — | — | HardFault | high — architectural register, named from the ARM reference |
-| `0xe000ef00` | arm-core | — | 4 | 0 | 1 | `0x3f` | — | table@0x00001404 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0xe000ef00` | arm-core | — | 4 | 0 | 1 | `0x3f` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
 ### Candidate B (application)
 
 - slice `installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin` at base `0x18000000`
-- 616 functions, 281 reached from a vector root, 335 unreached
+- 616 functions, 206 reached from a vector root, 410 unreached
 - 4354 accesses with a resolved base; 5462 unresolved
 
 Unresolved reasons: `base_lr_unknown` 17, `base_r0_unknown` 1133, `base_r10_unknown` 3, `base_r11_unknown` 9, `base_r12_unknown` 31, `base_r1_unknown` 528, `base_r2_unknown` 258, `base_r3_unknown` 155, `base_r4_unknown` 797, `base_r5_unknown` 209, `base_r6_unknown` 153, `base_r7_unknown` 82, `base_r8_unknown` 42, `base_r9_unknown` 37, `register_offset` 862, `stack_relative` 1146.
@@ -299,7 +312,7 @@ Contexts: unreached.
 
 inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
-Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ36, IRQ37, IRQ38, IRQ48, IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, table@0x18016d44, table@0x18017d08, table@0x18018ce8, task IDLE created at 0x180136fe, task INIT_TASK created at 0x18000348, task Tmr Svc created at 0x180141ca, task usbd_wdt created at 0x18015e8a.
+Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ36, IRQ37, IRQ38, IRQ48, IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, task IDLE created at 0x180136fe, task INIT_TASK created at 0x18000348, task Tmr Svc created at 0x180141ca, task usbd_wdt created at 0x18015e8a.
 
 901 of these addresses are RAM, own-image or propagation artifacts and are omitted here; the complete list is in the JSON.
 
@@ -313,13 +326,13 @@ Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal w
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
-Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), table@0x18016d44.
+Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here).
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
 | `0x20000000` | unknown | — | 4 | 9 | 5 | `0x0` | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x20000004` | unknown | — | 4 | 2 | 0 | — | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x20000ffc` | unknown | — | 4 | 0 | 2 | `0x73207320` | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x20000ffc` | unknown | — | 4 | 0 | 2 | `0x73207320` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
 
@@ -327,7 +340,7 @@ Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal w
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
-Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), table@0x18016d44.
+Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here).
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
@@ -341,7 +354,7 @@ Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal w
 | `0x40020014` | unknown | — | 4 | 0 | 2 | — | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40020018` | unknown | — | 4 | 4 | 2 | — | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x4002001c` | unknown | — | 4 | 0 | 2 | — | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40022000` | unknown | — | 4 | 3 | 3 | — | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40022000` | unknown | — | 4 | 3 | 3 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40022004` | unknown | — | 4 | 8 | 1 | `0x2000` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40022008` | unknown | — | 4 | 0 | 3 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x4002200c` | unknown | — | 4 | 0 | 3 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
@@ -355,28 +368,28 @@ Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal w
 
 no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
 
-Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ6, called from entry image 0x1994, table@0x18016d44.
+Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ6, called from entry image 0x1994.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
-| `0x40100000` | unknown | — | 4 | 4 | 11 | `0x2`, `0x20`, `0x4200`, `0x8000`, `0x8080`, `0x20000`, `0x40000`, `0x100000` | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100004` | unknown | — | 4 | 2 | 0 | — | — | called from entry image 0x1994, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100008` | unknown | — | 4 | 0 | 1 | `0x200` | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100000` | unknown | — | 4 | 4 | 11 | `0x2`, `0x20`, `0x4200`, `0x8000`, `0x8080`, `0x20000`, `0x40000`, `0x100000` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100004` | unknown | — | 4 | 2 | 0 | — | — | called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100008` | unknown | — | 4 | 0 | 1 | `0x200` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x4010000c` | unknown | — | 4 | 12 | 0 | — | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40100014` | unknown | — | 4 | 2 | 3 | `0xf370800` | — | IRQ6, called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40100018` | unknown | — | 4 | 1 | 1 | `0xffffffff` | — | IRQ6 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x4010001c` | unknown | — | 4 | 1 | 30 | `0x0`, `0x1`, `0x80`, `0x8c` | — | IRQ6, called from entry image 0x1994, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100020` | unknown | — | 4 | 1 | 13 | — | — | called from entry image 0x1994, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100024` | unknown | — | 4 | 0 | 2 | — | — | called from entry image 0x1994, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100028` | unknown | — | 4 | 7 | 16 | `0x1`, `0x2`, `0x4`, `0x8`, `0x20`, `0x28`, `0x80` | — | called from entry image 0x1994, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x4010002c` | unknown | — | 4 | 11 | 0 | — | — | IRQ6, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100034` | unknown | — | 4 | 0 | 2 | `0x8090`, `0x80000080` | — | called from entry image 0x1994, table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100038` | unknown | — | 4 | 0 | 7 | `0x10000000` | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x4010003c` | unknown | — | 4 | 1 | 2 | `0x10001` | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x4010001c` | unknown | — | 4 | 1 | 30 | `0x0`, `0x1`, `0x80`, `0x8c` | — | IRQ6, called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100020` | unknown | — | 4 | 1 | 13 | — | — | called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100024` | unknown | — | 4 | 0 | 2 | — | — | called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100028` | unknown | — | 4 | 7 | 16 | `0x1`, `0x2`, `0x4`, `0x8`, `0x20`, `0x28`, `0x80` | — | called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x4010002c` | unknown | — | 4 | 11 | 0 | — | — | IRQ6 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100034` | unknown | — | 4 | 0 | 2 | `0x8090`, `0x80000080` | — | called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100038` | unknown | — | 4 | 0 | 7 | `0x10000000` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x4010003c` | unknown | — | 4 | 1 | 2 | `0x10001` | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40100040` | unknown | — | 4 | 1 | 0 | — | — | IRQ6 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40100070` | unknown | — | 4 | 1 | 0 | — | — | called from entry image 0x1994 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x40100078` | unknown | — | 4 | 2 | 1 | — | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
-| `0x4010007c` | unknown | — | 4 | 0 | 1 | — | — | table@0x18016d44 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x40100078` | unknown | — | 4 | 2 | 1 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
+| `0x4010007c` | unknown | — | 4 | 0 | 1 | — | — | unreached | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40100080` | unknown | — | 4 | 0 | 1 | — | — | IRQ6 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 | `0x40100084` | unknown | — | 4 | 0 | 2 | — | — | IRQ6 | high for the access itself; the address space is unidentified, so no claim is made about what the register does |
 
@@ -402,14 +415,14 @@ Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal w
 
 ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
 
-Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, table@0x18016d44, table@0x18017d08, table@0x18018ce8, task IDLE created at 0x180136fe, task INIT_TASK created at 0x18000348, task Tmr Svc created at 0x180141ca, task usbd_wdt created at 0x18015e8a.
+Contexts: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, task IDLE created at 0x180136fe, task INIT_TASK created at 0x18000348, task Tmr Svc created at 0x180141ca, task usbd_wdt created at 0x18015e8a.
 
 | address | kind | ARM name | widths | reads | writes | stored values | reset-reachable writes | contexts | confidence |
 |---|---|---|---|---|---|---|---|---|---|
 | `0xe000e100` | arm-core | NVIC_ISER0 | 4 | 0 | 1 | `0x40` | — | called from entry image 0x1994 | high — architectural register, named from the ARM reference |
 | `0xe000e104` | arm-core | NVIC_ISER1 | 4 | 0 | 1 | `0x40` | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here) | high — architectural register, named from the ARM reference |
 | `0xe000e180` | arm-core | NVIC_ICER0 | 4 | 0 | 1 | `0x40` | — | called from entry image 0x1994 | high — architectural register, named from the ARM reference |
-| `0xe000ed04` | arm-core | ICSR | 4 | 0 | 18 | `0x10000000` | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, table@0x18016d44, table@0x18017d08, table@0x18018ce8, task IDLE created at 0x180136fe, task INIT_TASK created at 0x18000348, task Tmr Svc created at 0x180141ca, task usbd_wdt created at 0x18015e8a | high — architectural register, named from the ARM reference |
+| `0xe000ed04` | arm-core | ICSR | 4 | 0 | 18 | `0x10000000` | — | Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here), IRQ6, called from entry image 0x1994, called from entry image 0x19cc, decompressed region 0x1801ecac, decompressed region 0x1801ecb0, decompressed region 0x1801ecc0, task IDLE created at 0x180136fe, task INIT_TASK created at 0x18000348, task Tmr Svc created at 0x180141ca, task usbd_wdt created at 0x18015e8a | high — architectural register, named from the ARM reference |
 | `0xe000ed0c` | arm-core | AIRCR | 4 | 1 | 1 | — | — | unreached | high — architectural register, named from the ARM reference |
 
 `reset-reachable writes` are writes from a function the call graph reaches from the Reset vector. That is reachability, not proof that the function runs during initialisation, so the column is named for what it measures. An aggregate of every value ever stored is a different thing again, which is why the two are separate.
@@ -422,14 +435,14 @@ verdict is a stated rule applied to the evidence above, not an opinion.
 
 | verdict | block | kind | program | registers | accesses |
 |---|---|---|---|---|---|
-| unknown-service | `0x08000000` | unknown | Candidate A (entry image) | 1 | 1 |
+| unknown-service | `0x08000000` | unknown | Candidate A (entry image) | 1 | 2 |
 | must-reproduce-or-disprove | `0x10000000` | unknown | Candidate A (entry image) | 1 | 1 |
-| not-a-service | `0x18000000` | runtime-ram | Candidate A (entry image) | 39 | 88 |
-| unknown-service | `0x20000000` | unknown | Candidate A (entry image) | 5 | 5 |
-| must-reproduce-or-disprove | `0x40000000` | unknown | Candidate A (entry image) | 7 | 17 |
-| unknown-service | `0x45000000` | unknown | Candidate A (entry image) | 11 | 66 |
+| see-registers | `0x18000000` | mixed | Candidate A (entry image) | 56 | 139 |
+| unknown-service | `0x20000000` | unknown | Candidate A (entry image) | 5 | 45 |
+| must-reproduce-or-disprove | `0x40000000` | unknown | Candidate A (entry image) | 10 | 25 |
+| unknown-service | `0x45000000` | unknown | Candidate A (entry image) | 11 | 74 |
 | may-omit | `0x60000000` | flash-window | Candidate A (entry image) | 3 | 4 |
-| must-replace | `0xe0000000` | arm-core | Candidate A (entry image) | 12 | 24 |
+| must-replace | `0xe0000000` | arm-core | Candidate A (entry image) | 14 | 29 |
 | see-registers | `0x00000000` | mixed | Candidate B (application) | 10 | 12 |
 | see-registers | `0x18000000` | mixed | Candidate B (application) | 902 | 4072 |
 | unknown-service | `0x20000000` | unknown | Candidate B (application) | 3 | 18 |
@@ -442,10 +455,9 @@ verdict is a stated rule applied to the evidence above, not an opinion.
 
 - **unknown-service**: the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission
 - **must-reproduce-or-disprove**: every access to this space is on the reset path, so the original firmware programs it before any service exists. That is evidence about the code, not about the address space: a replacement must either do the equivalent or establish that it is unnecessary
-- **not-a-service**: RAM inside the proven scatter runtime range
+- **see-registers**: the block holds addresses of more than one kind; read the per-register rows rather than the block
 - **may-omit**: reading the mapped flash window is storage access, not a platform service a minimal application has to provide
 - **must-replace**: architectural: any firmware that takes an interrupt or keeps time has to program these itself
-- **see-registers**: the block holds addresses of more than one kind; read the per-register rows rather than the block
 
 The exit gate asks which original **services** a minimal replacement
 must provide. This map cannot answer that, because it classifies
@@ -543,80 +555,141 @@ DATA_POINTERS 48 entry-image words point into application RAM outside the code r
 
 IMAGE Candidate A (entry image)
   slice=installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
-  base=0x00000000 functions=144 reached=101 unreached=43
-  roots=24 vector/entry: BusFault@0x000014d2, DebugMonitor@0x000014d8, HardFault@0x000010ae, IRQ3@0x000014be, IRQ63@0x00000ad0, MemManage@0x00000fce, NMI@0x000020be, PendSV@0x0000032c, Reset@0x000014a8, SVCall@0x000002e8, SysTick@0x000017e0, UsageFault@0x000014d4, task OEM_MAIN_SERVICE_TASK created at 0x1800007e@0x00000498
-  table roots: table@0x00001404, table@0x00005680
+  base=0x00000000 functions=141 reached=96 unreached=45
+  roots=13 vector/entry: BusFault@0x000014d2, DebugMonitor@0x000014d8, HardFault@0x000010ae, IRQ3@0x000014be, IRQ63@0x00000ad0, MemManage@0x00000fce, NMI@0x000020be, PendSV@0x0000032c, Reset@0x000014a8, SVCall@0x000002e8, SysTick@0x000017e0, UsageFault@0x000014d4, task OEM_MAIN_SERVICE_TASK created at 0x1800007e@0x00000498
+  table roots: none
   documented entry roots: none
   task roots: task OEM_MAIN_SERVICE_TASK created at 0x1800007e->0x00000498
   region roots: none
-  roots naming no function: 0x00004018 (table@0x00005680)
+  roots naming no function: none
   ROOT_BLOCKS which hardware each newly seeded root can reach:
-    task OEM_MAIN_SERVICE_TASK created at 0x1800007e -> 0x18000000(runtime-ram)
-  unreached_with_no_caller=30 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
-  resolved_accesses=206
-  unresolved_accesses=base_lr_unknown=3, base_r0_unknown=72, base_r1_unknown=41, base_r2_unknown=17, base_r3_unknown=7, base_r4_unknown=105, base_r5_unknown=16, base_r6_unknown=3, base_r7_unknown=1, base_r8_unknown=6, base_r9_unknown=3, register_offset=43, stack_relative=46
-  BLOCK 0x08000000 unknown registers=1 accesses=1 contexts=IRQ63,Reset
+    task OEM_MAIN_SERVICE_TASK created at 0x1800007e -> 0x18000000(mixed)
+  unreached_with_no_caller=31 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
+  resolved_accesses=319
+  unresolved_accesses=base_lr_unknown=3, base_r0_unknown=91, base_r1_unknown=47, base_r2_unknown=18, base_r3_unknown=9, base_r4_unknown=105, base_r5_unknown=16, base_r6_unknown=3, base_r7_unknown=1, base_r8_unknown=6, base_r9_unknown=3, register_offset=43, stack_relative=75
+  BLOCK 0x08000000 unknown registers=1 accesses=2 contexts=IRQ63,Reset
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
-    0x0800fff8 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
+    0x0800fff8 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
   BLOCK 0x10000000 unknown registers=1 accesses=1 contexts=Reset
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
     0x10000000 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
-  BLOCK 0x18000000 runtime-ram registers=39 accesses=88 contexts=HardFault,IRQ63,NMI,PendSV,Reset,SVCall,table@0x00001404,task OEM_MAIN_SERVICE_TASK created at 0x1800007e
-    inside the proven scatter runtime range 0x18000000..0x1801e380; inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168
-  BLOCK 0x20000000 unknown registers=5 accesses=5 contexts=IRQ63,Reset
+  BLOCK 0x18000000 mixed registers=56 accesses=139 contexts=HardFault,IRQ63,NMI,PendSV,Reset,SVCall,task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    inside the proven scatter runtime range 0x18000000..0x1801e380; inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
+    0x18000020 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
+    0x1801e690 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e694 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e698 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e69c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e6a0 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e6a4 unnamed    runtime-ram  widths=[1] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e6a8 unnamed    runtime-ram  widths=[1] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801e6ac unnamed    runtime-ram  widths=[4, 8] reads=2 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e6b0 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801e7b8 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e810 unnamed    runtime-ram  widths=[4] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e845 unnamed    runtime-ram  widths=[1] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801e8c8 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x1801e8dc unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ea7c unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
+    0x1801ea80 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63
+    0x1801ea84 unnamed    runtime-ram  widths=[4] reads=5 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63
+    0x1801ea9c unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x1801eaac unnamed    runtime-ram  widths=[4] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=PendSV,SVCall
+    0x1801eafc unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb00 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb04 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eba4 unnamed    runtime-ram  widths=[1] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eba8 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ebac unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ed6c unnamed    runtime-ram  widths=[4] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ed70 unnamed    runtime-ram  widths=[4] reads=1 writes=6 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ed74 unnamed    runtime-ram  widths=[1] reads=3 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ee05 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=NMI
+    0x1801ee06 unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=NMI
+    0x1801ee84 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x180222d8 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task OEM_MAIN_SERVICE_TASK created at 0x1800007e
+    0x18026fa8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
+    0x18027028 unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=0x0, 0x3c reset_writes=none from a reset-reachable function contexts=HardFault
+    0x1802702c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027030 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027034 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027038 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x1802703c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027040 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027044 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027048 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x1802704c unnamed    runtime-ram  widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027050 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027054 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18027269 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
+    0x18034f08 unnamed    runtime-ram  widths=[1] reads=0 writes=7 stored=0x20, 0x21, 0x23, 0x24 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034f09 unnamed    runtime-ram  widths=[1] reads=0 writes=7 stored=0x0, 0x13 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034f0a unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034f0b unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034f0c unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x4 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034f0d unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0xc0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034f0e unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18035100 unnamed    runtime-ram  widths=[8] reads=0 writes=1 stored=0x180350a0 reset_writes=0x180350a0 contexts=Reset
+    0x18038020 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x1010101 reset_writes=none from a reset-reachable function contexts=unreached
+  BLOCK 0x20000000 unknown registers=5 accesses=45 contexts=IRQ63,Reset
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
-    0x20000000 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x0 reset_writes=0x0 contexts=Reset
-    0x20000004 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x0 reset_writes=0x0 contexts=Reset
-    0x20000008 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x0 reset_writes=0x0 contexts=Reset
+    0x20000000 unnamed    unknown      widths=[4] reads=24 writes=9 stored=0x0, 0x1 reset_writes=0x0 contexts=Reset
+    0x20000004 unnamed    unknown      widths=[4] reads=6 writes=1 stored=0x0 reset_writes=0x0 contexts=Reset
+    0x20000008 unnamed    unknown      widths=[4, 8] reads=0 writes=2 stored=0x0, 0x11 reset_writes=0x0 contexts=Reset
     0x2000000c unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x0 reset_writes=0x0 contexts=Reset
-    0x20000010 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
-  BLOCK 0x40000000 unknown registers=7 accesses=17 contexts=Reset
+    0x20000010 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
+  BLOCK 0x40000000 unknown registers=10 accesses=25 contexts=Reset
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
     0x40008000 unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x5afa0000 reset_writes=0x5afa0000 contexts=Reset
     0x4000800c unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x5afa55aa reset_writes=0x5afa55aa contexts=Reset
     0x40009000 unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x5afa0000 reset_writes=0x5afa0000 contexts=Reset
     0x4000900c unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x5afa55aa reset_writes=0x5afa55aa contexts=Reset
+    0x40019004 unnamed    unknown      widths=[4] reads=2 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x40019024 unnamed    unknown      widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x40019028 unnamed    unknown      widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x40022000 unnamed    unknown      widths=[4] reads=3 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
     0x4002f000 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x3 reset_writes=0x3 contexts=Reset
     0x4002f004 unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x60021000 reset_writes=0x60021000 contexts=Reset
-  BLOCK 0x45000000 unknown registers=11 accesses=66 contexts=IRQ3,IRQ63,Reset
+  BLOCK 0x45000000 unknown registers=11 accesses=74 contexts=IRQ3,IRQ63,Reset
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
-    0x45000000 unnamed    unknown      widths=[4] reads=10 writes=4 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
+    0x45000000 unnamed    unknown      widths=[4] reads=11 writes=4 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
     0x45000004 unnamed    unknown      widths=[4] reads=10 writes=7 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ63,Reset
     0x45000008 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
-    0x4500000c unnamed    unknown      widths=[4] reads=14 writes=4 stored=0x0 reset_writes=0x0 contexts=IRQ63,Reset
+    0x4500000c unnamed    unknown      widths=[4] reads=15 writes=4 stored=0x0 reset_writes=0x0 contexts=IRQ63,Reset
     0x45000010 unnamed    unknown      widths=[4] reads=1 writes=1 stored=0x0 reset_writes=0x0 contexts=IRQ63,Reset
     0x45000018 unnamed    unknown      widths=[4] reads=2 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
     0x45000020 unnamed    unknown      widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
     0x45000050 unnamed    unknown      widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
-    0x45000100 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x9fff reset_writes=0x9fff contexts=Reset
-    0x4500010c unnamed    unknown      widths=[4] reads=1 writes=2 stored=0xfffd reset_writes=0xfffd contexts=Reset
+    0x45000100 unnamed    unknown      widths=[4] reads=2 writes=3 stored=0x9fff reset_writes=0x9fff contexts=Reset
+    0x4500010c unnamed    unknown      widths=[4] reads=2 writes=3 stored=0xfffd reset_writes=0xfffd contexts=Reset
     0x45000300 unnamed    unknown      widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ3
   BLOCK 0x60000000 flash-window registers=3 accesses=4 contexts=HardFault,Reset
     the mapped external-flash window: the program reading its own storage, not a peripheral
     0x60000800 unnamed    flash-window widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=HardFault
     0x60021000 unnamed    flash-window widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
     0x60021020 unnamed    flash-window widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Reset
-  BLOCK 0xe0000000 arm-core registers=12 accesses=24 contexts=HardFault,IRQ63,NMI,Reset,SysTick,table@0x00001404
+  BLOCK 0xe0000000 arm-core registers=14 accesses=29 contexts=HardFault,IRQ63,NMI,Reset,SysTick
     ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
     0xe000e010 SYST_CSR   arm-core     widths=[4] reads=3 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0xe000e014 SYST_RVR   arm-core     widths=[4] reads=1 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0xe000e018 SYST_CVR   arm-core     widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
-    0xe000e406 NVIC_IPR1  arm-core     widths=[1] reads=0 writes=1 stored=0x30 reset_writes=0x30 contexts=Reset
-    0xe000ed04 ICSR       arm-core     widths=[4] reads=0 writes=1 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=SysTick
-    0xe000ed08 VTOR       arm-core     widths=[4] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault,IRQ63,Reset
+    0xe000e100 NVIC_ISER0 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=unreached
+    0xe000e180 NVIC_ICER0 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=unreached
+    0xe000e406 NVIC_IPR1  arm-core     widths=[1] reads=0 writes=2 stored=0x30, 0x50 reset_writes=0x30 contexts=Reset
+    0xe000ed04 ICSR       arm-core     widths=[4] reads=1 writes=1 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=SysTick
+    0xe000ed08 VTOR       arm-core     widths=[4] reads=4 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault,IRQ63,Reset
     0xe000ed0c AIRCR      arm-core     widths=[4] reads=1 writes=1 stored=0x5fa0004 reset_writes=none from a reset-reachable function contexts=NMI
     0xe000ed1a SHPR1+2    arm-core     widths=[1] reads=0 writes=1 stored=0x30 reset_writes=0x30 contexts=Reset
     0xe000ed28 CFSR       arm-core     widths=[4] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
     0xe000ed34 MMFAR      arm-core     widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
     0xe000ed38 BFAR       arm-core     widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=HardFault
-    0xe000ef00 unnamed    arm-core     widths=[4] reads=0 writes=1 stored=0x3f reset_writes=none from a reset-reachable function contexts=table@0x00001404
+    0xe000ef00 unnamed    arm-core     widths=[4] reads=0 writes=1 stored=0x3f reset_writes=none from a reset-reachable function contexts=unreached
 
 IMAGE Candidate B (application)
   slice=installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
-  base=0x18000000 functions=616 reached=281 unreached=335
-  roots=61 vector/entry: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)@0x1800023a, IRQ31@0x18019f2c, IRQ32@0x18019f36, IRQ36@0x180106be, IRQ37@0x180106ca, IRQ38@0x180000e4, IRQ48@0x1801ac26, IRQ6@0x18016f6e, called from entry image 0x1994@0x18016e68, called from entry image 0x19cc@0x18016f2c, decompressed region 0x1801ecac@0x18018afc, decompressed region 0x1801ecb0@0x18018af0, decompressed region 0x1801ecc0@0x18018a28, task IDLE created at 0x180136fe@0x180136ca, task INIT_TASK created at 0x18000348@0x1800004c, task Tmr Svc created at 0x180141ca@0x1801414c, task usbd_wdt created at 0x18015e8a@0x18015c84
-  table roots: table@0x18016d44, table@0x18017d08, table@0x18018ce8
+  base=0x18000000 functions=616 reached=206 unreached=410
+  roots=17 vector/entry: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)@0x1800023a, IRQ31@0x18019f2c, IRQ32@0x18019f36, IRQ36@0x180106be, IRQ37@0x180106ca, IRQ38@0x180000e4, IRQ48@0x1801ac26, IRQ6@0x18016f6e, called from entry image 0x1994@0x18016e68, called from entry image 0x19cc@0x18016f2c, decompressed region 0x1801ecac@0x18018afc, decompressed region 0x1801ecb0@0x18018af0, decompressed region 0x1801ecc0@0x18018a28, task IDLE created at 0x180136fe@0x180136ca, task INIT_TASK created at 0x18000348@0x1800004c, task Tmr Svc created at 0x180141ca@0x1801414c, task usbd_wdt created at 0x18015e8a@0x18015c84
+  table roots: none
   documented entry roots: Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)->0x1800023a
   task roots: task IDLE created at 0x180136fe->0x180136ca, task INIT_TASK created at 0x18000348->0x1800004c, task Tmr Svc created at 0x180141ca->0x1801414c, task usbd_wdt created at 0x18015e8a->0x18015c84
   region roots: decompressed region 0x1801ecac->0x18018afc, decompressed region 0x1801ecb0->0x18018af0, decompressed region 0x1801ecc0->0x18018a28
@@ -630,7 +703,7 @@ IMAGE Candidate B (application)
     task INIT_TASK created at 0x18000348 -> 0x18000000(mixed), 0xe0000000(arm-core)
     task Tmr Svc created at 0x180141ca -> 0x18000000(mixed), 0xe0000000(arm-core)
     task usbd_wdt created at 0x18015e8a -> 0x18000000(mixed), 0xe0000000(arm-core)
-  unreached_with_no_caller=121 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
+  unreached_with_no_caller=161 (each needs an entry mechanism; the rest of the unreached set is downstream of these)
   resolved_accesses=4354
   unresolved_accesses=base_lr_unknown=17, base_r0_unknown=1133, base_r10_unknown=3, base_r11_unknown=9, base_r12_unknown=31, base_r1_unknown=528, base_r2_unknown=258, base_r3_unknown=155, base_r4_unknown=797, base_r5_unknown=209, base_r6_unknown=153, base_r7_unknown=82, base_r8_unknown=42, base_r9_unknown=37, register_offset=862, stack_relative=1146
   BLOCK 0x00000000 mixed registers=10 accesses=12 contexts=unreached
@@ -645,7 +718,7 @@ IMAGE Candidate B (application)
     0x00004e69 unnamed    unknown      widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x0000a9b9 unnamed    unknown      widths=[1] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=unreached
     0x0000a9c1 unnamed    unknown      widths=[1] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-  BLOCK 0x18000000 mixed registers=902 accesses=4072 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ36,IRQ37,IRQ38,IRQ48,IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+  BLOCK 0x18000000 mixed registers=902 accesses=4072 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ36,IRQ37,IRQ38,IRQ48,IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     inside the proven scatter runtime range 0x1801e380..0x1801ee84; inside the proven scatter runtime range 0x1801ee84..0x18036168; no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
     0x1801e380 unnamed    runtime-ram  widths=[2] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ38
     0x1801e384 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
@@ -831,90 +904,90 @@ IMAGE Candidate B (application)
     0x1801ea94 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ36,IRQ37
     0x1801ea98 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ36,IRQ37
     0x1801eaa8 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
-    0x1801eaac unnamed    runtime-ram  widths=[4] reads=57 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eaac unnamed    runtime-ram  widths=[4] reads=57 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     0x1801eab0 unnamed    runtime-ram  widths=[4] reads=3 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=task IDLE created at 0x180136fe,task usbd_wdt created at 0x18015e8a
-    0x1801eab4 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eab8 unnamed    runtime-ram  widths=[4] reads=6 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eabc unnamed    runtime-ram  widths=[4] reads=12 writes=11 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eac0 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,table@0x18016d44,table@0x18018ce8,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eac4 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eac8 unnamed    runtime-ram  widths=[4] reads=2 writes=9 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eacc unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eab4 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eab8 unnamed    runtime-ram  widths=[4] reads=6 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eabc unnamed    runtime-ram  widths=[4] reads=12 writes=11 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eac0 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=0x1 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eac4 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eac8 unnamed    runtime-ram  widths=[4] reads=2 writes=9 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eacc unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     0x1801ead0 unnamed    runtime-ram  widths=[4] reads=2 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task INIT_TASK created at 0x18000348,task usbd_wdt created at 0x18015e8a
-    0x1801ead4 unnamed    runtime-ram  widths=[4] reads=2 writes=4 stored=0xffffffff reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eadc unnamed    runtime-ram  widths=[4] reads=16 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eae0 unnamed    runtime-ram  widths=[4] reads=8 writes=2 stored=0x18027468 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eae4 unnamed    runtime-ram  widths=[4] reads=3 writes=2 stored=0x1802747c reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801ead4 unnamed    runtime-ram  widths=[4] reads=2 writes=4 stored=0xffffffff reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eadc unnamed    runtime-ram  widths=[4] reads=16 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eae0 unnamed    runtime-ram  widths=[4] reads=8 writes=2 stored=0x18027468 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eae4 unnamed    runtime-ram  widths=[4] reads=3 writes=2 stored=0x1802747c reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     0x1801eae8 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task Tmr Svc created at 0x180141ca
     0x1801eaf0 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task Tmr Svc created at 0x180141ca
     0x1801eaf4 unnamed    runtime-ram  widths=[4, 8] reads=5 writes=2 stored=0x180274cc reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task Tmr Svc created at 0x180141ca
     0x1801eaf8 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x180274e0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task Tmr Svc created at 0x180141ca
-    0x1801eb08 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18033ce8 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eb0c unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eb10 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),table@0x18018ce8,task INIT_TASK created at 0x18000348
-    0x1801eb14 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x80000000 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eb18 unnamed    runtime-ram  widths=[4, 8] reads=2 writes=3 stored=0x1801eb18, 0x180274f4 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1801eb20 unnamed    runtime-ram  widths=[1] reads=4 writes=4 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb21 unnamed    runtime-ram  widths=[1] reads=1 writes=4 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x1801eb22 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb23 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb24 unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x1801eb08 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18033ce8 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eb0c unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eb10 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0xc7f4 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task INIT_TASK created at 0x18000348
+    0x1801eb14 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x80000000 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eb18 unnamed    runtime-ram  widths=[4, 8] reads=2 writes=3 stored=0x1801eb18, 0x180274f4 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1801eb20 unnamed    runtime-ram  widths=[1] reads=4 writes=4 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb21 unnamed    runtime-ram  widths=[1] reads=1 writes=4 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x1801eb22 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb23 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb24 unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=unreached
     0x1801eb28 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
     0x1801eb2c unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994
     0x1801eb30 unnamed    runtime-ram  widths=[4] reads=5 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x19cc
-    0x1801eb34 unnamed    runtime-ram  widths=[4] reads=7 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x1801eb38 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x1801eb3c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb40 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb44 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb48 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb4c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb50 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb54 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb58 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb5c unnamed    runtime-ram  widths=[4] reads=4 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb60 unnamed    runtime-ram  widths=[4] reads=4 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb64 unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb68 unnamed    runtime-ram  widths=[4] reads=2 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb6c unnamed    runtime-ram  widths=[4] reads=4 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb70 unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x1801eb74 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6,table@0x18016d44
-    0x1801eb78 unnamed    runtime-ram  widths=[4] reads=42 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
+    0x1801eb34 unnamed    runtime-ram  widths=[4] reads=7 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x1801eb38 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x1801eb3c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb40 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb44 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb48 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb4c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb50 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb54 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb58 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb5c unnamed    runtime-ram  widths=[4] reads=4 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb60 unnamed    runtime-ram  widths=[4] reads=4 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb64 unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb68 unnamed    runtime-ram  widths=[4] reads=2 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb6c unnamed    runtime-ram  widths=[4] reads=4 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb70 unnamed    runtime-ram  widths=[4] reads=3 writes=3 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x1801eb74 unnamed    runtime-ram  widths=[4] reads=6 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6
+    0x1801eb78 unnamed    runtime-ram  widths=[4] reads=42 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
     0x1801eb7c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
     0x1801eb80 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
     0x1801eb84 unnamed    runtime-ram  widths=[4] reads=4 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task usbd_wdt created at 0x18015e8a
-    0x1801eb88 unnamed    runtime-ram  widths=[4] reads=0 writes=4 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x1801eb88 unnamed    runtime-ram  widths=[4] reads=0 writes=4 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x1801eb8c unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=IRQ6
     0x1801eb90 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=IRQ6
-    0x1801eb94 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1801eb98 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x1801eb94 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801eb98 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x1801eb9c unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,task usbd_wdt created at 0x18015e8a
-    0x1801eba0 unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44,task usbd_wdt created at 0x18015e8a
+    0x1801eba0 unnamed    runtime-ram  widths=[1] reads=2 writes=2 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,task usbd_wdt created at 0x18015e8a
     0x1801eba1 unnamed    runtime-ram  widths=[1] reads=1 writes=2 stored=0x0, 0x1 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,task usbd_wdt created at 0x18015e8a
-    0x1801ebb0 unnamed    runtime-ram  widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x1801ebb4 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=0x1801ec6c reset_writes=none from a reset-reachable function contexts=table@0x18016d44,table@0x18017d08
-    0x1801ebb8 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18008f13 reset_writes=none from a reset-reachable function contexts=table@0x18018ce8,task INIT_TASK created at 0x18000348
-    0x1801ebbc unnamed    runtime-ram  widths=[4] reads=39 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18018ce8
+    0x1801ebb0 unnamed    runtime-ram  widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ebb4 unnamed    runtime-ram  widths=[4] reads=6 writes=1 stored=0x1801ec6c reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ebb8 unnamed    runtime-ram  widths=[4] reads=3 writes=1 stored=0x18008f13 reset_writes=none from a reset-reachable function contexts=task INIT_TASK created at 0x18000348
+    0x1801ebbc unnamed    runtime-ram  widths=[4] reads=39 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0
     0x1801ec3c unnamed    runtime-ram  widths=[2] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task INIT_TASK created at 0x18000348
     0x1801ec3e unnamed    runtime-ram  widths=[2] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task INIT_TASK created at 0x18000348
     0x1801ec40 unnamed    runtime-ram  widths=[2] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task INIT_TASK created at 0x18000348
     0x1801ec42 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
     0x1801ec43 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
     0x1801ec44 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac
-    0x1801ec46 unnamed    runtime-ram  widths=[1] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec48 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec4a unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec4c unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec4d unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec4f unnamed    runtime-ram  widths=[1] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec56 unnamed    runtime-ram  widths=[2] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec58 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec5a unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x80 reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec5c unnamed    runtime-ram  widths=[2] reads=1 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec5e unnamed    runtime-ram  widths=[1] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec61 unnamed    runtime-ram  widths=[1] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec63 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1801ec65 unnamed    runtime-ram  widths=[2] reads=1 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
+    0x1801ec46 unnamed    runtime-ram  widths=[1] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec48 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec4a unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec4c unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec4d unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec4f unnamed    runtime-ram  widths=[1] reads=3 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec56 unnamed    runtime-ram  widths=[2] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec58 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec5a unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x80 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec5c unnamed    runtime-ram  widths=[2] reads=1 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec5e unnamed    runtime-ram  widths=[1] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec61 unnamed    runtime-ram  widths=[1] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec63 unnamed    runtime-ram  widths=[1] reads=1 writes=3 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x1801ec65 unnamed    runtime-ram  widths=[2] reads=1 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x1801ecc6 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task INIT_TASK created at 0x18000348
     0x1801ecc7 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=task INIT_TASK created at 0x18000348
     0x1801ed6a unnamed    runtime-ram  widths=[1] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
@@ -1176,7 +1249,7 @@ IMAGE Candidate B (application)
     0x18022d4a unnamed    runtime-ram  widths=[1] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18022ee1 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18022ee2 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x180233a8 unnamed    runtime-ram  widths=[1] reads=3 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x180233a8 unnamed    runtime-ram  widths=[1] reads=3 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
     0x180233a9 unnamed    runtime-ram  widths=[1] reads=15 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180233aa unnamed    runtime-ram  widths=[1, 2] reads=79 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180233ab unnamed    runtime-ram  widths=[1] reads=9 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
@@ -1367,21 +1440,21 @@ IMAGE Candidate B (application)
     0x180272f0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x180272f4 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x180272f8 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
-    0x18027308 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18018ce8
+    0x18027308 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0
     0x1802733c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task IDLE created at 0x180136fe
-    0x18027490 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
-    0x1802749c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x18027490 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0x1802749c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     0x180274a4 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task IDLE created at 0x180136fe
     0x180274b0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=task IDLE created at 0x180136fe
     0x180274b8 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x180274f4 unnamed    runtime-ram  widths=[8] reads=0 writes=1 stored=0x18033ce8 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),table@0x18018ce8,task INIT_TASK created at 0x18000348
-    0x18033ce8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),table@0x18018ce8,task INIT_TASK created at 0x18000348
-    0x18033cec unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),table@0x18018ce8,task INIT_TASK created at 0x18000348
-    0x18033cf4 unnamed    runtime-ram  widths=[4] reads=4 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18033d00 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18033d04 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18033d10 unnamed    runtime-ram  widths=[4] reads=4 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18033d14 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x180274f4 unnamed    runtime-ram  widths=[8] reads=0 writes=1 stored=0x18033ce8 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task INIT_TASK created at 0x18000348
+    0x18033ce8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task INIT_TASK created at 0x18000348
+    0x18033cec unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),task INIT_TASK created at 0x18000348
+    0x18033cf4 unnamed    runtime-ram  widths=[4] reads=4 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18033d00 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18033d04 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18033d10 unnamed    runtime-ram  widths=[4] reads=4 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18033d14 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18033d38 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18033d40 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x80 reset_writes=none from a reset-reachable function contexts=unreached
     0x18033d44 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=0x3e8 reset_writes=none from a reset-reachable function contexts=unreached
@@ -1400,9 +1473,9 @@ IMAGE Candidate B (application)
     0x18033d90 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18033d94 unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18033da4 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x18033da8 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x18033da8 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18033dac unnamed    runtime-ram  widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x18033db0 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x18033db0 unnamed    runtime-ram  widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18033dc4 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180340f4 reset_writes=none from a reset-reachable function contexts=unreached
     0x18033dc8 unnamed    runtime-ram  widths=[2] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=unreached
     0x18033df0 unnamed    runtime-ram  widths=[4] reads=0 writes=2 stored=0x180340f4 reset_writes=none from a reset-reachable function contexts=unreached
@@ -1417,8 +1490,8 @@ IMAGE Candidate B (application)
     0x18034030 unnamed    runtime-ram  widths=[2] reads=0 writes=1 stored=0x200 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034058 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180340f4 reset_writes=none from a reset-reachable function contexts=unreached
     0x1803405c unnamed    runtime-ram  widths=[2] reads=0 writes=1 stored=0x200 reset_writes=none from a reset-reachable function contexts=unreached
-    0x18034084 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034094 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x18034084 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034094 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180340b4 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18016829 reset_writes=none from a reset-reachable function contexts=unreached
     0x180340b8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180167a5 reset_writes=none from a reset-reachable function contexts=unreached
     0x180340bc unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180167a1 reset_writes=none from a reset-reachable function contexts=unreached
@@ -1448,42 +1521,42 @@ IMAGE Candidate B (application)
     0x1803411c unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18033db4 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034120 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18034120 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034124 unnamed    runtime-ram  widths=[4] reads=1 writes=2 stored=0x18034120 reset_writes=none from a reset-reachable function contexts=unreached
-    0x18034128 unnamed    runtime-ram  widths=[1] reads=8 writes=6 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44,task usbd_wdt created at 0x18015e8a
+    0x18034128 unnamed    runtime-ram  widths=[1] reads=8 writes=6 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,task usbd_wdt created at 0x18015e8a
     0x18034129 unnamed    runtime-ram  widths=[1] reads=0 writes=4 stored=0x0, 0x1, 0x2, 0x5 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
-    0x1803412c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x1803412c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18034134 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18034130 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034138 unnamed    runtime-ram  widths=[4, 8] reads=4 writes=1 stored=0x18033db4 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034140 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034148 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18034148 reset_writes=none from a reset-reachable function contexts=unreached
-    0x18034150 unnamed    runtime-ram  widths=[4, 8] reads=12 writes=2 stored=0x18033de0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x18034150 unnamed    runtime-ram  widths=[4, 8] reads=12 writes=2 stored=0x18033de0 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034154 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1803411c reset_writes=none from a reset-reachable function contexts=unreached
     0x18034158 unnamed    runtime-ram  widths=[1] reads=0 writes=2 stored=0x1 reset_writes=none from a reset-reachable function contexts=unreached
-    0x18034170 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034180 unnamed    runtime-ram  widths=[4] reads=6 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034198 unnamed    runtime-ram  widths=[4] reads=7 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180341a0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180341a4 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180341b0 unnamed    runtime-ram  widths=[4] reads=8 writes=1 stored=0x18033e90 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x18034170 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034180 unnamed    runtime-ram  widths=[4] reads=6 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034198 unnamed    runtime-ram  widths=[4] reads=7 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x180341a0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x180341a4 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x180341b0 unnamed    runtime-ram  widths=[4] reads=8 writes=1 stored=0x18033e90 reset_writes=none from a reset-reachable function contexts=unreached
     0x180341b4 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1803411c reset_writes=none from a reset-reachable function contexts=unreached
-    0x180341b8 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0x5 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180341d0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180341e0 unnamed    runtime-ram  widths=[4] reads=11 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180341f8 unnamed    runtime-ram  widths=[4] reads=7 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034200 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034204 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034218 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034258 unnamed    runtime-ram  widths=[4, 8] reads=8 writes=1 stored=0x18033fc4 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x180341b8 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0x5 reset_writes=none from a reset-reachable function contexts=unreached
+    0x180341d0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x180341e0 unnamed    runtime-ram  widths=[4] reads=11 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x180341f8 unnamed    runtime-ram  widths=[4] reads=7 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034200 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034204 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034218 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034258 unnamed    runtime-ram  widths=[4, 8] reads=8 writes=1 stored=0x18033fc4 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034260 unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0xc reset_writes=none from a reset-reachable function contexts=unreached
-    0x18034270 unnamed    runtime-ram  widths=[4, 8] reads=10 writes=1 stored=0x18033ff0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034278 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0xd reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x1803427c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034288 unnamed    runtime-ram  widths=[4, 8] reads=8 writes=1 stored=0x1803401c reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x18034290 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0xe reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180342a0 unnamed    runtime-ram  widths=[4, 8] reads=10 writes=1 stored=0x18034048 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180342a8 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0xf reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180342b0 unnamed    runtime-ram  widths=[4] reads=23 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x180342b4 unnamed    runtime-ram  widths=[1] reads=3 writes=9 stored=0x0, 0x2, 0x3 reset_writes=none from a reset-reachable function contexts=IRQ6,table@0x18016d44
-    0x180342c0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x18034270 unnamed    runtime-ram  widths=[4, 8] reads=10 writes=1 stored=0x18033ff0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034278 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0xd reset_writes=none from a reset-reachable function contexts=unreached
+    0x1803427c unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034288 unnamed    runtime-ram  widths=[4, 8] reads=8 writes=1 stored=0x1803401c reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034290 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0xe reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342a0 unnamed    runtime-ram  widths=[4, 8] reads=10 writes=1 stored=0x18034048 reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342a8 unnamed    runtime-ram  widths=[1, 4] reads=1 writes=1 stored=0xf reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342b0 unnamed    runtime-ram  widths=[4] reads=23 writes=2 stored=0x0 reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342b4 unnamed    runtime-ram  widths=[1] reads=3 writes=9 stored=0x0, 0x2, 0x3 reset_writes=none from a reset-reachable function contexts=IRQ6
+    0x180342c0 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180342c8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801ec6c reset_writes=none from a reset-reachable function contexts=unreached
     0x180342cc unnamed    runtime-ram  widths=[1] reads=0 writes=1 stored=0x3 reset_writes=none from a reset-reachable function contexts=unreached
     0x180342d0 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801756b reset_writes=none from a reset-reachable function contexts=unreached
@@ -1492,33 +1565,33 @@ IMAGE Candidate B (application)
     0x180342dc unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801781d reset_writes=none from a reset-reachable function contexts=unreached
     0x180342e0 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801781f reset_writes=none from a reset-reachable function contexts=unreached
     0x180342e4 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017821 reset_writes=none from a reset-reachable function contexts=unreached
-    0x180342e8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801735d reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x180342ec unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017379 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x180342f0 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017395 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x180342f4 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180173b1 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x180342f8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180173cd reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x180342fc unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180173e9 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034300 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017405 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034304 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017421 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034308 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801743d reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x1803430c unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017459 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034310 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017475 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034314 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017491 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034318 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180174ad reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x1803431c unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180174c9 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034320 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180174e5 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
-    0x18034324 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017501 reset_writes=none from a reset-reachable function contexts=table@0x18017d08
+    0x180342e8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801735d reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342ec unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017379 reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342f0 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017395 reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342f4 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180173b1 reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342f8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180173cd reset_writes=none from a reset-reachable function contexts=unreached
+    0x180342fc unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180173e9 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034300 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017405 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034304 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017421 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034308 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x1801743d reset_writes=none from a reset-reachable function contexts=unreached
+    0x1803430c unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017459 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034310 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017475 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034314 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017491 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034318 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180174ad reset_writes=none from a reset-reachable function contexts=unreached
+    0x1803431c unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180174c9 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034320 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x180174e5 reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034324 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=0x18017501 reset_writes=none from a reset-reachable function contexts=unreached
     0x18034364 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x18034368 unnamed    runtime-ram  widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
-    0x1803436e unnamed    runtime-ram  widths=[1] reads=8 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18018ce8
-    0x18034370 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18034371 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18034372 unnamed    runtime-ram  widths=[1] reads=6 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18034374 unnamed    runtime-ram  widths=[2] reads=4 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18034376 unnamed    runtime-ram  widths=[2] reads=5 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18034378 unnamed    runtime-ram  widths=[2] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x1803437c unnamed    runtime-ram  widths=[2] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
-    0x18034384 unnamed    runtime-ram  widths=[1, 4] reads=4 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18018ce8
+    0x1803436e unnamed    runtime-ram  widths=[1] reads=8 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0
+    0x18034370 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034371 unnamed    runtime-ram  widths=[1] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034372 unnamed    runtime-ram  widths=[1] reads=6 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034374 unnamed    runtime-ram  widths=[2] reads=4 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034376 unnamed    runtime-ram  widths=[2] reads=5 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034378 unnamed    runtime-ram  widths=[2] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x1803437c unnamed    runtime-ram  widths=[2] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x18034384 unnamed    runtime-ram  widths=[1, 4] reads=4 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x180343e8 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x180343ec unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x180343f0 unnamed    runtime-ram  widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
@@ -1549,12 +1622,12 @@ IMAGE Candidate B (application)
     0x18035014 unnamed    runtime-ram  widths=[1] reads=0 writes=3 stored=0xac, 0xe1, 0xf5 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x18035015 unnamed    runtime-ram  widths=[1] reads=0 writes=3 stored=0x4b, 0x5b reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x18037224 unnamed    unknown      widths=[2] reads=0 writes=1 stored=0xa9b8 reset_writes=none from a reset-reachable function contexts=unreached
-  BLOCK 0x20000000 unknown registers=3 accesses=18 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),table@0x18016d44
+  BLOCK 0x20000000 unknown registers=3 accesses=18 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
     0x20000000 unnamed    unknown      widths=[4] reads=9 writes=5 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x20000004 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
-    0x20000ffc unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x73207320 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-  BLOCK 0x40000000 unknown registers=17 accesses=69 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),table@0x18016d44
+    0x20000ffc unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x73207320 reset_writes=none from a reset-reachable function contexts=unreached
+  BLOCK 0x40000000 unknown registers=17 accesses=69 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
     0x40019000 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x40019004 unnamed    unknown      widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
@@ -1566,33 +1639,33 @@ IMAGE Candidate B (application)
     0x40020014 unnamed    unknown      widths=[4] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x40020018 unnamed    unknown      widths=[4] reads=4 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x4002001c unnamed    unknown      widths=[4] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
-    0x40022000 unnamed    unknown      widths=[4] reads=3 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x40022000 unnamed    unknown      widths=[4] reads=3 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x40022004 unnamed    unknown      widths=[4] reads=8 writes=1 stored=0x2000 reset_writes=none from a reset-reachable function contexts=unreached
     0x40022008 unnamed    unknown      widths=[4] reads=0 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x4002200c unnamed    unknown      widths=[4] reads=0 writes=3 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x40022010 unnamed    unknown      widths=[4] reads=0 writes=9 stored=0x0, 0x6 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x4002201c unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x40022020 unnamed    unknown      widths=[4] reads=0 writes=4 stored=0x0 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
-  BLOCK 0x40100000 unknown registers=20 accesses=139 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,table@0x18016d44
+  BLOCK 0x40100000 unknown registers=20 accesses=139 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994
     no evidence identifies this address space. It is touched by the original firmware and nothing more can be said about it without a SNC73270 reference manual
-    0x40100000 unnamed    unknown      widths=[4] reads=4 writes=11 stored=0x2, 0x20, 0x4200, 0x8000, 0x8080, 0x20000, 0x40000, 0x100000 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x40100004 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x40100008 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x200 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x40100000 unnamed    unknown      widths=[4] reads=4 writes=11 stored=0x2, 0x20, 0x4200, 0x8000, 0x8080, 0x20000, 0x40000, 0x100000 reset_writes=none from a reset-reachable function contexts=unreached
+    0x40100004 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x40100008 unnamed    unknown      widths=[4] reads=0 writes=1 stored=0x200 reset_writes=none from a reset-reachable function contexts=unreached
     0x4010000c unnamed    unknown      widths=[4] reads=12 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x40100014 unnamed    unknown      widths=[4] reads=2 writes=3 stored=0xf370800 reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994
     0x40100018 unnamed    unknown      widths=[4] reads=1 writes=1 stored=0xffffffff reset_writes=none from a reset-reachable function contexts=IRQ6
-    0x4010001c unnamed    unknown      widths=[4] reads=1 writes=30 stored=0x0, 0x1, 0x80, 0x8c reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994,table@0x18016d44
-    0x40100020 unnamed    unknown      widths=[4] reads=1 writes=13 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x40100024 unnamed    unknown      widths=[4] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x40100028 unnamed    unknown      widths=[4] reads=7 writes=16 stored=0x1, 0x2, 0x4, 0x8, 0x20, 0x28, 0x80 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x4010002c unnamed    unknown      widths=[4] reads=11 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6,table@0x18016d44
-    0x40100034 unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x8090, 0x80000080 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994,table@0x18016d44
-    0x40100038 unnamed    unknown      widths=[4] reads=0 writes=7 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x4010003c unnamed    unknown      widths=[4] reads=1 writes=2 stored=0x10001 reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x4010001c unnamed    unknown      widths=[4] reads=1 writes=30 stored=0x0, 0x1, 0x80, 0x8c reset_writes=none from a reset-reachable function contexts=IRQ6,called from entry image 0x1994
+    0x40100020 unnamed    unknown      widths=[4] reads=1 writes=13 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x40100024 unnamed    unknown      widths=[4] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x40100028 unnamed    unknown      widths=[4] reads=7 writes=16 stored=0x1, 0x2, 0x4, 0x8, 0x20, 0x28, 0x80 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x4010002c unnamed    unknown      widths=[4] reads=11 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6
+    0x40100034 unnamed    unknown      widths=[4] reads=0 writes=2 stored=0x8090, 0x80000080 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
+    0x40100038 unnamed    unknown      widths=[4] reads=0 writes=7 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=unreached
+    0x4010003c unnamed    unknown      widths=[4] reads=1 writes=2 stored=0x10001 reset_writes=none from a reset-reachable function contexts=unreached
     0x40100040 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6
     0x40100070 unnamed    unknown      widths=[4] reads=1 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
-    0x40100078 unnamed    unknown      widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
-    0x4010007c unnamed    unknown      widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=table@0x18016d44
+    0x40100078 unnamed    unknown      widths=[4] reads=2 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
+    0x4010007c unnamed    unknown      widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
     0x40100080 unnamed    unknown      widths=[4] reads=0 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6
     0x40100084 unnamed    unknown      widths=[4] reads=0 writes=2 stored=none resolved reset_writes=none from a reset-reachable function contexts=IRQ6
   BLOCK 0x45000000 unknown registers=5 accesses=21 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
@@ -1602,12 +1675,12 @@ IMAGE Candidate B (application)
     0x4500000c unnamed    unknown      widths=[4] reads=2 writes=2 stored=0x4, 0x10 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x45000054 unnamed    unknown      widths=[4] reads=2 writes=0 stored=none resolved reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0x45000110 unnamed    unknown      widths=[4] reads=1 writes=2 stored=0x8 reset_writes=none from a reset-reachable function contexts=unreached
-  BLOCK 0xe0000000 arm-core registers=5 accesses=23 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+  BLOCK 0xe0000000 arm-core registers=5 accesses=23 contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     ARMv7-M private peripheral bus: NVIC, SCB and SysTick, named from the ARM architecture rather than a vendor document
     0xe000e100 NVIC_ISER0 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
     0xe000e104 NVIC_ISER1 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here)
     0xe000e180 NVIC_ICER0 arm-core     widths=[4] reads=0 writes=1 stored=0x40 reset_writes=none from a reset-reachable function contexts=called from entry image 0x1994
-    0xe000ed04 ICSR       arm-core     widths=[4] reads=0 writes=18 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,table@0x18016d44,table@0x18017d08,table@0x18018ce8,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
+    0xe000ed04 ICSR       arm-core     widths=[4] reads=0 writes=18 stored=0x10000000 reset_writes=none from a reset-reachable function contexts=Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,called from entry image 0x19cc,decompressed region 0x1801ecac,decompressed region 0x1801ecb0,decompressed region 0x1801ecc0,task IDLE created at 0x180136fe,task INIT_TASK created at 0x18000348,task Tmr Svc created at 0x180141ca,task usbd_wdt created at 0x18015e8a
     0xe000ed0c AIRCR      arm-core     widths=[4] reads=1 writes=1 stored=none resolved reset_writes=none from a reset-reachable function contexts=unreached
 
 DEPENDENCY_MAP
@@ -1615,8 +1688,8 @@ DEPENDENCY_MAP
     the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission
   must-reproduce-or-disprove     0x10000000 unknown       Candidate A (entry image)
     every access to this space is on the reset path, so the original firmware programs it before any service exists. That is evidence about the code, not about the address space: a replacement must either do the equivalent or establish that it is unnecessary
-  not-a-service                  0x18000000 runtime-ram   Candidate A (entry image)
-    RAM inside the proven scatter runtime range
+  see-registers                  0x18000000 mixed         Candidate A (entry image)
+    the block holds addresses of more than one kind; read the per-register rows rather than the block
   unknown-service                0x20000000 unknown       Candidate A (entry image)
     the original firmware touches this address space and nothing here identifies what it is, so whether a replacement needs it cannot be decided yet. This is a blocked item, not a permission
   must-reproduce-or-disprove     0x40000000 unknown       Candidate A (entry image)
@@ -1665,7 +1738,7 @@ NOTABLE_OBSERVATIONS 8
     basis: 0x4002f004 is written 0x60021000, which is exactly record slot 1's address from the installed header. The register is therefore tied to the image layout, whatever else it does.
     confidence: high for the correspondence, none for the register's purpose
   The unnamed block at 0x40100000 is the one the live interrupt serves.
-    basis: 20 registers, 139 accesses, touched from Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994,table@0x18016d44 — that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.
+    basis: 20 registers, 139 accesses, touched from Candidate B main (logs 79-80, via thunk_EXT_FUN_1800023a; no literal word points here),IRQ6,called from entry image 0x1994 — that is, from both an interrupt handler and the initialiser the entry image calls. It is the application's principal peripheral. Naming it would require a reference manual.
     confidence: high for the association, none for the identity
 
 COVERAGE OF THE PLANNED ANALYSIS AREAS

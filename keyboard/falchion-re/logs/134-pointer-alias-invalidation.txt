@@ -1,0 +1,377 @@
+LOG 134 — AN OVERWRITTEN INSTALLATION MUST NOT SURVIVE AS A PROOF
+Date: 2026-09-20
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged. NO FRAME WAS CONSTRUCTED.
+
+SAFETY: offline only. No /dev/hidraw and no hidraw device of any kind, no USB
+or sysfs access, no sudo, no package install, no network, no probe, backup,
+bootloader, firmware, updater, reset, replay or send operation, no HID write.
+Every byte quoted below was READ OUT of a preserved image or a preserved
+capture. Both evidence binaries and all four capture files were opened
+read-only and every hash is unchanged below. Logs 000-133 were not modified —
+131, 132 and 133 re-verify below. NO GHIDRA PROJECT WAS OPENED OR WRITTEN TO.
+NO DEVICE WAS ACCESSED.
+
+INDEX DISCIPLINE. Nothing was committed, staged or unstaged. No `git add`,
+`git restore --staged`, `git reset` or any other index-modifying command was
+run. The index was inspected read-only at the start and at the end; both
+listings are recorded below.
+
+  STAGED FILES AT START  (git diff --cached --name-only)
+    (none — count 0)
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EVIDENCE HASHES — the captures, recorded BEFORE analysis
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+
+
+================================================================================
+THE HEADLINE
+================================================================================
+LOG 133 MADE THE PROOF PATH-SENSITIVE AND LEFT IT ALIAS-BLIND. An installation
+was invalidated only by a later store carrying the SAME abstract
+(object identity, field) pair — but two different identities can name one
+physical word, and one identity can be written through two different
+expressions. Both shapes let a store that provably destroys the installed
+function pointer leave the proof standing.
+
+Both were reproduced before anything was changed. Both are now rejected. No
+real reachability number moved, because the real images still prove nothing.
+
+
+================================================================================
+CASE A — ABS INSTALL, MEM ALIAS OVERWRITE. REPRODUCED
+================================================================================
+$ one synthetic function:
+
+      ldr r1, =object_x            ; r1 -> ("abs", object_x)
+      ldr r0, =table_entry_0
+      str r0, [r1,#0]              ; INSTALL into ("abs", object_x) field 0
+
+      ldr r4, =pointer_slot_address
+      ldr r3, [r4,#0]              ; r3 == object_x, abstracted ("mem", slot)
+      movs r2, #0
+      str r2, [r3,#0]              ; OVERWRITES object_x+0 through the alias
+
+      ldr r2, [r1,#0]
+      blx r2
+      bx lr
+
+  BEFORE the correction:
+    installed [('0x18000004', ('abs', 0x18000200), '0x0')]
+    proven    ['0x18000100']
+    rooted    [('0x18000100', '0x18000010')]
+    verdict   validated
+
+  At runtime the aliasing store had already replaced the installed pointer with
+  zero. The proof was of a value that no longer existed.
+
+
+================================================================================
+CASE B — TWO ABS EXPRESSIONS FOR ONE ADDRESS. REPRODUCED
+================================================================================
+$ install through ("abs", 0x18000200) field 4; overwrite through
+  ("abs", 0x18000204) field 0; dispatch through ("abs", 0x18000200) field 4:
+
+      ldr r1, =object_x            ; 0x18000200
+      ldr r0, =table_entry_0
+      str r0, [r1,#4]              ; INSTALL -> effective 0x18000204
+      mov r5, r1
+      adds r5, #4                  ; r5 = 0x18000204
+      movs r2, #0
+      str r2, [r5,#0]              ; OVERWRITES effective 0x18000204
+      ldr r2, [r1,#4]
+      blx r2
+      bx lr
+
+  BEFORE the correction:
+    installed [('0x18000004', ('abs', 0x18000200), '0x4')]
+    proven    ['0x18000100']
+    rooted    [('0x18000100', '0x18000010')]
+    verdict   validated
+
+  `(base, field)` tuple equality never fires: (0x18000200, 4) != (0x18000204,
+  0). The two describe the same four bytes.
+
+
+================================================================================
+ROOT CAUSE
+================================================================================
+`_install_transfer()` invalidated a live installation with
+
+    out = {record for record in live
+           if not (record.obj == obj and record.field == offset)}
+
+plus one narrow extra rule for a store landing on the word a `("mem", A)`
+identity had been read from. That treats the abstract identity as if it were
+the address. It is not: an identity is a NAME for an address, several names can
+denote one address, and a MEM name denotes an address that is not statically
+known at all.
+
+
+================================================================================
+THE ALIAS RULES IMPLEMENTED
+================================================================================
+Two new helpers with documented rules and their own unit tests. Neither
+mentions any synthetic address.
+
+  INSTALL_WIDTH = 4                    a function pointer is one 32-bit word
+
+  effective_range(obj, field, width)
+      ("abs", A) + f  ->  the concrete byte interval [A+f, A+f+width)
+      ("mem", S) + f  ->  None. A MEM identity is "whatever pointer was read
+                          from slot S", which is not a static address.
+
+  may_alias(left, left_field, right, right_field, width)
+      1. ABS vs ABS — both intervals concrete: alias exactly when the byte
+         ranges OVERLAP. Overlap, not equality, so `("abs",X)+4` and
+         `("abs",X+4)+0` collide, and so does a partially overlapping or
+         unaligned store.
+      2. ABS vs MEM, either way round — a pointer read from a slot can point
+         anywhere, including at that absolute object. MAY ALIAS.
+      3. MEM vs MEM — two different slots can hold the same pointer, and the
+         same slot certainly does. MAY ALIAS whether the slots match or not.
+
+  slot_overwritten(install_obj, store_obj, store_field, width)
+      A store whose interval overlaps [S, S+width) invalidates every
+      installation derived from slot S, because the pointer itself has
+      changed. An unplaceable store invalidates all of them.
+
+CONSEQUENCE, STATED PLAINLY. Rules 2 and 3 mean a MEM-derived installation
+survives NO resolved store at all. This is the fail-closed choice the
+correction called for: the interpreter cannot prove two runtime pointers
+distinct, so it does not try. A MEM installation can still be proven when
+nothing is stored between the install and the dispatch, which is the one
+positive control it had.
+
+`slot_overwritten` is kept as a separate rule even though `may_alias` already
+subsumes it under rules 2 and 3. It is a different reason for a different
+fact, it is directly testable, and it stays correct if the alias rules are ever
+tightened.
+
+The store also still has to be RESOLVED. Calls, byte and halfword stores,
+register-offset and stack stores, multiple-stores, and anything the decoder
+does not recognise continue to empty the live set outright — unchanged from
+log 133.
+
+$ AFTER the correction
+    CASE A  proven=[] rooted=[] verdict=candidate
+    CASE B  proven=[] rooted=[] verdict=candidate
+    SAME    proven=['0x18000100'] rooted=[('0x18000100','0x18000010')] validated
+    MUTEX   proven=[] rooted=[] verdict=candidate
+
+  The straight-line positive control and log 133's mutually exclusive branch
+  rejection both behave exactly as before.
+
+
+================================================================================
+REGRESSION TESTS ADDED
+================================================================================
+class AliasRules — the predicate on its own, no image involved:
+  * an ABS identity has a concrete four-byte interval; a MEM identity has none
+  * `("abs",X)+4` and `("abs",X+4)+0` alias, in both argument orders
+  * partially overlapping words alias (+2 and +6 against +4)
+  * adjacent and distant words do not alias (+0 vs +4, +4 vs +8, X vs Y)
+  * ABS vs MEM always may-alias, in both orders
+  * MEM vs MEM always may-alias, same slot or not
+  * a store overlapping the slot invalidates its MEM installs, including a
+    partial overlap; a store past the slot does not
+  * `slot_overwritten` never applies to an ABS install
+  * an unplaceable store overwrites any slot
+
+class Aliasing — the same rules through the real analyser:
+   1. ABS install overwritten through a MEM alias            -> no proof, no root
+   2. MEM install overwritten through an ABS alias           -> no proof, no root
+   3. two ABS expressions for one effective address          -> no proof, no root
+   4. a partially overlapping absolute store                 -> no proof, no root
+   5. two provably disjoint absolute stores                  -> PROOF PRESERVED
+   6. a store directly to the pointer slot                   -> no proof, no root
+   7. a store through a DIFFERENT MEM slot                   -> no proof, no root
+   8. a store through the SAME MEM slot at another field     -> no proof, no root
+   9. the untouched-MEM positive control                     -> PROOF PRESERVED
+  10. `len(rooted) == len(proven)` across five shapes
+
+Every positive case asserts the EXACT install instruction, dispatch
+instruction, function entry, object identity and field — not a count:
+
+    case 5:  entry 0x18000100, install 0x18000004, dispatch 0x1800000e,
+             function 0x18000000, object ('abs', 0x18000200), field 0x0
+    case 9:  entry 0x18000100, object ('mem', 0x18000110), field 0x0,
+             function 0x18000000
+
+Log 133's mutually exclusive branch reproduction, its straight-line positive
+control, its call and unresolved-write invalidations, and the hardware-map
+partial-table integration tests all still run and still pass.
+
+
+================================================================================
+CLEANUP
+================================================================================
+  * `Table`'s docstring still described the deleted `whole_table` mechanism.
+    Rewritten: `rooted` is exactly the (entry, target) pairs of `proven`, and
+    the docstring now also states the no-aliasing-in-between requirement.
+    `grep -c whole_table tool/find_pointer_tables.py` is now 0.
+  * `_install_transfer`'s docstring now says that a resolved store invalidates
+    everything it MAY ALIAS, not just the matching pair.
+  * `parse_identities()`'s docstring said "a key with more than one distinct
+    VID:PID". It had already been corrected to the full
+    (idVendor, idProduct, bcdDevice) triple in log 133 and needs no change; the
+    wording is confirmed rather than re-edited.
+  * THE DUPLICATE `live` INITIALISATION IS NOT PRESENT. `grep -n "live = \[" `
+    returns exactly one hit, at the single `live = [frozenset() for _ in
+    stream]` in `_scan_function`. It was removed in log 133 when the worklist
+    seeding bug was fixed. Recorded as "nothing to do" rather than reported as
+    a fix that was not made.
+  * No historical log was rewritten.
+
+
+================================================================================
+DERIVED EVIDENCE
+================================================================================
+  * pointer-table analysis re-run for installed and vendor: both still
+    `runs=5 validated=0 rooted=0 new_targets=0`;
+  * Phase 5 / reachability reports regenerated although the numbers did not
+    move, so the artefacts are provably current against the corrected
+    generator;
+  * notes/installed-hardware-interfaces.*, vendor-to-installed-functions*,
+    address-zero.*, second-context.*, polling-rate*.json, vendor-command-map.*
+    regenerated;
+  * FINDINGS.md, TIMELINE.md and logs/COMMANDS.md updated;
+  * logs 131, 132 and 133 untouched; their hashes re-verify below.
+
+DID ANY REAL REACHABILITY NUMBER CHANGE? NO.
+  entry  functions=141 reached=96  unreached=45   table roots: none
+  app    functions=616 reached=206 unreached=410  table roots: none
+  Neither image has a proven table entry, before or after, so the alias rules
+  could not move the count. What changed is that two ways of manufacturing one
+  are closed.
+
+PHASE 5 REACHABILITY REMAINS EXPLICITLY INCOMPLETE. 410 of 616 application
+functions unreached, 161 of them callerless, zero proven table roots. NO GHIDRA
+P-CODE AND NO INTERPROCEDURAL DISPATCH RECOVERY WAS IMPLEMENTED, AND NONE IS
+CLAIMED. The three decompressed-region roots keep their weaker log-105 status:
+their targets are addresses Ghidra already had functions at, which is not a
+located consumer.
+
+
+================================================================================
+REMAINING UNCERTAINTY
+================================================================================
+  * A MEM-derived installation now survives no resolved store at all. That is
+    sound but coarse; a real ops-struct build that stores to an unrelated field
+    in between would be reported as unproven.
+  * A proof still asserts only that a CFG path EXISTS. Branch conditions are
+    not modelled, so feasibility is not established, and it does not say the
+    dispatch always happens.
+  * The AAPCS assumption (r4-r11 survive a call) is unchanged and still an
+    assumption.
+  * 31 of 141 entry functions and 40 of 616 application functions are declined
+    for unresolvable flow.
+  * The application's two installer functions dispatch through a callee that
+    receives the object as an argument; recovering that needs an
+    interprocedural pass that has not been written.
+  * Identical-descriptor device replacement on one interface/bus/address key
+    remains undetectable by the decoder, in both implementations.
+  * Orphan_000009fc's purpose is still unknown.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"   (keyboard/falchion-re)
+  Ran 1391 tests
+  OK
+  (1371 after log 133; test_find_pointer_tables 63 -> 83.)
+
+$ the four reproductions, before and after
+  CASE A ABS/MEM alias    before: proven=1 rooted=1 validated
+                          after : proven=0 rooted=0 candidate
+  CASE B equal ABS addr   before: proven=1 rooted=1 validated
+                          after : proven=0 rooted=0 candidate
+  MUTEX branch            before and after: proven=0 rooted=0 candidate
+  SAME straight line      before and after: proven=1 rooted=1 validated
+
+$ pointer-table analysis
+  installed  RESULT runs=5 validated=0 rooted=0 new_targets=0
+  vendor     RESULT runs=5 validated=0 rooted=0 new_targets=0
+
+$ hardware-map partial-table integration (synthetic surveys)
+  one rooted -> one root; zero rooted -> none for every verdict; three rooted
+  -> three roots; candidate and rejected -> none; label carries table and entry
+
+$ every non-test tool/*.py --check     (25 scripts)   all exit 0, failures=0
+$ regenerated reports' --check modes    report_phase3, report_phase5,
+  map_address_zero, map_polling_rate, map_second_context,
+  map_polling_rate_reader, map_vendor_commands — all reports_current=True
+
+$ sha256sum -c logs/SHA256SUMS
+  133 files OK before this log was added, 0 failed — logs 131, 132 and 133
+  byte-identical
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+CAPTURE HASHES — AFTER (unchanged)
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+
+$ git diff --check           clean
+$ git diff --cached --check  clean
+
+  STAGED FILES AT END  (git diff --cached --name-only)
+    (none — count 0)
+  The index was not modified at any point in this step.
+
+
+================================================================================
+READY FOR WINDOWS OBSERVATION — WHAT THAT DOES AND DOES NOT MEAN
+================================================================================
+The offline repository has NO KNOWN BLOCKER for beginning the passive Windows
+captures described in notes/windows-behavior-capture-plan.md. The decoder is
+bus-scoped and reproduces the preserved capture; the capture, trace and
+snapshot tools refuse output collisions; the profile diff compares the whole
+model with types preserved; the superseded Ghidra script is inert.
+
+THAT IS ALL IT MEANS. NO POWERSHELL SCRIPT IN tools/ HAS EVER BEEN EXECUTED, on
+Windows or anywhere else. Every one of them remains WINDOWS-UNVALIDATED. The
+first Windows session must record the first run of each, and specifically:
+  * the -Out refusal in capture.ps1, haltrace.ps1 and snap-config.ps1;
+  * Get-PnpDevice enumeration and the USBPcap extcap launch;
+  * Get-FileHash output and the `saved:` gate;
+  * Get-SubjectKey's bus-scoped parsing and its descriptor-identity-conflict
+    refusal on a real multi-bus capture;
+  * Get-Flat / Get-Canonical agreeing with flatten() / canonical() on a real
+    profile — NOT proven by anything in this repository;
+  * -AllProfiles against a real C:\ProgramData\ASUS\... folder;
+  * the DBWIN P/Invoke path: ERROR_ALREADY_EXISTS, handle cleanup on partial
+    failure, and the header-only zero-event artifact.
+
+The plan authorises passive observation of normal Armoury Crate use only. It is
+not firmware-flashing authorisation and it does not authorise send.ps1.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NO DEVICE WAS ACCESSED. No hidraw node was opened; no live USB, bootloader,
+    firmware, reset, replay or send operation was performed.
+  - No Ghidra project was opened or written to; no inventory or peripheral map
+    was regenerated, because no program changed.
+  - It did NOT implement Ghidra P-code or any interprocedural analysis.
+  - It did NOT change any reachability number.
+  - It did NOT declare Phase 5 complete or corrected.
+  - It did NOT execute any PowerShell.
+  - Logs 000-133 were not modified.
+  - NOTHING WAS COMMITTED, STAGED OR UNSTAGED, and no index-modifying command
+    was run.

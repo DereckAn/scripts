@@ -1,0 +1,554 @@
+LOG 132 — PROVENANCE, THE CODE THE LAST FIX DELETED, AND BUS-SCOPED IDENTITY
+Date: 2026-09-20
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged. NO FRAME WAS CONSTRUCTED.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader/updater tool, no
+unlock/erase/program/reset/SPI command construction, no HID write. Every byte
+quoted below was READ OUT of a preserved image or a preserved capture. Both
+evidence binaries and all four capture files were opened read-only and every
+hash is unchanged below. Logs 000-131 were not modified — log 131's sha256 is
+re-verified below. Only ghidra/project-step6 was opened; ghidra/project/
+falchion-hfx was not opened, analysed or modified. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EVIDENCE HASHES — the captures, recorded BEFORE analysis
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+
+
+================================================================================
+THE HEADLINE
+================================================================================
+NOTHING IN EITHER IMAGE IS A TABLE ROOT ANY MORE, AND THAT IS THE CORRECT
+ANSWER. Log 131 replaced a shape rule with a consumer rule but matched stores to
+indirect calls by structure-field OFFSET across a register map that was never
+reset between functions. With real provenance required — same object, same
+field, proven along a valid path, inside one function — the application's three
+runs report 0/26, 6/6 and 12/12 loaded and installed, and ZERO dispatch-proven.
+Application reachability falls 281 -> 206 of 616. It fails closed.
+
+AND LOG 131'S OWN FIX DELETED REAL CODE. `clearListing` on a false function's
+body, trusting reanalysis to rebuild the surroundings, lost the routine
+containing 0x00000a0c entirely — with it the write of 0x3f to 0xe000ef00 at
+0x00000a26 — and left FUN_00003dd8 ending at 0x4004 in the middle of its own
+epilogue. Both are repaired by rebuilding the entry images from scratch and
+replaying only legitimate seeds.
+
+Six issues were raised. All six reproduced. None had to be recorded as a wrong
+premise.
+
+
+================================================================================
+BLOCKER 1 — PROVENANCE. REPRODUCED FIRST
+================================================================================
+$ a synthetic image with the literal load in function A at 0x18000000..0x08
+  and an unrelated store + `blx` in function B at 0x18000020..0x28
+
+  validated 0x18000040 | 2 of 3 entries are loaded by a PC-relative literal
+  load inside a real function body; 1 are stored into a structure field that
+  `ldr rX,[rY,#off]; blx rX` calls
+     consumer 0x18000040 0x18000000 () ()
+     consumer 0x18000044 0x18000004 (0,) (0,)
+  root targets: ['0x18000010', '0x18000020', '0x18000030']
+
+  TWO FAILURES IN ONE OUTPUT. The load in function A was correlated with a
+  store and a call in function B — `pending` and `loaded_from` were module-level
+  per-survey dictionaries that no boundary ever cleared. And ONE "dispatched"
+  entry rooted ALL THREE targets. The same two faults produced log 131's
+  "21 of 26 ... 8 of 12 dispatched", with all 26 and all 12 rooted.
+
+ROOT CAUSE
+  * register state survived function and body-range boundaries;
+  * registers were not killed on every write, only on the few encodings the
+    scanner recognised;
+  * the object a field belonged to was not modelled at all — only the offset,
+    and 0x0/0x4/0x8/0xc occur in most structures in the image;
+  * a table's verdict was a single boolean, so any evidence rooted everything.
+
+THE CORRECTION — tool/find_pointer_tables.py, rewritten analysis
+  A per-function fixed-point data-flow pass:
+    * one function at a time, starting from an empty register map;
+    * a worklist over instructions; at a JOIN the incoming states are MERGED,
+      and the merge keeps only what every predecessor agrees on. That is the
+      proof: two arms of a branch cannot contribute half a fact each, and two
+      arms that DO agree are not thrown away either;
+    * every instruction kills its destination register. Encodings whose
+      destination the architecture fixes are killed exactly; anything else
+      drops the whole map;
+    * a function containing a flow instruction whose successors cannot be
+      enumerated — TBB, TBH, `BX <reg>`, `IT` — is NOT ANALYSED AT ALL and is
+      listed as skipped, because after it neither the joins nor the
+      instruction boundaries can be trusted;
+    * objects have identities: ("abs", A) for the object at absolute address A,
+      ("mem", A) for the object whose pointer was read from A. A store records
+      (entry word, object, field); a dispatch records (object, field); they
+      match only when BOTH agree.
+  THE ONE ASSUMPTION, stated and pinned by a test: AAPCS. r4-r11 survive a
+  call; r0-r3, r12 and lr do not. Without it an object base is lost at the
+  first `bl` and nothing can be reported as installed at all. It is an
+  assumption about compiler-generated code, not a proof, and it never promotes
+  anything on its own — rooting still needs the matching object.
+
+FOUR BUCKETS, REPORTED SEPARATELY
+  LOADED    an instruction in an analysed body literal-loads the entry
+  INSTALLED that value is stored into a named object's field
+  PROVEN    that same object's same field is the operand of an indirect call
+  ROOTED    proven entries only — unless a WHOLE-TABLE PROOF is printed
+
+WHOLE-TABLE PROOF, defined so it can be argued with. Every entry installed; all
+installs naming the SAME object; into DISTINCT fields; from ONE function; and at
+least one of those fields indirect-called through that same object. Short of
+that, a table roots only its individually proven entries.
+
+$ python3 tool/find_pointer_tables.py
+  IMAGE entry  runs=2 skipped_functions=31
+    REJECTED  0x00001404  loaded=0/8   installed=0/8   proven=0/8   rooted=0/8
+    CANDIDATE 0x00005680  loaded=0/3   installed=0/3   proven=0/3   rooted=0/3
+  IMAGE app    runs=3 skipped_functions=40
+    CANDIDATE 0x18016d44  loaded=0/26  installed=0/26  proven=0/26  rooted=0/26
+    CANDIDATE 0x18017d08  loaded=6/6   installed=6/6   proven=0/6   rooted=0/6
+    CANDIDATE 0x18018ce8  loaded=12/12 installed=12/12 proven=0/12  rooted=0/12
+  RESULT runs=5 validated=0 rooted=0 new_targets=0
+$ python3 tool/find_pointer_tables.py --vendor — identical verdicts at -0x2c.
+
+WHAT THE INSTALL EVIDENCE ACTUALLY SHOWS, kept because it is real:
+  0x18017d08: all six entries stored by FUN_18018b22 into
+    object@0x180342c8 + 0x8,0xc,0x10,0x14,0x18,0x1c
+  0x18018ce8: all twelve stored by FUN_18018a28 into
+    object*@0x1801ebbc + 0xc,0x10,0x14,0x18,0x1c,0x20,0x28,0x38,0x54,0x58,0x5c,0x60
+  Twelve distinct fields of one object, from one function, beside the
+  `HID Function` string the same function stores at +0x0. That is an operations
+  struct being built. WHAT IS MISSING IS THE OTHER HALF: the dispatch happens in
+  a function that RECEIVES the object as an argument, and this scanner does not
+  follow an object across a call boundary. So the whole-table proof's last
+  clause fails and nothing is rooted. Ghidra decompiler P-code could follow that
+  flow; this scanner is not a substitute for it, and the report says so.
+  0x18016d44 is worse and says so too: its installer FUN_18016934 contains a
+  TBB at 0x18016990, so the function is declined outright — loaded=0.
+
+CONSEQUENCE, NOT ADJUSTED TO TASTE
+  app reachability 281 -> 206 of 616; callerless functions 121 -> 161.
+  entry reachability 96 of 141 (see blocker 2 for the 141).
+
+ADVERSARIAL REGRESSION TESTS (tool/test_find_pointer_tables.py, class
+Provenance + class Rooting; every one built from hand-assembled Thumb):
+  - a load in one function and a store in another do not correlate
+  - a store into object X and a call through the same field of object Y do not
+  - a register overwritten before the store breaks provenance
+  - the object register overwritten before the store breaks it
+  - the object register overwritten before the call breaks it
+  - the loaded pointer overwritten before the call breaks it
+  - two branch arms that DISAGREE are not joined
+  - two branch arms that AGREE are joined  (the positive control, so the test
+    above cannot pass merely because joins reset)
+  - loading and storing without dispatch is insufficient
+  - an unconsumed pointer-shaped table stays a candidate
+  - a function with an unresolvable branch is not analysed
+  - a caller-saved register does not survive a call; a callee-saved one does
+  - only individually proven entries are rooted without a whole-table proof
+  - a whole-table proof roots every entry and prints its reason
+  - a whole-table proof needs distinct fields, and needs one object
+  - a printable format-string block cannot be promoted even WITH a consumer
+
+
+================================================================================
+BLOCKER 2 — THE FALSE-SEED REMOVAL ERASED REAL CODE. REPRODUCED
+================================================================================
+$ grep FUNC ghidra/inventories/installed_a.txt   (log 131's state)
+  FUNC entry=00000986 ... ranges=00000986-000009fc
+  FUNC entry=00000a6e ... ranges=00000a6e-00000ad0
+  -> 0x000009fc..0x00000a6e, 114 bytes, UNDEFINED. The real routine that
+     contained 0x00000a0c was gone, not merely unnamed.
+
+$ grep e000ef00 ghidra/peripherals/installed_a.txt
+  (nothing)
+$ the same grep against the pre-131 map
+  ACCESS target=0xe000ef00 width=4 dir=write instr=00000a26 func=00000a0c
+         base=r1@0xffffffffe000ef00 off=0 stored=0x3f
+  A WRITE OF 0x3f TO 0xE000EF00 HAD DISAPPEARED FROM THE CENSUS. Architecturally
+  that address is NVIC_STIR and 0x3f is IRQ 63 — the interrupt whose vector slot
+  log 102 established as live. Deleting it was a real loss of evidence.
+
+$ FUNC entry=00003dd8 ... ranges=00003dd8-00004004
+  The routine still ended at 0x4004, where the false PtrTarget_00004004 had
+  split it, even though execution runs on:
+      3ffc  adds.w r2,r2,r7,lsl #16
+      4000  adc.w  r1,r1,r7,lsr #16
+      4004  adds.w r2,r2,r12,lsl #16   <- the split point, mid-routine
+      4008  adcs.w r1,r1,r12,lsr #16
+      400c  it     mi
+      400e  bxmi   lr
+      4010  adds   r2,r2,r2
+      4012  adc.w  r1,r1,r1
+      4016  sub.w  r3,r3,#0x1
+      401a  bx     lr                  <- the real end
+
+ROOT CAUSE. FalchionRemoveSeeds.java removed the function and called
+clearListing(body), assuming auto-analysis would rebuild what was underneath.
+It cannot: a routine that nothing in the image references is never disassembled,
+so clearing it deletes it permanently. The assumption was the defect.
+
+THE CORRECTION — rebuild, do not patch
+  Both entry-image programs were RE-IMPORTED into the ignored
+  ghidra/project-step6 with -overwrite and analysed from scratch, then the
+  legitimate seeds were replayed in their historical order, each followed by a
+  re-analysis:
+    log 100  twelve vector seeds + EntryImage_PostScatter=0x140
+    log 106  Task_OEM_MAIN_SERVICE_TASK=0x498
+    log 118  twenty-one EA_cand_* entry candidates
+  The log-104 PtrTarget_* seeds were NOT replayed. That alone restored
+  FUN_00003dd8 to 0x3dd8..0x401c and restored the 0x40b2 long-branch veneer as
+  a proper THUNK — both had been collateral of the clearListing, not of the
+  seeds.
+
+$ the remaining hole, and why autoanalysis could not close it
+  0x9fc..0xa46 is reached by nothing in the image. No reference, no caller. It
+  is genuinely orphan code, which is exactly why Ghidra never disassembles it
+  and exactly why log 104's false seed was the only thing that had ever made it
+  visible. It was therefore defined EXPLICITLY, at its real boundary, with the
+  boundary read off the instruction stream rather than guessed:
+
+      9f0  bl   0x954
+      9f4  ldr  r1,[pc,#0x18c]
+      9f6  str  r0,[r1]
+      9f8  movs r0,#0x0
+      9fa  b    0x90e            <- the previous routine ends here
+      9fc  ldr  r1,[0x00000b68]  <- THE ENTRY. r1 is set here...
+      9fe  ldr  r2,[0x00000b80]  <- ...and r2 here...
+      a00  rsbs r1,r1
+      a02  push {r4,lr}          <- ...and only now is the frame set up
+      a04  add  r1,r0            <- ...and r1 is used. The entry CANNOT be
+      a06  adds r2,r2,#0x1          0xa02: r1 and r2 would be undefined.
+      a08  cmp  r1,r2
+      a0a  bcc  0x00000a18
+      a0c  ldr  r1,[0x00000b7c]  <- the address log 104 called a handler
+      ...
+      a1e  bl   0x0000127a
+      a26  str  r0,[r1,#0x0]     <- the 0xe000ef00 write, r0 = 0x3f
+      a44  pop  {r4,pc}          <- the real end; body 0x9fc..0xa46
+
+  Seeded as `Orphan_000009fc` in BOTH releases. The name says what it is: real
+  code that nothing calls. It is a function in the inventory and it is NOT a
+  reachability root — it has no caller and no root cites it, so it reports as
+  unreached, which is the honest state.
+
+$ FalchionSpanReport.java 0x9fc-0xa46            (new; the repair's own check)
+  SPAN 000009fc instruction ... | function=Orphan_000009fc@000009fc body=[[000009fc, 00000a45]]
+  ... 34 instructions, all covered ...
+  RESULT reported=34 undefined=0
+
+$ FalchionSpanReport.java 0x4004 0x4010 0x401a 0x40b2 0x40b4 0x40bc
+  SPAN 00004004 instruction 00004004 adds.w r2,r2,r12, lsl #0x10 | function=FUN_00003dd8@00003dd8 body=[[00003dd8, 0000401b]]
+  SPAN 00004010 instruction 00004010 adds r2,r2,r2               | function=FUN_00003dd8@00003dd8 body=[[00003dd8, 0000401b]]
+  SPAN 0000401a instruction 0000401a bx lr                       | function=FUN_00003dd8@00003dd8 body=[[00003dd8, 0000401b]]
+  SPAN 000040b2 instruction 000040b2 movw r12,#0x7117 | function=thunk_EXT_FUN_18007116@000040b2 THUNK->EXT_FUN_18007116 body=[[000040b2, 000040bb]]
+  SPAN 000040b4 instruction 000040b2 movw r12,#0x7117 | function=thunk_EXT_FUN_18007116@000040b2 (same thunk; 0x40b4 is mid-instruction)
+  SPAN 000040bc instruction 000040bc movw r12,#0x7e39 | function=thunk_EXT_FUN_18007e38@000040bc
+  RESULT reported=6 undefined=0
+  The caller of 0x40b2 now targets a proper thunk with correct bounds. The
+  1-byte FUN_000040b2 that log 131 left behind is gone.
+
+EXACTLY WHICH FUNCTION BOUNDARIES CHANGED, against log 131's state
+  + Orphan_000009fc            0x000009fc-0x00000a46   defined (was undefined)
+  ~ FUN_00003dd8               0x3dd8-0x4004  ->  0x3dd8-0x401c
+  + FUN_0000127a               restored (its only caller is 0x9fc, so it had
+                               vanished with it)
+  + thunk_EXT_FUN_18007116     0x40b2-0x40bc restored as a thunk
+  entry functions 140 -> 141, symmetric in both releases
+  peripheral accesses 313 -> 319, unresolved 420 -> 419 -> 420, functions 141
+
+$ the access is back, and NOT attributed to a table root
+  ACCESS target=0xe000ef00 width=4 dir=write instr=00000a26 func=000009fc
+         stored=0x3f
+  contexts = ["unreached"]        (log 131's state, before removal, had it as
+                                   contexts = table@0x00001404 — the false root)
+
+NO COUNT IS PINNED BY ANY TEST. The suite asserts the repaired spans are fully
+defined and correctly bounded, that the four false entries are absent, and that
+both releases agree — never a particular total.
+
+
+================================================================================
+ISSUE 3 — USB IDENTITY MUST BE BUS-SCOPED. REPRODUCED
+================================================================================
+$ tshark -r captures/01-first-launch.pcapng -Y usb.idVendor -T fields \
+    -e frame.number -e frame.interface_id -e usb.bus_id \
+    -e usb.device_address -e usb.idVendor -e usb.idProduct
+  2   1  2  1  0x174c 0x3074      <- ASMedia hub,      bus 2, ADDRESS 1
+  6   2  3  1  0x046d 0x0b0b      <- Logitech receiver, bus 3, ADDRESS 1
+  12  1  2  2  0x0b05 0x1b7e      <- the Falchion
+  ...
+  FOUR USBPcap INTERFACES, TWO BUSES, AND ADDRESS 1 USED TWICE BY DIFFERENT
+  DEVICES. Keyed by address alone, one identity silently overwrote the other,
+  and `usb.device_address==2` in the report filter would have matched any
+  device holding address 2 on any bus in the file.
+
+THE CORRECTION — tool/decode_capture.py and tools/decode.ps1
+  * identity key is (frame.interface_id, usb.bus_id, usb.device_address);
+  * the SAME key builds the report filter, one scoped clause per key:
+      ((usb.bus_id==3 && usb.device_address==6) ||
+       (usb.bus_id==3 && usb.device_address==7)) && ...
+    with frame.interface_id added whenever the file has one;
+  * every decoded ROW is re-checked against the subject key set — a filter is a
+    request, not a guarantee;
+  * a key that carried MORE THAN ONE distinct VID:PID during the capture is an
+    address the host reused, which no display filter can separate; the decoder
+    REFUSES the capture and names the key rather than taking the last owner;
+  * frame.time_epoch is now carried, for cross-artifact correlation (issue 6);
+  * endpoint 0x0d/0x85, direction-from-endpoint-bit and the 64-byte length
+    check are unchanged.
+
+$ python3 tool/decode_capture.py captures/02-polling-rate.pcap
+  SUBJECT 0b05:1b7e at bus 3 address 6; bus 3 address 7
+  FILTER ((usb.bus_id==3 && usb.device_address==6) || (usb.bus_id==3 && usb.device_address==7)) && (usb.endpoint_address==0x0d || usb.endpoint_address==0x85) && usb.data_len==64
+  REPORTS 148 out=74 in=74 unique=28
+  50 55 x20   51 31 x20
+  EVERY ESTABLISHED COUNT IS UNCHANGED.
+$ 01-first-launch: subject key ('1','2',2); address 1 resolves to TWO keys,
+  0x174c on bus 2 and 0x046d on bus 3, both retained.
+
+TESTS: class BusScopedFiltering drives rows_to_reports with the same address on
+two buses and requires the other bus's frames to be dropped; parse_identities /
+reused_keys / select_subject are tested for the collision, the reuse refusal,
+and a re-enumeration that is NOT reuse. The two-bus collision is also asserted
+against the real 01-first-launch capture.
+HONEST SCOPE: the two-bus exclusion test is ROW-LEVEL. Synthesising a USBPcap
+file would not exercise more of this code — the scoping happens after tshark
+hands the fields over — and is not claimed.
+
+
+================================================================================
+ISSUE 4 — profile_diff REVERSED ADDED AND REMOVED. REPRODUCED
+================================================================================
+$ only in NEW  -> [('', 'removed', None, 'new file')]      <- wrong
+$ only in OLD  -> [('', 'added', 'file removed', None)]    <- wrong
+  snapshot_diff() had the two branches swapped; the per-path diff() had been
+  corrected in log 131 but the FILE-SET comparison had not.
+
+CORRECTED to ('', 'added', None, name) and ('', 'removed', name, None), and
+tools/snap-config.ps1's file-level messages now read "added (new profile file)"
+and "removed (profile file gone)" so the terminology matches.
+TESTS assert the COMPLETE tuple for an added file, a removed file, a changed
+file and an unchanged file, plus one comparison containing all four at once.
+
+
+================================================================================
+ISSUE 5 — snap-config.ps1 LOST JSON SCALAR TYPES. REPRODUCED
+================================================================================
+  Get-Flat's leaf was `$acc[$prefix] = "$value"`. JSON 1 and "1" both become
+  "1"; $true and "True" both become "True". Python was not equivalent either:
+  it compared raw values, and in Python `True == 1`.
+
+CORRECTED. Both sides now flatten to a TYPE-TAGGED canonical string:
+    null        -> null
+    Boolean     -> bool:true / bool:false
+    number      -> num:<invariant, integral numbers without a fraction>
+    string      -> str:<value>
+Python compares canonical() and REPORTS the raw values, so the output still
+reads naturally. Object keys are sorted and array indices are part of the path,
+so ordering is deterministic. The canonical form is never display formatting.
+
+TESTS: number 1 vs string "1"; Boolean true vs string "true"; Boolean true vs
+number 1 (the Python trap, asserted); null vs string "null"; a numeric change;
+10 vs 10.0 as the same JSON number; a non-integral number; arrays growing and
+shrinking; objects gaining and losing keys; a scalar becoming an object; key
+order irrelevant but array order significant.
+
+VALIDATION SCOPE, STATED HONESTLY AND NOT OVERSOLD. PowerShell is not executed
+anywhere in this repository. `profile_diff.powershell_drift()` is a TOKEN AND
+STRUCTURE CHECK over the script text: it catches the leaf being stringified
+again, the canonical tags disappearing, a return to the keyboardButton-only
+comparison, or a missing contract field. IT DOES NOT PROVE that Get-Flat and
+flatten(), or Get-Canonical and canonical(), agree on any input. That
+equivalence is an open Windows-only item and is listed as one in
+tools/README.md. The class docstring on the test says the same thing.
+
+
+================================================================================
+ISSUE 6 — THE HAL-TRACE REQUIREMENT CONTRADICTED EXPERIMENT 3
+================================================================================
+The plan required a HAL trace and a hash for every capture; experiment 3
+requires Armoury Crate CLOSED, so there is no producer and the old script only
+created its output file when a line arrived.
+
+DESIGN CHOSEN: (B) a deterministic session artifact, always.
+tools/haltrace.ps1 now writes its header BEFORE listening — start UTC, start
+local, host, user, elevation, DBWIN name, filter flag, duration, and an explicit
+clock note — and appends an end UTC and a line count in the finally block. A
+zero-event run therefore still produces a file to hash, and the script says so:
+"zero events. That is a RESULT, not a failure". The plan records that a
+zero-event trace is the EXPECTED outcome of experiment 3 and is itself evidence.
+A structural check enforces that the header is written before the wait loop and
+that the old no-artifact branch is gone.
+
+CLOCKS, CORRECTED. The plan previously said action timestamps came "from the
+same clock the capture uses". They do not. USBPcap frames are stamped by the
+capture engine, haltrace lines by the Windows wall clock, and hand-written times
+by whatever the operator read. The plan now says so, requires correlation on
+ABSOLUTE time (frame.time_epoch / frame.time against the UTC stamps), records
+that frame.time_relative cannot be compared across files at all, and requires
+every cross-artifact alignment to be treated as approximate and manual. Both
+decoders now carry frame.time_epoch so that correlation is possible.
+
+
+================================================================================
+ISSUE 7 — TERMINOLOGY FOR 0x5680
+================================================================================
+"x87 long doubles" is withdrawn everywhere outside the immutable logs. This is
+ARM firmware and an exponent-first library representation does not establish the
+x87 native memory layout; no ABI was proven and none was needed.
+
+The wording is now "library-specific extended-precision powers-of-ten records",
+with the supporting observations listed separately from the interpretation:
+  * five consecutive records, a constant 12 bytes apart;
+  * field 0 rises 0x4002, 0x4005, 0x400c, 0x4019, 0x4034 — differences of
+    3, 7, 13, 27, i.e. the binary exponents of 10^1, 10^2, 10^4, 10^8, 10^16
+    offset by a constant 0x3fff;
+  * the remaining eight bytes of each record, read as a normalised fraction,
+    give those same five powers of ten;
+  * the block sits immediately after the `0123456789ABCDEF@0X` and
+    `0123456789abcdef@0x` digit tables a formatted-print routine uses.
+All the finding needs is that field 0 is an exponent and not an address.
+
+
+================================================================================
+DERIVED REPORTS AND CONCLUSIONS AFFECTED
+================================================================================
+  * entry inventories and peripheral maps, both releases (rebuilt, 141 / 319);
+  * notes/installed-hardware-interfaces.{md,json} — the 0xe000ef00 row is back
+    with context "unreached" instead of "table@0x00001404";
+  * notes/vendor-to-installed-functions*.{md,json} — Candidate A pairings 140
+    -> 141, Orphan_000009fc paired across releases;
+  * notes/address-zero.*, second-context.*, polling-rate*.json,
+    vendor-command-map.* — regenerated after the inventories changed;
+  * FINDINGS.md and TIMELINE.md — the Phase 5A sections, the corrections table
+    and the 0x5680 terminology.
+
+NOT AFFECTED, and explicitly not withdrawn: everything in logs 124-130. Those
+decodes come from handler bodies and from the capture, not from reachability
+counts. Reachability was a search aid for finding those handlers; it is a
+premise in none of their arguments.
+
+PHASE 5 REACHABILITY IS STILL NOT DECLARED CORRECTED. The provenance problem is
+now handled honestly and the damaged boundaries are repaired, but the outcome is
+that nothing is rooted through a table, which leaves 410 of 616 application
+functions unreached and 161 of them callerless. Closing that needs the object
+flow followed across a call boundary — Ghidra decompiler P-code — and that work
+has not been done.
+
+THE WINDOWS WORKFLOW IS NOT DECLARED READY. The bus-scoped decoder and the
+profile diff are fixed and tested in their Python twins; no PowerShell script in
+tools/ has ever been executed.
+
+
+================================================================================
+REMAINING UNCERTAINTY
+================================================================================
+  * The three decompressed-region roots (0x1801ecac, 0x1801ecb0, 0x1801ecc0)
+    still rest on log 105's weaker rule — their targets are addresses Ghidra
+    already had functions at. Unchanged from log 131 and still recorded as
+    weaker than a located consumer.
+  * The nineteen PtrTarget_* functions log 104 seeded in the APPLICATION images
+    from the three runs are retained. Their targets are words that code
+    provably loads and stores into an operations struct, so they are very
+    likely function pointers — but they are no longer used as roots, cited as
+    evidence, or offered as proof of anything. Removing them would delete real
+    code, which is the mistake this log exists to correct.
+  * 31 of 141 entry functions and 40 of 616 application functions are declined
+    by the scanner for unresolvable flow. Their tables would read as
+    unconsumed whatever the truth is; the direction of that error is safe, but
+    it is an error.
+  * Orphan_000009fc's purpose is unknown. It writes 0x3f to NVIC_STIR, which
+    triggers IRQ 63, and nothing calls it.
+  * The AAPCS assumption is an assumption.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"   (keyboard/falchion-re)
+  Ran 1342 tests
+  OK
+  (1294 after log 131. test_find_pointer_tables 35 -> 48, test_decode_capture
+   25 -> 35, test_profile_diff 32 -> 53, test_windows_tools 29 -> 32,
+   test_map_hardware_interfaces 42 -> 43.)
+
+$ every non-test tool/*.py --check     (25 scripts)   all exit 0
+  decode_capture in_sync=True drift=0; windows_tools in_sync=True drift=0;
+  profile_diff categories=14 missing=0 drift=0; every map_*/report_*
+  reports_current=True stale=0.
+
+$ corrected pointer-table analysis, both images       rooted=0, validated=0
+$ fresh Ghidra inventory / peripherals, both entry releases
+  RESULT functions=141          (installed_a, vendor_a — symmetric)
+  RESULT accesses=319 unresolved=420 functions=141   (both)
+$ reachability
+  entry  functions=141 reached=96  unreached=45   table roots: none
+  app    functions=616 reached=206 unreached=410  table roots: none
+  roots naming no function: none, either image
+$ preserved PCAP decoder regression
+  148 reports, 74 out / 74 in, twenty 51 31, twenty 50 55, endpoints 0x0d/0x85
+
+$ sha256sum -c logs/SHA256SUMS
+  131 files OK before this log was added, 0 failed — log 131 byte-identical
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+CAPTURE HASHES — AFTER (unchanged)
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+
+$ git diff --check          clean, worktree and index
+$ git status --short        modified and untracked entries only; NOTHING STAGED
+
+
+================================================================================
+WHAT STILL REQUIRES EXECUTION ON WINDOWS
+================================================================================
+  * the actual refusal of an existing -Out in capture.ps1, haltrace.ps1 and
+    snap-config.ps1;
+  * Get-PnpDevice enumeration and the USBPcap extcap launch;
+  * Get-FileHash output and the `saved:` gate;
+  * Get-SubjectKey's bus-scoped identity parsing against a real multi-bus
+    capture, and its address-reuse refusal;
+  * Get-Flat / Get-Canonical agreeing with flatten() / canonical() on a real
+    profile — NOT proven by any check in this repository;
+  * -AllProfiles against a real C:\ProgramData\ASUS\... folder;
+  * the DBWIN P/Invoke path: the ERROR_ALREADY_EXISTS branch, handle cleanup on
+    partial failure, and the header-only zero-event artifact.
+  EVERY .ps1 IN tools/ REMAINS WINDOWS-UNVALIDATED.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NO DEVICE WAS ACCESSED. No hidraw node opened, no USB or sysfs read, no HID
+    report written, no frame constructed for transmission.
+  - No updater, no flashing, no bootloader entry.
+  - No network access, no package installed.
+  - ghidra/project/falchion-hfx was NOT opened, analysed or modified. Only the
+    ignored ghidra/project-step6 was written to, and within it only the two
+    entry-image programs were re-imported; the application, bootloader, RAM and
+    region programs were left exactly as they were.
+  - Logs 000-131 were not modified; log 131's sha256 re-verifies.
+  - It did NOT implement a Ghidra P-code data-flow pass, and therefore did not
+    recover the table dispatch. It declined it instead.
+  - It did NOT remove the application's nineteen PtrTarget_* functions.
+  - It did NOT execute any PowerShell.
+  - It did NOT pin any function, reachability or access count in a test.
+  - It did not declare Phase 5 reachability corrected, or the Windows workflow
+    ready.
+  - Nothing was committed, staged or unstaged.

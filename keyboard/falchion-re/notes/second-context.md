@@ -122,26 +122,26 @@ The shared word log 113 found is one field of a ring buffer, and both halves are
 | window | accesses | r/w | application | |
 |---|---:|---|---:|---|
 | `0x00001000` | 1 | 1/0 | 0 | **own** |
-| `0x0800ff00` | 2 | 2/0 | 1 | shared |
+| `0x0800ff00` | 2 | 2/0 | 2 | shared |
 | `0x10000000` | 1 | 1/0 | 1 | shared |
-| `0x20000000` | 37 | 24/13 | 21 | shared |
+| `0x20000000` | 37 | 24/13 | 61 | shared |
 | `0x20000f00` | 1 | 1/0 | 2 | shared |
 | `0x40008000` | 4 | 0/4 | 4 | shared |
 | `0x40009000` | 4 | 0/4 | 4 | shared |
 | `0x40018000` | 12 | 3/9 | 0 | **own** |
-| `0x40019000` | 10 | 7/3 | 7 | shared |
+| `0x40019000` | 10 | 7/3 | 15 | shared |
 | `0x4001b000` | 54 | 3/51 | 14 | shared |
 | `0x4001c000` | 18 | 9/9 | 0 | **own** |
 | `0x40022000` | 11 | 6/5 | 41 | shared |
 | `0x4002f000` | 3 | 0/3 | 3 | shared |
 | `0x40040000` | 98 | 53/45 | 0 | **own** |
-| `0x45000000` | 70 | 49/21 | 78 | shared |
-| `0x45000100` | 5 | 1/4 | 7 | shared |
+| `0x45000000` | 70 | 49/21 | 80 | shared |
+| `0x45000100` | 5 | 1/4 | 13 | shared |
 | `0x45000300` | 2 | 1/1 | 2 | shared |
 | `0x60000800` | 4 | 2/2 | 2 | shared |
 | `0x60011000` | 1 | 1/0 | 0 | **own** |
-| `0xe000e400` | 2 | 0/2 | 1 | shared |
-| `0xe000ed00` | 13 | 11/2 | 32 | shared |
+| `0xe000e400` | 2 | 0/2 | 2 | shared |
+| `0xe000ed00` | 13 | 11/2 | 34 | shared |
 
 Windows this image touches and the application and entry image never do: `0x00001000`, `0x40018000`, `0x4001c000`, `0x40040000`, `0x60011000`.
 

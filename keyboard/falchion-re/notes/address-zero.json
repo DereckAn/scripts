@@ -71,7 +71,7 @@
       "ok": true
     },
     {
-      "detail": "15 registers, 210 accesses",
+      "detail": "15 registers, 218 accesses",
       "label": "the 0x45000000 block is enumerated, not sampled",
       "ok": true
     },
@@ -81,7 +81,7 @@
       "ok": true
     },
     {
-      "detail": "10 reads, 0 writes",
+      "detail": "11 reads, 0 writes",
       "label": "VTOR is never written, in any image",
       "ok": true
     },
@@ -333,7 +333,7 @@
     "register_count": 15,
     "registers": [
       {
-        "accesses": 55,
+        "accesses": 56,
         "functions": [
           "0000075c",
           "000007fe",
@@ -348,7 +348,7 @@
           "entry",
           "second"
         ],
-        "reads": 37,
+        "reads": 38,
         "register": "0x45000000",
         "stored": [],
         "writes": 18
@@ -394,7 +394,7 @@
         "writes": 0
       },
       {
-        "accesses": 58,
+        "accesses": 59,
         "functions": [
           "0000075c",
           "000007fe",
@@ -409,7 +409,7 @@
           "entry",
           "second"
         ],
-        "reads": 45,
+        "reads": 46,
         "register": "0x4500000c",
         "stored": [
           "0x0",
@@ -518,9 +518,10 @@
         "writes": 0
       },
       {
-        "accesses": 5,
+        "accesses": 9,
         "functions": [
           "00000de8",
+          "00001f50",
           "00005648",
           "00007d7c",
           "18039c24"
@@ -530,19 +531,20 @@
           "entry",
           "second"
         ],
-        "reads": 1,
+        "reads": 3,
         "register": "0x45000100",
         "stored": [
           "0x7fff",
           "0x9fff"
         ],
-        "writes": 4
+        "writes": 6
       },
       {
-        "accesses": 7,
+        "accesses": 9,
         "functions": [
           "00000de8",
           "00000ec4",
+          "00001f50",
           "00005648",
           "18039c24"
         ],
@@ -551,13 +553,13 @@
           "entry",
           "second"
         ],
-        "reads": 2,
+        "reads": 3,
         "register": "0x4500010c",
         "stored": [
           "0xfffd",
           "0xffff"
         ],
-        "writes": 5
+        "writes": 6
       },
       {
         "accesses": 6,
@@ -610,7 +612,7 @@
         "writes": 2
       }
     ],
-    "total_accesses": 210
+    "total_accesses": 218
   },
   "unresolved": [
     {
@@ -641,7 +643,7 @@
   "vtor": {
     "basis": "VTOR is read to fetch the initial stack pointer and, in one bootloader function, to reach the vector table as data. It is never written, in any of the four images. Nothing relocates the table, so the table's presence at address 0 is not a software arrangement.",
     "eliminated": true,
-    "reads": 10,
+    "reads": 11,
     "sites": [
       {
         "dir": "read",
@@ -660,6 +662,12 @@
         "func": "0x000014a8",
         "image": "entry",
         "instr": "0x000014b0"
+      },
+      {
+        "dir": "read",
+        "func": "0x00001f50",
+        "image": "entry",
+        "instr": "0x00001fc0"
       },
       {
         "dir": "read",

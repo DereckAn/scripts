@@ -31,18 +31,18 @@ Its only two literals are `0xe000ed0c`, `0x05fa0000` — AIRCR and the vector ke
 
 | register | accesses | r/w | images | stored |
 |---|---:|---|---|---|
-| `0x45000000` | 55 | 37/18 | app, boot, entry, second | — |
+| `0x45000000` | 56 | 38/18 | app, boot, entry, second | — |
 | `0x45000004` | 38 | 24/14 | boot, entry, second | — |
 | `0x45000008` | 7 | 7/0 | app, boot, entry, second | — |
-| `0x4500000c` | 58 | 45/13 | app, boot, entry, second | 0x0, 0x10, 0x2, 0x4 |
+| `0x4500000c` | 59 | 46/13 | app, boot, entry, second | 0x0, 0x10, 0x2, 0x4 |
 | `0x45000010` | 5 | 3/2 | boot, entry, second | 0x0 |
 | `0x45000018` | 8 | 4/4 | entry, second | — |
 | `0x45000020` | 4 | 2/2 | entry, second | — |
 | `0x4500002c` | 4 | 0/4 | boot | 0x0 |
 | `0x45000050` | 4 | 2/2 | entry, second | — |
 | `0x45000054` | 4 | 4/0 | app, boot | — |
-| `0x45000100` | 5 | 1/4 | boot, entry, second | 0x7fff, 0x9fff |
-| `0x4500010c` | 7 | 2/5 | boot, entry, second | 0xfffd, 0xffff |
+| `0x45000100` | 9 | 3/6 | boot, entry, second | 0x7fff, 0x9fff |
+| `0x4500010c` | 9 | 3/6 | boot, entry, second | 0xfffd, 0xffff |
 | `0x45000110` | 6 | 2/4 | app, boot | 0x28, 0x8 |
 | `0x45000114` | 1 | 0/1 | second | 0x1 |
 | `0x45000300` | 4 | 2/2 | entry, second | — |
@@ -166,9 +166,9 @@ What places the BOOTLOADER at address 0 before any preserved image runs. That is
 - PASS — the handoff stub is the expected size (80 bytes)
 - PASS — the stub's literals are AIRCR and the vector key (0xe000ed0c, 0x05fa0000)
 - PASS — the stub writes NO system-control register (it configures nothing)
-- PASS — the 0x45000000 block is enumerated, not sampled (15 registers, 210 accesses)
+- PASS — the 0x45000000 block is enumerated, not sampled (15 registers, 218 accesses)
 - PASS — no write into the block stores a base-address-shaped value (so candidate (a) is eliminated)
-- PASS — VTOR is never written, in any image (10 reads, 0 writes)
+- PASS — VTOR is never written, in any image (11 reads, 0 writes)
 - PASS — so candidate (c) is eliminated
 - PASS — VTOR is nonetheless read widely (so the absence of writes is not an absence of the register)
 - PASS — address 0 is writable RAM (the handoff stub performs a plain word-store loop into addre...)

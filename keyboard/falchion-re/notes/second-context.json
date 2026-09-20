@@ -47,7 +47,7 @@
       {
         "accesses": 2,
         "also_in_application": true,
-        "application_accesses": 1,
+        "application_accesses": 2,
         "functions": [
           "1803a3e4"
         ],
@@ -75,7 +75,7 @@
       {
         "accesses": 37,
         "also_in_application": true,
-        "application_accesses": 21,
+        "application_accesses": 61,
         "functions": [
           "18039c24",
           "1803a3e4",
@@ -157,7 +157,7 @@
       {
         "accesses": 10,
         "also_in_application": true,
-        "application_accesses": 7,
+        "application_accesses": 15,
         "functions": [
           "1803ae58",
           "1803af28",
@@ -290,7 +290,7 @@
       {
         "accesses": 70,
         "also_in_application": true,
-        "application_accesses": 78,
+        "application_accesses": 80,
         "functions": [
           "18039bb8",
           "18039c24",
@@ -313,7 +313,7 @@
       {
         "accesses": 5,
         "also_in_application": true,
-        "application_accesses": 7,
+        "application_accesses": 13,
         "functions": [
           "18039c24",
           "1803a63c"
@@ -374,7 +374,7 @@
       {
         "accesses": 2,
         "also_in_application": true,
-        "application_accesses": 1,
+        "application_accesses": 2,
         "functions": [
           "18039c24"
         ],
@@ -388,7 +388,7 @@
       {
         "accesses": 13,
         "also_in_application": true,
-        "application_accesses": 32,
+        "application_accesses": 34,
         "functions": [
           "180381c0",
           "18038be0",

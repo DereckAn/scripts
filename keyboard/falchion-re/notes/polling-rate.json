@@ -10,8 +10,8 @@
           "functions": 1
         },
         "0x40010000": {
-          "accesses": 21,
-          "functions": 5
+          "accesses": 29,
+          "functions": 6
         },
         "0x40020000": {
           "accesses": 57,
@@ -22,8 +22,8 @@
           "functions": 27
         },
         "0x45000000": {
-          "accesses": 87,
-          "functions": 18
+          "accesses": 95,
+          "functions": 19
         }
       }
     },

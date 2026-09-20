@@ -153,9 +153,11 @@ class Reachability(unittest.TestCase):
         self.assertEqual(contexts[0x300], {"Reset", "IRQ6"})
 
     def test_a_root_that_is_not_a_function_is_reported_not_dropped(self):
-        """The real case is table 0x5680's 0x4018, absorbed into the function
-        seeded from the entry before it. A silently dropped root would let a
-        three-entry table be described as three distinct indirect roots."""
+        """Log 104's real case was the 0x5680 run's 0x4018, absorbed into the
+        function seeded from the entry before it. Log 131 removed that run
+        from the root set entirely, so the live map now reports none — but a
+        documented or task root can still name a non-function, and a silently
+        dropped root would overstate how many distinct entries a root set has."""
         records = self.records(self.func(0x100))
         contexts, unreached, unresolved, orphans = mh.reachability(
             records, [("Reset", 0x999)])
@@ -174,6 +176,95 @@ class Reachability(unittest.TestCase):
         self.assertEqual(orphans, (0x800,))
 
 
+class TableRootIntegration(unittest.TestCase):
+    """The hardware map must consume `table.rooted` and nothing else.
+
+    Log 133: the previous code iterated `table.entries` for every VALIDATED
+    table, throwing away the per-entry decision the detector had just made. A
+    table with one proven entry contributed all of its targets as roots. These
+    tests drive synthetic surveys, because the real images currently have zero
+    validated tables and would pass by accident.
+    """
+
+    ENTRIES = ((0x18016D44, 0x18016828), (0x18016D48, 0x180167A4),
+               (0x18016D4C, 0x180167A0))
+
+    def table(self, **overrides):
+        import find_pointer_tables as fpt
+        return fpt.Table(0x18016D44, 4, self.ENTRIES, **overrides)
+
+    def survey(self, *tables):
+        import find_pointer_tables as fpt
+        return fpt.Survey("app", "synthetic.bin", 0x18000000, 0x100, "",
+                          tuple(tables), (), (), ())
+
+    def test_one_rooted_target_produces_one_root(self):
+        import find_pointer_tables as fpt
+        table = self.table(verdict=fpt.VALIDATED, proven=(0x18016D44,),
+                           rooted=((0x18016D44, 0x18016828),))
+        self.assertEqual(mh.table_roots(self.survey(table)),
+                         [("table@0x18016d44[0x18016d44]", 0x18016828)])
+
+    def test_a_validated_table_with_nothing_rooted_produces_no_root(self):
+        import find_pointer_tables as fpt
+        table = self.table(verdict=fpt.VALIDATED, loaded=tuple(
+            entry for entry, _t in self.ENTRIES))
+        self.assertEqual(mh.table_roots(self.survey(table)), [])
+
+    def test_three_rooted_targets_produce_three_roots(self):
+        import find_pointer_tables as fpt
+        table = self.table(verdict=fpt.VALIDATED,
+                           proven=tuple(e for e, _t in self.ENTRIES),
+                           rooted=self.ENTRIES)
+        self.assertEqual(
+            mh.table_roots(self.survey(table)),
+            [(f"table@0x18016d44[0x{entry:08x}]", target)
+             for entry, target in self.ENTRIES])
+
+    def test_a_candidate_or_rejected_table_produces_no_root(self):
+        import find_pointer_tables as fpt
+        for verdict in (fpt.CANDIDATE, fpt.REJECTED):
+            self.assertEqual(
+                mh.table_roots(self.survey(self.table(verdict=verdict))), [])
+
+    def test_changing_the_verdict_cannot_re_expand_the_table(self):
+        """The regression itself: a table marked validated, with every entry
+        present and NOTHING rooted, must contribute nothing. If the map ever
+        goes back to reading `entries` this fails."""
+        import find_pointer_tables as fpt
+        for verdict in (fpt.VALIDATED, fpt.CANDIDATE, fpt.REJECTED):
+            table = self.table(verdict=verdict)
+            self.assertEqual(mh.table_roots(self.survey(table)), [], verdict)
+
+    def test_a_partially_rooted_table_contributes_only_its_proven_target(self):
+        import find_pointer_tables as fpt
+        table = self.table(verdict=fpt.VALIDATED, proven=(0x18016D48,),
+                           rooted=((0x18016D48, 0x180167A4),))
+        roots = mh.table_roots(self.survey(table))
+        self.assertEqual(len(roots), 1)
+        self.assertNotIn(0x18016828, [target for _label, target in roots])
+        self.assertNotIn(0x180167A0, [target for _label, target in roots])
+
+    def test_the_label_names_the_table_and_the_supporting_entry(self):
+        import find_pointer_tables as fpt
+        table = self.table(verdict=fpt.VALIDATED, proven=(0x18016D4C,),
+                           rooted=((0x18016D4C, 0x180167A0),))
+        (label, _target), = mh.table_roots(self.survey(table))
+        self.assertIn("0x18016d44", label)
+        self.assertIn("0x18016d4c", label)
+
+    def test_the_map_does_not_read_table_entries_or_the_verdict(self):
+        """Structural: the CODE of table_roots — docstring stripped — must
+        touch neither `table.entries` nor `table.verdict`."""
+        source = Path(mh.__file__).read_text()
+        whole = source[source.index("def table_roots("):
+                       source.index("def build_blocks(")]
+        code = whole.split('"""')[0] + whole.split('"""')[2]
+        self.assertIn("table.rooted", code)
+        self.assertNotIn("table.entries", code)
+        self.assertNotIn("verdict", code)
+
+
 @unittest.skipUnless(READY, "run the Ghidra inventory and peripheral steps first")
 class RealImage(unittest.TestCase):
 
@@ -188,23 +279,60 @@ class RealImage(unittest.TestCase):
                 if "application" in item.name]
         return entry, app
 
-    def test_every_root_category_is_still_present(self):
-        """Regression pin: adding task roots must not displace the vector,
-        table, cross-image or decompressed-region roots 5A already had."""
+    def test_every_evidence_backed_root_category_is_still_present(self):
+        """Regression pin for the root categories that survive log 132.
+
+        `table@` is deliberately absent: no pointer run in either image has a
+        located consumer whose object identity matches an indirect call, so
+        none of them is a root. The other four categories are unaffected and
+        must not be lost while that is being fixed.
+        """
         entry, app = self.programs()
         labels = [label for label, _entry in entry.roots + app.roots]
-        for prefix in ("table@", "task ", "decompressed region ",
+        for prefix in ("task ", "decompressed region ",
                        "called from entry image ", "Candidate B main"):
             self.assertTrue(any(label.startswith(prefix) for label in labels),
                             f"no root labelled {prefix!r} survives")
+        self.assertEqual([label for label in labels
+                          if label.startswith("table@")], [])
 
-    def test_the_absorbed_table_target_is_still_reported_not_dropped(self):
-        """0x4018 was absorbed into PtrTarget_00004004's body extent, so table
-        0x5680 contributes two roots and not three. Pinned so a later change
-        to the root set cannot quietly restore the double count."""
+    def test_no_root_names_an_address_that_is_not_a_function(self):
+        """Log 104 had one — the 0x5680 run's 0x4018 — and that was the tell.
+
+        Log 131 established that the run is the exponent column of a
+        extended-precision powers-of-ten record array, rejected it as a root, and removed
+        the three functions log 104 had seeded from the two false runs. No
+        root should name a non-function any more, in either image.
+        """
+        entry, app = self.programs()
+        self.assertEqual(entry.unresolved_roots, ())
+        self.assertEqual(app.unresolved_roots, ())
+
+    def test_no_image_has_a_table_root(self):
+        """No run in either image survives the provenance rules, so no
+        `table@` root may exist. No function count is pinned: the corrected
+        program model reports whatever it reports."""
+        entry, app = self.programs()
+        for program in (entry, app):
+            self.assertEqual([label for label, _e in program.roots
+                              if label.startswith("table@")], [])
+
+    def test_the_repaired_orphan_keeps_its_peripheral_access(self):
+        """Log 132: clearing the false seed's listing deleted the write of
+        0x3f to 0xe000ef00 at 0x00000a26 along with it. It is back, attributed
+        to the real enclosing function and NOT to any table root."""
         entry, _app = self.programs()
-        self.assertEqual(entry.unresolved_roots,
-                         (("0x00004018", "table@0x00005680"),))
+        found = [register
+                 for block in entry.blocks
+                 for register in block.registers
+                 if register["address"] == 0xE000EF00]
+        self.assertEqual(len(found), 1, "the access went missing again")
+        use, = found
+        self.assertEqual(use["functions"], [0x9FC])
+        self.assertEqual(use["write_sites"], [0xA26])
+        self.assertEqual(use["stored_values"], [0x3F])
+        self.assertTrue(all(not label.startswith("table@")
+                            for label in use["contexts"]), use["contexts"])
 
     def test_the_five_task_roots_are_split_across_both_images(self):
         """Four tasks run application code; OEM_MAIN_SERVICE_TASK runs entry

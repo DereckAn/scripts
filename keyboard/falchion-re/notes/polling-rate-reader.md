@@ -221,7 +221,7 @@ Nothing was patched. This is analysis.
 | PASS | nothing was patched — the feasibility answer is analysis only |  |
 | PASS | log 126's measurement is read from its model rather than restated | notes/polling-rate-protocol.json |
 | PASS | log 126's own numbers still say index 0 is the slow state | index 0 85.1% vs index 3 12.2% on the 1 ms grid |
-| PASS | the census this whole step rests on is populated, so its silence elsewhere means something | 10740 ACCESS records |
+| PASS | the census this whole step rests on is populated, so its silence elsewhere means something | 10966 ACCESS records |
 | PASS | the same filter finds neighbouring struct fields, so it is not keyed to one lucky address | 4 accesses to key_state+9 |
 
 `RESULT polling_rate_reader_ok=True checks=53`

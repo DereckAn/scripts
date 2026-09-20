@@ -373,10 +373,12 @@ def reachability(records, roots):
     """Breadth-first contexts for every function, from evidence-backed roots.
 
     A root naming an address that is not a function entry is *reported*, not
-    silently dropped. Table 0x5680's middle entry 0x4018 is one: seeding could
-    not create a function there because 0x4004, created moments earlier from
-    the same table, had already claimed the address into its body. Counting
-    that table as three indirect roots would count one function twice.
+    silently dropped. Log 104 had one: the entry image's 0x5680 run, whose
+    middle "pointer" 0x4018 named no function. Log 131 found the cause — the
+    run is the exponent column of a 12-byte extended-precision powers-of-ten record array
+    used by the printf float path, so none of its three words is a pointer —
+    and the run is no longer a root at all. The report path is kept because a
+    documented or task root can still name a non-function.
     """
     by_entry = {record.entry: record for record in records}
     contexts = {}
@@ -405,6 +407,26 @@ def reachability(records, roots):
               if callee in by_entry}
     orphans = tuple(entry for entry in unreached if entry not in called)
     return contexts, unreached, unresolved_roots, orphans
+
+
+def table_roots(survey):
+    """Reachability roots from one survey's pointer tables.
+
+    Reads `table.rooted` — the per-entry decision `find_pointer_tables.py`
+    made — and NOTHING else. It does not look at `table.verdict` and it never
+    iterates `table.entries`, because both of those would re-expand a partially
+    proven table back to all of its targets, which is exactly the bug log 133
+    was raised on. A table whose `rooted` is empty contributes no root
+    whatever its verdict says.
+
+    The label carries the table AND the entry address that supports the
+    target, so a context says which slot of which table let the function in.
+    """
+    out = []
+    for table in survey.tables:
+        for entry, target in table.rooted:
+            out.append((f"table@0x{table.location:08x}[0x{entry:08x}]", target))
+    return out
 
 
 def build_blocks(accesses, contexts, program_base, program_size, runtime_ranges):
@@ -749,16 +771,14 @@ def build_map(installed_view=None):
                 (f"called from entry image 0x{pointer['entry_offset']:x}",
                  pointer["value"] & ~1))
 
-    # Phase 5A: a function reached only through a pointer table is entered by a
-    # mechanism the call graph cannot see, so the table entry is itself a root.
-    # The label names the table, so a context always says how the function is
-    # entered rather than merely that it is.
+    # Phase 5A, corrected in logs 131-133: a function reached only through a
+    # pointer table is entered by a mechanism the call graph cannot see, so a
+    # table entry can be a root — but only the entries the detector proved
+    # individually. `table_roots` reads `table.rooted` and nothing else.
     surveys = fpt.build()
     by_program = {survey.program: survey for survey in surveys}
     for program, roots in (("entry", entry_roots), ("app", app_roots)):
-        for table in by_program[program].tables:
-            for _address, target in table.entries:
-                roots.append((f"table@0x{table.location:08x}", target))
+        roots.extend(table_roots(by_program[program]))
 
     # The decompressed scatter region holds no table under that rule, but it
     # does hold isolated pointers. One is admitted as a root only when Ghidra

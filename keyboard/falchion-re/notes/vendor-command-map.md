@@ -413,7 +413,7 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the hold timer is described by behaviour and NOT given a HAL name | 4 candidates, none asserted |
 | PASS | the rapid burst is nine 51 31 writes of index 0 and nothing else | 1 distinct payload |
 | PASS | the upstream models are read rather than restated | polling-rate-protocol.json, profile-format.json |
-| PASS | the census is populated | 10740 records |
+| PASS | the census is populated | 10966 records |
 | PASS | the block-range filter finds accesses in both blocks, so a 'no USB writer' answer is a real absence | macro 53, block D 14 |
 | PASS | the vendor release's dispatcher has the same top-level compares | 17/17 |
 | PASS | HAL names with no opcode are listed rather than guessed at | 20 unmatched |

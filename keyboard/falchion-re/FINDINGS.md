@@ -1477,20 +1477,31 @@ image's first code address. That code floor is load-bearing: without it,
 structure words that happen to carry bit 0 produce targets like `0x00000004`,
 which the first cut of the tool duly reported.
 
-**Five tables, in both releases:**
+> **CORRECTED BY LOG 131.** Two of the five "tables" below are not tables. The
+> entry image's `0x1404` run is the `\r\n\0\0` terminator of eight `Rn:   0x%08X`
+> fault-report format strings, and its `0x5680` run is the exponent column of a
+> 12-byte extended-precision powers-of-ten record array. Neither is a reachability root any
+> more, and the three functions seeded from them are removed. The three
+> application tables survive, now on located-consumer evidence rather than on
+> shape. See **Phase 5A corrected: false tables and root eligibility (log 131)**
+> below; the paragraphs here are left as written.
 
-| image | location | stride | entries | note |
-|---|---|---|---|---|
-| entry | `0x1404` | 16 | 8 | all eight slots carry the same handler `0x00000a0c`, which two loose words also point at — a shared default callback |
-| entry | `0x5680` | 24 | 3 | three distinct handlers in a structure array |
-| app | `0x18016d44` | 4 | 26 | the largest dispatch array |
-| app | `0x18017d08` | 4 | 6 | |
-| app | `0x18018ce8` | 4 | 12 | |
+**Five runs, in both releases:**
+
+| image | location | stride | entries | note | log 131 verdict |
+|---|---|---|---|---|---|
+| entry | `0x1404` | 16 | 8 | all eight slots carry the same handler `0x00000a0c`, which two loose words also point at — a shared default callback | **REJECTED** — printf format strings, not pointers |
+| entry | `0x5680` | 24 | 3 | three distinct handlers in a structure array | **CANDIDATE** — exponent fields of extended-precision numeric records; no consumer |
+| app | `0x18016d44` | 4 | 26 | the largest dispatch array | VALIDATED |
+| app | `0x18017d08` | 4 | 6 | | VALIDATED |
+| app | `0x18018ce8` | 4 | 12 | | VALIDATED |
 
 Two things make these evidence rather than byte coincidence: **25 of the 44
 application table entries were already known functions**, and the vendor tables
 sit at exactly `-0x2c` from the installed ones — the relocation Phase 3 measured
-by a completely different method.
+by a completely different method. *(Log 131: both arguments are corroboration,
+not proof, and neither one distinguishes the entry-image runs from the
+application's. What does is whether an instruction reads the words.)*
 
 **Result.** 22 new targets were seeded in both releases, taking function counts
 from 97 to **101** (entry) and 530 to **573** (application), symmetrically so
@@ -1565,6 +1576,18 @@ returned null (log 104's `skipped=1`). `0x4018` is **not** a function entry — 
 absorbed into `PtrTarget_00004004`. `reachability()` now *reports* a root naming
 no function rather than dropping it silently, so that table can no longer be
 counted as three distinct indirect roots by accident.
+
+> **CORRECTED BY LOG 131: it contributes none.** The "root naming no function"
+> was the tell and it was read too narrowly. `0x5680` is not a pointer array at
+> all: it is the exponent column of the printf float path's 12-byte
+> extended-precision powers-of-ten record array, and `0x4005`, `0x4019` and
+> `0x40b5` are its *exponent*
+> fields — only the odd ones carry bit 0, which is why the detector's 24-byte
+> stride picked every *other* 12-byte record. All three "targets" land inside
+> other code: `0x4004` mid-routine in a 64-bit multiply helper, `0x4018` in the
+> second halfword of `sub.w r3,r3,#1`, and `0x40b4` in the second halfword of
+> the 10-byte long-branch veneer that starts at `0x40b2`. The three seeded
+> functions are removed and the run roots nothing.
 
 **What is still unreached, without any claim of closure.** 427 of 573 application
 functions. *(Superseded by log 106: main and the task entries are now seeded, so
@@ -1672,7 +1695,10 @@ Both releases moved symmetrically, Phase 3 was regenerated and still reports
 114/114 and 616/616 matched with nothing unmatched. Every root category from
 logs 104 and 105 survives, and table `0x5680`'s absorbed middle entry is still
 reported as `roots naming no function: 0x00004018` — both now pinned by tests
-against the real images.
+against the real images. *(Log 131: the entry image's two table roots are
+withdrawn, so `table@` survives only in the application, and no root names a
+non-function in either image any more. Both tests were rewritten to assert the
+corrected state rather than deleted.)*
 
 **No task reaches a vendor peripheral.** Every vendor block (`0x20000000`,
 `0x40000000`, `0x40100000`, `0x45000000`) is reached only from main's
@@ -3418,6 +3444,567 @@ MCU, firmware availability, and SWD-only recovery were replaced. No historical r
 log was rewritten.
 
 Evidence: `logs/46-documentation-synchronization-audit.txt`.
+
+## Phase 5A corrected: false tables and root eligibility (log 131)
+
+An independent review challenged the entry image's `0x1404` table. It was right,
+and the premise checks out from the raw bytes.
+
+### The `0x1404` run is eight printf format strings
+
+`ghidra/imports/installed_app_a_slot0_…bin` at `0x1390..0x1478` holds the fault
+reporter's message set:
+
+```
+000013e0: 49 6e 73 74 72 63 75 74 69 6f 6e 3a 20 30 78 25   Instrcution: 0x%
+000013f0: 30 38 58 0d 0a 00 00 00 52 30 3a 20 20 20 30 78   08X.....R0:   0x
+00001400: 25 30 38 58 0d 0a 00 00 52 31 3a 20 20 20 30 78   %08X....R1:   0x
+00001410: 25 30 38 58 0d 0a 00 00 52 32 3a 20 20 20 30 78   %08X....R2:   0x
+```
+
+Each record is exactly 16 bytes: `"Rn:   0x%08X"` + `CR LF` + two NUL pad bytes.
+The word at record offset 12 is therefore `0d 0a 00 00` = `0x00000a0d`, which has
+the Thumb bit set and names an even address inside the image — eight times, at a
+perfect 16-byte stride. The detector had no way to tell that from a dispatch
+table, because it was only ever looking at shape. **86% of the run's span is
+printable text.**
+
+The six loose candidates that also "point at" `0x00000a0c` are the same `0d 0a
+00 00` at the end of six other strings.
+
+`0x00000a0c` itself is **not a function entry**: it is the middle of one.
+`0x00000a02` is a `push {r4,lr}`, `0x00000a0a` branches forward to `0x00000a18`,
+and `0x00000a16` is a `pop {r4,pc}` — `0x00000a0c` sits between them, inside the
+body. Log 104 seeded `PtrTarget_00000a0c` there, Ghidra duly disassembled
+something, and the resulting function was then cited as evidence the address was
+a function. That is the circularity the review named, and it is unwound here.
+
+### The `0x5680` run is a powers-of-ten table
+
+Not a coincidence of a different kind — a different data structure. Reading
+`0x5674` onward as 12-byte records:
+
+| address | field 0 | mantissa | value |
+|---|---|---|---|
+| `0x5674` | `0x4002` | `0xa000000000000000` | 10^1 |
+| `0x5680` | `0x4005` | `0xc800000000000000` | 10^2 |
+| `0x568c` | `0x400c` | `0x9c40000000000000` | 10^4 |
+| `0x5698` | `0x4019` | `0xbebc200000000000` | 10^8 |
+| `0x56a4` | `0x4034` | `0x8e1bc9bf04000000` | 10^16 |
+
+These are **library-specific extended-precision powers-of-ten records**, and
+that wording is deliberate: no ABI or struct layout has been proven here. What
+*is* observed, and is all that the conclusion rests on:
+
+- the records are a constant 12 bytes apart over five consecutive entries;
+- field 0 of each record is a small integer that rises 0x4002, 0x4005, 0x400c,
+  0x4019, 0x4034 — differences of 3, 7, 13 and 27, i.e. the binary exponents of
+  10^1, 10^2, 10^4, 10^8, 10^16 offset by a constant 0x3fff;
+- the remaining eight bytes of each record, read as a normalised fraction, give
+  those same five powers of ten to full precision;
+- the block is immediately preceded by the `0123456789ABCDEF@0X` and
+  `0123456789abcdef@0x` digit tables that a formatted-print routine uses.
+
+That is an exponent-first extended-precision representation used by this
+library. It is **not** claimed to be the x87 80-bit native memory layout: this
+is ARM firmware, the byte order of an exponent-first record says nothing about
+an x87 ABI, and nothing here needed that claim. What matters for the finding is
+only that field 0 is an exponent and not an address. `0x4002`, `0x400c` and
+`0x4034` are even; `0x4005`, `0x4019` and the next record's field are odd —
+which is exactly why the detector found a 24-byte stride through every *other*
+12-byte record. Its three "targets" land inside a 64-bit multiply helper
+(`0x4004`, mid-routine), inside `sub.w r3,r3,#1` at `0x4016` (`0x4018` is that
+instruction's second halfword) and inside the long-branch veneer at `0x40b2`
+(`0x40b4` is its `movw`'s second halfword).
+
+### The rule that replaces the shape rule
+
+`tool/find_pointer_tables.py` now separates three things that log 104 collapsed:
+
+1. **pointer-shaped run** — the old rule, unchanged: ≥3 Thumb-looking words at a
+   constant stride above the code floor. Reported, and nothing more.
+2. **validated dispatch/callback table** — a run whose words code actually
+   *reads*: a PC-relative literal load inside a real Ghidra function body, whose
+   loaded value is stored into a structure field, where some function does
+   `ldr rX,[rY,#off]; blx rX` on that same field offset. A run whose span is
+   ≥75% printable text is rejected as string/data before any of that.
+3. **eligible reachability root** — a validated table, and nothing else.
+
+There is no address exception anywhere in the tool. The separation is the fix.
+
+**What the scan finds, in both releases:**
+
+> **SUPERSEDED BY LOG 132.** The three application rows below were produced by
+> a scanner that matched stores to indirect calls by structure-field *offset*
+> across a register map that no function boundary ever reset. With object
+> identity required, all three are CANDIDATE and nothing is rooted. See
+> **Phase 5A corrected again: provenance and repaired boundaries (log 132)**.
+
+| run | entries loaded by a literal load | entries whose field is indirect-called | verdict |
+|---|---|---|---|
+| entry `0x1404` | 0 of 8 | 0 | REJECTED (string/data, 86% printable) |
+| entry `0x5680` | 0 of 3 | 0 | CANDIDATE (no consumer) |
+| app `0x18016d44` | 26 of 26 | 21 | ~~VALIDATED~~ → CANDIDATE (log 132) |
+| app `0x18017d08` | 6 of 6 | 6 | ~~VALIDATED~~ → CANDIDATE (log 132) |
+| app `0x18018ce8` | 12 of 12 | 8 | ~~VALIDATED~~ → CANDIDATE (log 132) |
+
+The application consumers are named, not asserted. `FUN_18018a28` at
+`0x18018a5a` does `ldr r0,[pc,#0x28c]` — literal address `0x18018ce8`, the table
+— then `str r0,[r1,#0xc]` into a `0x168`-byte block it has just allocated, and
+repeats that for every entry; the adjacent `adr r0,#644` loads the `HID Function`
+string into the same block. It is a driver ops-struct build, and other functions
+`blx` those fields. `FUN_18016934` and `FUN_18017b20` do the same for the other
+two tables, which is also why all three tables' *end* addresses appear in those
+three functions' constant lists.
+
+### What changed, and what did not
+
+| | before (log 106/118 state) | after (log 131) |
+|---|---|---|
+| entry-image functions | 144 | **140** |
+| entry-image reached | 101 of 144 | **96 of 140** |
+| entry-image `table@` roots | `0x1404`, `0x5680` | **none** |
+| roots naming no function | `0x00004018` | **none, either image** |
+| application functions | 616 | 616 (unchanged) |
+| application reached | 281 of 616 | 281 of 616 (unchanged) |
+| application `table@` roots | three | three, now validated (unchanged) |
+| Phase 3 Candidate A pairings | 144, 129 identical, 10 tentative | **140, 126 identical, 9 tentative**, still 0 unmatched |
+
+Removed from both releases' entry image: `PtrTarget_00000a0c`,
+`PtrTarget_00004004`, `PtrTarget_000040b4`, and `FUN_000040b2` — a **1-byte
+function** that only existed because `PtrTarget_000040b4` had cut a 10-byte
+veneer in half. Its absurd size was a standing signal nobody read.
+`FUN_0000127a`'s caller count drops 1 → 0: its only "caller" was the phantom.
+
+**A separate staleness was found and fixed while regenerating.** The entry
+images' peripheral maps still said `functions=114` — they had not been
+regenerated since log 106, so log 118's 21 `EA_cand_*` seeds were missing from
+them, and six accesses were attributed to the three phantom functions. Both are
+now regenerated at `functions=140`: accesses `206 → 313`, unresolved `363 → 420`.
+That is a real widening of the entry image's register evidence and it is *not*
+part of the pointer-table correction; it is a second defect the regeneration
+exposed. The `0x18000000` block in the entry image goes from 39 registers to 56,
+`0x20000000` from 5 accesses to 45, and `table@0x00001404` disappears from every
+register's context list.
+
+### Which later conclusions are affected, and which are not
+
+**Changed.** Only the entry image's reachability accounting, the entry image's
+peripheral census, and the Phase 3 Candidate A pairing counts. Nothing else in
+Phase 5A's deliverable moved: the application's 281-of-616 figure, its three
+table roots, its five task roots, the decompressed-region roots and the
+documented `0x1800023a` entry are all untouched.
+
+**Independent, and explicitly not invalidated.** The handler-level work of logs
+124–130 — the polling-rate path `51 31`, the profile format, the vendor command
+map, the rapid-trigger and actuation helper `0x1800f948`, the report builder's
+double buffer — was derived from **decompiled handler bodies and from the
+capture**, not from reachability counts. Reachability was a search aid for
+finding those handlers, never a premise in their arguments. A change in how many
+functions are reachable does not touch a single one of those decodes, and none
+of them is withdrawn here.
+
+**Still not resolved.** The three decompressed-region roots
+(`0x1801ecac`, `0x1801ecb0`, `0x1801ecc0` → `0x18018afc`, `0x18018af0`,
+`0x18018a28`) are still admitted on the weaker log-105 rule: their targets are
+addresses Ghidra already had a function at. There *is* corroboration —
+`FUN_18018afc` at `0x18018b08` loads the literal `0x1801ecbc`, an address inside
+that same initialised structure, and passes it to `FUN_18017a4c` — but the load
+is of a neighbouring word, not of the three roots themselves, and the indirect
+call happens in a function that receives the base as an argument, which the
+scan cannot follow. They are recorded here as **weaker than the three
+application tables**, and a future step should either locate the dispatch or
+demote them.
+
+## Phase 5A corrected again: provenance and repaired boundaries (log 132)
+
+A second independent review found two blockers in log 131's own corrections.
+Both reproduced.
+
+### The consumer scanner had no provenance
+
+It matched a store to an indirect call through a shared structure-field
+**offset**, on a register map that was never reset between functions. A
+synthetic image with the literal load in one function and the store and `blx`
+in an entirely different one produced `validated`, with all three targets
+rooted off a single "dispatched" entry. Offsets `0x0`, `0x4`, `0x8` and `0xc`
+occur in most structures in the image, so the agreement was arithmetic, not
+evidence. That is what produced "21 of 26 dispatched" and then rooted all 26.
+
+**The replacement** is a per-function fixed-point data flow. It starts from an
+empty register map at each function, merges states at a join keeping only what
+every predecessor agrees on, kills a destination register on every write,
+drops the whole map at anything it cannot decode, and **declines a function
+outright** when it contains a flow instruction whose successors cannot be
+enumerated (`TBB`, `TBH`, `BX <reg>`, `IT`). Objects have identities —
+`("abs", A)` for the object at absolute address `A`, `("mem", A)` for the one
+whose pointer was read from `A` — and a store and an indirect call correlate
+only when the object *and* the field match. Its one assumption is AAPCS:
+`r4`–`r11` survive a call, `r0`–`r3`, `r12`, `lr` do not. That assumption is
+stated, pinned by a test in both directions, and promotes nothing on its own.
+
+Evidence is reported in four buckets that are never conflated:
+
+| run | loaded | installed | dispatch-proven | rooted |
+|---|---|---|---|---|
+| entry `0x1404` | 0/8 | 0/8 | 0/8 | 0/8 (REJECTED, string data) |
+| entry `0x5680` | 0/3 | 0/3 | 0/3 | 0/3 |
+| app `0x18016d44` | 0/26 | 0/26 | 0/26 | 0/26 |
+| app `0x18017d08` | 6/6 | 6/6 | 0/6 | 0/6 |
+| app `0x18018ce8` | 12/12 | 12/12 | 0/12 | 0/12 |
+
+> **AMENDED BY LOG 133.** The scanner that produced this table still had three
+> ways to manufacture a root that the current images happened not to trigger.
+> See **Phase 5A corrected a third time: path-correlated proof (log 133)**.
+
+**Nothing in either image is a table root.** The install evidence is real and
+is kept: `FUN_18018a28` stores all twelve of `0x18018ce8`'s words into twelve
+distinct fields of one object (`object*@0x1801ebbc`), beside the `HID Function`
+string it puts at `+0x0`; `FUN_18018b22` does the same for `0x18017d08` into
+`object@0x180342c8`. What is missing is the other half: the dispatch happens in
+a function that *receives* that object as an argument, and this scanner does
+not follow an object across a call boundary. `0x18016d44` is worse and says so
+— its installer `FUN_18016934` contains a `TBB`, so the function is declined
+and nothing about it is claimed at all.
+
+A table is rooted only per proven entry. *(Log 132 also allowed a
+"whole-table proof" — every entry installed into distinct fields of one object,
+with one field dispatched. Log 133 deleted it: storing words together does not
+make them all callable.)*
+
+**Consequence, not adjusted:** application reachability falls from 281 to
+**206 of 616**, with 161 callerless functions. Entry reachability is 96 of 141.
+
+### Log 131's seed removal had deleted real code
+
+`FalchionRemoveSeeds.java` removed the false function and called
+`clearListing(body)`, expecting reanalysis to rebuild the surroundings. It
+cannot: a routine nothing references is never disassembled, so clearing it
+deletes it. The damage:
+
+- `0x000009fc..0x00000a6e` became **114 undefined bytes** — the real routine
+  that contained `0x00000a0c` was gone;
+- with it, the write of `0x3f` to **`0xe000ef00`** at `0x00000a26` disappeared
+  from the peripheral census. Architecturally that is NVIC_STIR, and `0x3f`
+  triggers IRQ 63 — the interrupt whose vector slot log 102 established as
+  live;
+- `FUN_00003dd8` still ended at `0x4004`, where the false seed had split it,
+  even though execution runs on through `bxmi lr` at `0x400e` to the real
+  `bx lr` at `0x401a`;
+- `FUN_0000127a` had vanished, because its only caller was the deleted routine.
+
+**The repair was a rebuild, not a patch.** Both entry-image programs were
+re-imported into the ignored `ghidra/project-step6` with `-overwrite`, analysed
+from scratch, and the legitimate seeds replayed in their historical order — the
+twelve vectors, `Task_OEM_MAIN_SERVICE_TASK`, the twenty-one `EA_cand_*` — with
+the log-104 `PtrTarget_*` seeds omitted. That alone restored `FUN_00003dd8` to
+`0x3dd8..0x401c` and the `0x40b2` long-branch veneer to a proper **thunk**.
+
+`0x9fc` is reached by nothing in the image, so no analysis will ever find it;
+it was defined explicitly at its real boundary, read off the instruction
+stream:
+
+```
+9fa  b    0x90e            <- the previous routine ends here
+9fc  ldr  r1,[0x00000b68]  <- THE ENTRY: r1 is set here...
+9fe  ldr  r2,[0x00000b80]  <- ...and r2 here...
+a02  push {r4,lr}          <- ...and only now is the frame set up
+a04  add  r1,r0            <- ...and r1 is used, so the entry cannot be 0xa02
+a26  str  r0,[r1,#0x0]     <- the 0xe000ef00 write, r0 = 0x3f
+a44  pop  {r4,pc}          <- the real end; body 0x9fc..0xa46
+```
+
+It is named `Orphan_000009fc` in both releases — real code that nothing calls.
+It is a function, it is **not** a reachability root, and it reports as
+unreached. A new `FalchionSpanReport.java` is the repair's own check and
+reports `undefined=0` over both repaired spans; a unit test asserts the
+boundaries and full coverage from the inventory. **No count is pinned by any
+test.** Entry images are now 141 functions and 319 peripheral accesses, equal
+in both releases.
+
+### The USB decoder was not bus-scoped
+
+A USB address is scoped to a bus, and `capture.ps1` records every USBPcap
+interface into one file. `01-first-launch.pcapng` proves the hazard: **address
+1 is an ASMedia hub on bus 2 and a Logitech receiver on bus 3**, across two
+capture interfaces. Keyed by address alone one identity overwrote the other,
+and `usb.device_address==2` would have matched any device holding address 2 on
+any bus.
+
+Identity is now `(frame.interface_id, usb.bus_id, usb.device_address)`; the
+same key builds the filter, one scoped clause each; every row is re-checked
+against the subject key set; and a key that carried two different devices
+during one capture makes the decoder **refuse the file** rather than take the
+last owner. `frame.time_epoch` is now carried as well. Every established count
+from the preserved capture is unchanged: 148 reports, 74 out and 74 in, twenty
+`51 31`, twenty `50 55`.
+
+### Three smaller corrections
+
+- **`profile_diff.snapshot_diff` reported added and removed files backwards.**
+  Fixed, with tests asserting the complete tuple for an added, removed, changed
+  and unchanged file; `snap-config.ps1`'s messages now use the same words.
+- **`snap-config.ps1` stringified scalars**, so JSON `1` and `"1"` compared
+  equal — and Python was no better, since `True == 1` there. Both sides now
+  flatten to a type-tagged canonical form (`null`, `bool:true`, `num:10`,
+  `str:10`). Comparison is on the canonical form; the reported values stay raw.
+- **The HAL trace requirement contradicted the Armoury-Crate-closed
+  experiment.** `haltrace.ps1` now writes its session header *before* it
+  listens, so a zero-event run still produces a hashable artifact — and a
+  zero-event trace is the expected result of that experiment, recorded as
+  evidence rather than as a failure. The plan's claim that the action
+  timestamps come "from the same clock the capture uses" is withdrawn: three
+  different clocks are involved, correlation must use absolute time
+  (`frame.time_epoch` against the trace's UTC stamps), and the alignment is
+  approximate and manual.
+
+### Still open
+
+Phase 5 reachability is **not** declared corrected. The provenance problem is
+handled honestly and the boundaries are repaired, but the result is that
+nothing is rooted through a table and 410 of 616 application functions are
+unreached. Closing that needs the object followed across a call boundary —
+Ghidra decompiler P-code — which has not been done. The three
+decompressed-region roots still rest on log 105's weaker rule. The nineteen
+`PtrTarget_*` functions log 104 seeded in the *application* are retained as
+code but are no longer cited as evidence for anything.
+
+## Phase 5A corrected a third time: path-correlated proof (log 133)
+
+A third review found that log 132's framework could still promote a root three
+different ways. All three reproduced; none of them showed up in the real
+images, which is exactly why they survived two rounds.
+
+### Mutually exclusive branches could each supply half a proof
+
+The register states merged conservatively, but the *recording* pass collected
+installs and dispatches independently from every reachable instruction, and
+`consumption()` then unioned the dispatch facts across the whole image. One
+function with the install in one arm of a branch and the dispatch in the other
+reported `proven`, `rooted`, `validated` — with **no execution path performing
+both**.
+
+**Corrected** with a second data-flow pass. `_scan_function` now runs the
+register fixed point (a MUST analysis, joins keep agreement) and then, against
+the finished register states, a **live-install fixed point** (a MAY analysis,
+joins keep the union). A dispatch is credited only against installs live *at
+that instruction*, so the install has to reach the call along a real CFG path.
+The install set is emptied by a store to the same field, by a store to the word
+a `("mem", A)` identity was read from, by any memory write the scanner cannot
+place exactly, by **any call**, and by any unrecognised instruction. The
+image-wide dispatch set is gone, so a fact in one function can no longer meet a
+fact in another. A `Proof` record now states the relationship in words:
+*installed at 0x…, reaching the indirect call at 0x… along a call-free path
+inside FUN_…*. It asserts a path **exists**; branch conditions are not
+modelled, so feasibility is not claimed, and neither is "the dispatch always
+happens".
+
+### One dispatched field promoted every other field
+
+`whole_table_proof()` inferred "callable" from "stored together". Fields of one
+struct can be data, flags, counts, or callbacks nothing dispatches. **The rule
+is deleted**, not disabled. `rooted` is now exactly the targets of `proven`,
+carried as `(entry address, target)` pairs, so `len(rooted) == len(proven)` by
+construction and the supporting slot is named.
+
+### The hardware map threw the per-entry decision away
+
+`map_hardware_interfaces` iterated `table.entries` for every **validated**
+table, so a table with one proven entry contributed all of its targets. It now
+calls a small pure `table_roots(survey)` that reads `table.rooted` and nothing
+else — not `entries`, not `verdict` — and labels each root
+`table@0x<table>[0x<entry>]`. Because the real images have no validated table,
+the regression is driven by **synthetic surveys**: one rooted target gives one
+root; zero rooted gives none whatever the verdict says; three give three.
+
+### Two smaller ones
+
+- **Descriptor identity had drifted.** Python keyed on
+  `(idVendor, idProduct, bcdDevice)`; PowerShell on VID and PID alone. Both now
+  use all three, and the drift check fails if either drops `usb.bcdDevice`. The
+  condition is renamed honestly to a **descriptor-identity conflict on one
+  interface/bus/address key** — it detects an address handed to a device with a
+  *different* descriptor, and **cannot** detect one reused by a device with an
+  identical descriptor. No enumeration epoch was implemented because none could
+  be built reliably from these fields; the gap is stated, not papered over.
+- **The superseded Ghidra script was still destructive.** `FalchionRemoveSeeds`
+  carried a "do not use" banner while `run()` still called `removeFunction()`,
+  `symbol.delete()` and `clearListing()`. Every destructive call and its
+  imports are deleted; `run()` prints a refusal naming log 132 and the
+  fresh-import/replay procedure. A test strips the comments and asserts none of
+  those APIs remains.
+
+### What did not change
+
+Reachability: entry 96 of 141, application 206 of 616, no table root in either
+image — the same numbers, because no real entry is proven either way. **Phase 5
+reachability stays explicitly incomplete**, with 410 application functions
+unreached and 161 of them callerless. What changed is the framework: a root can
+no longer be manufactured through mutually exclusive paths, through whole-table
+expansion, or through the hardware-map integration layer. **No Ghidra P-code or
+interprocedural dispatch recovery was implemented, and none is claimed.** The
+three decompressed-region roots keep their weaker log-105 status.
+
+## Phase 5A corrected a fourth time: alias invalidation (log 134)
+
+Log 133's proof became path-sensitive and stayed alias-blind. An installation
+was invalidated only by a later store carrying the *same* abstract
+`(object identity, field)` pair — but an identity is a **name** for an address,
+several names can denote one address, and a `("mem", S)` name denotes an
+address that is not statically known at all. Two reproductions, both confirmed
+before any change:
+
+- **ABS install, MEM alias overwrite.** `str r0,[r1,#0]` installs into
+  `("abs", object_x)+0`; `r3 = *(slot)` is the *same* object abstracted as
+  `("mem", slot)`; `str r2,[r3,#0]` destroys the installed pointer. The tuple
+  comparison never fired and the entry came back `proven`, `rooted`,
+  `validated`.
+- **Two ABS expressions for one address.** Install through
+  `("abs", 0x18000200)+4`, overwrite through `("abs", 0x18000204)+0` — the same
+  four bytes — dispatch through the first. `(0x18000200, 4) != (0x18000204, 0)`,
+  so the install survived.
+
+**The rules now**, in two documented helpers with their own unit tests and no
+synthetic address anywhere in them:
+
+| left (install) | right (store) | verdict |
+|---|---|---|
+| ABS | ABS | alias exactly when the 4-byte **intervals overlap** — not when the tuples match, so `X+4` vs `(X+4)+0` collides and so does an unaligned partial overlap |
+| ABS | MEM | **may alias** — a pointer read from a slot can point anywhere |
+| MEM | ABS | **may alias** |
+| MEM | MEM | **may alias**, same slot or not — two slots can hold one pointer |
+
+plus `slot_overwritten()`: a store overlapping `[S, S+4)` invalidates every
+installation derived from slot `S`, because the pointer itself changed. It is
+kept as a separate rule although the table above already subsumes it — it is a
+different reason for a different fact, and it stays correct if the rules are
+ever tightened.
+
+**Consequence, stated rather than hidden:** a MEM-derived installation now
+survives no resolved store at all. That is the fail-closed choice — the
+interpreter cannot prove two runtime pointers distinct, and a false root is
+worse than a false negative. A MEM install can still be proven when nothing is
+stored between install and dispatch, which is its one positive control. Calls,
+byte/halfword/register-offset/stack/multiple stores and undecodable
+instructions continue to empty the live set outright.
+
+**Twenty new tests**: ten on the predicate alone, ten through the analyser —
+the two reproductions, a partial overlap, a store to the pointer slot, a store
+through a different MEM slot, a store through the same slot at another field,
+two provably disjoint stores that *preserve* the proof, the untouched-MEM
+positive control, and `len(rooted) == len(proven)` across five shapes. Every
+positive case asserts the exact install instruction, dispatch instruction,
+function, object identity and field, never a count.
+
+**No real number moved.** Entry 96 of 141, application 206 of 616, no table
+root in either image — because neither image proves a table entry either way.
+Two further ways of manufacturing one are closed. **Phase 5 reachability stays
+explicitly incomplete**; no Ghidra P-code or interprocedural dispatch recovery
+was implemented or is claimed; the three decompressed-region roots keep their
+weaker log-105 status.
+
+*Cleanup in the same step:* `Table`'s docstring no longer describes the deleted
+`whole_table` mechanism, `_install_transfer`'s says a store invalidates
+everything it may alias, and `parse_identities()`'s VID/PID wording was already
+the full VID/PID/bcdDevice triple. The duplicate `live` initialisation the
+review named **is not present** — one occurrence only; it went with log 133's
+worklist fix. Recorded as nothing-to-do rather than claimed as a fix.
+
+## Windows capture tooling, corrected (log 131)
+
+The same review found four defects in `tools/`. All four were reproduced from
+the files and the preserved evidence before anything was changed. PowerShell
+cannot be executed in this repository's environment, so each corrected script
+now has an **offline twin** under `tool/` that owns the rules and that the unit
+suite runs for real; a `--check` fails if the two drift apart. What remains
+Windows-only is listed explicitly rather than implied to be covered.
+
+### `decode.ps1` could not decode the preserved captures
+
+It extracted `usb.capdata`, which USBPcap leaves **empty** on the vendor
+endpoints — re-derived here from `captures/02-polling-rate.pcap` rather than
+quoted from log 126. It also claimed to keep only `0b05:1b7e` traffic while
+implementing no VID/PID, address, endpoint or length filter at all, and it
+derived direction by matching the word `host` in `usb.src`/`usb.dst`.
+
+Corrected: payloads from `usbhid.data`; the subject found by reading every
+device identity off the wire and keeping `0b05:1b7e`; **all** of its addresses
+used, so a mid-capture re-enumeration is handled; the filter restricted to OUT
+`0x0d`, IN `0x85` and exactly 64 payload bytes; direction from bit 7 of the
+endpoint address; `-Diff` keyed on `(direction, payload)` so an IN echo is never
+collapsed into the OUT request it echoes; a clear failure when no subject or no
+qualifying report is found.
+
+`tool/decode_capture.py` reproduces log 126 through the corrected rules: subject
+at addresses **6 and 7**, 74 requests and 74 replies, **twenty `51 31`** (14
+carrying index `0x00`, 6 carrying `0x03`) and **twenty `50 55`**, on those two
+endpoints and no others. A second capture settles why the address must never be
+hard-coded: the same keyboard is address **2** in `01-first-launch.pcapng`.
+
+### `capture.ps1` could overwrite evidence and report false success
+
+It overwrote an existing `-Out` silently — which is how the original
+first-launch capture was lost — accepted any `-Interface` string without
+checking it against the enumerated list, ignored tshark's exit status, and
+printed `saved:` unconditionally.
+
+Corrected: an existing `-Out` is refused, with **no `-Force`**; `-Unique`
+produces a timestamped name instead; requested interfaces must appear in
+`tshark -D`'s output; `$LASTEXITCODE` is checked for both `tshark -D` and the
+capture; the output must exist, be a regular non-empty file and begin with a
+pcap or pcapng magic number before `saved:` is printed with the size and
+SHA-256; a failed run prints `FAILED` and removes the zero-byte stub. Still
+passive: no keyboard command, no HID write.
+
+### `snap-config.ps1` compared a fraction of the model
+
+It saved the whole decoded configuration but its comparison walked only
+`button.keyboardButton`, so "NO CHANGE" could be printed after a global rapid
+trigger, polling rate, Speed Tap, dead-zone, lighting or lever change. It also
+defaulted to profile 3 alone.
+
+Corrected: `-AllProfiles` preserves every `fp_*_config_*.xml` with its filename,
+full path, mtime and SHA-256 beside the decoded JSON; the diff is a
+deterministic recursive comparison of **every path** in the model and names the
+file that changed; an existing `-Save` is refused; "NO CHANGE" now means the
+complete compared model is equal. `tool/profile_diff.py` drives
+`notes/ac-profile3-decoded.json` with one controlled mutation per required
+category — all-key and per-key actuation, all-key and per-key rapid trigger,
+press and release distance, separate mode, continue status, polling rate, Speed
+Tap, dead zones, lighting and lever — and each one has to produce exactly that
+path in the diff. The old comparison saw **1,360 of the profile's 1,500
+flattened paths** and was blind to the other 140; every setting listed above
+except per-key actuation and per-key trigger type lies in those 140, which is a
+test of its own.
+
+### `haltrace.ps1` could silently race another listener
+
+`CreateFileMapping` succeeds when the object already exists and reports it only
+through `GetLastError == ERROR_ALREADY_EXISTS` (183), which the script never
+read; it also only *warned* about missing elevation, fell back to a local DBWIN
+name that sees none of the session-0 service output, and appended to an existing
+output file.
+
+Corrected: an existing `-Out` is refused (`-Unique` available); missing
+elevation exits; `Global\` only; `ERROR_ALREADY_EXISTS` is checked after the
+mapping and after both events, and the run refuses rather than splitting the
+message stream with DebugView; every handle is released on partial
+initialisation failure; the line count, size and SHA-256 are printed at
+completion. **The remaining limitation is inherent and is stated rather than
+fixed:** DBWIN has one slot and no queue, so a message emitted before the
+listener starts or between its `Wait` calls is lost. A missing line is not
+evidence that a HAL call did not happen.
+
+### What still requires a Windows host
+
+The twins prove the rules and the scripts' structure, not the PowerShell
+runtime. Not executed anywhere yet: the actual refusal of an existing `-Out`,
+`Get-PnpDevice` enumeration, the USBPcap extcap launch, `Get-FileHash` output,
+`-AllProfiles` against a real `C:\ProgramData\ASUS\…` folder, and the DBWIN
+P/Invoke path. `notes/windows-behavior-capture-plan.md` carries the controlled
+experiment plan those runs belong to; it is passive observation of normal
+Armoury Crate use and it authorises neither `send.ps1` nor any firmware
+operation.
 
 ## Uncertain or superseded assumptions
 

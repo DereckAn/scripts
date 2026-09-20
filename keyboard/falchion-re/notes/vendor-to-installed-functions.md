@@ -21,7 +21,7 @@ ranges rather than `entry..entry+size`.
 
 | program | vendor | installed | identical | structural | tentative | unmatched | discontiguous bodies | shift |
 |---|---|---|---|---|---|---|---|---|
-| Candidate A | 144 | 144 | 129 | 5 | 10 | 0 | 26/26 | `0x0` |
+| Candidate A | 141 | 141 | 127 | 5 | 9 | 0 | 25/25 | `0x0` |
 | Candidate B | 616 | 616 | 531 | 56 | 29 | 0 | 110/110 | `0x2c` |
 
 Both programs have the same function count in both releases and nothing
@@ -35,7 +35,7 @@ change is:
 
 | program | function-body bytes | data-span bytes | aligned total | spans compared | raw total (log 96) |
 |---|---|---|---|---|---|
-| Candidate A | 9 | 122 | **131** | 95/95 | 131 |
+| Candidate A | 7 | 124 | **131** | 91/91 | 131 |
 | Candidate B | 378 | 695 | **1073** | 256/274 | 101,112 |
 
 Candidate A did not move, every one of its spans compares cleanly, its
@@ -104,7 +104,7 @@ differ in bytes, or that one side has no counterpart. `ranges` is the
 number of address ranges in the body, so anything above 1 is a
 discontiguous body.
 
-### Candidate A — 144 pairings
+### Candidate A — 141 pairings
 
 | vendor | installed | confidence | moved | changed | size | ranges | differing bytes |
 |---|---|---|---|---|---|---|---|
@@ -137,7 +137,7 @@ discontiguous body.
 | `0x00000918` | `0x00000918` | identical | no | no | `0x3c` | 1 | 0 |
 | `0x00000954` | `0x00000954` | identical | no | no | `0x2c` | 2 | 0 |
 | `0x00000986` | `0x00000986` | identical | no | no | `0x76` | 1 | 0 |
-| `0x00000a0c` | `0x00000a0c` | identical | no | no | `0x3a` | 1 | 0 |
+| `0x000009fc` | `0x000009fc` | identical | no | no | `0x4a` | 1 | 0 |
 | `0x00000a6e` | `0x00000a6e` | identical | no | no | `0x62` | 1 | 0 |
 | `0x00000ad0` | `0x00000ad0` | identical | no | no | `0x30` | 1 | 0 |
 | `0x00000d3e` | `0x00000d3e` | identical | no | no | `0x10` | 1 | 0 |
@@ -235,10 +235,7 @@ discontiguous body.
 | `0x00003ca8` | `0x00003ca8` | identical | no | no | `0xdc` | 1 | 0 |
 | `0x00003d84` | `0x00003d84` | identical | no | no | `0x2a` | 1 | 0 |
 | `0x00003dae` | `0x00003dae` | identical | no | no | `0x2a` | 1 | 0 |
-| `0x00003dd8` | `0x00003dd8` | identical | no | no | `0x22c` | 1 | 0 |
-| `0x00004004` | `0x00004004` | identical | no | no | `0x17` | 2 | 0 |
-| `0x000040b2` | `0x000040b2` | identical | no | no | `0x1` | 1 | 0 |
-| `0x000040b4` | `0x000040b4` | tentative | no | yes | `0x8` | 1 | 2 |
+| `0x00003dd8` | `0x00003dd8` | identical | no | no | `0x244` | 1 | 0 |
 | `0x00004264` | `0x00004264` | identical | no | no | `0x28` | 1 | 0 |
 | `0x0000428c` | `0x0000428c` | identical | no | no | `0xe` | 1 | 0 |
 | `0x0000429c` | `0x0000429c` | identical | no | no | `0x22` | 1 | 0 |
@@ -879,7 +876,7 @@ discontiguous body.
 Every relocated pairing, every tentative pairing, and every function
 without a counterpart.
 
-### Candidate A — 10 entries
+### Candidate A — 9 entries
 
 | vendor | installed | reason |
 |---|---|---|
@@ -892,7 +889,6 @@ without a counterpart.
 | `0x000014d8` | `0x000014d8` | tentative match only; the correspondence is not proven |
 | `0x00003704` | `0x00003704` | tentative match only; the correspondence is not proven |
 | `0x00003884` | `0x00003884` | tentative match only; the correspondence is not proven |
-| `0x000040b4` | `0x000040b4` | tentative match only; the correspondence is not proven |
 
 ### Candidate B — 572 entries
 
@@ -1473,11 +1469,10 @@ without a counterpart.
 
 ## Changed functions, ranked for review
 
-### Candidate A — 6 changed
+### Candidate A — 5 changed
 
 | vendor | installed | confidence | size | differing bytes |
 |---|---|---|---|---|
-| `0x000040b4` | `0x000040b4` | tentative | `0x8` | 2 |
 | `0x00000516` | `0x00000516` | structural | `0x6e` | 2 |
 | `0x0000188c` | `0x0000188c` | structural | `0x1e` | 2 |
 | `0x000018f8` | `0x000018f8` | structural | `0x42` | 1 |
@@ -1557,23 +1552,22 @@ PAIR app_a
 VENDOR_PROGRAM vendor_app_a_slot0_flash11000_dst00000000_len058ac_a0f4ddd2.bin
 INSTALLED_PROGRAM installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
 BASE 0x00000000 FLASH_BASE 0x11000
-COUNTS vendor=144 installed=144
-TIERS identical=129 structural=5 tentative=10 unmatched=0
-CHANGED 6 of 144 pairings
+COUNTS vendor=141 installed=141
+TIERS identical=127 structural=5 tentative=9 unmatched=0
+CHANGED 5 of 141 pairings
 MOVED 0
-DATA_REGIONS 100 bytes=122 unaligned_gaps=0
-DISCONTIGUOUS_BODIES vendor=26 installed=26 of 144/144 — body bytes and gaps come from the real ranges, not entry..entry+size
-UNCOVERED_SPANS vendor=95 installed=95 compared=95 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
+DATA_REGIONS 101 bytes=124 unaligned_gaps=0
+DISCONTIGUOUS_BODIES vendor=25 installed=25 of 141/141 — body bytes and gaps come from the real ranges, not entry..entry+size
+UNCOVERED_SPANS vendor=91 installed=91 compared=91 unpaired_or_mismatched=0 fully_compared=True — a span is compared only when its anchor key, its distance past that anchor and its length all agree on both sides. Equal counts alone would prove nothing, so they are not reported as alignment.
 DOMINANT_SHIFT 0x0 (+0 bytes), measured from the identical and structural matches only
-REVIEW_RANKING showing 6 of 6
-  tentative  vendor=0x000040b4 installed=0x000040b4 size=0x8 differing_bytes=2 :: scored 0.905 with a 0.905 lead over the next candidate
+REVIEW_RANKING showing 5 of 5
   structural vendor=0x00000516 installed=0x00000516 size=0x6e differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x0000188c installed=0x0000188c size=0x1e differing_bytes=2 :: same instruction shape with scalars and addresses masked
   structural vendor=0x000018f8 installed=0x000018f8 size=0x42 differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x00000580 installed=0x00000580 size=0x1e differing_bytes=1 :: same instruction shape with scalars and addresses masked
   structural vendor=0x000018a0 installed=0x000018a0 size=0x18 differing_bytes=1 :: same instruction shape with scalars and addresses masked
-DATA_RANGES showing 100 of 100; the complete list is in the JSON
-MUST_NOT_ASSUME_EQUAL 10
+DATA_RANGES showing 101 of 101; the complete list is in the JSON
+MUST_NOT_ASSUME_EQUAL 9
   vendor 0x0000057a -> 0x0000057a: tentative match only; the correspondence is not proven
   vendor 0x0000057e -> 0x0000057e: tentative match only; the correspondence is not proven
   vendor 0x00000796 -> 0x00000796: tentative match only; the correspondence is not proven
@@ -1583,8 +1577,7 @@ MUST_NOT_ASSUME_EQUAL 10
   vendor 0x000014d8 -> 0x000014d8: tentative match only; the correspondence is not proven
   vendor 0x00003704 -> 0x00003704: tentative match only; the correspondence is not proven
   vendor 0x00003884 -> 0x00003884: tentative match only; the correspondence is not proven
-  vendor 0x000040b4 -> 0x000040b4: tentative match only; the correspondence is not proven
-RESULT matched=144 unmatched=0
+RESULT matched=141 unmatched=0
 LIMITATION Data regions are the spans no real body range covers, keyed by the matched function that precedes each span rather than by list index, so the pairing survives one side gaining or losing a span. A span with no counterpart key, or a paired span whose sides differ in length, is reported as unaligned and not compared, so bytes are never diffed across an insertion boundary or against the wrong region.
 LIMITATION Confidence tiers describe evidence strength, not correctness. A tentative pairing is a lead for manual review, not an established correspondence.
 LIMITATION An address or a measured shift is never the sole signal for a pairing. The identical and structural tiers use no address at all. One tentative rule does use the measured shift, but only together with body-byte equality, and it can never raise a pairing above tentative.

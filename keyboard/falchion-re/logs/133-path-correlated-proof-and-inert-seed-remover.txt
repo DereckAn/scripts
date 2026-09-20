@@ -1,0 +1,434 @@
+LOG 133 — PATH-CORRELATED PROOF, NO WHOLE-TABLE EXPANSION, INERT SEED REMOVER
+Date: 2026-09-20
+Scope: ONE step. Offline only. It authorises nothing live. Nothing was
+committed, staged or unstaged. NO FRAME WAS CONSTRUCTED.
+
+SAFETY: offline only. No /dev/hidraw, no USB or sysfs access, no sudo, no
+package install, no network, no probe/backup/bootloader/updater tool, no
+unlock/erase/program/reset/SPI command construction, no HID write, no live USB
+operation of any kind. Every byte quoted below was READ OUT of a preserved
+image or a preserved capture. Both evidence binaries and all four capture files
+were opened read-only and every hash is unchanged below. Logs 000-132 were not
+modified — 131's and 132's sha256 re-verify below. NO GHIDRA PROJECT WAS
+WRITTEN TO in this step: the entry-image programs rebuilt in log 132 were not
+touched, and ghidra/project/falchion-hfx was not opened. NO DEVICE WAS ACCESSED.
+
+IMMUTABLE SOURCE HASHES — BEFORE
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EVIDENCE HASHES — the captures, recorded BEFORE analysis
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+
+
+================================================================================
+THE HEADLINE
+================================================================================
+LOG 132 STILL HAD THREE WAYS TO MANUFACTURE A ROOT, AND THE CURRENT IMAGES
+PRODUCING ZERO WAS HIDING ALL THREE. Mutually exclusive branches could supply
+half a proof each; one dispatched field promoted every other field of the same
+table; and the hardware map threw the per-entry decision away and rooted whole
+tables anyway. Each is fixed at the mechanism, and each now has a synthetic
+regression that would fail if it came back — because the real images cannot
+exercise any of them.
+
+Six issues were raised. All six reproduced before any change.
+
+
+================================================================================
+BLOCKER 1 — INSTALL AND DISPATCH WERE NOT PATH-CORRELATED. REPRODUCED
+================================================================================
+The register states merged conservatively, but the RECORDING pass collected
+installs and dispatches independently from every reachable instruction, and
+`consumption()` then unioned the dispatch facts across the whole image.
+
+$ one synthetic function, install in one arm and dispatch in the other:
+
+      ldr r1, =object_x
+      cmp r0, #0
+      bne dispatch
+  install:
+      ldr r0, =table_entry_0
+      str r0, [r1, #0]
+      b end
+  dispatch:
+      ldr r2, [r1, #0]
+      blx r2
+  end:
+      bx lr
+
+  loaded    ['0x18000100']
+  installed entry 0x18000100 into ('abs', 0x18000200) field 0
+  proven    ['0x18000100']
+  rooted    ['0x18000010']
+  verdict   validated
+
+  NO EXECUTION PATH PERFORMS BOTH, and the analyzer reported a root anyway.
+
+ROOT CAUSE. Two facts, each true somewhere in the function, were treated as one
+fact. Nothing in the model said "this install can reach that dispatch". The
+global dispatch union made the same mistake one level up, across functions.
+
+THE CORRECTION — a second data-flow pass, and no global dispatch set
+
+  `_scan_function` now runs TWO fixed points over the same CFG, in order:
+
+    1. REGISTER STATE, a MUST analysis. A join keeps only what every
+       predecessor agrees on. This settles object identities. Unchanged.
+    2. LIVE INSTALLS, a MAY analysis, run SECOND against the finished register
+       states so a transiently richer map cannot leave a stale install behind.
+       A join keeps the UNION: an install is live at an instruction when it
+       reaches it along at least one path.
+
+  A dispatch is credited only against installs live AT THAT INSTRUCTION. In the
+  reproduction the dispatch arm's only predecessor is the `bne`, so the install
+  never reaches it and there is nothing to credit.
+
+  The install set is emptied by anything that could invalidate it:
+    * a store to the same (object, field);
+    * a store to the absolute word a `("mem", A)` identity was read from —
+      after that write the slot may name a DIFFERENT runtime object, which is
+      the whole of requirement 7;
+    * any memory write this scanner cannot place exactly: byte, halfword,
+      register-offset, stack, multiple-store;
+    * ANY CALL, because a callee can do either of the above;
+    * any instruction it does not recognise.
+
+  `Consumption.dispatch` is gone. There is no image-wide set of dispatched
+  (object, field) pairs any more, so a fact in function A cannot meet a fact in
+  function B. No interprocedural proof is implemented, and none is claimed.
+
+  A new `Proof` record carries entry, install site, dispatch site, function,
+  object and field, and prints the relationship in words:
+
+    installed at 0x18000004 into the object at 0x18000200+0x0, reaching the
+    indirect call at 0x18000008 along a call-free path inside FUN_18000000
+
+  WHAT A PROOF DOES NOT SAY, stated in the code and in the report: branch
+  conditions are not modelled, so it asserts that a CFG path EXISTS, not that
+  it is feasible, and not that the dispatch always happens.
+
+$ after the fix
+  MUTEX   installed=1 proven=() rooted=() verdict=candidate
+  SAME    proven=['0x18000100'] rooted=[('0x18000100','0x18000010')] validated
+  XFUNC   installed=3 proven=() rooted=() verdict=candidate
+
+  A BUG FOUND WHILE BUILDING THIS, worth recording because it failed silently:
+  the liveness worklist was first seeded only with the function's entry
+  instructions. The empty set is both the initial value and a possible fixed
+  point, so the very first propagation changed nothing and the loop exited
+  before any install had moved. The positive control caught it — which is why
+  the positive controls exist.
+
+REGRESSION TESTS (class Provenance, all hand-assembled Thumb)
+  1  install and dispatch in mutually exclusive branches      -> no proof
+  2  install then dispatch on one straight line               -> PROOF
+  3  both operations after a join where the arms agree        -> PROOF
+  3b both operations after a join where the arms DISAGREE     -> no proof
+  4  install before a conditional whose arm dispatches        -> PROOF
+  4b the same install where the reached arm calls another field -> no proof
+  5  install in function A, dispatch in function B            -> no proof
+  5b literal load in A, store and call in B                   -> no proof
+  5c store into object X, call through object Y               -> no proof
+  6  field overwritten between install and dispatch           -> no proof
+  6b an unresolvable store between them (strb)                -> no proof
+  6c a call between them                                      -> no proof
+  7  pointer reloaded from an UNTOUCHED slot                  -> PROOF
+  7b pointer reloaded after that slot was written             -> no proof
+  plus: register overwritten before the store, object register overwritten
+  before the store and before the call, loaded pointer overwritten before the
+  call, load+store with no dispatch, unconsumed table, unresolvable-flow
+  decline, caller-saved vs callee-saved across a call.
+
+
+================================================================================
+BLOCKER 2 — WHOLE-TABLE PROMOTION. REPRODUCED
+================================================================================
+$ three entries installed into distinct fields of one object, ONE dispatched
+  proven: ['0x18000100']
+  rooted: ['0x18000010', '0x18000020', '0x18000030']
+  whole_table: "all 3 entries are installed by FUN_18000000 into 3 distinct
+                fields of one object ..."
+
+ROOT CAUSE. The rule inferred "callable" from "stored together". Fields of one
+struct can be data, flags, counts, or callbacks nothing ever dispatches;
+storing a pointer-shaped word into a slot says nothing about whether that slot
+is ever called.
+
+THE CORRECTION. `whole_table_proof()` and the `whole_table` field are DELETED,
+not disabled. `rooted` is now exactly the targets of `proven`, carried as
+(entry address, target) pairs so the hardware map can name the supporting slot:
+
+    rooted = tuple((entry, table.target_of(entry)) for entry in proven)
+
+so `len(rooted) == len(proven)` by construction. The verdict text for a
+partially proven table says which entries are rooted and adds, in as many
+words, that the rest "are NOT rooted and nothing here asserts that they are
+callable".
+
+REGRESSION TESTS (class Rooting) — the old positive whole-table test is gone:
+  * three installed, one proven                    -> exactly one rooted
+  * three installed into distinct fields, none proven -> zero rooted
+  * three individually proven                      -> three rooted
+  * `len(rooted) <= len(proven)` over four shapes, and equality
+  * no explanatory text calls an unproven entry callable; the report contains
+    no WHOLE_TABLE line; `Table` has no `whole_table` attribute at all
+
+
+================================================================================
+BLOCKER 3 — THE HARDWARE MAP IGNORED table.rooted. REPRODUCED
+================================================================================
+$ tool/map_hardware_interfaces.py, before:
+
+    for table in by_program[program].validated:
+        for _address, target in table.entries:
+            roots.append((f"table@0x{table.location:08x}", target))
+
+  It iterated ENTRIES for any VALIDATED table, discarding the per-entry
+  decision `find_pointer_tables.py` had just made. A table with one proven
+  entry contributed all of its targets. The real images have zero validated
+  tables, so nothing in the suite noticed.
+
+THE CORRECTION — a small pure function that reads `rooted` and nothing else:
+
+    def table_roots(survey):
+        out = []
+        for table in survey.tables:
+            for entry, target in table.rooted:
+                out.append((f"table@0x{table.location:08x}"
+                            f"[0x{entry:08x}]", target))
+        return out
+
+  It does not look at `verdict` and never touches `entries`, so a future
+  verdict change cannot re-expand a table. The label now names the table AND
+  the exact slot supporting the target, so a context says which entry of which
+  table let the function in.
+
+REGRESSION TESTS (class TableRootIntegration, synthetic surveys because the
+real images cannot exercise partial validation):
+  * validated three-entry table, one rooted target   -> one root
+  * validated table, zero rooted                     -> no root
+  * three rooted                                     -> three roots
+  * candidate table, rejected table                  -> no roots
+  * verdict set to each of the three values with nothing rooted -> no roots
+  * a partially rooted table contributes only its proven target
+  * the label contains both the table and the entry address
+  * structural: the CODE of `table_roots`, docstring stripped, mentions
+    neither `table.entries` nor `verdict`
+
+
+================================================================================
+ISSUE 4 — DESCRIPTOR IDENTITY: DRIFT, AND AN OVERSTATED CLAIM. REPRODUCED
+================================================================================
+$ tool/decode_capture.py   IDENTITY_FIELDS included usb.bcdDevice
+$ tools/decode.ps1         $ident = "$($f[3]):$($f[4])"   <- VID and PID only
+
+  The two implementations disagreed about what counts as one device. And the
+  condition was called "address reuse refused", which claims more than the
+  method can do: it only sees a change in the OBSERVED DESCRIPTOR.
+
+THE CORRECTION
+  * decode.ps1 now reads usb.bcdDevice and builds `$ident` from three fields,
+    matching Python exactly;
+  * `reused_keys` is renamed `conflicting_keys`, and the refusal message reads
+    "descriptor-identity conflict on these interface/bus/address keys: more
+    than one VID:PID:bcdDevice was reported for each";
+  * the docstring states the gap plainly: an address reused by a device with an
+    IDENTICAL descriptor cannot be detected — two units of the same model and
+    firmware revision are indistinguishable, and USBPcap offers no reset or
+    enumeration epoch that would separate them reliably. No epoch mechanism was
+    implemented, because none could be implemented reliably from these fields;
+  * the drift check fails if either side drops `usb.bcdDevice`, and separately
+    if `$ident` stops being three fields;
+  * bus/interface/address scoping and the per-row re-check are unchanged.
+
+$ python3 tool/decode_capture.py captures/02-polling-rate.pcap
+  SUBJECT 0b05:1b7e at bus 3 address 6; bus 3 address 7
+  REPORTS 148 out=74 in=74 unique=28      50 55 x20     51 31 x20
+  EVERY ESTABLISHED COUNT IS UNCHANGED.
+
+TESTS
+  * same key, different VID/PID                     -> refused
+  * same key, same VID/PID, different bcdDevice     -> refused
+  * same address on two buses                       -> two keys, no conflict
+  * re-enumeration at a different address           -> two keys, accepted
+  * identical descriptor repeated on one key        -> NOT a conflict, and the
+    test states in its name and body that this is not evidence the physical
+    device never changed
+  * Python names all three fields; the PowerShell copy with bcdDevice removed
+    fails the drift check; so does a two-field `$ident`
+
+
+================================================================================
+ISSUE 5 — THE SUPERSEDED GHIDRA SCRIPT WAS STILL DESTRUCTIVE. REPRODUCED
+================================================================================
+$ grep -n "removeFunction\|clearListing\|symbol.delete" \
+    ghidra/scripts/FalchionRemoveSeeds.java
+  76:            removeFunction(function);
+  80:                    symbol.delete();
+  83:            clearListing(body);
+
+  The banner said "SUPERSEDED AND NOT TO BE USED" while `run()` still did all
+  three. One accidental invocation repeats log 132's damage.
+
+THE CORRECTION. `run()` prints a refusal and returns. Every destructive call is
+DELETED — not commented out, not behind a flag — and so are the imports the
+mutating version needed, so a copy-paste restoration will not compile by
+accident. The refusal names log 132 and spells out the fresh-import/replay
+procedure. The historical description of what it used to do, and what that
+cost, stays in the header comment; logs 131 and 132 carry the rest.
+
+  RESULT removed=0 refused=1 mutated=0
+
+TEST (class SupersededSeedRemover): strips `//` and `/* */` comments, then
+asserts the remaining code contains none of removeFunction, clearListing,
+symbol.delete, createFunction, disassemble(, setBytes, clearSymbol,
+createLabel, removeSymbol, deleteFunction; that no mutating type is named; and
+that the file still says REFUSED, log 132 and mutated=0.
+
+
+================================================================================
+DERIVED EVIDENCE AND DOCUMENTATION
+================================================================================
+  * pointer-table reports regenerated — installed and vendor, both still
+    rooted=0;
+  * Phase 5 hardware/reachability reports regenerated;
+  * notes/installed-hardware-interfaces.*, vendor-to-installed-functions*,
+    address-zero.*, second-context.*, polling-rate*.json, vendor-command-map.*
+    regenerated after their generators changed;
+  * tools/README.md and notes/windows-behavior-capture-plan.md updated to say
+    "descriptor-identity conflict" and to state the identical-descriptor gap;
+  * FINDINGS.md, TIMELINE.md and logs/COMMANDS.md updated;
+  * logs 131 and 132 untouched, and their hashes re-verify.
+
+REACHABILITY IS UNCHANGED BY ALL OF THIS, because the real images have no
+proven table entry either way:
+  entry  functions=141 reached=96  unreached=45   table roots: none
+  app    functions=616 reached=206 unreached=410  table roots: none
+
+PHASE 5 REACHABILITY REMAINS EXPLICITLY INCOMPLETE. Zero proven table roots;
+410 of 616 application functions unreached; 161 of them callerless. What
+changed in this log is not the number but the framework: a root can no longer
+be manufactured through mutually exclusive paths, through whole-table
+expansion, or through the hardware-map integration layer. NO GHIDRA P-CODE
+INTERPROCEDURAL DISPATCH RECOVERY WAS IMPLEMENTED AND NONE IS CLAIMED.
+
+The three decompressed-region roots keep their existing weaker status: their
+targets are addresses Ghidra already had functions at, which is not a located
+consumer, and log 131 recorded that.
+
+
+================================================================================
+REMAINING UNCERTAINTY
+================================================================================
+  * The dispatch for the application's two installer functions is in a callee
+    that receives the object as an argument. Recovering it needs an
+    interprocedural pass — Ghidra decompiler P-code — which was not written.
+  * A proof asserts a CFG path exists. Feasibility is not established, and a
+    proof does not say the dispatch always happens.
+  * The AAPCS assumption (r4-r11 survive a call) is still an assumption.
+  * 31 of 141 entry functions and 40 of 616 application functions are declined
+    for unresolvable flow; their runs read as unconsumed whatever the truth is.
+  * Identical-descriptor device replacement on one interface/bus/address key is
+    undetectable by the decoder, in both implementations.
+  * The nineteen PtrTarget_* functions log 104 seeded in the APPLICATION images
+    are still present as code. They are cited as evidence for nothing.
+  * Orphan_000009fc's purpose is still unknown.
+
+
+================================================================================
+VERIFICATION
+================================================================================
+$ python3 -m unittest discover -s "$PWD/tool" -t "$PWD/tool"   (keyboard/falchion-re)
+  Ran 1371 tests
+  OK
+  (1342 after log 132. test_find_pointer_tables 48 -> 63,
+   test_map_hardware_interfaces 43 -> 51, test_decode_capture 35 -> 41.)
+
+$ every non-test tool/*.py --check     (25 scripts)   all exit 0, failures=0
+$ pointer-table analysis, installed and vendor
+  installed  runs=5 validated=0 rooted=0 new_targets=0
+  vendor     runs=5 validated=0 rooted=0 new_targets=0
+$ the mutually-exclusive-branch reproduction, after the fix
+  installed=1 proven=() rooted=() verdict=candidate
+$ the same-path install -> dispatch reproduction
+  proven=['0x18000100'] rooted=[('0x18000100','0x18000010')] verdict=validated
+$ hardware-map integration, partially rooted table
+  one rooted   -> [('table@0x00001000[0x00000100]', 0x10)]
+  zero rooted  -> []
+  three rooted -> three roots
+  candidate / rejected -> []
+$ preserved PCAP decoder regression
+  148 reports, 74 out / 74 in, twenty 51 31, twenty 50 55 — unchanged
+$ reachability
+  entry functions=141 reached=96 unreached=45; app functions=616 reached=206
+  unreached=410; table roots: none; roots naming no function: none
+
+$ sha256sum -c logs/SHA256SUMS
+  132 files OK before this log was added, 0 failed — logs 131 and 132 are
+  byte-identical
+$ cd dumps/device && sha256sum -c SHA256SUMS
+  ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+
+IMMUTABLE SOURCE HASHES — AFTER (unchanged)
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+CAPTURE HASHES — AFTER (unchanged)
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+
+$ git diff --check          clean
+$ git diff --cached --check clean
+$ git status --short        modified and untracked entries only; ZERO STAGED
+
+AN INDEX ANOMALY, RECORDED BECAUSE IT TOUCHED THE GATE. Partway through this
+step `git status --short` showed 37 entries staged (`A`/`M`/`MM`). No `git add`
+was run at any point in this session. HEAD was unchanged at 0b06400, the same
+commit as at session start, and `git reflog` showed no new entry, so NOTHING WAS
+COMMITTED. The index was cleared with `git restore --staged keyboard/falchion-re`,
+which touches the index only and leaves every working-tree file byte-identical;
+all hashes above were taken after it and still verify. The cause was not
+identified — an editor, another tool, or a hook outside this session are the
+candidates. Recorded rather than quietly fixed, because "nothing is staged" is
+an exit gate and it was briefly false.
+
+
+================================================================================
+WHAT STILL REQUIRES EXECUTION ON WINDOWS
+================================================================================
+  * the -Out refusal in capture.ps1, haltrace.ps1 and snap-config.ps1;
+  * Get-PnpDevice enumeration and the USBPcap extcap launch;
+  * Get-FileHash output and the `saved:` gate;
+  * Get-SubjectKey's bus-scoped identity parsing against a real multi-bus
+    capture, and its descriptor-identity-conflict refusal;
+  * whether identical-descriptor device replacement ever occurs in practice,
+    which nothing offline can answer;
+  * Get-Flat / Get-Canonical agreeing with flatten() / canonical() on a real
+    profile — still NOT proven by any check here;
+  * -AllProfiles against a real C:\ProgramData\ASUS\... folder;
+  * the DBWIN P/Invoke path: ERROR_ALREADY_EXISTS, handle cleanup on partial
+    failure, and the header-only zero-event artifact.
+  EVERY .ps1 IN tools/ REMAINS WINDOWS-UNVALIDATED.
+
+
+================================================================================
+WHAT THIS STEP DID NOT DO
+================================================================================
+  - NO DEVICE WAS ACCESSED and no live USB operation was performed.
+  - No Ghidra project was written to; no inventory or peripheral map was
+    regenerated, because no program changed.
+  - It did NOT implement Ghidra P-code or any interprocedural analysis, and
+    claims no dispatch recovery.
+  - It did NOT restore whole-table promotion in any form.
+  - It did NOT change any reachability number; the framework changed, not the
+    result.
+  - It did NOT declare Phase 5 reachability corrected.
+  - It did NOT execute any PowerShell.
+  - Logs 000-132 were not modified.
+  - Nothing was committed, staged or unstaged.

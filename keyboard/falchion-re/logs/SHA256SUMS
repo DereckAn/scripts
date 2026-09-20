@@ -128,3 +128,7 @@ f68c04e6880a55fd5920d0a19214a8738daf417219ebede3b29bffcda3c79489  logs/121-calib
 237cc8278a8290a6f6b78004db6ca5e9f6121328740cafa40d3ea2e75357aadd  logs/127-polling-rate-reader.txt
 2640581606dc99d5227a77d23d97712be185e556e5b3745e5afb6e61b0388d16  logs/128-vendor-command-map.txt
 ce0ada65faa075a3f3dc54dd98ea1a41ed0146e85643025ef7d31d42ceff009a  logs/130-command-map-completion.txt
+c1c6a37dd54fd1e2a40835507d6c53e39ba394581e42123c1f35cbf5fb1f521c  logs/131-pointer-root-and-windows-capture-tooling-corrections.txt
+dd80e41672319c98f1de44ddfff4ebe66d754a23c5d62e7dc6e432992d9883e5  logs/132-provenance-boundary-repair-and-bus-scoped-decode.txt
+ca8842d837c91ffdbedfc42c694a06996495f3c063482ad887f00cef1c9d5273  logs/133-path-correlated-proof-and-inert-seed-remover.txt
+ff964f00761387df4d16d7296c6103a912bb63dd1267dea2d71fdb7f4294d5ff  logs/134-pointer-alias-invalidation.txt
