@@ -226,4 +226,195 @@ Think about the timeline. Before the tick, the READ hasn't started: bit 1 is **c
 
 Log 85 removed `wait_read_done()`. It also searched for anything else that would say "done": a counter, an address echo, a completion byte, a sequence number. It found none. The pending byte `S+0x34` would do the job, but "`S+0x34` is exposed by no query."
 
-Log 85 also went too far in its language. It said the race "is the default outcome", that the busy window is "orders of magnitude" shorter than a host round trip, that it lasts "microseconds", and that every chunk after the first "would have" been stale. **Log 86 withdrew all of those**, because log 85 itself recorded that neither the tick's wall-clock period nor the transfer duration
+Log 85 also went too far in its language. It said the race "is the default outcome", that the busy window is "orders of magnitude" shorter than a host round trip, that it lasts "microseconds", and that every chunk after the first "would have" been stale. **Log 86 withdrew all of those.** Log 85 itself had recorded that neither the tick's wall-clock period nor the flash-transfer duration can be determined statically. The defensible result is only this: the race is **proven possible**.
+
+- **Lesson:** *say exactly what you proved, and not a word more.*
+
+#### Wrong belief 3 (log 85's own fix): "Check the status first, then take the data"
+
+Log 85's replacement read the status **before** fetching the data, and accepted any data that looked different from the old buffer. It sounds careful. It isn't.
+
+Go back to the mailbox story. You check the flag and it's down, so nobody is filling the box right now. Then you open the box. But in the moment between checking the flag and opening the box, the carrier could arrive and start filling it. You'd grab it half full: some new letters on top, old letters underneath.
+
+That's exactly what can happen here. The bootloader's READ routine does **not** switch interrupts off while it copies (the erase and program routines do), so the reply to a data request can go out while the buffer is only partly rewritten. A status check taken *before* the fetch says nothing about what happened *during* the fetch.
+
+**The independent reviewer reproduced it:** 24 new bytes followed by 24 old bytes, and the tool accepted them (log 86). The test model at the time couldn't have caught it. `FakeBootloader` replaced the whole buffer in one step, so a half-written buffer simply couldn't happen in the simulation. Log 86 rewrote the fake so it copies gradually and can be interrupted.
+
+- **Lesson:** *a test can only catch a failure the model is able to express.*
+
+### 3.5 The fix, and why it's a proof and not a hope
+
+Log 86 closed the gap with two ideas. Both are written out in full in [FINDINGS.md, "What closes it — corrected handshake, log 86"](../FINDINGS.md). Here they are in words.
+
+**Idea 1: know the starting state for certain.** The bootloader's startup code zero-fills the RAM area that holds the pending byte, the flags, the length, and the `0x30`-byte response buffer (the ARM "zero-init" step you met in [Lesson 10](10-how-it-boots.md)). So a freshly started bootloader has **no pending operation and an all-zero buffer**. The first "old" buffer isn't a guess, it's known. The tool refuses to begin unless the buffer reads back as `0x30` zero bytes.
+
+**Idea 2: put the status check in the right place.** In the mailbox story, this becomes a three-step rule:
+
+1. **Look** in the box (take a sample).
+2. **Then** check the flag (status).
+3. If the flag is down **and** what you saw differs from the old contents, look **again** and keep *that* second look.
+
+Why does the order matter? The READ routine only writes the buffer while the busy flag is up. So a flag seen *down* is a moment when no copy is in progress. If the sample taken just before it already showed new content, the one copy for this chunk must already have started, and since the flag is now down, it has finished. From then on the buffer holds exactly the new chunk. The second look can't be half-written. **No timing assumption is needed**, only the order of events. That's what makes it a proof.
+
+```mermaid
+sequenceDiagram
+  participant H as Backup tool (host)
+  participant B as Bootloader buffer
+  Note over B: starts all zero (zero-init), a known baseline
+  H->>B: ask for chunk A (address, length, READ)
+  Note over B: READ waits for the next SysTick tick
+  H->>B: look (sample 1): maybe old, maybe partial
+  H->>B: flag? busy, so keep waiting
+  Note over B: copy of chunk A runs, then flag drops
+  H->>B: look (sample 2): differs from baseline
+  H->>B: flag? clear, and sample 2 was new
+  H->>B: look again (confirm), and keep this copy
+  Note over H: chunk A accepted, and it becomes the new baseline
+```
+
+**Two leftovers, stated honestly (log 86):**
+
+- **A liveness bug, not a correctness bug.** The tool re-sends the READ request if nothing seems to happen, because the bootloader ignores a new request while one is pending. At first it kept re-sending even after new content had appeared, and it could fall into step with the bootloader so it never saw the flag drop. That produced **refusals, never wrong answers**. It now stops re-sending once the content changes.
+- **The one gap the protocol can't close.** If some *other* program queued a READ on the same device node, the bootloader would give no sign of it. The only defence is an operating rule: **nothing else may talk to the hidraw node during the dump.** Also, if a new chunk happens to be byte-identical to the previous one, "different from the baseline" can't be observed. The tool then re-bases through an earlier chunk whose content was proven different, and aborts if none exists yet.
+
+### 3.6 From one block to the whole region (logs 91 and 92)
+
+The rule was proved on paper first, then tested small, then used for real. Each live step needed the owner's separate approval.
+
+**One block (log 91).** Exactly one 48-byte READ at `0x10000`. It came back as a complete `SN_FWIN` header. Bytes `0x00..0x2b` matched the vendor 1.00.58 file. The word at `0x2c` differed: `85 24 55 7d` on the keyboard versus `7a c1 75 5e` in the vendor image. That was the first hard evidence that the installed firmware's records differ from the vendor file.
+
+**The whole application region (log 92).** Three separate, complete passes over `[0x10000, 0x7c000)` were **byte-identical**, each with SHA-256
+`fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b`.
+The accepted file is 442,368 bytes (`0x6c000`):
+[`dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin`](../dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin).
+Both record checksums, the application word-sum, and all the applicable boot-structure checks passed. At the time of log 92 that was 12 checks. The analyzer now runs 14, because log 101 added two ([Lesson 10](10-how-it-boots.md)).
+
+**What the backup is NOT (dumps/device/README.md):**
+
+| Covered | Not covered |
+|---|---|
+| The application region `[0x10000, 0x7c000)` | The primary bootloader region `[0x0, 0x10000)`, which USB READ can't reach |
+| The mirrored bootloader copy inside it at `[0x61000, 0x71000)` (Lesson 13) | The rest of the 4 MiB U5 flash chip |
+| | Any storage inside the SNC73270 itself |
+
+It's still the right backup for the risk that matters most. The bootloader's erase and program paths can only reach this same range ([Lesson 11](11-the-bootloader-door.md)), so anything a USB update could damage is inside what was saved.
+
+---
+
+## 4. Decisions and why
+
+| Decision | Why | Alternative rejected | Evidence |
+|---|---|---|---|
+| One request, one answer, checked each time | Batched reads confused a status reply with data | Queue everything, then read once | log 84 |
+| Stop using the busy bit to sequence reads | "Clear" means both "not started" and "finished" | Poll until bit 1 clears | log 85 |
+| Start only from a known all-zero buffer | Zero-init makes the first baseline a fact | Assume the buffer is stale or unknown | log 86 |
+| Sample → status → confirm | Proves completeness with no timing assumption | Status → sample (the reviewer's counterexample broke it) | log 86 |
+| Don't over-read into the hidden pending byte | Every workable length breaks the flash engine or the length field | Read past `0x30` to see `S+0x34` | log 85 |
+| Validate one block before the whole region | Smallest possible live test of the rule | Go straight to a full dump | log 91 |
+| Three identical passes plus structural checks | One pass can't show it's repeatable | Accept a single pass | log 92 |
+
+## 5. What went wrong, and how it was caught
+
+| Believed | True | Caught by | Lesson |
+|---|---|---|---|
+| Queries can be batched | The status reply was consumed as data (fatal) | log 84 audit | one question, one answer |
+| A clear busy bit means the data is ready | It also means "not started" | log 85 static proof | read the code, not the name |
+| "The race is the default… microseconds" | Timing can't be determined statically, so it's only "proven possible" | log 86 | don't overclaim |
+| Status-then-sample is safe | 24 new + 24 old bytes accepted | independent reviewer (log 86) | test the test |
+| `FakeBootloader` models the device | It couldn't express a half-written buffer | log 86 | a model limits what tests can find |
+| Log 83 showed a live refusal | Log 83 was a dry run only | log 84 | say exactly what ran |
+
+## 6. Try it yourself
+
+All offline. Run from `keyboard/falchion-re/`.
+
+**1. Check the backup's fingerprint.** `SHA256SUMS` lists a bare filename, so run it from inside the folder:
+
+```bash
+cd dumps/device && sha256sum -c SHA256SUMS; cd ../..
+```
+
+```text
+ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin: OK
+```
+
+**2. Re-check the backup's integrity yourself.**
+
+```bash
+python3 tool/analyze_candidate_integrity.py --base 0x10000 dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin | tail -8
+python3 tool/analyze_boot_structures.py --base 0x10000 dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin | tail -5
+```
+
+```text
+  bootloader: SKIP (region absent from this partial image)
+  application: stored=0x2d7486db calc=0x2d7486db match=True
+  PASS SN_FWIN magic
+  PASS record[0] checksum
+  PASS record[1] checksum
+  PASS application word-sum
+
+RESULT integrity_checks_ok=True
+RESULT known_checks_ok=True checks_run=14 containers_skipped=1
+UNRESOLVED Any ROM or first-stage condition ahead of the bootloader is unexamined.
+…
+LIMITATION Passing means the known container constraints are internally consistent. It does not prove an edited image boots.
+```
+
+The bootloader word-sum shows `SKIP` because the dump doesn't contain the primary bootloader region. Note `checks_run=14`.
+
+**3. See the first difference log 91 found.** The dump starts at logical `0x10000`, so its file offset `0x2c` is logical `0x1002c`:
+
+```bash
+xxd -s 0x2c -l 4 dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+xxd -s 0x1002c -l 4 dumps/vendor/M605_V01_00_58.bin
+```
+
+```text
+0000002c: 8524 557d                                .$U}
+0001002c: 7ac1 755e                                z.u^
+```
+
+**4. Run the offline test suite for the backup tools.** It uses `FakeBootloader` and never opens a device:
+
+```bash
+python3 -m unittest tool.test_backup_firmware tool.test_probe_flash_read 2>&1 | grep -E '^(Ran|OK|FAILED)'
+```
+
+```text
+OK: 3 identical passes; wrote /tmp/tmpn2g_04wh/dump.bin
+…
+Ran 83 tests in 1.167s
+OK
+```
+
+The `OK: 3 identical passes` lines come from simulated backups against `FakeBootloader`, written to temporary files. No device is involved.
+
+**5. Read the proof in the original.** Open [FINDINGS.md](../FINDINGS.md) at "What closes it — corrected handshake, log 86" and match each sentence to the mailbox steps in section 3.5.
+
+## 7. Check your understanding
+
+1. Why can't "the busy bit is clear" tell you the READ has finished?
+<details><summary>Answer</summary>Clear is also the state before the READ starts. Dispatch waits for a SysTick tick, so right after you ask, the bit is clear because nothing has begun yet (log 85).</details>
+
+2. What was wrong with checking the status *before* taking the sample?
+<details><summary>Answer</summary>A whole READ can start during the fetch, and the READ routine doesn't mask interrupts, so the reply can be half new and half old. A status taken before the fetch says nothing about what happened during it (log 86).</details>
+
+3. Why is the zero-init step important to the proof?
+<details><summary>Answer</summary>It makes the first baseline a known fact, an all-zero buffer with nothing pending, instead of an unknown (log 86).</details>
+
+4. The backup matched three times. Name two things it still doesn't contain.
+<details><summary>Answer</summary>The primary bootloader region [0x0, 0x10000), and the rest of the 4 MiB U5 flash (also any internal MCU storage).</details>
+
+5. Why is an app-region-only backup still useful for recovery?
+<details><summary>Answer</summary>The bootloader's erase and program paths can only reach [0x10000, 0x7c000), the same range that was saved.</details>
+
+## 8. Sources
+
+- [FINDINGS.md](../FINDINGS.md): "Bootloader READ scheduling — log 85", "What closes it — corrected handshake, log 86"
+- [TIMELINE.md](../TIMELINE.md): "Bootloader READ scheduling resolved (log 85)", "Correction: the first fix was wrong too (log 86)", 2026-09-02 entries
+- [logs/83-backup-tool-dryrun.txt](../logs/83-backup-tool-dryrun.txt), [84](../logs/84-correction-audit.txt), [85](../logs/85-bootloader-read-scheduling-analysis.txt), [86](../logs/86-bootloader-read-handshake-correction.txt), [91](../logs/91-one-block-read-validation.txt), [92](../logs/92-full-app-region-backup.txt)
+- [dumps/device/README.md](../dumps/device/README.md), [dumps/device/SHA256SUMS](../dumps/device/SHA256SUMS)
+- [notes/step5-recovery-plan.md](../notes/step5-recovery-plan.md)
+- [tool/backup_firmware.py](../tool/backup_firmware.py), [tool/test_backup_firmware.py](../tool/test_backup_firmware.py), [tool/probe_flash_read.py](../tool/probe_flash_read.py)
+
+[← Previous](11-the-bootloader-door.md) · [Course home](README.md) · [Next →](13-installed-vs-vendor.md)

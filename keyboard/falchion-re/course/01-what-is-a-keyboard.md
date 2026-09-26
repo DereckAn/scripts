@@ -57,7 +57,7 @@ The alternative, plugging the keyboard in and poking at it with tools straight a
 
 On an ordinary keyboard each key is a **switch**: two pieces of metal that touch when you press. The electronics only ever see two states, "touching" (1) or "not touching" (0). A [bit](00-glossary.md#bit) is enough to describe a key.
 
-To read many switches with few wires, ordinary keyboards arrange them in a grid of rows and columns (a "matrix") and check one row at a time. That is general background, not a claim about this board. **For this keyboard, no contact-matrix model is asserted** (log 109). Phase 5C noticed that the per-key data the firmware clears is two bytes wide per key. As log 109 put it, "a contact matrix would not need 16 bits per key".
+To read many switches with few wires, ordinary keyboards arrange them in a grid of rows and columns (a "matrix") and check one row at a time. That is general background, not a claim about this board. **For this keyboard, no contact-matrix model is asserted** (log 109). Phase 5C first argued from an array it took to be two bytes per key: "a contact matrix would not need 16 bits per key". Log 110 later showed that array is really a key-state bitmap (section 5, mistake 4), so that argument fell away. The Hall-effect reading did not depend on it. It stands on the travel pipeline recovered in logs 110, 119 and 121 (section 3.2).
 
 ### 3.2 This keyboard measures distance instead: the Hall effect
 
@@ -259,7 +259,7 @@ One small thing to notice already: saving a setting and changing a setting are d
 | Discard the STM32 addresses and ST-Link recipe | They were generic placeholders, never validated for SNC73270 | Following the early guide | FINDINGS "Safety problems identified by the audit"; logs 27–28 |
 | Use the SNC7320 brief only to raise or lower confidence, never to name a register | It is a series-level brief with no register map | Assigning ADC/watchdog identities from the brief | [notes/references.md](../notes/references.md) |
 | Keep the dual-core question open | Two contexts with a mailbox are observed; running at the same time is not | Declaring "both cores run in parallel" | [notes/dual-core-question.md](../notes/dual-core-question.md), log 118 |
-| Do not assert a contact-matrix model | Per-key data is 16 bits wide and the device is Hall-effect | Modelling the keyboard as switches | log 109 |
+| Do not assert a contact-matrix model | The device is Hall-effect, and "Neither image has a block whose access pattern resembles a key scanner" | Modelling the keyboard as switches | logs 109, 110 |
 | Make the actuation model refuse to guess the active key count | The firmware reads it at run time and the saved image leaves it zero | Hard-coding 15 or 68 | log 110; `tool/model_hall_actuation.py` |
 
 ---

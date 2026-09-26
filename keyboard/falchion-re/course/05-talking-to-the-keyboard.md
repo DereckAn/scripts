@@ -389,7 +389,7 @@ Later, the owner took new captures, now in `captures/`: `01-first-launch.pcapng`
 
 **What was true.** The script "overwrote an existing `-Out` silently — which is how the original first-launch capture was lost — accepted any `-Interface` string without checking it against the enumerated list, ignored tshark's exit status, and printed `saved:` unconditionally" ([FINDINGS.md](../FINDINGS.md), "Windows capture tooling, corrected").
 
-**How it was caught.** The README already recorded the loss. Log 131 reproduced the defect from the file: "`& $tshark @a` followed unconditionally by `Write-Host \"saved: $Out\"`."
+**How it was caught.** The README already recorded the loss. Log 131 reproduced the defect from the file: `& $tshark @a` "followed unconditionally by" `Write-Host "saved: $Out"`.
 
 **The fix.** An existing `-Out` is refused, with no `-Force`. `-Unique` makes a timestamped name. The interface must appear in `tshark -D`. The exit status is checked. The output must exist, be non-empty, and begin with a pcap or pcapng magic number before `saved:` is printed with its size and SHA-256.
 
