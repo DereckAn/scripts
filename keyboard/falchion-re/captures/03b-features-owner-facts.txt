@@ -1,0 +1,47 @@
+OWNER-PROVIDED FACTS -- feature-validation capture 03b (run 2)
+(written on the Windows capture host, 2026-09-29; carry this file over with
+the pcap and 03b-features-notes.txt)
+
+THE MACHINE-WRITTEN RECORD IS 03b-features-notes.txt
+  tools/feature-session.ps1 wrote it during the run: each action time is the
+  moment the owner pressed Enter just AFTER doing the action (ms precision),
+  followed by the owner's own words. This file adds only what is not in it.
+
+HOST / VERSIONS
+  Same host and tool versions as captures/03-features-owner-facts.txt.
+  Armoury Crate 6.5.14.0. Firmware REV_0159 before and after.
+  Update prompt for the keyboard appeared; declined; NOT updated.
+
+CAPTURE
+  File     : captures/03b-features.pcap
+  sha256   : 522299eb340e576ad547c79c0f28815c2280044c1d23d16abd27d626c2dc15e8
+  bytes    : 42006285
+  started  : 04:50:51.553 by feature-session.ps1 (USBPcapCMD, same flags as 03)
+  stopped  : 05:06:14.988 by the script (Stop-Process), after a 15 s idle.
+  subject  : bus 3 address 6 = 0b05:1b7e bcdDevice 0x0159, no re-enumeration.
+
+DEVIATIONS FROM THE PLANNED ACTIONS (owner's words, in the notes file)
+  - Profile switch: AC was on profile 2, so the switches were 2->3 and 3->1.
+  - Actuation: changed three times, 2.8 -> 2.2 -> 2.0 -> 2.1 mm.
+  - Rapid trigger: toggled on and off several times; press 0.3 mm,
+    release 0.3 mm; the owner then typed on the rapid-trigger keys.
+  - Remap: Tab -> Right Shift, in profile 1.
+  - Macros were assigned in PROFILE 4 (the owner had to switch to it):
+    Macro03 = "asdabc" -> Z; Macro04 = "a" x5 -> Tab. Macro04's recording
+    ended with a mouse Left Click (see its .GMAC).
+  - Lighting (profile 4): brightness 100 -> 45, effect Raindrop -> Static,
+    colour -> red.
+
+SNAPSHOTS
+  snapshots/03b-features-before-raw/  and  -after-raw/  byte copies of
+    C:\ProgramData\ASUS\Framework\keyboard\ROG FALCHION ACE HFX, with
+    SHA256SUMS.txt in each.
+  snapshots/03b-features-macros/  the four .GMAC files from
+    %LOCALAPPDATA%\ASUS\Armoury Crate Service\CachedMacroProfiles,
+    copied after the run, with SHA256SUMS.txt.
+  The decoded snap-config JSONs are ABSENT: snap-config.ps1 failed on its
+    first Windows run (fixed afterwards, see log 135).
+
+AFTER THE CAPTURE
+  fp_1_config was rewritten again at 05:06:43, 26 s after the capture
+  stopped, while AC was still open. That write is not in any capture.

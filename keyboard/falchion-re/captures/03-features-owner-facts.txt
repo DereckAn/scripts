@@ -1,0 +1,59 @@
+OWNER-PROVIDED FACTS -- feature-validation capture 03 (run 1)
+(written on the Windows capture host, 2026-09-29, from the owner's notes and
+the session transcript; carry this file over with the pcap)
+
+HOST
+  Windows 11 Enterprise LTSC 2024, build 26100 (DESKTOP-TTKJIMR)
+  Wireshark/tshark 4.6.8 (v4.6.8-0-ge677bf052328)
+  USBPcap 1.5.4.0
+
+ARMOURY CRATE
+  Version: 6.5.14.0 (appx B9ECED6F.ArmouryCrate). Capture 02 was 6.5.7.0, so
+  AC updated itself between the two captures. Treat disagreements with 02 or
+  with notes/protocol.md as possible AC-version differences first.
+  AC UI was CLOSED when the capture started and launched inside it.
+
+FIRMWARE
+  USB\VID_0B05&PID_1B7E&REV_0159 before (04:19:51) and after (04:33:57).
+  An update prompt for the keyboard appeared and was declined. NOT updated.
+
+CAPTURE
+  File     : captures/03-features.pcap  (written by USBPcapCMD, never edited)
+  sha256   : bb4bf7cc7df317a69c858dc09481d4bf10fc5691dacf9c08b5fe05b9606cce06
+  bytes    : 43316429, 666k packets
+  span     : 2026-09-29 04:20:47.767262 -> 04:35:39.642944 local (UTC-06:00)
+  command  : USBPcapCMD.exe -d \\.\USBPcap3 -A --inject-descriptors -s 65535
+             -b 134217728 -o <file>   (same flags as capture 02)
+  STOP     : NOT a clean stop. USBPcapCMD is a GUI-subsystem exe, so the
+             PowerShell prompt returned at once and Ctrl+C never reached it.
+             It was ended with `Stop-Process -Name USBPcapCMD` from an
+             elevated shell at ~04:35:39. The file reads cleanly (capinfos,
+             tshark); the final record was not observed to be truncated.
+  subject  : bus 3 address 6 = 0b05:1b7e bcdDevice 0x0159, no re-enumeration.
+  others on the hub: addr 5 0b05:19af (AURA LED controller, the dominant
+             noise), 3 1532:00e6 (Razer), 4 13d3:3614 (Bluetooth), 1/2 hubs.
+
+ACTIONS -- owner's handwritten times (minute precision; seconds not noted)
+  The owner filled these into WINDOWS-CAPTURE-03-features.md:
+    ACTION 1 profile switch 1->2     ~04:25
+    ACTION 2 profile switch back->1  ~04:26
+    ACTION 3 actuation change        ~04:27
+    ACTION 4 rapid trigger change    ~04:28
+    ACTION 5 remap one key           ~04:29
+    ACTION 6 record one macro        ~04:30
+    ACTION 7 lighting brightness     ~04:32
+  AC version 6.5.14.0; update prompt: yes, for the keyboard; unexpected: no.
+
+  Added by the owner afterwards, in the session:
+  - Before 04:25 the owner switched profiles MANY times (AC launch and the
+    04:23:39-04:23:54 run of 51 00 frames).
+  - Action 6: the owner created TWO macros (Macro01.GMAC 04:30:17 and
+    Macro02.GMAC 04:30:53, preserved in snapshots/03b-features-macros/).
+    They were not assigned to a key in this run.
+  - The key remapped in action 5 and its target were NOT written down.
+  - From/to values for actions 3, 4 and 7 were not written down.
+
+NOT PRESERVED FOR THIS RUN
+  No before/after profile snapshot was taken. fp_2_config was rewritten at
+  04:44:10, AFTER this capture ended and before run 03b began, while nothing
+  was recording.

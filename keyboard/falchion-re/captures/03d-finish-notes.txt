@@ -1,0 +1,33 @@
+﻿# 03d-finish -- feature validation run (plan: finish), written by tools/feature-session.ps1
+host              : DESKTOP-TTKJIMR
+session start     : 2026-09-29 06:15:56.031 (local, UTC-06:00)
+keyboard fw before: REV_0159
+AC version        : 6.5.14.0
+AC open at start  : no
+interface         : \\.\USBPcap3
+command           : USBPcapCMD -d \\.\USBPcap3 -A --inject-descriptors -s 65535 -b 134217728 -o C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\captures\03d-finish.pcap
+profiles before   : saved 13 files -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03d-finish-before-raw
+decoded before    : snap-config exit 0 -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03d-finish-before.json
+capture started   : 2026-09-29 06:16:01.433  pid(s) 18480  size 211196 -> 333804 bytes
+
+# actions (time = when Enter was pressed, just AFTER the action)
+ACTION 0   06:17:17.001  Open Armoury Crate, Falchion page, profile 1, Trigger tab. Mark when loaded.  | off
+ACTION 1a  06:17:42.368  Flip the rapid-trigger LEVER on the keyboard ONCE. Do not touch AC.  | it was off now it is on 
+ACTION 1b  06:18:03.618  Flip the LEVER back ONCE.  | off
+ACTION 2a  06:18:45.133  LEFT panel: "Individual key actuation point settings" -> Edit. Select ONLY the P key, set it to 1.5 mm, save/apply.  | There was a keyboard layout where the user can click on the keys. Then there is a scroll select component where you can change the actuation point of the keys you selected before in the keyboard layout. 
+ACTION 2b  06:20:12.852  Same Edit screen: select ONLY the L key, set it to 3.0 mm (different on purpose), save/apply.  | now it is 3.0
+ACTION 2c  06:21:38.694  Put P and L back to the global value (remove them from individual settings), save/apply. Do NOT use the big Reset button.  | first i made a mistake, because i press the resent button in the pop up, but i set them with the values you have me. And to reset them to from the 1.5 and from 3.0, i just selected the keys and put them in 1.0mm
+ACTION 3a  06:24:32.102  Record a macro named KEYS2, slowly:  - = [ ] \ ; ' , . /  Backspace  Enter  Del  PgUp  PgDn  Up  Caps  Caps  Esc  (Esc last; if Esc stops the recording, fine). Stop with the mouse. Save.  | everything, even the esc 
+ACTION 3b  06:25:16.511  Assign macro KEYS2 to the Ins key. Apply.  | 
+ACTION 3c  06:25:53.133  Restore the Ins key to Default. Apply.  | 
+ACTION 4   06:26:19.438  CLOSE Armoury Crate fully: window AND tray icon. Mark once it is gone.  | 
+
+update prompt     : y
+unexpected        : 
+capture stopped   : 2026-09-29 06:27:16.780  (Stop-Process by script)
+pcap bytes        : 30673485
+pcap sha256       : 6c2abea3f6b60b5c7b1e1099333f32f09514f4d66e08e8aad482dfca83dace6e
+keyboard fw after : REV_0159
+profiles after    : saved 14 files -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03d-finish-after-raw
+decoded after     : snap-config exit 0 -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03d-finish-after.json
+session end       : 2026-09-29 06:27:21.186

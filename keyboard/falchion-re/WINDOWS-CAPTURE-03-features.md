@@ -1,5 +1,11 @@
 # Capture 03 — Windows runbook (feature validation)
 
+> **Done, 2026-09-29.** This runbook produced capture 03; captures 03b, 03c and 03d were
+> taken with `tools/feature-session.ps1` instead, which replaces the Wireshark and
+> Notepad steps below (see `tools/README.md`). Results: logs 135–137. The notes filled
+> in below are the owner's own, for run 03. Starting USBPcap from PowerShell as in
+> step 1 does not stop on Ctrl+C (log 135 §10.1).
+
 Self-contained. Follow top to bottom on the Windows machine. ~5 minutes.
 
 ## ⚠️ The one rule that matters most
@@ -17,16 +23,16 @@ are fine; firmware updates are not.
 3. A text file open (Notepad) to note times, in this format:
 
    ```text
-   ACTION 1 profile switch 1->2     time: __:__:__
-   ACTION 2 profile switch back->1  time: __:__:__
-   ACTION 3 actuation change        time: __:__:__
-   ACTION 4 rapid trigger change    time: __:__:__
-   ACTION 5 remap one key           time: __:__:__
-   ACTION 6 record one macro        time: __:__:__
-   ACTION 7 lighting brightness     time: __:__:__
-   AC version: ______
-   update prompt appeared? Y/N: ___
-   anything unexpected: ____________
+   ACTION 1 profile switch 1->2     time: 4:25:__
+   ACTION 2 profile switch back->1  time: 4:26:__
+   ACTION 3 actuation change        time: 4:27:__
+   ACTION 4 rapid trigger change    time: 4:28:__
+   ACTION 5 remap one key           time: 4:29:__
+   ACTION 6 record one macro        time: 4:30:__
+   ACTION 7 lighting brightness     time: _4:32:__
+   AC version: 6.5.14.0
+   update prompt appeared? Y/N: yes, for the keyboard
+   anything unexpected: no
    ```
 
 ## The capture
@@ -39,7 +45,7 @@ are fine; firmware updates are not.
 
    | # | Do this in Armoury Crate | Notes |
    |---|--------------------------|-------|
-   | 1 | Switch profile: 1 → 2 | stay ~15 s |
+   | 1 | Switch profile: 1 → 2 | stay ~15 s |I 
    | 2 | Switch profile: 2 → 1 | |
    | 3 | Actuation: change global value one step (note from/to) | e.g. 2.0 → 2.5 mm |
    | 4 | Rapid trigger: change press and/or release value (note from/to) | |

@@ -132,3 +132,6 @@ c1c6a37dd54fd1e2a40835507d6c53e39ba394581e42123c1f35cbf5fb1f521c  logs/131-point
 dd80e41672319c98f1de44ddfff4ebe66d754a23c5d62e7dc6e432992d9883e5  logs/132-provenance-boundary-repair-and-bus-scoped-decode.txt
 ca8842d837c91ffdbedfc42c694a06996495f3c063482ad887f00cef1c9d5273  logs/133-path-correlated-proof-and-inert-seed-remover.txt
 ff964f00761387df4d16d7296c6103a912bb63dd1267dea2d71fdb7f4294d5ff  logs/134-pointer-alias-invalidation.txt
+0899ffb6e6936d55034c49a45032cad1a18dcc0de0a5621a0dc2f0391922cc2c  logs/135-feature-capture-validation.txt
+e818a08bd4d0242a363f84c8546d3038c3880b0cda7dd5f0ba18186149b90739  logs/136-deep-capture-key-ids-and-corrections.txt
+0fca3135f7007b685bae275e8223ab9c1cd9a8ff400e805bbc2348020f7b7e02  logs/137-finish-capture-per-key-actuation-and-lever.txt

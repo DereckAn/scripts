@@ -69,7 +69,10 @@ function Get-ProfileFiles {
       ForEach-Object { "  $($_.Name)" }
     exit 1
   }
-  ,$files
+  # Emit the files one by one. `,$files` handed `foreach ($f in Get-ProfileFiles)` the
+  # whole array as ONE item, so $f.LastWriteTimeUtc.ToString('o') failed on Object[]
+  # (first Windows run, capture 03b).
+  $files
 }
 
 function Get-Config($path) {

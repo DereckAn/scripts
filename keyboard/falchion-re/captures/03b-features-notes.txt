@@ -1,0 +1,34 @@
+﻿# 03b-features -- feature validation run, written by tools/feature-session.ps1
+host              : DESKTOP-TTKJIMR
+session start     : 2026-09-29 04:50:46.301 (local, UTC-06:00)
+keyboard fw before: REV_0159
+AC version        : 6.5.14.0
+AC open at start  : no
+interface         : \\.\USBPcap3
+command           : USBPcapCMD -d \\.\USBPcap3 -A --inject-descriptors -s 65535 -b 134217728 -o C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\captures\03b-features.pcap
+profiles before   : saved 5 files -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03b-features-before-raw
+decoded before    : snap-config FAILED (non-fatal): Cannot find an overload for "ToString" and the argument count: "1".
+capture started   : 2026-09-29 04:50:51.553  pid(s) 24872  size 147100 -> 209340 bytes
+
+# actions (time = when Enter was pressed, just AFTER the action)
+ACTION 0   04:51:38.744  Open Armoury Crate and go to the Falchion Ace HFX page. Mark when the page has fully loaded.  | 
+ACTION 1   04:52:15.831  Switch profile 1 -> 2. ONCE only.  | it was in the profile 2, so i switch from 2 to 3 
+ACTION 2   04:52:50.899  Switch profile 2 -> 1. ONCE only.  | swtich from 3 to 1 
+ACTION 3   04:53:54.657  Actuation: change the GLOBAL value one step. Click Apply/Save if there is one.  | i change it several times, 3 for being eqact, it was 2.8 to 2.2, then 2.2 to 2.0, then 2.0 to 2.1
+ACTION 4   04:56:17.193  Rapid trigger: change press and/or release value. Apply/Save if needed.  | i just turn it on and off several times, then i press the letters i put as rapid trigger the values press, is 0.3mm and the value release is 0.3mm
+ACTION 5   04:57:54.784  Remap ONE ordinary key -- a DIFFERENT key than in run 03 (no Fn/reserved keys).  | tab to right shift 
+ACTION 6a  04:58:48.386  Macro: create/record macro A (a, b, c) in the editor and SAVE it. Do NOT assign it yet.  | Macro03, i just pressed asdabc
+ACTION 6b  05:02:13.567  Macro: ASSIGN macro A to one key and Apply.  | z
+ACTION 6c  05:03:08.148  Macro: create macro B and SAVE it (do not assign).  | Macro04, i just press 5 times a
+ACTION 6d  05:03:49.915  Macro: ASSIGN macro B to another key and Apply.  | tab, i needed to switch to profile 4. by the way all the macros assigned are in profile 4
+ACTION 7   05:05:00.748  Lighting: change brightness ONCE (single click/step if you can).  | from 100 to 45 in profile 4, i also change the raindrop to a static and i chose the red color 
+
+update prompt     : yes, there is an update for the keyboard 
+unexpected        : no 
+capture stopped   : 2026-09-29 05:06:14.988  (Stop-Process by script)
+pcap bytes        : 42006285
+pcap sha256       : 522299eb340e576ad547c79c0f28815c2280044c1d23d16abd27d626c2dc15e8
+keyboard fw after : REV_0159
+profiles after    : saved 7 files -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03b-features-after-raw
+decoded after     : snap-config FAILED (non-fatal): Cannot find an overload for "ToString" and the argument count: "1".
+session end       : 2026-09-29 05:06:17.619

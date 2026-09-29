@@ -15,6 +15,7 @@ and must not be used without a separate explicit write-test plan and approval.
 | `decode.ps1` | no | no | pull the 64-byte vendor reports out of a capture, annotate, diff |
 | `haltrace.ps1` | **yes** | no | live capture of the ASUS HAL's `[Class][Method]` debug log |
 | `capture.ps1` | **yes** | no | start a passive USBPcap capture |
+| `feature-session.ps1` | **yes** | no | guided, timestamped capture of Armoury Crate use (captures 03b-03d) |
 | `send.ps1` | no | **YES** | send a raw 64-byte command on the 0xFF00 channel |
 
 ## Offline twins, and what they do and do not prove
@@ -119,6 +120,22 @@ dead zones, lighting and lever settings, not only `keyfunction_<col>_<row>` entr
 
 An existing `-Save` path is refused; use `-Unique` for a timestamped name.
 
+## feature-session.ps1
+
+```powershell
+.\feature-session.ps1                                  # plan finish   -> 03d-finish
+.\feature-session.ps1 -Plan deep                       # plan deep     -> 03c-deep
+.\feature-session.ps1 -Plan features -Name 03e-features
+```
+
+Close Armoury Crate first. The script finds the keyboard's `\\.\USBPcapN`, snapshots the
+AC profile folder and the `.GMAC` macro folder, starts USBPcapCMD with capture 02's flags
+(`-A --inject-descriptors`), walks the owner through each action in the terminal (Enter
+marks the time to the millisecond, then it asks for the from/to values), stops the
+capture itself, checks the pcap magic and `REV_xxxx` before and after, and writes
+`captures/<Name>-notes.txt`. Existing outputs are refused. First Windows runs: logs 135
+(03b), 136 (03c), 137 (03d).
+
 ## capture.ps1 / decode.ps1 / haltrace.ps1
 
 ```powershell
@@ -200,6 +217,15 @@ investigate further.
 relative to the first frame of its own file. Both decoders now carry `frame.time_epoch`,
 and `haltrace.ps1` stamps every line and its session header in UTC. The alignment is
 still approximate and manual: they are two different clocks.
+
+**USBPcapCMD is a GUI-subsystem executable** (log 135). PowerShell's `&` neither waits for
+it nor captures its stdout: the prompt returns at once, Ctrl+C never reaches the capture,
+and `--extcap-interfaces` / `--extcap-config` read back empty. Use `cmd /c` to read its
+output and `Stop-Process` (elevated) to end a capture. `feature-session.ps1` does both.
+
+**Hash text evidence from git, not the Windows working copy** (log 135). With
+`core.autocrlf=true`, checked-out `.txt` files have CRLF and a different SHA-256 from the
+committed blob. `git show HEAD:<path>` reproduces the logged hash.
 
 **PowerShell execution policy.** `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force`
 per session, or `-Scope CurrentUser -ExecutionPolicy RemoteSigned` permanently.

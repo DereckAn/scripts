@@ -1,0 +1,40 @@
+OWNER-PROVIDED FACTS -- deep feature capture 03c (run 3)
+(written on the Windows capture host, 2026-09-29; carry this file over with
+the pcap and 03c-deep-notes.txt)
+
+THE MACHINE-WRITTEN RECORD IS 03c-deep-notes.txt
+  tools/feature-session.ps1 -Plan deep wrote it during the run: 30 actions,
+  each time = the owner pressing Enter just AFTER the action, followed by
+  the owner's own words. This file adds only what is not in it.
+
+HOST / VERSIONS
+  Same host and tool versions as captures/03-features-owner-facts.txt.
+  Armoury Crate 6.5.14.0, UI closed at start (checked by the session),
+  background services running as in 03 and 03b.
+  Firmware REV_0159 before and after. Keyboard update prompt appeared;
+  declined; NOT updated.
+
+CAPTURE
+  File     : captures/03c-deep.pcap
+  sha256   : d9aa029d5531df00fba587e455b449c6ef704cc3812fadf17b9121c95fa2e029
+  bytes    : 81789981
+  started  : 05:28:35.851 by the script; stopped 05:59:12.701 by the script
+             after AC was closed (action 8, 05:57:30) and a 30 s idle.
+
+OWNER CLARIFICATIONS (from the notes, restated where they change a reading)
+  - Action 0: AC opened on profile 4.
+  - Action 2c: the "reset" button on AC's per-key page.
+  - Action 3a: AC's key menu has a select with Default, Dynamic Keystrokes,
+    Mod Tap, Keyboard function, Mouse function, Copilot, Macro, Multimedia,
+    Windows shortcut. Remaps used "Keyboard function"; restores used
+    "Default".
+  - Action 4a: press and release were BOTH 0.2 before; only release changed
+    (to 0.5). Press/release fields appear only with "independent press and
+    release sensitivity settings" ON; with it OFF AC shows one
+    "sensitivity".
+  - Action 4b: the owner selected the DIGIT 0 key (not the letter O) and
+    deselected A, S, D, W.
+  - Action 6a: the recording was stopped with the mouse, so the stop key
+    would not be recorded.
+  - Action 7a: effect was already Static; changed to Breathing and back.
+  - Action 7e: Breathing, speed Normal -> Fast.

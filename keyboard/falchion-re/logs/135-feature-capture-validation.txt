@@ -1,0 +1,290 @@
+LOG 135 -- FEATURE CAPTURES 03 AND 03b: SIX 0x51 SUBCOMMANDS AND THE MACRO UPLOAD ON THE WIRE
+Date: 2026-09-29
+Host: Windows capture host (DESKTOP-TTKJIMR), Claude Code session with the owner.
+Scope: two passive USBPcap captures of Armoury Crate in normal use, their
+offline decode, and the first Windows runs of two tools. Nothing was
+committed, staged or unstaged.
+
+SAFETY. This session sent NO frame to the keyboard and constructed none. The
+captures are passive (USBPcapCMD). Every keyboard write quoted below was sent
+by ARMOURY CRATE 6.5.14.0 while the OWNER used its UI -- ordinary settings
+changes of the kind WINDOWS-CAPTURE-03-features.md allows. No firmware update:
+an update prompt appeared in both runs and was declined; the USB hardware ID
+read REV_0159 before and after each run. tools/send.ps1 was not run. No
+Ghidra project was opened. Both evidence binaries were hashed, not modified.
+
+INDEX DISCIPLINE. `git diff --cached --name-only` was empty at the start of
+the write-up and nothing was added to the index.
+
+IMMUTABLE SOURCE HASHES
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EVIDENCE HASHES -- earlier captures, unchanged
+  5cb5d5bc2defbe297b6c80c059ad9f05de1d000084c246d26bb1d5f3534d1078  captures/01-first-launch.pcapng
+  a6e860be5192ce942b95441ed2e75bef1ff41c5e87c98ba56747a0148ac45d54  captures/02-polling-rate.pcap
+  ec45502dcfdf2bb9630572fc194df0e376f4aa2a1043c93240ed2ac8ad14887c  captures/02-polling-rate.pcapng
+  44b0940d71cc0564c75faba6f1d35ab211f6c8721fe4212be5c67b4415110b94  captures/02-polling-rate-owner-facts.txt  (HEAD blob)
+    NOTE: the Windows working copy of that text file hashes 82b10d4c...
+    because core.autocrlf=true rewrote LF as CRLF on checkout. `git show
+    HEAD:<path>` reproduces log 134's hash exactly, so the evidence is
+    intact. Hash TEXT evidence from the blob, not the Windows working copy.
+
+EVIDENCE HASHES -- new, recorded before analysis
+  bb4bf7cc7df317a69c858dc09481d4bf10fc5691dacf9c08b5fe05b9606cce06  captures/03-features.pcap
+  522299eb340e576ad547c79c0f28815c2280044c1d23d16abd27d626c2dc15e8  captures/03b-features.pcap
+  8ec6f807e44ce1dbb28582e97c17ed914279db39c7c33247a2208fd54baac8f8  captures/03b-features-notes.txt
+  macro files (snapshots/03b-features-macros/SHA256SUMS.txt):
+  6b0c11cf4c15f44347a3b580848428522062ae1f39ee8b91c9e7f753d33bea88  Macro03.GMAC
+  8d0aa1bad9090b937939c39f1f6241c7a3fa7250c432a92d3d417b541689b2e9  Macro04.GMAC
+
+TOOLS: tshark 4.6.8, USBPcap 1.5.4.0, Python 3.14.7,
+  tool/decode_capture.py (unchanged) run on both captures: exit 0.
+  03: subject bus 3 addr 6, 237 requests on 0x0d. 03b: subject bus 3 addr 6,
+  172 requests and 172 replies. Every reply echoes its request header.
+
+================================================================================
+THE HEADLINE
+================================================================================
+Five static-handler-proven rows of notes/vendor-command-map.md are now seen
+on the wire, with the owner's UI action and value at the same moment:
+
+  51 00  profile switch        byte 4 = profile number
+  51 50  all-key actuation     byte 4 = actuation in 0.1 mm
+  51 58  all-key rapid trigger bytes 4/5 = press/release
+  51 21  remap, BASE layer     byte 3 = 0x00 (the Fn layer uses 0x9f)
+  54     macro upload          count, assigned key, then 4-byte records
+
+The macro format is decoded completely and checked against Armoury Crate's
+own macro file, down to every delay in milliseconds.
+
+================================================================================
+1. 51 00 -- PROFILE SWITCH (static-handler-proven -> WIRE-OBSERVED)
+================================================================================
+03b, request then 12 00 read-back (reply payload byte 6 = current profile):
+  04:52:11.871  51 00 00 00 03   owner: "2 -> 3"   12 00 reply ... 06 00 03
+  04:52:47.773  51 00 00 00 01   owner: "3 -> 1"   12 00 reply ... 06 00 01
+  05:01:51.253  51 00 00 00 04   owner: profile 4  12 00 reply ... 06 09 04
+Byte 4 is the profile, 1-based as AC shows it, exactly the map's reading. A
+switch is the same seven-frame group, in this order both times:
+51 00, 25 01, 12 03, 12 00, 22 01, 12 12, 50 55 (the commit last).
+03 carries 18 switches, 13 of them in 16 s (04:23:39-04:23:55); the owner
+confirms switching many times there.
+
+NEW, OPEN: 12 00 reply payload byte 5 reads 0x00 on profiles 1-3 and 0x09 on
+profile 4, including BEFORE the first macro was assigned there (05:01:51).
+Its meaning is not established.
+
+================================================================================
+2. 51 50 -- ALL-KEY ACTUATION (static-handler-proven -> WIRE-OBSERVED)
+================================================================================
+  04:53:41.400  51 50 00 00 16   2.2 mm
+  04:54:08.171  51 50 00 00 14   2.0 mm
+  04:54:14.003  51 50 00 00 15   2.1 mm
+Owner: "2.8 to 2.2, then 2.2 to 2.0, then 2.0 to 2.1". Byte 4 is the value in
+0.1 mm; the map's range 1..40 is therefore 0.1..4.0 mm. The starting 2.8 mm
+was itself set in run 03: 04:27:03.561 51 50 00 00 1c. Each write is
+FOLLOWED 60-80 ms later by its own 50 55 commit frame (so are the 51 58
+writes in 03 and the 51 21 remap in 03b).
+AC profile file fp_1: button.analogTrigger.actuation 28 -> 21, and every key's
+button.normal.actuation 28 -> 21 (AC rewrote the per-key copies too).
+
+================================================================================
+3. 51 58 -- ALL-KEY RAPID TRIGGER (static-handler-proven -> WIRE-OBSERVED)
+================================================================================
+Run 03 only:
+  04:27:07.235  51 58 00 00 04 03
+  04:27:10.063  51 58 00 00 04 04
+Within the map's accepted range 1..5 for bytes 4 and 5. The owner did not
+note the values, so WHICH byte is press and WHICH is release is NOT
+confirmed by this capture. Run 03b sent no 51 58.
+
+================================================================================
+4. 51 54 -- PER-KEY FRAMES DURING THE RAPID-TRIGGER TEST (MISMATCH, OPEN)
+================================================================================
+03b, 30 frames at 04:55:47-04:55:53, three shapes, each for the same six keys
+(byte 4: 12 20 21 1f 2e 2c):
+  51 54 00 00 <key> 00 02 00 01     x6
+  51 54 01 00 <key> 00 03 00 01     x12  (two passes)
+  51 54 02 00 <key> 00 03 00 01     x12  (two passes)
+03 has 74 such frames with byte 6 = 02 or 03.
+The AC profile's analogTrigger block at that moment: rapidTrigger 2 -> 3,
+rapidTriggerPress 3, rapidTriggerRelease 3, rapidTriggerSeparateMode 1, and a
+six-entry preKeyRapidTriggerList (1793 1794 769 1538 1795 1024).
+Reading consistent with the owner's "press 0.3, release 0.3": byte 2 selects
+a field (00 mode?, 01 press, 02 release), byte 4 the key, byte 6 the value in
+0.1 mm.
+CONFLICT: the map assigns per-key rapid trigger to 51 59 and describes 51 54
+as a 2-bit mode written from byte 7 at record +0x0a. Byte 7 is 00 in every
+frame here and byte 2 varies, which that description does not use. Either
+the static row is incomplete or 51 54 is not what AC uses for these values.
+NOT RESOLVED; run 03c is designed to separate it.
+
+================================================================================
+5. 51 21 -- REMAP ON THE BASE LAYER (answers protocol.md s9)
+================================================================================
+  03   04:29:10.337  51 21 2f 00 11 00 1c    (source X = 47; target not noted)
+  03b  04:57:49.721  51 21 10 00 39 00 15    owner: "Tab to Right Shift"
+Byte 2 source 0x10 = Tab (protocol.md index 16). BYTE 3 IS 0x00: a base-layer
+remap is the SAME subcommand as the Fn-layer one with 0x00 where the Fn layer
+carries 0x9f, exactly the map's "byte 3 in {0x00, 0x9f}". protocol.md s9
+asked "whether a base-layer write uses a different subcommand than 51 21":
+it does not.
+BYTE 6 IS THE KEY'S CURRENT ACTUATION, not a constant: 0x15 = 2.1 mm in 03b
+(actuation had just been set to 2.1) and 0x1c = 2.8 mm in 03 (set to 2.8 two
+minutes earlier). protocol.md's historical 0x0A was the 1.0 mm default.
+Target 0x0039 = Right Shift. The AC profile stores the same remap as
+keyfunction_0_2 target_key 512 -> 1034, button_function 0 -> 1.
+
+================================================================================
+6. 54 -- THE MACRO UPLOAD, DECODED
+================================================================================
+6.1 When. SAVING a macro in AC's editor sends NOTHING: no vendor frame at all
+between 04:57:49 and 04:59:40 (macro 03 saved 04:58:41 per its file mtime)
+nor between 05:02:34 and 05:03:34 (macro 04 saved 05:03:02). Run 03's two
+macros (Macro01/02, 04:30) never reached the wire and were never assigned.
+The macro goes to the keyboard only when it is ASSIGNED to a key:
+  05:01:59.989  51 18 01 00 00 00
+  05:02:00.253  54 00 0d 00 2e 00 00 00 00 <records>      Macro03 -> Z
+  05:03:43.572  51 18 01 00 00 00
+  05:03:43.648  54 00 0c 00 10 00 00 00 00 <records>      Macro04 -> Tab
+each preceded by a burst of 22-24 `12 12` queries, all replying 12 12 00 00
+01 01 (the map's failure branch of 12 12/12 13).
+
+6.2 Layout. byte 2 = number of 4-byte records INCLUDING the terminator;
+byte 4 = the assigned key as a source index (0x2e = Z = 46, 0x10 = Tab = 16);
+records start at byte 9; each record is
+      <key> <02 press | 01 release> <delay, u16 little-endian, ms>
+and the list ends with 0xff.
+
+6.3 Proof against AC's own file. Macro03.GMAC is plain text:
+      Press,A,30,65 / Delay,119 / Release,A,30,65 / Delay,424 / ...
+Record by record against the wire:
+      1f 02 77 00  Press A,   119 ms      1f 01 a8 01  Release A, 424
+      20 02 63 00  Press S,    99         20 01 1e 02  Release S, 542
+      21 02 41 00  Press D,    65         21 01 7d 0b  Release D, 2941
+      1f 02 6a 00  Press A,   106         1f 01 80 01  Release A, 384
+      32 02 6a 00  Press B,   106         32 01 b2 01  Release B, 434
+      30 02 61 00  Press C,    97         30 01 00 00  Release C, (none)
+      ff
+All eleven delays match. 12 records + ff = 13 = byte 2. Macro04 (A x5)
+matches all ten delays the same way (134 432 122 453 99 474 127 1712 71
+3128); its file then ends "Press,Left Click,301,301" and the wire carries one
+record f0 12 00 00 before ff: 10 + 1 + 1 = 12 = byte 2. So a mouse left-click
+press encodes as f0 12 -- one sample, not generalised.
+The GMAC's own numbers (A 30, S 31, D 32, B 48, C 46) are Windows scan codes
+(A = 0x1E ...), NOT the wire's key numbers.
+
+6.4 51 18 01. The map's "=MS_A" handler (stores bytes 2 and 4). Here it
+always precedes a 54 upload with byte 2 = 01, byte 4 = 00. Consistent with a
+macro-setup step; the name is NOT established.
+
+6.5 In the AC profile the macro is a FILE PATH, not the events:
+  keyfunction_3_7 -> ...\CachedMacroProfiles\Macro03.GMAC  (button_function 3)
+  keyfunction_0_2 -> ...\CachedMacroProfiles\Macro04.GMAC
+The events live only in the .GMAC and, after assignment, on the keyboard.
+
+================================================================================
+7. KEY INDEX TABLE, ROW 3 -- A CONFLICT WITH protocol.md s4
+================================================================================
+protocol.md s4's table is 1-based row-major, "directly confirmed" at seven
+keys and EXTRAPOLATED for the other 61. Section 6.3 names the letters (from
+the GMAC) against the wire numbers:
+  A = 0x1f (31)   S = 0x20 (32)   D = 0x21 (33)   B = 0x32 (50)   C = 0x30 (48)
+The table gives A = 32, S = 33, D = 34 (Caps = 31), B = 50, C = 48.
+Rows 2 and 4 agree (also Tab 16 and Z 46 from section 6.2). ROW 3 IS OFF BY
+ONE: the wire puts A where the table puts Caps. The table's confirmed Enter =
+43 means row 3 cannot simply shift down by one without another key between
+' and Enter or Caps sitting elsewhere. NOT RESOLVED. The six rapid-trigger
+keys (12 20 21 1f 2e 2c) read as W S D A Z + one more under the wire
+numbering, which would suggest the owner's test keys; the owner did not
+record them.
+The macro upload is a SAFE way to map every key: record keys in a macro,
+assign it, and read wire number against the GMAC name. Run 03c uses this.
+
+================================================================================
+8. 51 2c / 51 2d -- LIGHTING (partly observed)
+================================================================================
+51 2c payload byte 5 is BRIGHTNESS IN PERCENT:
+  03b 05:04:54.692  51 2c 00 00 ff 2d 00 ff ff ff   45   owner: "100 to 45"
+  03  04:32:06-22   64 64 64 19 0f 28 41 4b 5f     100 x3, 25 15 40 65 75 95
+                                                  (a slider drag; 95 is also
+                                                  fp_1's stored brightness)
+Every 51 2c is immediately followed by 51 2d 00 00 00 00.
+AC profile fp_4: lighting.keyboard.brightness 95 -> 45 (compared with fp_1),
+backgroundColor and singleColor[0] -> r 255 g 0 b 0.
+Bytes 4 and 6-11 change with effect and colour (ff 00 ff / ff ff ff / 00 ff
+ff shapes), but three changes were made together, so they are NOT decoded.
+The map says 51 2c compares byte 2 against 4, 5 and 7; AC always sent 00.
+
+================================================================================
+9. ARMOURY CRATE BEHAVIOUR WORTH KNOWING
+================================================================================
+- AC's launch in 03b sent 9 frames (12 14/12 16/25 00/12 08/12 00/12 03/
+  22 01/25 01); in 03 the first minute carried 70 frames because the owner
+  was switching profiles. Launch cost is small.
+- fp_2_config was rewritten at 04:44:10, between the runs, nothing recording.
+- fp_1_config was rewritten at 05:06:43, 26 s AFTER capture 03b stopped,
+  while AC was still open. AC writes state after the last UI action; a
+  capture should run until AC is closed.
+- Macros are saved on the host only until assigned (section 6.1).
+
+================================================================================
+10. TOOLS -- FIRST WINDOWS RUNS (tools/README.md asks for these to be logged)
+================================================================================
+10.1 USBPcapCMD is a GUI-subsystem executable. PowerShell's `&` neither waits
+for it nor captures its stdout: the capture-03 prompt returned in 10 ms,
+Ctrl+C never reached it, and `--extcap-interfaces` / `--extcap-config`
+output is empty when read through `&`. `cmd /c` both waits and captures.
+Capture 03 was therefore stopped with Stop-Process from an elevated shell.
+This affects any script that invokes USBPcapCMD with `&`.
+
+10.2 tools/feature-session.ps1 -- NEW, first run = capture 03b. Starts
+USBPcapCMD in the background with 03's flags, finds the keyboard's
+interface by probing \\.\USBPcap1..16 through `cmd /c`, marks each owner
+action by Enter with ms timestamps, snapshots the AC profile folder before
+and after, checks REV before and after, stops the capture itself, verifies
+the pcap magic and prints the sha256. First attempt failed at interface
+detection (10.1); fixed; second attempt produced 03b.
+
+10.3 tools/snap-config.ps1 -- FIRST WINDOWS RUN FAILED, FIXED.
+  error : Cannot find an overload for "ToString" and the argument count: "1"
+  cause : Get-ProfileFiles returned `,$files`. `foreach ($f in
+          Get-ProfileFiles)` then received the whole array as ONE item, so
+          $f.LastWriteTimeUtc was an array and .ToString('o') failed on
+          Object[]. Reproduced with a four-line test of the same shape.
+  fix   : return `$files` so the files are emitted one by one.
+  verify: -AllProfiles -Save wrote a snapshot of the four profiles; a second
+          snapshot with -Diff against the first printed NO CHANGE;
+          `python tool/profile_diff.py --check` -> categories=14 missing=0
+          drift=0; `python tool/windows_tools.py --check` -> in_sync=True
+          drift=0. The PowerShell Get-Flat/Get-Canonical equivalence with the
+          Python twin is still unproven, as tools/README.md says.
+  Snapshots for 03b were therefore raw XML copies only; they were decoded
+  offline (base64 -> percent-decode -> JSON, the same rule) for sections 2,
+  4, 5, 6.5 and 8.
+
+================================================================================
+11. WHAT IS LEFT (input to run 03c)
+================================================================================
+  a. Key index table: every row, especially row 3 (section 7).
+  b. 51 21 target encoding: several known targets on one source.
+  c. 51 54 vs 51 59: one key, distinct press and release values.
+  d. 51 58 byte order: all-key press and release set to DIFFERENT values.
+  e. 51 4f per-key actuation: predicted by the map, never observed.
+  f. Dead zone (deadZoneTop/Bottom in the AC profile): opcode unknown.
+  g. 51 2c bytes 4 and 6-11: one lighting property changed at a time.
+  h. 12 00 reply byte 5 (0x09 on profile 4).
+  i. What a remap/macro "restore default" sends.
+notes/vendor-command-map.md is generated ("Do not edit by hand"); its
+confidence labels for 51 00, 51 50, 51 58 and 51 21's base layer should be
+raised by its generator in the Linux environment, citing this log.
+
+FILES WRITTEN IN THIS STEP
+  captures/03-features.pcap, 03b-features.pcap, 03b-features-notes.txt
+  captures/03-features-owner-facts.txt, 03b-features-owner-facts.txt
+  snapshots/03b-features-before-raw/, -after-raw/, -macros/
+  tools/feature-session.ps1 (new), tools/snap-config.ps1 (fix)
+  logs/135-feature-capture-validation.txt (this file)
+  WINDOWS-CAPTURE-03-features.md carries the owner's own run-03 notes
+  (edited by the owner, not by this session).

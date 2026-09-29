@@ -1,0 +1,53 @@
+﻿# 03c-deep -- feature validation run (plan: deep), written by tools/feature-session.ps1
+host              : DESKTOP-TTKJIMR
+session start     : 2026-09-29 05:28:30.469 (local, UTC-06:00)
+keyboard fw before: REV_0159
+AC version        : 6.5.14.0
+AC open at start  : no
+interface         : \\.\USBPcap3
+command           : USBPcapCMD -d \\.\USBPcap3 -A --inject-descriptors -s 65535 -b 134217728 -o C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\captures\03c-deep.pcap
+profiles before   : saved 12 files -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03c-deep-before-raw
+decoded before    : snap-config exit 0 -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03c-deep-before.json
+capture started   : 2026-09-29 05:28:35.851  pid(s) 28400  size 110412 -> 201163 bytes
+
+# actions (time = when Enter was pressed, just AFTER the action)
+ACTION 0   05:29:39.397  Open Armoury Crate and go to the Falchion Ace HFX page. Mark when it has fully loaded.  | 4
+ACTION 1a  05:30:06.142  Switch to profile 2 (once).  | 
+ACTION 1b  05:30:31.133  Switch to profile 3 (once).  | 
+ACTION 1c  05:30:55.920  Switch to profile 4 (once).  | 
+ACTION 1d  05:31:20.741  Switch to profile 1 (once). STAY ON PROFILE 1 for every step below.  | 
+ACTION 2a  05:33:23.143  PER-KEY actuation (not global): select row 3 keys ONE AT A TIME, left to right: Caps, A, S, D, F, G, H, J, K, L, ;, ', Enter. Set them to 1.5 mm and Apply.  | all the keys you told me accepted.
+ACTION 2b  05:34:42.660  PER-KEY actuation: select the bottom row ONE AT A TIME, left to right (Ctrl, Win, Alt, Space, Alt, then any others it lets you pick, then Left, Down, Right). Set 1.5 mm, Apply.  | CTRL, WIN,ALT, SPACE, ALT, CTRL, LEFT, DOWN, RIGHT.  All accepted 
+ACTION 2c  05:35:49.178  Put per-key actuation BACK: set all those keys back to the global value (or reset per-key actuation). Apply.  | I press the button in the ui that says "reset"
+ACTION 3a  05:36:24.673  Remap the Ins key -> A. Apply.  | I remap "ins" to "a". In the ui, there is an option when you click on a key, the option says "keyboard function" and it allows you to remap the key 
+ACTION 3b  05:37:58.092  Remap the same key -> 1 (the digit). Apply.  | 
+ACTION 3c  05:38:25.702  Remap the same key -> Space. Apply.  | 
+ACTION 3d  05:38:52.138  Remap the same key -> Right Shift. Apply.  | 
+ACTION 3e  05:39:18.864  Restore that key to its DEFAULT (reset/restore button). Apply.  | Default. When i click on a key, there is a select element on the right. That select element contains the options: "Default", "Dynamic Keystrokes", "MOd tap", "Keyboard function", "mouse function", "copilot", "macro", "Multimedia", "windows shortcut". 
+ACTION 3f  05:41:26.030  Restore Tab to DEFAULT (it is still remapped to Right Shift from run 03b). Apply.  | 
+ACTION 4a  05:42:54.337  Rapid trigger, ALL keys (global): set press 0.2 mm and release 0.5 mm (different on purpose). Apply.  | they were 0.2 for both, now after you told me are press:0.2 (did not change) and release:0.5. I noticed i need to activate the option "independent press and release sensitivity settings" in order to see the options "press"/release, if it is off, i just see a single option "sensitivity"
+ACTION 4b  05:46:46.582  Rapid trigger, PER-KEY: select ONLY the O key. Turn its rapid trigger ON with press 0.1 and release 0.4. Apply.  | i only select the key "0", and i deselected the others a,s,d,w. NOw there is only one with the values press - 0.1, release - 0.4
+ACTION 4c  05:48:13.062  Per-key: turn rapid trigger OFF for the O key. Apply.  | 
+ACTION 4d  05:49:01.751  Global rapid trigger back to press 0.3 / release 0.3. Apply.  | 
+ACTION 5a  05:49:45.260  Dead zone: change the TOP dead zone one step. Apply.  | 0.2 to 0.3
+ACTION 5b  05:50:09.957  Dead zone: change the BOTTOM dead zone one step. Apply.  | 0.2 to 0.3
+ACTION 5c  05:50:37.841  Dead zone: put both back. Apply.  | 
+ACTION 6a  05:52:23.927  Record a macro named ROWS: type slowly  q w e r t y u i o p  a s d f g h j k l  z x c v b n m  1 2 3 4 5 6 7 8 9 0. Stop recording with the STOP BUTTON (keyboard), not a mouse click if you can. Save.  | i dont think so, but i needed to use the mouse if not i the key i would press to stop would be recorded in the macro 
+ACTION 6b  05:53:28.741  Assign macro ROWS to the Ins key. Apply.  | 
+ACTION 6c  05:53:53.429  Restore the Ins key to DEFAULT (unassign the macro). Apply.  | 
+ACTION 7a  05:54:32.684  Lighting: set effect to STATIC (if it already is, pick another effect, then Static).  | it was static, so i changed it for breathing and then static again 
+ACTION 7b  05:55:10.625  Lighting: set colour to pure GREEN (R0 G255 B0).  | 
+ACTION 7c  05:55:44.692  Lighting: set colour to pure BLUE (R0 G0 B255).  | 
+ACTION 7d  05:56:17.521  Lighting: brightness ONE step or type an exact value.  | 95 to 100 
+ACTION 7e  05:56:56.921  Lighting: switch to an ANIMATED effect (e.g. Rainbow/Breathing) and change its SPEED once.  | breathing, from "normal" to "fast"
+ACTION 8   05:57:30.485  CLOSE Armoury Crate fully: window AND tray icon. Mark once it is gone.  | 
+
+update prompt     : yes, there is a prompt to update the keyboard 
+unexpected        : 
+capture stopped   : 2026-09-29 05:59:12.701  (Stop-Process by script)
+pcap bytes        : 81789981
+pcap sha256       : d9aa029d5531df00fba587e455b449c6ef704cc3812fadf17b9121c95fa2e029
+keyboard fw after : REV_0159
+profiles after    : saved 13 files -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03c-deep-after-raw
+decoded after     : snap-config exit 0 -> C:\Users\ltsc\Documents\git\scripts\keyboard\falchion-re\snapshots\03c-deep-after.json
+session end       : 2026-09-29 05:59:17.157

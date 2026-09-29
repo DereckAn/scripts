@@ -1,0 +1,140 @@
+LOG 137 -- CAPTURE 03d: 51 4f PER-KEY ACTUATION ON THE WIRE, THE LEVER REPORT, AND THE LAST KEY IDS
+Date: 2026-09-29
+Host: Windows capture host (DESKTOP-TTKJIMR), Claude Code session with the owner.
+Scope: one passive capture (03d, tools/feature-session.ps1 -Plan finish) of
+Armoury Crate in normal use and its offline decode. Closes most of log 136
+section 5.
+
+SAFETY. This session sent NO frame to the keyboard and constructed none.
+Every keyboard write below was sent by ARMOURY CRATE 6.5.14.0 while the
+OWNER used its UI. A keyboard-update prompt appeared and was declined;
+REV_0159 before and after. tools/send.ps1 was not run.
+
+INDEX DISCIPLINE. No index-modifying git command was run by this session.
+The index held 30 staged paths at write-up, staged outside this session;
+left as found.
+
+IMMUTABLE SOURCE HASHES -- unchanged from log 135
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d  dumps/vendor/M605_V01_00_58.bin
+
+EVIDENCE HASHES
+  d9aa029d5531df00fba587e455b449c6ef704cc3812fadf17b9121c95fa2e029  captures/03c-deep.pcap      (unchanged)
+  6c2abea3f6b60b5c7b1e1099333f32f09514f4d66e08e8aad482dfca83dace6e  captures/03d-finish.pcap    (new)
+  7910e6ad914acdabd4c946a6e1d32379ab35eac74a23b5b1cf947bb576f200a5  captures/03d-finish-notes.txt
+  af14c0fd11a9b10fbe4189c3d7b55c76b487d057d693de70d044ac1c6708b771  snapshots/03d-finish-before.json
+  09cfd93aebd40aa33ba9f9327acfde8c23d700fef87341a81e6cf5c7ae756eeb  snapshots/03d-finish-after.json
+  75376525cb846589e8cfd26e253f666e131bd20bb88f84ad51359d437370be6d  snapshots/03d-finish-after-raw/macros/KEYS2.GMAC
+  (every other snapshot file: snapshots/03d-finish-*-raw/SHA256SUMS.txt)
+
+CAPTURE 03d: 2026-09-29 06:15:56.420732 -> 06:27:16.777917 local, 30673485
+bytes. tool/decode_capture.py: subject bus 3 address 6, 111 requests, 111
+replies. 10 owner actions, all marked (captures/03d-finish-notes.txt).
+
+OWNER CONTEXT (from the owner's screenshot of AC's Trigger page, this
+session). The left panel holds "Global Actuation Point Settings",
+"Individual key actuation point settings: Edit" and the global top/bottom
+dead zones. The right panel holds "Rapid Trigger ON/OFF" (display only),
+"Independent press and release sensitivity settings", Press, Release and
+"Assign the keys for Rapid Trigger: Edit". Rapid trigger is switched by
+the physical LEVER. So log 136 s5a is answered: in 03c action 2a the owner
+worked in the RAPID-TRIGGER panel (assigning row 3 and setting 1.5 mm),
+not in per-key actuation, which is why no 51 4f appeared there.
+
+================================================================================
+1. 51 4f -- PER-KEY ACTUATION (static-handler-proven -> WIRE-OBSERVED)
+================================================================================
+  06:18:39.982  51 4f 00 00 1a 00 0f   P (AT-101 26) -> 1.5 mm   action 2a
+  06:20:06.801  51 4f 00 00 27 00 1e   L (AT-101 39) -> 3.0 mm   action 2b
+  06:20:38.802  51 52 01 00 0a 00      the Edit popup's Reset (owner: "a mistake")
+  06:21:00.488  51 4f 00 00 1a 00 0f   P -> 1.5 again
+  06:21:08.226  51 4f 00 00 1a 00 1e   P -> 3.0
+  06:21:08.298  51 4f 00 00 27 00 1e   L -> 3.0
+  06:21:33.352  51 4f 00 00 1a 00 0a   P -> 1.0   action 2c (owner set both
+  06:21:33.424  51 4f 00 00 27 00 0a   L -> 1.0    to 1.0 mm, the global value)
+Byte 4 = key (AT-101), byte 5 = layer (00 base), byte 6 = actuation in
+0.1 mm -- exactly the map's reading of 0x4f. Each write is followed by a
+50 55 commit. Selecting two keys sends one frame per key.
+
+================================================================================
+2. 51 52 -- THE RESET SELECTOR (extends log 136 s3.1)
+================================================================================
+  03c 05:35:40  51 52 03 00 0a 02 02 00 02   big per-key "Reset" (Trigger page)
+  03d 06:20:38  51 52 01 00 0a 00            Reset inside the per-key
+                                              actuation Edit popup
+Byte 2 selects the scope: 01 = actuation only (restored to 0x0a = 1.0 mm),
+03 = actuation + rapid trigger (0.2/0.2) + a third field (02). Consistent
+with the map's "byte 2 selects one of five paths" for 0x52. Values 00, 02
+and 04 of byte 2 not observed.
+
+================================================================================
+3. THE RAPID-TRIGGER LEVER IS REPORTED BY THE KEYBOARD
+================================================================================
+The lever produces NO vendor OUT frame. The keyboard itself sends an input
+report on endpoint 0x8c:
+      03 76 00 00 <state>     state 01 = ON, 00 = OFF
+  03d 06:17:40.526  ... 01   owner marked "off -> on" at 06:17:42.368
+      06:18:02.649  ... 00   owner marked "off"       at 06:18:03.618
+Every 03 76 in the four captures:
+  03   04:28:14 (01)  04:31:24 (01)
+  03b  04:55:55-04:56:03  00 01 00 01 00 01  (owner: "turned it on and off
+       several times", action 4)   05:01:51 (01, on the switch to profile 4)
+  03c  05:42:11 (00)  05:42:12 (01)  05:47:49 (00)
+  03d  as above
+The keyboard re-sends it after a profile switch (03b 05:01:51, 03 04:31:24
+within 0.02 s of AC's 51 00). This is how AC's "Rapid Trigger ON/OFF" label
+knows the state. Endpoint 0x8c's other report is 03 71, a key bitmap that
+tracks typing.
+Also in 03 only: keyboard-originated 03 61 and 03 70 reports during the
+owner's rapid profile switching (04:21:57-04:23:55) and at 04:32:23-27.
+03 70 byte 4 took the single-bit values 02 04 08 10 20 and, at 04:32, byte
+2 = 40. They do NOT pair one-to-one with AC's 51 00: 26 of the 47
+single-bit events, and all 9 byte-2 = 40 events, have no 51 00 within 1 s.
+Whether they are Fn-layer hotkey events is NOT established.
+
+================================================================================
+4. THE LAST KEY IDS (log 136 s5b)
+================================================================================
+KEYS2.GMAC names 18 presses; the upload (3 frames: 13, 13 + continuation,
+11 + continuation) carries 18 press records. Paired:
+  - 12  = 13  [ 27  ] 28  ; 40  ' 41  , 53  . 54  / 55
+  Backspace 15  Del 76  PageUp 85  PageDown 86  Up 83  CapsLock 30  Esc 110
+  \ 42   Enter 108
+All are AT-101 key positions. BACKSPACE IS 15: notes/protocol.md s4's
+"Backspace = 14, directly confirmed" is WRONG (log 136 s1.6). Esc is 110.
+Two AC quirks, not contradictions: a macro is recorded from HOST key events,
+which carry no position, and AC maps "\" to 42 (the ISO key left of Enter)
+and "Enter" to 108 (KEYPAD Enter). The physical Enter is 43 as a remap
+SOURCE (protocol.md, captured from AC remapping Enter). So in a macro the
+number means "the key to type", chosen by AC; elsewhere it is the physical
+position. The owner pressed Caps twice; the GMAC and the wire carry one
+Caps press/release pair.
+
+================================================================================
+5. KEY ID TABLE, AS NOW OBSERVED ON THE WIRE (AT-101 numbering)
+================================================================================
+  Esc 110   1..0 2..11   - 12   = 13   Backspace 15   Ins 75
+  Tab 16    Q..P 17..26  [ 27   ] 28   \ 42 (macro)   Del 76
+  Caps 30   A..L 31..39  ; 40   ' 41   Enter 43 (remap) / 108 (macro)  PgUp 85
+  LShift 44 Z..M 46..52  , 53   . 54   / 55   RShift 57   Up 83   PgDn 86
+  LCtrl 58  Win 59  LAlt 60  Space 61  RAlt 62  RCtrl 64
+  Left 79   Down 84   Right 89
+Not observed: Fn, the ROG key, the physical position of \ as a remap source.
+
+================================================================================
+6. STILL OPEN AFTER 03d
+================================================================================
+  a. 12 00 reply payload byte 5 (0x09 once, profile 4 in 03b; 0x00 since).
+  b. 51 2c animated-layout bytes 7-9; 51 18 01's meaning.
+  c. 03 61 / 03 70 keyboard-originated reports (s3).
+  d. Static-side, for the Linux environment: 51 58 is the DEAD ZONE on the
+     wire against the map's "rapid trigger" global-word fields (log 136
+     s2.1); 51 54 is per-key rapid trigger against the map's 51 59; regenerate
+     notes/vendor-command-map.md with 51 4f and 51 52 wire-observed too.
+
+FILES WRITTEN IN THIS STEP
+  captures/03d-finish.pcap, 03d-finish-notes.txt (by feature-session.ps1)
+  captures/03d-finish-owner-facts.txt
+  snapshots/03d-finish-before-raw/, -after-raw/, -before.json, -after.json
+  tools/feature-session.ps1 (plan `finish` added, now the default; LF only)
+  logs/137-finish-capture-per-key-actuation-and-lever.txt (this file)

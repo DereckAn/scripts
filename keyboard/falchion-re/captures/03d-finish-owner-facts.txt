@@ -1,0 +1,38 @@
+OWNER-PROVIDED FACTS -- finishing capture 03d (run 4)
+(written on the Windows capture host, 2026-09-29; carry this file over with
+the pcap and 03d-finish-notes.txt)
+
+THE MACHINE-WRITTEN RECORD IS 03d-finish-notes.txt
+  tools/feature-session.ps1 -Plan finish, 10 actions, times = the owner
+  pressing Enter just AFTER each action, with the owner's words.
+
+HOST / VERSIONS
+  Same as captures/03-features-owner-facts.txt. Armoury Crate 6.5.14.0, UI
+  closed at start. Firmware REV_0159 before and after. Keyboard update
+  prompt appeared; declined; NOT updated.
+
+CAPTURE
+  File     : captures/03d-finish.pcap
+  sha256   : 6c2abea3f6b60b5c7b1e1099333f32f09514f4d66e08e8aad482dfca83dace6e
+  bytes    : 30673485
+  started  : 06:16:01.433; stopped 06:27:16.780 by the script after AC was
+             closed (action 4, 06:26:19) and a 30 s idle.
+
+AC'S TRIGGER PAGE (owner's screenshot, shared in the session)
+  Tabs "Trigger" and "Speed Tap"; a Reset button; an "Actuation Point"
+  view selector over a keyboard map (W A S D highlighted = the rapid-trigger
+  keys). Left: Global Actuation Point (1 mm), "Individual key actuation
+  point settings: Edit", Global Top/Bottom Dead Zone (0.2/0.2 mm). Right:
+  "Rapid Trigger OFF" (the lever state), "Independent press and release
+  sensitivity settings" ON, Press 0.3, Release 0.3, "Assign the keys for
+  Rapid Trigger: Edit". There is no global rapid-trigger mode: Press and
+  Release apply only to the assigned keys; ON/OFF is the physical lever.
+
+OWNER CLARIFICATIONS
+  - Action 0: rapid trigger showed OFF. 1a: OFF -> ON. 1b: back to OFF.
+  - Action 2a: the Edit screen is a keyboard map to select keys plus a
+    scroll selector for the actuation point of the selected keys.
+  - Action 2c: the owner first pressed the Reset button INSIDE the popup
+    by mistake, re-entered the values, then set P and L to 1.0 mm (the
+    global value) rather than removing them.
+  - Action 3a: everything recorded, including Esc.
