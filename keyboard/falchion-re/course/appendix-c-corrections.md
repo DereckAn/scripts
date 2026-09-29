@@ -49,6 +49,11 @@ Nearly every correction below teaches one of these ten habits:
 | `profile_diff.snapshot_diff` added/removed labels | Reversed | log 132 | M7 |
 | `usb.device_address` is a device identity | An address is scoped to its bus. Address 1 was a hub on bus 2 **and** a receiver on bus 3. | log 132 | M9 |
 | "Address reuse is refused" | Only a *descriptor-identity conflict* is detectable | log 133 | M4 |
+| The wire key index is a 1..68 row-major count | It is the **AT-101 key position** (A 31, Space 61, Ins 75). The table was extrapolated from seven keys. | log 136 | M4 |
+| "Backspace = 14, directly confirmed" | 15 on the wire | log 137 | M3 |
+| Row 3 of the key table is off by one (log 135) | Not a row error: AT-101 leaves a gap there for Caps | log 136 | M5 |
+| `snap-config.ps1` works (never run on Windows) | First run failed: `,$files` handed `foreach` the whole array as one item | log 135 | M7 |
+| Ctrl+C stops a USBPcapCMD capture started from PowerShell | USBPcapCMD is a GUI-subsystem program; `&` doesn't wait and Ctrl+C never reaches it | log 135 | M1 |
 
 ## Lesson 8: Ghidra
 | What was believed | What was true | Caught by | Moral |
@@ -165,3 +170,5 @@ Nearly every correction below teaches one of these ten habits:
 | An unscoped census over six Ghidra exports | It merged two releases, so one writer looked like five | log 128 | M9 |
 | The first builder draft refusing every patch | Record address fields carry the `0x60000000` base. Translation now happens once. | log 116 | M2 |
 | The Phase 8 check "20 bytes differ" | 19 differ and 1 coincides (`F`). The invariant is containment, not a count. | log 117 | M7 |
+| `51 58` is all-key rapid trigger (static map, then log 135) | On the wire it is the **dead zone**: byte 4 top, byte 5 bottom | log 136 | M4 |
+| `51 54` is a 2-bit per-key mode; per-key rapid trigger is `51 59` | Armoury Crate uses `51 54` for per-key rapid trigger and never sends `51 59` | log 136 | M4 |

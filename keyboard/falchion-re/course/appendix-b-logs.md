@@ -154,3 +154,10 @@ Logs are never edited after the fact. When a log turned out to be wrong, a **lat
 | [132](../logs/132-provenance-boundary-repair-and-bus-scoped-decode.txt) | Provenance, the code the last fix deleted, and bus-scoped USB identity |
 | [133](../logs/133-path-correlated-proof-and-inert-seed-remover.txt) | Path-correlated proof, and the seed remover made inert |
 | [134](../logs/134-pointer-alias-invalidation.txt) | Alias invalidation: "an identity is a name, not an address" |
+
+## After the course: Armoury Crate on the wire (2026-09-29, Windows host)
+| Log | What it shows |
+|---|---|
+| [135](../logs/135-feature-capture-validation.txt) | Captures 03 and 03b: `51 00`, `51 50`, base-layer `51 21` and the `54` macro upload on the wire; two tool bugs found on their first Windows run |
+| [136](../logs/136-deep-capture-key-ids-and-corrections.txt) | Capture 03c: the key number is the AT-101 key position; `51 58` is the dead zone and `51 54` per-key rapid trigger (correcting 135) |
+| [137](../logs/137-finish-capture-per-key-actuation-and-lever.txt) | Capture 03d: `51 4f` per-key actuation, the lever's own `03 76` report, and the last key numbers (Backspace 15) |

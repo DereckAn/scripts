@@ -136,6 +136,10 @@ capture itself, checks the pcap magic and `REV_xxxx` before and after, and write
 `captures/<Name>-notes.txt`. Existing outputs are refused. First Windows runs: logs 135
 (03b), 136 (03c), 137 (03d).
 
+Decode the result offline with `tool/decode_feature_capture.py` (`pairs`, `macro`,
+`lever`, `profiles`); it regenerates every table in logs 135-137 and is tested by
+`tool/test_decode_feature_capture.py`.
+
 ## capture.ps1 / decode.ps1 / haltrace.ps1
 
 ```powershell

@@ -4006,6 +4006,81 @@ experiment plan those runs belong to; it is passive observation of normal
 Armoury Crate use and it authorises neither `send.ps1` nor any firmware
 operation.
 
+**Update, 2026-09-29 (logs 135–137).** `snap-config.ps1` has now run on the
+Windows host: its first run failed (`,$files` handed `foreach` the whole array
+as one item) and was fixed; `-AllProfiles` against the real folder, a snapshot
+and a `NO CHANGE` self-diff then worked, and both twin `--check`s still pass.
+`Get-FileHash` and `Get-PnpDevice` ran inside the new `feature-session.ps1`.
+Still not executed: `capture.ps1`, `decode.ps1`, `haltrace.ps1`, and the
+`Get-Flat`/`Get-Canonical` equivalence with the Python twin.
+
+## Armoury Crate on the wire: feature captures 03–03d (logs 135–137)
+
+On 2026-09-29 the owner used Armoury Crate 6.5.14.0 normally while four
+passive USBPcap captures ran on the Windows host: `03-features`,
+`03b-features`, `03c-deep` and `03d-finish`. Every keyboard write in them was
+sent by Armoury Crate at the owner's request; the session sent nothing, a
+keyboard-update prompt was declined each time, and the firmware read
+`REV_0159` before and after every run. Each run from 03b on has a millisecond
+action log (`captures/*-notes.txt`, written by `tools/feature-session.ps1`),
+an owner-facts file, and before/after copies of the AC profiles and `.GMAC`
+macro files. `tool/decode_feature_capture.py` regenerates every table below
+from that evidence.
+
+### The key number is the AT-101 key position
+
+One numbering addresses a key everywhere on the wire — remap source and
+target, macro events and the macro's assigned key, per-key rapid trigger,
+per-key actuation and Speed Tap — and it is the IBM **AT-101 key position
+number**: A 31, Space 61, Backspace 15, Enter 43, Ins 75, Left 79, Esc 110.
+Proven on every key the four captures carry (log 137 §5 has the table).
+**`notes/protocol.md` §4's 1..68 row-major table is superseded.** It was
+extrapolated from seven points; its "Backspace = 14, directly confirmed" is
+wrong (15), and it runs off by one wherever AT-101 leaves a gap. In a *macro*
+the number is the key AC chose to type from the host event, so `\` is sent as
+42 and Enter as 108 (keypad Enter); as a remap source Enter is 43.
+
+### Commands confirmed on the wire
+
+| command | meaning on the wire | static map | log |
+|---|---|---|---|
+| `51 00` | profile switch, byte 4 = profile number | agrees | 135 |
+| `51 50` | global actuation, byte 4 = mm × 10 | agrees | 135 |
+| `51 4f` | per-key actuation, byte 4 key, byte 6 mm × 10 | agrees exactly | 137 |
+| `51 21` | remap, byte 2 source, byte 3 `00` base / `9f` Fn, bytes 4–5 target (`ff` = default), byte 6 the key's current actuation | agrees; answers protocol.md §9 | 135–136 |
+| `51 54` | per-key rapid trigger: byte 2 `01` press / `02` release / `00` combined, byte 4 key, byte 6 mm × 10, byte 8 on/off | **disagrees** (map: a 2-bit mode; per-key rapid trigger is `51 59`, never sent) | 136 |
+| `51 58` | **dead zone**, byte 4 top, byte 5 bottom, mm × 10 | **disagrees** (map: all-key rapid trigger) | 136 |
+| `51 52` | the Reset buttons, byte 2 = scope (`01` actuation, `03` actuation + rapid trigger) | was located-only | 136–137 |
+| `51 55` | Speed Tap key pair (A, D) | "a key pair, feature unknown" | 136 |
+| `51 56` | sent once, just before `51 55` | map: settings factory default of block D | 136 |
+| `51 2c` / `51 2d` | lighting: byte 5 brightness %, bytes 9–11 RGB, byte 4 speed; `51 2d` byte 4 effect | partly | 135–136 |
+| `54` | macro upload: byte 2 records in this frame, byte 3 continuation, byte 4 assigned key, then `<key> <02 press / 01 release> <delay u16 ms>`, `ff` end | was undecoded | 135–136 |
+
+Every write is followed by its own `50 55` commit. A macro reaches the keyboard
+**only when it is assigned** to a key, never when it is saved in AC's editor;
+the upload matches AC's `.GMAC` file delay for delay.
+
+### Behaviour worth knowing
+
+- **The rapid-trigger lever is reported by the keyboard**, not set by AC: input
+  report `03 76 00 00 <01 on / 00 off>` on endpoint `0x8c`, matched to every
+  toggle in all four captures, and re-sent after a profile switch.
+- **Rapid trigger has no global mode in AC.** Press and Release apply to the
+  keys assigned in "Assign the keys for Rapid Trigger", and a change is sent
+  as one `51 54` frame per assigned key.
+- AC writes profile files after the last UI action (once 26 s after a
+  capture stopped), so a capture should run until AC is closed.
+- USBPcapCMD is a GUI-subsystem program: PowerShell's `&` neither waits for it
+  nor captures its output, so Ctrl+C cannot stop a capture started that way.
+
+### Still open
+
+`12 00` reply byte 5 (0x09 once, 0x00 since); the animated-lighting bytes of
+`51 2c`; `51 18 01` (precedes every macro upload); keyboard-originated
+`03 61`/`03 70` reports; and, on the static side, why `51 58` and `51 54`
+disagree with `notes/vendor-command-map.md`, which is generated and should be
+regenerated from logs 135–137 in the Linux environment.
+
 ## Uncertain or superseded assumptions
 
 - **USB backup via proprietary HID:** static bootloader analysis and log 92
@@ -4064,7 +4139,9 @@ All other probes read sysfs, udev metadata, package metadata, kernel logs, repos
 4. **Preserve passive protocol evidence:** if the earlier Windows PCAPs still
    exist, copy and hash them. Future captures should observe enumeration and
    Armoury Crate traffic without replaying commands. This may reveal the updater
-   handshake and whether readback commands exist.
+   handshake and whether readback commands exist. *Done for Armoury Crate's
+   settings surface in captures 03–03d (logs 135–137); the updater handshake
+   is still unobserved, because every update prompt was declined.*
 5. **Plan hardware preservation before modification:** acquire a suitable 3.3 V SPI programmer and MCU debug probe, map power/isolation requirements, and make verified read-only dumps. Never issue SPI Write Enable (`0x06`), Program, or Erase commands. Multiple identical reads plus SHA-256 comparison should be required before accepting a dump.
 6. **Do not assume U5 is sufficient:** determine whether executable code also resides inside the SNC73270 and whether its debug/readout protection permits a non-destructive backup.
 7. **Candidate B integrity is solved (logs 75–76) and the runtime entry is

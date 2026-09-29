@@ -155,6 +155,13 @@ preservation-safe.
 
 ## 4. Key indices
 
+> **Superseded, 2026-09-29 (logs 136–137).** On the wire every key number —
+> source, target, macro, per-key rapid trigger and actuation, Speed Tap — is
+> the **AT-101 key position** (A 31, Space 61, Backspace 15, Ins 75). The
+> row-major table below matches AT-101 only where the rows have no gaps;
+> "Backspace = 14" is wrong. See FINDINGS.md and log 137 §5 for the observed
+> table. This section is kept as the historical record.
+
 ### Source index — VERIFIED **[V][C]**
 
 A **1-based row-major count** over the 68 physical keys, reading the layout left-to-right,

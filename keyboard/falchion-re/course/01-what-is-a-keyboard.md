@@ -198,6 +198,8 @@ row 5   Ctrl=59  Win=60  Alt=61  Space=62  Alt=63  Fn=64  ROG=65
         Left=66  Down=67  Right=68
 ```
 
+> **Correction, after the course (logs 136–137):** the real wire numbers are the **AT-101 key positions** (A 31, Space 61, Backspace 15, Ins 75). This table is kept because Lesson 5 tells how it was built and why it was only "strongly inferred".
+
 Count the rows: 15 + 15 + 14 + 14 + 10 = 68. But be careful about how much of this table was *tested*. Only seven entries were directly confirmed: Backspace=14, Q=17, I=24, O=25, Enter=43, N=51, M=52. "The remaining 61 entries are extrapolated from the same row-major rule and are consistent with all seven confirmed points, but have not each been individually exercised." Those tests were done in the earlier Windows work, whose raw captures are missing, so they are historical observations (FINDINGS "Earlier protocol research and evidence status").
 
 **Scheme 2: the Armoury Crate config file.** In the Windows app's saved profile, each key is `(row << 8) | col`. The base layer uses columns 0–11 and the Fn layer uses the same column plus 50. So **M** is wire index `52`, but `row 4 / col 5` on the base layer and `row 4 / col 55` on the Fn layer. The file holds 136 entries, which is 68 keys × 2 layers.

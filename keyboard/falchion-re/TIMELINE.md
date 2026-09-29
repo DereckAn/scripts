@@ -3361,12 +3361,78 @@ fix. Recorded as nothing-to-do rather than reported as a fix.
 1391 offline tests pass, logs 131-133 are byte-identical, both firmware hashes
 and all four capture hashes are unchanged, and no device was accessed.
 
+## 2026-09-29 — Armoury Crate, watched instead of read (log 135)
+
+The first session on the Windows host itself. The owner used Armoury Crate
+6.5.14.0 normally while USBPcap recorded; the session sent **no frame**, a
+keyboard-update prompt was declined, and `REV_0159` held before and after.
+
+**Capture 03 went by the runbook and nearly lost its stop.** USBPcapCMD turned
+out to be a GUI-subsystem program: PowerShell returned to the prompt in 10 ms,
+Ctrl+C never reached the capture, and it had to be ended with `Stop-Process`
+from an elevated shell. So the second run used a new script,
+`tools/feature-session.ps1`, which starts and stops the capture itself and
+marks each owner action to the millisecond with Enter. Its own first attempt
+failed at interface detection for the same reason, which is how the cause was
+found. `snap-config.ps1` failed its first Windows run too (`,$files`), and was
+fixed.
+
+**What the wire showed.** Five of the static map's decoded rows appeared with
+the owner's value at the same instant: `51 00` profile, `51 50` actuation in
+0.1 mm (2.2, 2.0, 2.1 against the owner's "2.8 → 2.2 → 2.0 → 2.1"), a
+base-layer `51 21` (byte 3 `00`, which answers protocol.md §9), and the `54`
+macro upload, decoded against AC's own `.GMAC` file delay for delay. Saving a
+macro sends nothing; assigning it sends it.
+
+**Two readings in this log were wrong**, and log 136 corrects them rather than
+editing it: `51 58` is not rapid trigger, and the "row 3 off by one" was not a
+row problem.
+
+## 2026-09-29 — The keyboard counts keys the way IBM did (log 136)
+
+Run 03c was built around what log 135 left open. Two ideas paid off. Selecting
+keys one at a time emits one frame per key in click order, so the bottom row
+came out as `3a 3b 3c 3d 3e 40 4f 54 59` — and a 36-key macro typed in a known
+order gave every letter and digit. Together with the remaps, every number is
+an **AT-101 key position**: A 31, Space 61, Ins 75, the arrows 79/84/89.
+protocol.md's 1..68 table had been extrapolated from seven keys, and its
+"row 3 off by one" was simply AT-101's gap for Caps.
+
+The corrections: `51 58` is the **dead zone** (the owner's 0.2 → 0.3 on top and
+then bottom, byte for byte), and `51 54` is **per-key rapid trigger**, with a
+field selector in byte 2 and an on/off flag in byte 8, proven on one key with
+press 0.1 and release 0.4. Both disagree with the static map's labels; that is
+now a question for the static side, not the wire. New on the wire: `51 52`
+(AC's Reset), `51 55` (the Speed Tap pair A/D, re-sent by AC unprompted after
+`51 56`), multi-frame macro uploads, and the lighting colour and speed bytes.
+
+## 2026-09-29 — The lever, and per-key actuation at last (log 137)
+
+The owner's screenshot of AC's Trigger page explained a puzzle from 03c: there
+is no global rapid trigger in AC — Press and Release apply to the keys assigned
+to it — and the per-key "1.5 mm" of 03c had been set in the rapid-trigger panel,
+not in per-key actuation. Run 03d did per-key actuation properly, and `51 4f`
+appeared exactly as the static map reads it. The rapid-trigger **lever** sends
+no command at all: the keyboard reports it itself, `03 76 00 00 <01/00>` on
+endpoint `0x8c`, and every toggle across the four captures matches. The last
+unseen keys came from one more macro: Backspace is **15**, not protocol.md's
+"directly confirmed" 14; Esc is 110.
+
+The analysis was then moved out of session scratch files into
+`tool/decode_feature_capture.py` with eleven tests on the preserved evidence,
+so every table in logs 135–137 can be regenerated.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:
 
 | Item | Correction |
 |---|---|
+| Log 135's "`51 58` = all-key rapid trigger" | It is the dead zone: byte 4 top, byte 5 bottom, mm × 10, proven by the owner's single-step changes (log 136) |
+| Log 135's "row 3 of the key table is off by one" | Not a row error. The wire key number is the AT-101 key position everywhere; protocol.md §4's 1..68 table is superseded (log 136) |
+| protocol.md's "Backspace = 14, directly confirmed" | 15 on the wire, the AT-101 position (log 137) |
+| Log 136's "per-key actuation did not appear in 03c" read as "AC may encode it through `51 54`" | The owner had used the rapid-trigger panel. Per-key actuation is `51 4f`, seen in 03d exactly as the map reads it (log 137) |
+| Log 137's first "26 of 44" `03 70` events without a `51 00` | 26 of the 47 single-bit events, plus all 9 others. Corrected in the same session before it was committed |
 | Log 128's "a per-layer output ring at `0x18024000 + layer*600`" | Not the layer. The report builder computes the same stride from two different indices and diffs the banks — a current/previous double buffer, so `k` is a bank selector (log 130) |
 | Log 128's thirteen `static-located-only` rows | Twelve are decoded; only `51 52` remains, and log 128's own coverage test was re-anchored to assert the figure equals the real remainder rather than deleted (log 130) |
 | "The dispatcher's handlers are anonymous" | They are not. The firmware `adr`-loads its own name for at least eleven of them — `=KC_S,T_A`, `S_ST_DEF`, `SC_S_A`, `=MS_A`, `=TEMP1_S_KC` and more — and the strings had been in the image since the first import (log 130) |
@@ -3480,7 +3546,9 @@ For clarity, this investigation has not:
 - connected SWD, SPI, Bus Pirate, or another hardware probe;
 - executed the ASUS updater;
 - used `fwupd` to update or modify the keyboard;
-- sent any persistent configuration command;
+- sent any persistent configuration command (in captures 03–03d Armoury Crate
+  sent them, including `50 55` commits, while the owner used it; the session
+  itself sent nothing);
 - erased, programmed, unlocked, or detached a driver;
 - proven that the official 1.00.58 image is a safe downgrade or recovery path;
 - sent any erase, program, or flash-unlock command, or flashed anything;

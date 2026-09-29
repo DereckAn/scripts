@@ -141,7 +141,7 @@ One of the losses has a known cause. The Windows capture script used to overwrit
 
 ### 3.6 The lab notebook: numbered logs, COMMANDS.md, SHA256SUMS
 
-Every step of the investigation produced a raw text log, numbered in order: `logs/00-host-context.txt` to `logs/134-pointer-alias-invalidation.txt`. There are 134 of them (there is no log 129). Three files make the notebook checkable:
+Every step of the investigation produced a raw text log, numbered in order: `logs/00-host-context.txt` to `logs/137-finish-capture-per-key-actuation-and-lever.txt`. There are 137 of them (there is no log 129). The course covers logs 00–134; logs 135–137 came afterwards and are listed in [Appendix B](appendix-b-logs.md). Three files make the notebook checkable:
 
 | File | What it holds | Rule |
 |---|---|---|

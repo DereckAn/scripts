@@ -197,6 +197,8 @@ The wire carries these numbers in hex. Check the captured table: M is 52 = `0x34
 
 How strong is the table? key-matrix.md says it plainly. Seven entries were **directly confirmed**: Backspace=14, Q=17, I=24, O=25, Enter=43, N=51, M=52. "The remaining 61 entries are extrapolated from the same row-major rule and are consistent with all seven confirmed points, but have not each been individually exercised." Seven confirmed points plus a simple rule is **strongly inferred**, not proven for every key.
 
+> **Correction, after the course (logs 136–137).** New captures tested every key, and "strongly inferred" was the right caution: the rule is wrong. The number is the **AT-101 key position**, the numbering IBM gave the 101-key PC keyboard. It agrees with this table where the rows have no gaps (Q 17, I 24, O 25, Enter 43, N 51, M 52), but AT-101 skips numbers: Caps is 30, so A is **31** (not 32), Space is 61, Ins is 75, and the arrows are 79/84/89. Backspace is **15**, so one of the seven "directly confirmed" entries was itself wrong. Keep the table above as the history of the idea; use FINDINGS.md for the real one.
+
 | index | key | how it was established |
 |---|---|---|
 | 14 | Backspace | sent `51 21 0E ...`, `Fn+Backspace` changed |
