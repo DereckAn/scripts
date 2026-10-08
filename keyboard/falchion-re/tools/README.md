@@ -137,8 +137,17 @@ capture itself, checks the pcap magic and `REV_xxxx` before and after, and write
 (03b), 136 (03c), 137 (03d).
 
 Decode the result offline with `tool/decode_feature_capture.py` (`pairs`, `macro`,
-`lever`, `profiles`); it regenerates every table in logs 135-137 and is tested by
-`tool/test_decode_feature_capture.py`.
+`lever`, `profiles`). `pairs` matches replies by device scope and command;
+unanswered requests and replies with ambiguous owners are labelled. Competing
+`51 00` requests use the profile echo when it distinguishes them; identical
+retries remain ambiguous. Each reply closes that command's pending group.
+This is a correlation heuristic, not proof of ownership or applied settings.
+Paired replies with a different raw profile byte print a warning. `macro`
+checks keys, actions and delays, including the observed left-click encoding;
+other unknown encodings are labelled unsupported. Pure regressions live in
+`tool/test_decode_feature_capture.py`; `tool/test_feature_evidence.py` checks
+the original file hashes and decodes all four captures when tshark is installed.
+Captured bytes in `captures/` and `snapshots/` are preserved by `.gitattributes`.
 
 ## capture.ps1 / decode.ps1 / haltrace.ps1
 

@@ -174,7 +174,7 @@ Log 130's best result was four commands the firmware built as two symmetric pair
 
 Even so, `51 50` is offered as the **strongest HAL match** to `SetActuation_AllKey`, "a match rather than the command's name" (log 128).
 
-> **Correction, after the course (logs 136–137).** Captures of Armoury Crate later checked this table against the wire. `51 50` and `51 4f` behave exactly as described. But `51 58` carries the **dead zone** (byte 4 top, byte 5 bottom), not rapid trigger, and Armoury Crate sets per-key rapid trigger with `51 54`, never sending `51 59`. Two analyses agreeing with each other did not make them right about what the fields *mean* to the user: the static side proved where the bytes go, and only the wire showed what they control. The static map is to be regenerated with these results.
+> **Correction, after the course (logs 136–137).** Captures of Armoury Crate later checked this table against the wire. `51 50` and `51 4f` behave as described. `51 58` carries the **dead zone** (byte 4 top, byte 5 bottom), and Armoury Crate sets per-key rapid trigger with `51 54`; no `51 59` appears in captures 03–03d. The regenerated command map corrects the dead-zone label and records captured behavior separately from instruction-derived stores. The complete `51 54` handler and the user-visible role of `51 59` remain open.
 
 ### 3.7 The firmware names its own handlers
 

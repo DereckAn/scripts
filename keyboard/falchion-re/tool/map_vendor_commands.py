@@ -16,10 +16,11 @@ every one of them located, and each labelled with what the evidence actually
 supports.
 
 THE CONFIDENCE SCHEME, which is the point of the exercise:
-  wire-proven            observed on the wire in log 126's capture AND decoded
+  wire-proven            observed on the wire AND decoded
                          from the handler
   static-handler-proven  the handler's reads, ranges and stores are read out of
-                         the instruction stream; no capture exercised it
+                         the instruction stream; capture observations are
+                         graded separately below
   static-located-only    the compare site and handler entry are proven; the
                          semantics are NOT established
   hal-name-only          notes/protocol.md names a HAL method; nothing here
@@ -35,6 +36,7 @@ No device access. Examples:
 import argparse
 from collections import Counter
 import functools
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -373,7 +375,7 @@ SUBCOMMANDS = (
      "0x1800253e ldrb [r4,#4]/[r4,#5]; 0x1800254e cmp #0xbc; 0x18002556 cmp "
      "#0x9f", "profile block +0xd4 (+ layer*0x1ee)"),
     (0x21, "wire-proven", W,
-     "SET Fn-LAYER KEY BINDING (historical [C][V]). Byte 2 source <= 0xbc, byte "
+     "SET KEY BINDING (base or Fn layer). Byte 2 source <= 0xbc, byte "
      "3 in {0x00, 0x9f}, bytes 4-5 the 16-bit target; targets <= 0xbc go "
      "through the translation table, 0xff/0xc7/0xc8/0xd3 take separate paths. "
      "The store is a halfword into the profile block's key table.",
@@ -508,24 +510,28 @@ SUBCOMMANDS = (
      "0x18002500 cmp #0x57 -> 0x180031e6; the tail at 0x18002cdc..0x18002dc0",
      "keymap records +0x06/+0x07/+0x08/+0x0a, both layers"),
     (0x58, "static-handler-proven", W,
-     "ALL-KEY RAPID TRIGGER. Bytes 4 and 5 are the press and release values, "
+     "GLOBAL DEAD ZONE (logs 136-137 correct the earlier rapid-trigger label). "
+     "Bytes 4 and 5 are the top and bottom values in 0.1 mm, "
      "each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; "
      "the handler calls 0x1800f948 with mode 0, which range-checks each value "
      "to 1..6 (substituting the default 2) and inserts them into the profile's "
-     "global word at BITS 20..22 and BITS 17..19 — log 125's rapid-trigger "
-     "press and release fields, with its stated range and its stated default.",
+     "global word at BITS 20..22 and BITS 17..19. Log 125 called these "
+     "rapid-trigger fields; the captured single-step dead-zone changes correct "
+     "that semantic label while retaining the instruction-derived stores.",
      "0x18003334/0x18003336 the 0-folds-to-6 and > 5 refusal; 0x1800334c bl "
      "0x1800f948; 0x1800f976 cmp #6; 0x1800f97c movs #2; 0x1800f9d0 bfi #20,#3; "
      "0x1800f9fc ubfx #17,#3",
      "global block, bits 20..22 and 17..19 of the profile's word"),
     (0x59, "static-handler-proven", W,
-     "PER-KEY RAPID TRIGGER, the exact counterpart of 0x58. Byte 5 is the layer "
-     "(0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 the press and "
-     "release values under the same 1..6 rule; it calls 0x1800f948 with mode 1, "
+     "PER-KEY TWO-VALUE SETTER, the static counterpart of 0x58. Byte 5 is the layer "
+     "(0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 two values "
+     "under the same 1..6 rule; it calls 0x1800f948 with mode 1, "
      "which writes bits 0..2 of the per-key record at +0x06 and +0x07 and sets "
      "the 0x80 override bit when the value differs from the profile's all-key "
      "value, clearing it when they match — the same override discipline 0x4f "
-     "uses for actuation, and exactly log 125's field map.",
+     "uses for actuation. No 51 59 was sent in captures 03-03d; its user-visible "
+     "role is NOT established. The earlier per-key rapid-trigger label is "
+     "withdrawn: Armoury Crate uses 51 54 for that feature.",
      "0x18003368 cmp #0x9f; 0x18003380 cmp #0xbc; 0x1800338c bl 0x1800f948; "
      "0x1800f9a8 bic #0x80; 0x1800f9b0 strb rec+0x06; 0x1800fa26 strb rec+0x07",
      "keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override"),
@@ -595,7 +601,8 @@ QUERIES = (
      "0x1800226c ldrb [r7,#7]; 0x1800226e cmp #0xb5", None),
 )
 
-# HAL names from notes/protocol.md that this step does NOT attach to an opcode.
+# HAL names without exact symbol attribution; behavioural candidate carriers
+# below do not prove which named HAL method the application called.
 HAL_UNMATCHED = (
     "SetRapidTrigger_AllKey", "SetRapidTrigger_PreKey",
     "SetDeadZone_AllKey", "SetDeadZone_PreKey",
@@ -615,19 +622,22 @@ HAL_DISPOSITION = (
     ("SetActuation_PreKey", "51 4f",
      "per-key record +0x08 bits 0..6 at 0x18002ba6 with the bit-15 override "
      "resolved against global bits 9..15 at 0x18002bba", "strongly-inferred"),
-    ("SetRapidTrigger_AllKey", "51 58",
-     "0x1800f948 mode 0 writes global bits 20..22 and 17..19 at 0x1800f9d0 and "
-     "0x1800f9fc, with log 125's 1..6 range and default 2 at 0x1800f976",
+    ("SetRapidTrigger_AllKey", "51 54 (one frame per assigned key)",
+     "log 136: AC sends press/release changes as 51 54 for each assigned key; "
+     "there is no observed single global command. The former 51 58 match was "
+     "dead zone. Exact HAL symbol attribution is unproven",
      "strongly-inferred"),
-    ("SetRapidTrigger_PreKey", "51 59",
-     "0x1800f948 mode 1 writes record +0x06 and +0x07 bits 0..2 at 0x1800f9b0 "
-     "and 0x1800fa26 with the 0x80 override", "strongly-inferred"),
-    ("Reset_Actuation_RapidTrigger", "51 56",
-     "the only located command that reinitialises a settings block, logging "
-     "S_ST_DEF at 0x180031e2 — but it reinitialises BLOCK D, and actuation and "
-     "rapid trigger live in the global block and the keymap bank, so the match "
-     "is by role and not by target", "hypothesis"),
-    ("Reset", "51 56", "same handler, same caveat", "hypothesis"),
+    ("SetRapidTrigger_PreKey", "51 54",
+     "log 136: byte 2 selects combined/press/release, byte 4 the key, byte 6 "
+     "the sensitivity in 0.1 mm and byte 8 on/off. The static mode-bit stores "
+     "at 0x18003028/0x1800302c do not yet explain every captured field",
+     "strongly-inferred"),
+    ("Reset_Actuation_RapidTrigger", "51 52",
+     "logs 136-137: byte 2 = 03 resets actuation and rapid trigger; byte 2 = "
+     "01 resets actuation only. The selector table is at 0x18002c24",
+     "strongly-inferred"),
+    ("Reset", "51 52", "AC's Trigger-page Reset; a general factory reset is "
+     "not established (logs 136-137)", "hypothesis"),
     ("SetProfile", "51 00",
      "posts storage opcode 2 with the profile at REQSTRUCT+0x85 at 0x18002530; "
      "the state machine stores it to the device header at 0x180011bc",
@@ -636,22 +646,23 @@ HAL_DISPOSITION = (
      "no located handler reads a default-profile flag. 12 16 returns a device "
      "header byte compared against 0xb5 and 12 08 a bit of 0x1801e6b7; neither "
      "is shown to mean this", "no plausible carrier found"),
-    ("SetDeadZone_AllKey", None,
-     "no located handler writes a third all-key numeric field. The global "
-     "word's recovered fields are the selectable index, actuation and the two "
-     "rapid-trigger values; log 125 left bits 0..5 and 23..31 unrecovered, and "
-     "no located command writes them", "no plausible carrier found"),
+    ("SetDeadZone_AllKey", "51 58",
+     "log 136: independent top/bottom 0.2 -> 0.3 mm changes alter request "
+     "bytes 4/5 respectively. Static stores are global bits 20..22/17..19 "
+     "at 0x1800f9d0/0x1800f9fc, previously mislabelled rapid trigger",
+     "strongly-inferred"),
     ("SetDeadZone_PreKey", None,
-     "same, for the per-key record: +0x06, +0x07, +0x08, +0x0a, +0x0e and "
-     "+0x0f all have writers with other roles",
+     "51 59 shares 51 58's helper in per-key mode, but no capture exercises "
+     "it and a per-key dead-zone UI or effect has not been observed",
      "no plausible carrier found"),
-    ("SetSpeedTap", "51 55 or 51 54",
-     "51 55 configures a validated PAIR of HID usage codes (=TEMP1_S_KC / "
-     "=TEMP2_S_KC) and 51 54 writes a 2-bit mode at record +0x0a bits 14..15. "
-     "Speed tap is a two-code-per-key feature, so both are shapes that could "
-     "carry it — and neither is shown to", "hypothesis"),
-    ("SwitchSpeedTap", "51 54",
-     "a 2-bit mode field is the shape of an on/off/variant switch; not shown",
+    ("SetSpeedTap", "51 55",
+     "log 136: request bytes 4-5/6-7 carry A/D, matching the profile's speedTap "
+     "binding. The static handler translates the pair and validates HID "
+     "usages at 0x1800311c/0x18003122", "strongly-inferred"),
+    ("SwitchSpeedTap", "51 55 (byte 8)",
+     "log 136 captures byte 8 changing 00 -> 01 with the same A/D pair; "
+     "static analysis identifies a write gate. An owner-driven on/off test "
+     "and the exact HAL attribution are still missing",
      "hypothesis"),
     ("ResetSpeedTap", None, "no located handler clears such a pair",
      "no plausible carrier found"),
@@ -669,11 +680,13 @@ HAL_DISPOSITION = (
     ("ChangeKey_Normal", "51 21",
      "already wire-proven as the remap that clears the mode byte",
      "strongly-inferred"),
-    ("WriteMacroFlash", None,
-     "the macro block's USB writer at 0x180035dc is in a dispatcher branch this "
-     "step did not attribute to a subcommand, so no located subcommand can be "
-     "named as its carrier", "no plausible carrier found"),
-    ("WriteMacroFlash_SupportFn", None, "same", "no plausible carrier found"),
+    ("WriteMacroFlash", "54",
+     "logs 135-137: assigned macros are uploaded with opcode 54; record "
+     "keys/actions/delays agree with preserved GMAC files. The full static "
+     "handler remains untraced", "strongly-inferred"),
+    ("WriteMacroFlash_SupportFn", None, "Fn-layer macro assignment was not "
+     "captured; the support variant's carrier is unestablished",
+     "no plausible carrier found"),
     ("SetLeverMode", None,
      "no located handler writes a lever field; log 125 matched the AC decode's "
      "lever.functionStatusList only structurally",
@@ -698,13 +711,86 @@ NEVER_SEND = (
     ("51 xx, every subcommand in this table", "the configuration write family; "
      "twenty-four subcommands, most with unestablished semantics"),
     ("52 / 41 / 43 / 53 / 54 / 71 / 73 / b0 / c0 / fa / fd",
-     "top-level opcodes located but not decoded at all"),
+     "write-capable top-level opcodes; 54 is macro upload on the wire, "
+     "the other listed opcodes remain unestablished"),
     ("any erase / program / unlock / reset / SPI framing",
      "the bootloader protocol of logs 81/82/87/88"),
 )
 
 
 # ------------------------------------------------------------- the findings
+
+# Independent wire evidence from the Windows feature sessions. Keep these
+# observations separate from instruction-derived confidence: a captured UI
+# effect does not prove that every field of its handler has been traced.
+FEATURE_CAPTURES = (
+    ("03-features", "bb4bf7cc7df317a69c858dc09481d4bf10fc5691dacf9c08b5fe05b9606cce06",
+     "135-feature-capture-validation.txt"),
+    ("03b-features", "522299eb340e576ad547c79c0f28815c2280044c1d23d16abd27d626c2dc15e8",
+     "135-feature-capture-validation.txt"),
+    ("03c-deep", "d9aa029d5531df00fba587e455b449c6ef704cc3812fadf17b9121c95fa2e029",
+     "136-deep-capture-key-ids-and-corrections.txt"),
+    ("03d-finish", "6c2abea3f6b60b5c7b1e1099333f32f09514f4d66e08e8aad482dfca83dace6e",
+     "137-finish-capture-per-key-actuation-and-lever.txt"),
+)
+FEATURE_WIRE = {
+    "51 00": ("Profile switch; byte 4 is the requested profile.",
+              "agrees", "135"),
+    "51 50": ("Global actuation; byte 4 is mm x 10.", "agrees", "135"),
+    "51 4f": ("Per-key actuation; byte 4 is the key, byte 6 is mm x 10. "
+              "Two key writes can share one 50 55 commit.", "agrees", "137"),
+    "51 21": ("Base-layer remap; byte 2 source, byte 3 = 00, bytes 4-5 target, "
+              "00ff restores default, byte 6 current actuation. Fn-layer 9f "
+              "remaps have historical evidence, not a new 03-03d observation.",
+              "agrees for captured base-layer writes", "135-136"),
+    "51 52": ("Trigger-page Reset; byte 2 = 01 actuation, 03 actuation and "
+              "rapid trigger. Selectors 00/02/04 and the third reset field "
+              "were not established.", "static selector agrees; stores untraced", "136-137"),
+    "51 54": ("Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 "
+              "release, byte 4 key, byte 6 mm x 10, byte 8 on/off. The static "
+              "mode-bit stores alone do not explain all captured fields.",
+              "partial; full handler reconciliation remains open", "136"),
+    "51 58": ("Global dead zone; byte 4 top, byte 5 bottom, mm x 10. "
+              "This corrects the earlier all-key rapid-trigger label.",
+              "instruction-derived stores retained; semantic label corrected", "136"),
+    "51 55": ("Speed Tap pair A/D at bytes 4-5/6-7, matching the AC profile; "
+              "byte 8 changed 00 -> 01. AC re-sent this without an owner "
+              "Speed Tap action.", "pair agrees; switch semantics need a UI test", "136"),
+    "51 56": ("Observed once before the Speed Tap pair. A Speed Tap-table "
+              "reset is a hypothesis; a general settings reset was not observed.",
+              "ordering only; user-visible scope remains open", "136"),
+    "51 2c": ("Lighting; byte 5 brightness %, static bytes 9-11 RGB, "
+              "animated byte 4 speed. Other animated fields remain open.",
+              "partial", "135-136"),
+    "51 2d": ("Lighting effect; byte 4 = 00 static / 01 breathing.",
+              "partial", "135-136"),
+    "54": ("Macro upload on assignment; byte 2 counts this frame's records "
+           "including ff, byte 3 marks continuation, byte 4 assigned key; "
+           "records start at byte 9 and encode key/action/u16 delay in ms.",
+           "wire layout decoded; static handler untraced", "135-137"),
+}
+
+
+@functools.lru_cache(maxsize=None)
+def feature_capture_evidence():
+    rows = []
+    for name, expected, log in FEATURE_CAPTURES:
+        path = ROOT / "captures" / f"{name}.pcap"
+        if not path.is_file() or not (ROOT / "logs" / log).is_file():
+            raise CommandError(f"missing feature evidence for {name}")
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != expected:
+            raise CommandError(f"feature capture hash mismatch: {path.name}")
+        rows.append({"capture": f"captures/{path.name}", "sha256": expected,
+                     "log": f"logs/{log}", "hash_verified": True})
+    return rows
+
+
+def feature_wire_observations():
+    return [{"command": command, "confidence": "wire-observed",
+             "meaning": meaning, "static_agreement": agreement, "logs": logs}
+            for command, (meaning, agreement, logs) in FEATURE_WIRE.items()]
+
 
 @functools.lru_cache(maxsize=None)
 def opcode_table():
@@ -730,9 +816,12 @@ def subcommand_table():
                                f"{located[op]:#x} but has no curated row; "
                                f"refusing to emit an incomplete table")
         _, conf, kind, meaning, evidence, storage = c
+        observation = next((r for r in feature_wire_observations()
+                            if r["command"] == f"51 {op:02x}"), None)
         rows.append({"subcommand": f"{op:#04x}", "handler": f"{located[op]:#x}",
                      "confidence": conf, "kind": kind, "meaning": meaning,
                      "evidence": evidence, "storage": storage,
+                     "wire_observation": observation,
                      "writes_device_state": kind == W,
                      "owner_approval_required": kind == W})
     return tuple(rows)
@@ -1151,7 +1240,7 @@ def verify():
           f"{same}/{len(TOP_LEVEL_SITES)}")
 
     check(bool(HAL_UNMATCHED),
-          "HAL names with no opcode are listed rather than guessed at",
+          "HAL names without exact symbol attribution remain listed",
           f"{len(HAL_UNMATCHED)} unmatched")
 
     # --- log 130 -----------------------------------------------------------
@@ -1193,7 +1282,7 @@ def verify():
     check(len(disp) >= len(HAL_UNMATCHED),
           "every HAL name protocol.md leaves without an opcode gets a "
           "disposition", f"{len(disp)} dispositions")
-    check(len(none_found) >= 10,
+    check(any(d[0] == "GetKeyStats" for d in none_found),
           "and a name with no plausible carrier is recorded as a finding, not "
           "hidden", f"{len(none_found)} with no carrier found")
     check(all(d[3] in ("strongly-inferred", "hypothesis",
@@ -1201,7 +1290,9 @@ def verify():
           "every disposition carries one of three confidences",
           ", ".join(sorted({d[3] for d in disp})))
     check(all(d[2] for d in named),
-          "every named carrier cites instructions", f"{len(named)} named")
+          "every candidate carrier cites evidence", f"{len(named)} named")
+    check(len(feature_capture_evidence()) == 4,
+          "all four feature captures reproduce the hashes in logs 135-137")
     return checks
 
 
@@ -1212,9 +1303,11 @@ def to_dict():
     checks = verify()
     subs, queries = subcommand_table(), query_table()
     return {
-        "verdict": "the dispatcher accepts seventeen top-level opcodes and "
-                   "twenty-four 0x51 subcommands; nine 0x12 queries and eight "
-                   "0x51 subcommands are decoded, the rest are located only",
+        "verdict": "the dispatcher accepts seventeen top-level opcodes, "
+                   "twenty-four 0x51 subcommands and ten reachable 0x12 queries; "
+                   "thirty-three family entries have instruction-derived "
+                   "semantics. Logs 135-137 add independent feature observations; "
+                   "the full 51 54 handler remains to be reconciled",
         "transport": {"dispatcher": f"{DISPATCHER:#x}",
                       "request_buffer": f"{REQ_BUF:#x}",
                       "responder": f"{SEND_RESPONSE_64:#x}",
@@ -1224,6 +1317,8 @@ def to_dict():
         "opcodes": opcode_table(),
         "subcommands_51": subs,
         "queries_12": queries,
+        "feature_captures": feature_capture_evidence(),
+        "feature_wire_observations": feature_wire_observations(),
         "profile_switch": profile_switch(),
         "macro_block": macro_block(),
         "block_d": block_d(),
@@ -1240,11 +1335,11 @@ def to_dict():
         "summary": {"checks": len(checks),
                     "failed": sum(1 for c in checks if not c["ok"]),
                     "ok": all(c["ok"] for c in checks)},
-        "disclaimer": "Offline static analysis of preserved images and "
+        "disclaimer": "Offline analysis of preserved images, captures and "
                       "pre-existing read-only Ghidra exports. No device was "
                       "accessed and NO FRAME WAS CONSTRUCTED — every byte "
-                      "layout here is read out of the dispatcher's own compare "
-                      "and store instructions. This authorises nothing live.",
+                      "layout here comes from instructions or preserved wire "
+                      "evidence, graded separately. This authorises nothing live.",
     }
 
 
@@ -1288,27 +1383,45 @@ def markdown():
     out = ["# The vendor command map", "",
            "**Generated by `tool/map_vendor_commands.py`. Do not edit by "
            "hand.**", "",
-           "> Offline static analysis of preserved images and pre-existing "
+           "> Offline analysis of preserved images, captures and pre-existing "
            "read-only Ghidra exports. No device was accessed and **no frame "
-           "was constructed** — every byte layout below is read out of the "
-           "dispatcher's own compare and store instructions. This authorises "
+           "was constructed** — instruction-derived and captured byte layouts "
+           "are graded separately. This authorises "
            "nothing live.", "",
-           "## Verdict", "", f"**{d['verdict'].capitalize()}.**", "",
+           "## Verdict", "", f"**{d['verdict'][0].upper() + d['verdict'][1:]}.**", "",
            "## Confidence scheme", "",
            "| label | means |", "|---|---|",
-           "| `wire-proven` | observed in log 126's capture **and** decoded "
+           "| `wire-proven` | observed on the wire **and** decoded "
            "from the handler |",
            "| `static-handler-proven` | the handler's reads, ranges and stores "
-           "are read out of the instruction stream; no capture exercised it |",
+           "are read out of the instruction stream; independent capture "
+           "observations are listed separately |",
            "| `static-located-only` | the compare site and handler entry are "
            "proven; **the semantics are not established** |",
            "| `hal-name-only` | `notes/protocol.md` names a HAL method and "
-           "nothing here attaches an opcode to it |", "",
+           "nothing here proves the exact symbol attribution |",
+           "| `wire-observed` | captured behavior correlated with owner actions "
+           "or AC profile data; does not prove the full static handler |", "",
+           "## Windows feature evidence (logs 135-137)", "",
+           "Key numbers follow AT-101 positions for the observed keys. Fn, ROG "
+           "and the physical backslash remap source remain unobserved. Macro "
+           "Enter is 108 and backslash is 42; physical Enter's historical "
+           "remap number is 43. Settings writes can share a single `50 55` commit.", "",
+           "| capture | SHA-256 | source log |", "|---|---|---|"]
+    for r in d["feature_captures"]:
+        out.append(f"| `{r['capture']}` | `{r['sha256']}` | `{r['log']}` |")
+    out += ["", "| command | captured behavior | static reconciliation | logs |",
+            "|---|---|---|---|"]
+    for r in d["feature_wire_observations"]:
+        out.append(f"| `{r['command']}` | {r['meaning']} | "
+                   f"{r['static_agreement']} | {r['logs']} |")
+    out += ["",
            "## Top-level opcodes", "",
            f"The dispatcher at `{d['transport']['dispatcher']}` accepts "
            f"**{len(d['opcodes'])}** top-level opcodes. Only `0x12` and `0x51` "
-           f"are opened below; the rest are located and nothing more.", "",
-           "| opcode | compare at | handler | decoded here |",
+           f"are statically opened below; opcode `54` also has a captured "
+           f"macro layout in the wire table above.", "",
+           "| opcode | compare at | handler | statically decoded here |",
            "|---|---|---|---|"]
     for r in d["opcodes"]:
         out.append(f"| `{r['opcode']}` | `{r['compare_at']}` | "
@@ -1316,7 +1429,7 @@ def markdown():
     out += ["", "## The `0x51` configuration family", "",
             f"**{len(d['subcommands_51'])} subcommands.** Every one writes "
             f"device state and every one is **owner-approval-required**.", "",
-            "| sub | handler | confidence | what it does | storage |",
+            "| sub | handler | static confidence | what it does | storage |",
             "|---|---|---|---|---|"]
     for r in d["subcommands_51"]:
         out.append(f"| `{r['subcommand']}` | `{r['handler']}` | "
@@ -1420,7 +1533,7 @@ def markdown():
             else "**none**"
         out.append(f"| `{r['hal_name']}` | {carrier} | {r['evidence']} | "
                    f"`{r['confidence']}` |")
-    out += ["", "## HAL names still without an opcode", "",
+    out += ["", "## HAL names without exact symbol attribution", "",
             ", ".join(f"`{n}`" for n in d["hal_names_without_an_opcode"]), "",
             "## NEVER SEND without explicit owner approval", "",
             "| frame | why |", "|---|---|"]

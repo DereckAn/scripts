@@ -171,4 +171,4 @@ Nearly every correction below teaches one of these ten habits:
 | The first builder draft refusing every patch | Record address fields carry the `0x60000000` base. Translation now happens once. | log 116 | M2 |
 | The Phase 8 check "20 bytes differ" | 19 differ and 1 coincides (`F`). The invariant is containment, not a count. | log 117 | M7 |
 | `51 58` is all-key rapid trigger (static map, then log 135) | On the wire it is the **dead zone**: byte 4 top, byte 5 bottom | log 136 | M4 |
-| `51 54` is a 2-bit per-key mode; per-key rapid trigger is `51 59` | Armoury Crate uses `51 54` for per-key rapid trigger and never sends `51 59` | log 136 | M4 |
+| `51 54` is a 2-bit per-key mode; per-key rapid trigger is `51 59` | Armoury Crate uses `51 54` for per-key rapid trigger; no `51 59` was sent in captures 03–03d | log 136 | M4 |

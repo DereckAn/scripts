@@ -386,10 +386,12 @@ class LogOneThirtyEvidence(unittest.TestCase):
                               ("strongly-inferred", "hypothesis"))
                 self.assertTrue(d["evidence"], d["hal_name"])
 
-    def test_speed_tap_and_dks_stay_hypotheses(self):
+    def test_speed_tap_switch_and_dks_remain_hypotheses(self):
         by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
-        for name in ("SetSpeedTap", "ChangeKey_DKS", "ChangeKey_ModTap"):
+        for name in ("SwitchSpeedTap", "ChangeKey_DKS", "ChangeKey_ModTap"):
             self.assertEqual(by[name]["confidence"], "hypothesis", name)
+        self.assertEqual(by["SetSpeedTap"]["candidate_carrier"], "51 55")
+        self.assertEqual(by["SetSpeedTap"]["confidence"], "strongly-inferred")
 
     def test_the_four_new_carriers_are_strongly_inferred(self):
         by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
@@ -398,7 +400,39 @@ class LogOneThirtyEvidence(unittest.TestCase):
             self.assertEqual(by[name]["confidence"], "strongly-inferred", name)
             self.assertIsNotNone(by[name]["candidate_carrier"], name)
 
-    def test_dead_zone_has_no_carrier(self):
+    def test_global_dead_zone_has_a_carrier_and_per_key_remains_open(self):
         by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
-        for name in ("SetDeadZone_AllKey", "SetDeadZone_PreKey"):
-            self.assertIsNone(by[name]["candidate_carrier"], name)
+        self.assertEqual(by["SetDeadZone_AllKey"]["candidate_carrier"], "51 58")
+        self.assertEqual(by["SetDeadZone_AllKey"]["confidence"], "strongly-inferred")
+        self.assertIsNone(by["SetDeadZone_PreKey"]["candidate_carrier"])
+
+
+class FeatureWireEvidence(unittest.TestCase):
+    def test_capture_observations_do_not_claim_complete_static_decodes(self):
+        rows = {r["command"]: r for r in m.to_dict()["feature_wire_observations"]}
+        self.assertIn("dead zone", rows["51 58"]["meaning"])
+        self.assertIn("rapid trigger", rows["51 54"]["meaning"])
+        self.assertIn("remains open", rows["51 54"]["static_agreement"])
+        self.assertIn("untraced", rows["54"]["static_agreement"])
+        self.assertTrue(all(r["confidence"] == "wire-observed" for r in rows.values()))
+
+    def test_former_per_key_rapid_trigger_assignment_is_withdrawn(self):
+        doc = m.to_dict()
+        row = next(r for r in doc["subcommands_51"] if r["subcommand"] == "0x59")
+        self.assertIn("withdrawn", row["meaning"])
+        self.assertIsNone(row["wire_observation"])
+        by = {r["hal_name"]: r for r in doc["hal_disposition"]}
+        self.assertEqual(by["SetRapidTrigger_PreKey"]["candidate_carrier"], "51 54")
+        self.assertEqual(by["WriteMacroFlash"]["candidate_carrier"], "54")
+
+    def test_feature_evidence_is_hashed_and_missing_capture_is_refused(self):
+        self.assertTrue(all(r["hash_verified"] for r in m.feature_capture_evidence()))
+        original = m.FEATURE_CAPTURES
+        m.FEATURE_CAPTURES = (("missing-feature-capture", "0" * 64, original[0][2]),)
+        m.feature_capture_evidence.cache_clear()
+        try:
+            with self.assertRaises(m.CommandError):
+                m.feature_capture_evidence()
+        finally:
+            m.FEATURE_CAPTURES = original
+            m.feature_capture_evidence.cache_clear()

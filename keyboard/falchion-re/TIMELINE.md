@@ -3422,6 +3422,43 @@ The analysis was then moved out of session scratch files into
 `tool/decode_feature_capture.py` with eleven tests on the preserved evidence,
 so every table in logs 135–137 can be regenerated.
 
+## 2026-10-08 — Offline review of the Windows feature evidence
+
+Linux review reproduced the four capture hashes and corrected the feature
+decoder. Replies are matched by device scope and command, consumed once,
+and marked ambiguous when retries prevent a unique attribution. Macro
+comparison now checks keys, actions and delays, including the observed
+Macro04 left-click event; unknown encodings cannot report a match.
+
+Git had converted Windows line endings in 31 evidence files: 24 macro
+copies, three action-note files and four JSON snapshots. Each was restored
+only after the original recorded SHA-256 was reproduced exactly. The new
+`.gitattributes` preserves captured bytes and treats archived evidence as
+binary for diffs and merges. Logs and manifests were retained as recorded.
+
+Documentation now describes commits after batches (03d's two actuation
+writes at 06:21:33 share one commit) and states the unobserved keys. The
+command-map generator incorporates logs 135–137, corrects the dead-zone
+label, withdraws `51 59` as the per-key rapid-trigger carrier, and reports
+captured behavior alongside static instruction evidence. The complete
+`51 54` handler remains an open static-analysis task.
+
+New regressions check preserved evidence hashes, reply ownership in all four
+captures, five macro uploads, and the observed actuation batch.
+Validation: 183 relevant offline tests pass, all four capture hashes match,
+all 68 feature-snapshot manifest entries match their original hashes and sizes,
+the generated command map is current, and `git diff --check` passes.
+
+Follow-up review of two observations supplied by Claude found a lost profile
+pair and an unlabelled profile disagreement in capture 03. Profile echoes now
+distinguish the `02` request/reply at frames 106057/106067 from three unanswered
+`03` requests. Identical `01` retries remain ambiguous. The decoder warns that
+request 106237 asks for `01` while associated reply 106277 contains `02`; the
+cause and applied state remain unknown. Pending-group closure and profile echo
+matching are explicitly documented as correlation heuristics. Seven new unit
+tests and updated capture regressions bring the relevant passing suite to 190;
+the handoff records these corrections and their remaining limits.
+
 ## Corrections retained for auditability
 
 The investigation deliberately records mistakes and superseded interpretations:

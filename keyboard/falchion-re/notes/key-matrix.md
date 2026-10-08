@@ -18,7 +18,8 @@ Example of the mismatch: **M** is index `52` on the wire but `row 4 / col 55` in
 
 > **Superseded, 2026-09-29 (logs 136–137).** The wire key number is the
 > **AT-101 key position** (A 31, Space 61, Backspace 15, Ins 75, Esc 110),
-> observed for every key in captures 03–03d. The table in §1 is right only
+> observed for the keys captured in 03–03d. Fn, ROG and the physical backslash
+> remap source remain unobserved. The table in §1 is right only
 > where the rows have no AT-101 gap; its "Backspace = 14" is wrong. In AC's
 > profile file, `preKeyRapidTriggerList` and `speedTap` use the `(row, col)`
 > codes of §3 for the same keys (A = 1538, D = 769; log 136 §1.4).

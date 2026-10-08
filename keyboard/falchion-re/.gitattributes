@@ -1,0 +1,6 @@
+# Preserve captured evidence bytes across Windows and Linux checkouts.
+# Windows originals include CRLF; their recorded SHA-256 hashes depend on it.
+# Archived evidence is immutable; avoid text diffs and automatic text merges.
+# Use the offline decoders for semantic comparisons.
+captures/** binary
+snapshots/** binary

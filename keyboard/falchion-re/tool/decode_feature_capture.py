@@ -52,7 +52,8 @@ MACRO_RECORD = 4           # <key> <02 press | 01 release> <delay u16 LE, ms>
 MACRO_END = 0xFF
 PRESS, RELEASE = 0x02, 0x01
 
-# AT-101 key positions for every key observed on the wire (log 137 s5).
+# Key names for observed wire numbers (logs 136-137), plus conventional
+# positions 1 and 29. Those two positions were not observed in these captures.
 AT101 = {
     1: "`", 2: "1", 3: "2", 4: "3", 5: "4", 6: "5", 7: "6", 8: "7", 9: "8",
     10: "9", 11: "0", 12: "-", 13: "=", 15: "Backspace", 16: "Tab",
@@ -66,6 +67,18 @@ AT101 = {
     83: "Up", 84: "Down", 85: "PgUp", 86: "PgDn", 89: "Right",
     108: "Enter (keypad 108)", 110: "Esc",
 }
+
+# GMAC names paired with captured macro events in logs 135-137. Do not infer
+# unseen macro keys from physical-key positions: AC encodes Enter and backslash
+# differently in macros. Mouse encodings are supported only for observed pairs.
+MACRO_KEYS = {
+    **{name: number for number, name in AT101.items()
+       if len(name) == 1 and name != "`"},
+    "\\": 42, "Comma": 53, "Backspace": 15, "Enter": 108,
+    "Del": 76, "PageUp": 85, "PageDown": 86, "Up": 83,
+    "CapsLock": 30, "Esc": 110,
+}
+MOUSE_EVENTS = {(0xF0, 0x12): ("Press", "Left Click")}
 
 
 def key_name(number):
@@ -90,15 +103,64 @@ def hexbytes(payload, keep=6):
 
 # --- pairs -------------------------------------------------------------------
 
-def request_reply_pairs(records):
-    """(request, reply) for every OUT report; reply is the next IN within 3."""
-    pairs = []
-    for index, record in enumerate(records):
-        if record["direction"] != "OUT":
+def profile_selector(record):
+    """Raw profile byte of a complete 51 00 report, otherwise None."""
+    payload = record["payload"]
+    if payload[:4].lower() == "5100" and len(payload) >= 10:
+        return int(payload[8:10], 16)
+    return None
+
+
+def reply_warning(request, reply):
+    """Report a raw profile disagreement without inferring its cause."""
+    requested, reported = profile_selector(request), profile_selector(reply)
+    if requested is not None and reported is not None and requested != reported:
+        return f"profile differs: requested {requested:02x}, reply {reported:02x}"
+    return None
+
+
+def request_reply_results(records):
+    """(request, reply, status), in request order, without reusing an IN.
+
+    Match command headers within an interface/bus/device scope. 12 12 may
+    reply as 12 13 (the statically recovered success branch). For competing
+    51 00 requests, narrow ownership by the reply's profile byte when possible.
+    Each reply closes that command's pending group: nonmatching profile
+    requests remain unanswered, and identical retries remain ambiguous.
+    This is a capture correlation heuristic, not a transaction identifier.
+    A sole candidate can have a different profile; see reply_warning().
+    """
+    results, pending = [], {}
+    for record in records:
+        scope = tuple(record.get(k) for k in ("interface", "bus", "address"))
+        command = record["payload"][:4].lower()
+        if record["direction"] == "OUT":
+            index = len(results)
+            results.append((record, None, "unanswered"))
+            pending.setdefault((scope, command), []).append(index)
             continue
-        reply = next((r for r in records[index + 1:index + 4] if r["direction"] == "IN"), None)
-        pairs.append((record, reply))
-    return pairs
+        commands = (command, "1212") if command == "1213" else (command,)
+        candidates = []
+        for header in commands:
+            candidates.extend(pending.pop((scope, header), []))
+        profile = profile_selector(record)
+        if len(candidates) > 1 and profile is not None:
+            echoes = [index for index in candidates
+                      if profile_selector(results[index][0]) == profile]
+            if echoes:
+                candidates = echoes
+        if len(candidates) == 1:
+            index = candidates[0]
+            results[index] = (results[index][0], record, "matched")
+        elif candidates:
+            for index in candidates:
+                results[index] = (results[index][0], None, "ambiguous")
+    return results
+
+
+def request_reply_pairs(records):
+    """Compatibility view: unresolved requests have reply None."""
+    return [(request, reply) for request, reply, _ in request_reply_results(records)]
 
 
 # --- macro -------------------------------------------------------------------
@@ -154,14 +216,24 @@ def parse_gmac(text):
 def compare_macro(records, events):
     """Row-by-row comparison. Returns (rows, all_matched).
 
-    A row matches when press/release agree and the wire delay equals the GMAC
-    delay after that event (a missing GMAC delay is 0 on the wire).
+    A row matches only when the observed key encoding, action and delay agree.
+    A missing GMAC delay is 0 on the wire. Unknown encodings are unsupported
+    (good=None), never a match. Missing/extra events also make the result false.
     """
     rows, ok = [], len(records) == len(events)
     for (key, action, delay), (kind, name, gdelay) in zip(records, events):
-        wire_kind = {PRESS: "Press", RELEASE: "Release"}.get(action, f"?{action:02x}")
-        good = wire_kind == kind and delay == (gdelay or 0)
-        ok = ok and good
+        mouse = MOUSE_EVENTS.get((key, action))
+        wire_kind = (mouse[0] if mouse else
+                     {PRESS: "Press", RELEASE: "Release"}.get(action, f"?{action:02x}"))
+        expected = next((encoding for encoding, event in MOUSE_EVENTS.items()
+                         if event == (kind, name)), None)
+        if expected is None and name in MACRO_KEYS and kind in ("Press", "Release"):
+            expected = (MACRO_KEYS[name], PRESS if kind == "Press" else RELEASE)
+        supported = mouse is not None or (key in MACRO_KEYS.values()
+                                         and action in (PRESS, RELEASE))
+        good = (None if expected is None or not supported else
+                (key, action) == expected and delay == (gdelay or 0))
+        ok = ok and good is True
         rows.append((key, wire_kind, delay, kind, name, gdelay, good))
     return rows, ok
 
@@ -225,12 +297,16 @@ def profile_changes(before, after, skip_per_key_actuation=True):
 # --- CLI ---------------------------------------------------------------------
 
 def cmd_pairs(args):
-    for request, reply in request_reply_pairs(dc.reports(args.capture)):
+    for request, reply, status in request_reply_results(dc.reports(args.capture)):
         if args.op and not any(request["payload"].startswith(op.lower()) for op in args.op):
             continue
         print(f"{clock(request['epoch'], args.utc_offset)}  OUT {hexbytes(request['payload'])}")
         if reply:
-            print(f"{'':12}  IN  {hexbytes(reply['payload'])}")
+            warning = reply_warning(request, reply)
+            suffix = f"  [WARNING: {warning}]" if warning else ""
+            print(f"{'':12}  IN  {hexbytes(reply['payload'])}{suffix}")
+        else:
+            print(f"{'':12}  IN  [{status}]")
     return 0
 
 
@@ -244,14 +320,20 @@ def cmd_macro(args):
     for n, frames in enumerate(uploads, 1):
         records, assigned = upload_records(frames)
         rows, ok = compare_macro(records, events)
+        outcome = ("MATCH" if ok else "unsupported encoding"
+                   if any(row[6] is None for row in rows) else "no match")
         print(f"upload {n}: {clock(frames[0]['epoch'], args.utc_offset)}, {len(frames)} frame(s), "
               f"assigned to {assigned} ({key_name(assigned)}), {len(records)} records vs "
-              f"{len(events)} GMAC events -> {'MATCH' if ok else 'no match'}")
+              f"{len(events)} GMAC events -> {outcome}")
         if ok or args.all:
-            for key, wk, delay, kind, name, gdelay, good in rows:
-                print(f"   {key:3d} {key_name(key):<18} {wk:<7} {delay:5d} ms   "
+            for record, row in zip(records, rows):
+                key, wk, delay, kind, name, gdelay, good = row
+                label = MOUSE_EVENTS.get(record[:2], (None, key_name(key)))[1]
+                detail = ("" if good else "   <-- unsupported encoding"
+                          if good is None else "   <-- differs")
+                print(f"   {key:3d} {label:<18} {wk:<7} {delay:5d} ms   "
                       f"GMAC {kind:<7} {name:<12} {gdelay if gdelay is not None else '-':>5}"
-                      f"{'' if good else '   <-- differs'}")
+                      f"{detail}")
         if ok:
             best = 0
     return best

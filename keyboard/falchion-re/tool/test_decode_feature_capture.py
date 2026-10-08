@@ -11,9 +11,13 @@ No device access. Every fixture file is opened read-only and its sha256 is
 asserted against the value recorded in the logs or its SHA256SUMS.txt.
 """
 import hashlib
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -76,6 +80,42 @@ class MacroUpload(unittest.TestCase):
         _, ok = dfc.compare_macro(records, dfc.parse_gmac(MACRO03.read_text(encoding="utf-8")))
         self.assertFalse(ok)
 
+    def test_changed_key_cannot_match_even_with_identical_timing(self):
+        records, _ = dfc.upload_records([frame(UPLOAD_03B)])
+        events = dfc.parse_gmac(MACRO03.read_text(encoding="utf-8"))
+        for key in (32, 200):
+            changed = [(key, records[0][1], records[0][2]), *records[1:]]
+            rows, ok = dfc.compare_macro(changed, events)
+            self.assertFalse(ok)
+            self.assertIsNot(rows[0][6], True)
+
+    def test_missing_or_extra_events_cannot_match(self):
+        records, _ = dfc.upload_records([frame(UPLOAD_03B)])
+        events = dfc.parse_gmac(MACRO03.read_text(encoding="utf-8"))
+        for changed in (records[:-1], records + records[:1]):
+            self.assertFalse(dfc.compare_macro(changed, events)[1])
+
+    def test_observed_macro_aliases(self):
+        records = [(42, 2, 64), (108, 2, 84), (53, 2, 89)]
+        events = [("Press", "\\", 64), ("Press", "Enter", 84), ("Press", "Comma", 89)]
+        self.assertTrue(dfc.compare_macro(records, events)[1])
+        self.assertFalse(dfc.compare_macro([(43, 2, 84)], events[1:2])[1])
+
+    def test_only_observed_mouse_encoding_is_supported(self):
+        event = [("Press", "Left Click", None)]
+        self.assertTrue(dfc.compare_macro([(0xf0, 0x12, 0)], event)[1])
+        for record, events in [((0xf0, 0x11, 0), [("Release", "Left Click", None)]),
+                               ((0xf1, 0x12, 0), event),
+                               ((31, 2, 0), [("Press", "Scroll Down", None)])]:
+            rows, ok = dfc.compare_macro([record], events)
+            self.assertFalse(ok)
+            self.assertIsNone(rows[0][6])
+
+    def test_known_keyboard_and_mouse_events_differ_without_being_unsupported(self):
+        rows, ok = dfc.compare_macro([(31, 2, 0)], [("Press", "Left Click", None)])
+        self.assertFalse(ok)
+        self.assertIs(rows[0][6], False)
+
     def test_continuation_frames_join_one_upload(self):
         # log 136 s3.4: byte 3 = 00 starts an upload, 01 continues it;
         # byte 2 counts THIS frame's records, terminator included.
@@ -101,6 +141,113 @@ class Lever(unittest.TestCase):
         self.assertEqual(dfc.lever_state("0376000000" + "00" * 16), 0)
         self.assertIsNone(dfc.lever_state("0371000000" + "00" * 16))   # key bitmap
         self.assertIsNone(dfc.lever_state("0376"))
+
+
+class RequestReplies(unittest.TestCase):
+    @staticmethod
+    def report(direction, payload, **scope):
+        return {"direction": direction, "payload": payload, **scope}
+
+    def test_capture_03_wrong_command_reply_is_not_reused(self):
+        # Header sequence at frames 102363..105536 of capture 03.
+        reports = [self.report("OUT", "510000000300") for _ in range(3)]
+        reports += [self.report("OUT", "121402000000"), self.report("IN", "121402003032")]
+        results = dfc.request_reply_results(reports)
+        self.assertEqual([r[2] for r in results], ["unanswered"] * 3 + ["matched"])
+        self.assertEqual(sum(r[1] is not None for r in results), 1)
+
+    def test_retries_are_ambiguous(self):
+        # Capture 03 frames 107185, 108173, 108212.
+        reports = [self.report("OUT", "510000000100"),
+                   self.report("OUT", "510000000100"),
+                   self.report("IN", "510000000100")]
+        self.assertEqual([r[2] for r in dfc.request_reply_results(reports)],
+                         ["ambiguous", "ambiguous"])
+        self.assertTrue(all(reply is None for _, reply in dfc.request_reply_pairs(reports)))
+
+    def test_unique_profile_echo_retires_other_pending_profiles(self):
+        reports = [self.report("OUT", "510000000300") for _ in range(3)]
+        reports += [self.report("OUT", "510000000200"),
+                    self.report("IN", "510000000200"),
+                    self.report("OUT", "510000000100"),
+                    self.report("IN", "510000000200")]
+        results = dfc.request_reply_results(reports)
+        self.assertEqual([r[2] for r in results], ["unanswered"] * 3 + ["matched"] * 2)
+        self.assertIs(results[3][1], reports[4])
+        self.assertIs(results[4][1], reports[6])
+        self.assertEqual(dfc.reply_warning(results[4][0], results[4][1]),
+                         "profile differs: requested 01, reply 02")
+
+    def test_same_profile_echoes_remain_ambiguous(self):
+        reports = [self.report("OUT", "510000000300"),
+                   self.report("OUT", "510000000200"),
+                   self.report("OUT", "510000000200"),
+                   self.report("IN", "510000000200")]
+        self.assertEqual([r[2] for r in dfc.request_reply_results(reports)],
+                         ["unanswered", "ambiguous", "ambiguous"])
+
+    def test_no_profile_echo_keeps_competing_requests_ambiguous(self):
+        reports = [self.report("OUT", "510000000100"),
+                   self.report("OUT", "510000000300"),
+                   self.report("IN", "510000000200")]
+        self.assertEqual([r[2] for r in dfc.request_reply_results(reports)],
+                         ["ambiguous", "ambiguous"])
+
+    def test_profile_warning_compares_raw_bytes(self):
+        request = self.report("OUT", "510000000100")
+        self.assertIsNone(dfc.reply_warning(request, self.report("IN", "510000000100")))
+        self.assertEqual(dfc.reply_warning(request, self.report("IN", "510000000200")),
+                         "profile differs: requested 01, reply 02")
+        # Raw 00 and 06 may represent the same internal profile, but the
+        # decoder reports the bytes without silently normalizing them.
+        self.assertEqual(dfc.reply_warning(self.report("OUT", "510000000000"),
+                                           self.report("IN", "510000000600")),
+                         "profile differs: requested 00, reply 06")
+
+    def test_short_profile_reports_do_not_supply_an_echo(self):
+        reports = [self.report("OUT", "510000000100"),
+                   self.report("OUT", "510000000200"), self.report("IN", "5100")]
+        self.assertEqual([r[2] for r in dfc.request_reply_results(reports)],
+                         ["ambiguous", "ambiguous"])
+        self.assertIsNone(dfc.reply_warning(reports[0], reports[2]))
+
+    def test_other_commands_do_not_use_profile_byte(self):
+        reports = [self.report("OUT", "515000000100"),
+                   self.report("OUT", "515000000200"),
+                   self.report("IN", "515000000200")]
+        self.assertEqual([r[2] for r in dfc.request_reply_results(reports)],
+                         ["ambiguous", "ambiguous"])
+        self.assertIsNone(dfc.reply_warning(reports[0], reports[2]))
+
+    def test_pairs_cli_prints_profile_warning(self):
+        reports = [self.report("OUT", "510000000100", epoch=0),
+                   self.report("IN", "510000000200", epoch=0)]
+        output = StringIO()
+        with patch.object(dfc.dc, "reports", return_value=reports), redirect_stdout(output):
+            self.assertEqual(dfc.cmd_pairs(SimpleNamespace(capture="unused", op=None,
+                                                           utc_offset=-6)), 0)
+        self.assertIn("[WARNING: profile differs: requested 01, reply 02]", output.getvalue())
+
+    def test_reply_must_belong_to_same_device_scope(self):
+        for field in ("interface", "bus", "address"):
+            reports = [self.report("OUT", "5150", **{field: 1}),
+                       self.report("IN", "5150", **{field: 2}),
+                       self.report("IN", "5150", **{field: 1})]
+            self.assertIs(dfc.request_reply_results(reports)[0][1], reports[2])
+
+    def test_query_success_branch_and_competing_modes(self):
+        reports = [self.report("OUT", "1212"), self.report("IN", "1213")]
+        self.assertEqual(dfc.request_reply_results(reports)[0][2], "matched")
+        reports.insert(1, self.report("OUT", "1213"))
+        self.assertEqual([r[2] for r in dfc.request_reply_results(reports)],
+                         ["ambiguous", "ambiguous"])
+
+    def test_unrelated_commands_can_be_interleaved(self):
+        reports = [self.report("OUT", "5150"), self.report("OUT", "1214"),
+                   self.report("IN", "1214"), self.report("IN", "5150")]
+        results = dfc.request_reply_results(reports)
+        self.assertIs(results[0][1], reports[3])
+        self.assertIs(results[1][1], reports[2])
 
 
 class Profiles(unittest.TestCase):

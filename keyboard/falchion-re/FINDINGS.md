@@ -4024,8 +4024,8 @@ keyboard-update prompt was declined each time, and the firmware read
 `REV_0159` before and after every run. Each run from 03b on has a millisecond
 action log (`captures/*-notes.txt`, written by `tools/feature-session.ps1`),
 an owner-facts file, and before/after copies of the AC profiles and `.GMAC`
-macro files. `tool/decode_feature_capture.py` regenerates every table below
-from that evidence.
+macro files. `tool/decode_feature_capture.py` decodes request/reply pairs,
+macro uploads, lever reports and profile differences from that evidence.
 
 ### The key number is the AT-101 key position
 
@@ -4034,6 +4034,9 @@ target, macro events and the macro's assigned key, per-key rapid trigger,
 per-key actuation and Speed Tap — and it is the IBM **AT-101 key position
 number**: A 31, Space 61, Backspace 15, Enter 43, Ins 75, Left 79, Esc 110.
 Proven on every key the four captures carry (log 137 §5 has the table).
+Fn, ROG and the physical backslash remap source remain unobserved. Enter 43
+as a physical remap source comes from historical research; these captures
+observe macro Enter 108.
 **`notes/protocol.md` §4's 1..68 row-major table is superseded.** It was
 extrapolated from seven points; its "Backspace = 14, directly confirmed" is
 wrong (15), and it runs off by one wherever AT-101 leaves a gap. In a *macro*
@@ -4047,18 +4050,20 @@ the number is the key AC chose to type from the host event, so `\` is sent as
 | `51 00` | profile switch, byte 4 = profile number | agrees | 135 |
 | `51 50` | global actuation, byte 4 = mm × 10 | agrees | 135 |
 | `51 4f` | per-key actuation, byte 4 key, byte 6 mm × 10 | agrees exactly | 137 |
-| `51 21` | remap, byte 2 source, byte 3 `00` base / `9f` Fn, bytes 4–5 target (`ff` = default), byte 6 the key's current actuation | agrees; answers protocol.md §9 | 135–136 |
-| `51 54` | per-key rapid trigger: byte 2 `01` press / `02` release / `00` combined, byte 4 key, byte 6 mm × 10, byte 8 on/off | **disagrees** (map: a 2-bit mode; per-key rapid trigger is `51 59`, never sent) | 136 |
-| `51 58` | **dead zone**, byte 4 top, byte 5 bottom, mm × 10 | **disagrees** (map: all-key rapid trigger) | 136 |
-| `51 52` | the Reset buttons, byte 2 = scope (`01` actuation, `03` actuation + rapid trigger) | was located-only | 136–137 |
+| `51 21` | remap, byte 2 source, byte 3 `00` base, bytes 4–5 target (`ff` = default), byte 6 the key's current actuation; `9f` Fn has historical evidence | agrees for captured base writes; answers protocol.md §9 | 135–136 |
+| `51 54` | per-key rapid trigger: byte 2 `01` press / `02` release / `00` combined, byte 4 key, byte 6 mm × 10, byte 8 on/off | mode-bit stores traced; full handler reconciliation remains open. Former `51 59` feature assignment withdrawn | 136 |
+| `51 58` | **dead zone**, byte 4 top, byte 5 bottom, mm × 10 | static stores retained; former all-key rapid-trigger label corrected | 136 |
+| `51 52` | the Reset buttons, byte 2 = scope (`01` actuation, `03` actuation + rapid trigger) | selector located statically; captured effect recorded separately from untraced stores | 136–137 |
 | `51 55` | Speed Tap key pair (A, D) | "a key pair, feature unknown" | 136 |
 | `51 56` | sent once, just before `51 55` | map: settings factory default of block D | 136 |
 | `51 2c` / `51 2d` | lighting: byte 5 brightness %, bytes 9–11 RGB, byte 4 speed; `51 2d` byte 4 effect | partly | 135–136 |
 | `54` | macro upload: byte 2 records in this frame, byte 3 continuation, byte 4 assigned key, then `<key> <02 press / 01 release> <delay u16 ms>`, `ff` end | was undecoded | 135–136 |
 
-Every write is followed by its own `50 55` commit. A macro reaches the keyboard
-**only when it is assigned** to a key, never when it is saved in AC's editor;
-the upload matches AC's `.GMAC` file delay for delay.
+AC can send a batch of setting writes followed by one `50 55` commit. In
+03d at 06:21:33, the P and L actuation writes share one commit. In these
+sessions a macro reaches the keyboard **when it is assigned** to a key;
+saving it in AC's editor alone sends no upload. The observed uploads match
+AC's `.GMAC` files by key, action and delay, including Macro04's left click.
 
 ### Behaviour worth knowing
 
@@ -4077,9 +4082,34 @@ the upload matches AC's `.GMAC` file delay for delay.
 
 `12 00` reply byte 5 (0x09 once, 0x00 since); the animated-lighting bytes of
 `51 2c`; `51 18 01` (precedes every macro upload); keyboard-originated
-`03 61`/`03 70` reports; and, on the static side, why `51 58` and `51 54`
-disagree with `notes/vendor-command-map.md`, which is generated and should be
-regenerated from logs 135–137 in the Linux environment.
+`03 61`/`03 70` reports; and, on the static side, the full `51 54` handler and
+the user-visible role of `51 59`. The regenerated `notes/vendor-command-map.md`
+now includes logs 135–137, corrects the `51 58` dead-zone label and grades
+captured behavior separately from instruction-derived conclusions.
+
+**Offline review correction (2026-10-08).** The decoder now pairs replies by
+device scope and command, uses each reply once, and labels retries with an
+ambiguous owner. Macro comparison checks key identity as well as action and
+delay; unsupported encodings cannot match. Original Windows line endings were
+restored only where doing so reproduced the recorded SHA-256 exactly: 24 macro
+copies, three action-note files and four JSON snapshots. `.gitattributes`
+preserves capture and snapshot bytes across hosts. Original logs and recorded
+hashes remain the audit source; the offline regression suite checks them.
+
+**Profile-pairing follow-up (2026-10-08).** Review of capture 03 confirmed that
+the first revision was too cautious: three pending profile `03` requests caused
+the distinguishable profile `02` exchange at 04:23:49.905 to be marked ambiguous.
+The decoder now uses a unique profile echo within the pending command group;
+frames 106057/106067 pair, while 102363, 103199 and 104069 remain unanswered.
+Identical profile `01` retries at 107185/108173 remain ambiguous. Each reply
+closes its command's pending group; this is a correlation heuristic, not a
+transaction identifier or proof of which setting was applied.
+
+Request 106237 at 04:23:50.345 contains profile `01`, but its associated reply
+106277 at 04:23:50.440 contains `02`. The CLI explicitly warns about this raw
+disagreement. Its cause and the applied profile remain unconfirmed; firmware
+reply construction is the next place to investigate. The follow-up brings the
+relevant regression suite to 190 tests.
 
 ## Uncertain or superseded assumptions
 
