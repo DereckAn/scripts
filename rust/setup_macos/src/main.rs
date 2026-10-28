@@ -201,159 +201,341 @@ fn configure_git_global() -> bool {
     true
 }
 
+fn home() -> String {
+    std::env::var("HOME").unwrap()
+}
+
+// Convierte una etiqueta libre en un slug seguro para nombre de archivo/host
+fn slugify(label: &str) -> String {
+    let s: String = label
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '-')
+        .collect();
+    if s.is_empty() { "cuenta".to_string() } else { s }
+}
+
+// ¿Existe ya un bloque "Host <alias>" en el contenido de ~/.ssh/config?
+fn has_host_block(config: &str, alias: &str) -> bool {
+    config.lines().any(|l| {
+        let mut parts = l.split_whitespace();
+        parts.next() == Some("Host") && parts.next() == Some(alias)
+    })
+}
+
+fn append_to_ssh_config(content: &str) {
+    let path = format!("{}/.ssh/config", home());
+    let mut file = OpenOptions::new().create(true).append(true).open(&path).unwrap();
+    file.write_all(content.as_bytes()).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+}
+
+// Configurar una o varias claves SSH para GitHub (tantas cuentas como quieras)
 fn configure_ssh_key() -> bool {
-    println!("{}", style("Configurando clave SSH para GitHub...").yellow());
-    if Confirm::new()
-        .with_prompt("¿Configurar una clave SSH para GitHub?")
+    println!("{}", style("Configurando clave(s) SSH para GitHub...").yellow());
+    if !Confirm::new()
+        .with_prompt("¿Configurar clave(s) SSH para GitHub?")
         .default(true)
         .interact()
         .unwrap_or(false)
     {
-        let ssh_key_path = format!("{}/.ssh/id_ed25519", std::env::var("HOME").unwrap());
-        if Path::new(&ssh_key_path).exists() {
-            println!(
-                "{}",
-                style("Clave SSH ya existe en ~/.ssh/id_ed25519.").green()
-            );
-            if !Confirm::new()
-                .with_prompt("¿Generar nueva clave (sobrescribirá la existente)?")
-                .default(false)
-                .interact()
-                .unwrap_or(false)
-            {
-                println!("{}", style("Usando clave existente.").yellow());
-                add_ssh_key_to_github(&ssh_key_path);
-                return true;
+        println!("{}", style("Saltando configuración de clave SSH.").yellow());
+        return true;
+    }
+
+    if !Command::new("which")
+        .arg("gh")
+        .status()
+        .expect("Error verificando gh")
+        .success()
+    {
+        println!("{}", style("GitHub CLI no encontrado. Instalando...").yellow());
+        run_command("brew install gh", "Instalando GitHub CLI");
+    }
+
+    // Opciones globales de SSH en macOS (persistir claves en el llavero)
+    create_dir_all(format!("{}/.ssh", home())).unwrap();
+    let existing = std::fs::read_to_string(format!("{}/.ssh/config", home())).unwrap_or_default();
+    if !existing.lines().any(|l| l.trim_end() == "Host *") {
+        append_to_ssh_config("Host *\n    AddKeysToAgent yes\n    UseKeychain yes\n\n");
+    }
+
+    // Cuenta 1: personal (host por defecto github.com -> clonas como git@github.com:...)
+    println!("\n{}", style("=== Cuenta 1: personal (host: github.com) ===").cyan());
+    setup_github_account(
+        "personal",
+        &format!("{}/.ssh/id_ed25519", home()),
+        "github.com",
+        "github.com",
+    );
+
+    // Cuentas adicionales, en bucle (trabajo, clientes, GitHub Enterprise, etc.)
+    let mut n = 2;
+    while Confirm::new()
+        .with_prompt("¿Configurar otra clave SSH para otra cuenta de GitHub?")
+        .default(false)
+        .interact()
+        .unwrap_or(false)
+    {
+        let default_label = if n == 2 { "trabajo".to_string() } else { format!("cuenta{}", n) };
+        let label: String = Input::new()
+            .with_prompt("Etiqueta para esta cuenta (e.g., trabajo, cliente1)")
+            .default(default_label)
+            .interact_text()
+            .unwrap_or_default();
+        let safe = slugify(&label);
+
+        // ¿github.com o GitHub Enterprise (otra URL)?
+        let mut gh_host = "github.com".to_string();
+        let choice = Select::new()
+            .with_prompt("¿Esta cuenta es de github.com o de GitHub Enterprise con URL propia?")
+            .items(&[
+                "github.com (incluye cuentas gestionadas/EMU con login por SSO)",
+                "GitHub Enterprise Server o data residency (otra URL, e.g. github.miempresa.com)",
+            ])
+            .default(0)
+            .interact()
+            .unwrap_or(0);
+        if choice == 1 {
+            let ent: String = Input::new()
+                .with_prompt("Host de GitHub Enterprise (sin https://, e.g. github.miempresa.com)")
+                .allow_empty(true)
+                .interact_text()
+                .unwrap_or_default();
+            let ent = ent.trim().trim_start_matches("https://").trim_start_matches("http://");
+            let ent = ent.split('/').next().unwrap_or("");
+            if !ent.is_empty() {
+                gh_host = ent.to_string();
             }
         }
 
-        if !Command::new("which")
-            .arg("gh")
-            .status()
-            .expect("Error verificando gh")
-            .success()
-        {
-            println!("{}", style("GitHub CLI no encontrado. Instalando...").yellow());
-            run_command("brew install gh", "Instalando GitHub CLI");
-        }
-
-        let email: String = Input::new()
-            .with_prompt("Ingresa tu correo para SSH (e.g., juan@example.com)")
-            .allow_empty(true)
-            .interact_text()
-            .unwrap_or_default();
-
-        if email.is_empty() {
-            println!(
-                "{}",
-                style("No se proporcionó correo válido. Saltando...").yellow()
-            );
-            return true;
-        }
-
-        println!("{}", style("Generando clave SSH (ed25519)...").yellow());
-        if !run_command(
-            &format!(
-                "ssh-keygen -t ed25519 -C \"{}\" -f {} -N \"\"",
-                email, ssh_key_path
-            ),
-            "Generando clave SSH",
-        ) {
-            println!("{}", style("Error generando clave SSH.").red());
-            return false;
-        }
-
-        run_command("eval $(ssh-agent -s)", "Iniciando ssh-agent");
-        run_command(
-            &format!("ssh-add {}", ssh_key_path),
-            "Añadiendo clave SSH al agente",
+        let alias = format!("github-{}", safe);
+        println!(
+            "\n{}",
+            style(format!("=== Cuenta {}: {} (host alias: {} -> {}) ===", n, label, alias, gh_host)).cyan()
         );
-
-        let ssh_config_path = format!("{}/.ssh/config", std::env::var("HOME").unwrap());
-        let ssh_config_content = "Host github.com\n    HostName github.com\n    User git\n    IdentityFile ~/.ssh/id_ed25519\n    IdentitiesOnly yes\n";
-        create_dir_all(format!("{}/.ssh", std::env::var("HOME").unwrap())).unwrap();
-        let existing = std::fs::read_to_string(&ssh_config_path).unwrap_or_default();
-        if !existing.contains("Host github.com") {
-            let mut file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&ssh_config_path)
-                .unwrap();
-            file.write_all(ssh_config_content.as_bytes()).unwrap();
-        }
-        run_command(
-            &format!("chmod 600 {}", ssh_config_path),
-            "Configurando permisos de ~/.ssh/config",
-        );
-
-        add_ssh_key_to_github(&ssh_key_path);
-    } else {
         println!(
             "{}",
-            style("Saltando configuración de clave SSH.").yellow()
+            style(format!("Para clonar repos de esta cuenta usa: git clone git@{}:org/repo.git", alias)).cyan()
         );
-    }
-    true
-}
-
-fn add_ssh_key_to_github(ssh_key_path: &str) -> bool {
-    let public_key_path = format!("{}.pub", ssh_key_path);
-    if !Path::new(&public_key_path).exists() {
-        println!("{}", style("No se encontró la clave pública SSH.").red());
-        return false;
+        setup_github_account(&label, &format!("{}/.ssh/id_ed25519_{}", home(), safe), &alias, &gh_host);
+        n += 1;
     }
 
     println!(
         "{}",
-        style("Verificando autenticación en GitHub CLI...").yellow()
+        style(format!("Configuración de claves SSH completada ({} cuenta(s)).", n - 1)).green()
     );
-    if !Command::new("gh")
-        .args(["auth", "status"])
-        .status()
-        .expect("Error verificando gh auth")
-        .success()
-    {
-        println!("{}", style("Autenticando en GitHub CLI...").yellow());
-        if !run_command("gh auth login", "Autenticando en GitHub CLI") {
-            show_ssh_key_instructions(&public_key_path);
-            return false;
+    true
+}
+
+// Generar una clave ed25519 pidiendo el correo de la cuenta
+fn generate_key(key_file: &str, label: &str) -> bool {
+    let email: String = Input::new()
+        .with_prompt(format!("Correo de GitHub para la cuenta '{}' (e.g., juan@example.com)", label))
+        .allow_empty(true)
+        .interact_text()
+        .unwrap_or_default();
+    if email.is_empty() {
+        println!("{}", style(format!("No se proporcionó correo. Saltando cuenta '{}'.", label)).yellow());
+        return false;
+    }
+    let ok = Command::new("ssh-keygen")
+        .args(["-t", "ed25519", "-C", &email, "-f", key_file, "-N", ""])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    if ok {
+        println!("{}", style(format!("Clave ed25519 generada para '{}'.", label)).green());
+    } else {
+        println!("{}", style("Error generando clave SSH.").red());
+    }
+    ok
+}
+
+// Generar/usar una clave SSH y vincularla a una cuenta de GitHub
+//   host_alias — alias del Host en ~/.ssh/config (e.g. "github.com" o "github-trabajo")
+fn setup_github_account(label: &str, key_file: &str, host_alias: &str, github_host: &str) {
+    create_dir_all(format!("{}/.ssh", home())).unwrap();
+
+    // Clave: reutilizar la existente o (re)generar
+    if Path::new(key_file).exists() {
+        println!("{}", style(format!("Ya existe una clave en {}.", key_file)).green());
+        if Confirm::new()
+            .with_prompt("¿Generar una nueva (sobrescribe la existente)?")
+            .default(false)
+            .interact()
+            .unwrap_or(false)
+        {
+            let _ = std::fs::remove_file(key_file);
+            let _ = std::fs::remove_file(format!("{}.pub", key_file));
+            if !generate_key(key_file, label) {
+                return;
+            }
+        } else {
+            println!("{}", style(format!("Usando la clave existente para '{}'.", label)).yellow());
         }
+    } else if !generate_key(key_file, label) {
+        return;
     }
 
-    println!("{}", style("Añadiendo clave SSH a GitHub...").yellow());
-    let title = format!("MacBook_{}", chrono::Local::now().format("%Y%m%d"));
-    if run_command(
-        &format!(
-            "gh ssh-key add {} --title \"{}\" --type authentication",
-            public_key_path, title
-        ),
-        "Añadiendo clave SSH a GitHub",
-    ) {
+    // Añadir al agente, persistiendo en el llavero de macOS
+    if Command::new("ssh-add")
+        .args(["--apple-use-keychain", key_file])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        println!("{}", style("Clave añadida al agente (llavero de macOS).").green());
+    } else {
+        println!("{}", style("Advertencia: no se pudo añadir la clave al agente.").yellow());
+    }
+
+    // Bloque Host en ~/.ssh/config (idempotente)
+    let existing = std::fs::read_to_string(format!("{}/.ssh/config", home())).unwrap_or_default();
+    if has_host_block(&existing, host_alias) {
+        println!("{}", style(format!("El host '{}' ya existe en ~/.ssh/config.", host_alias)).green());
+    } else {
+        append_to_ssh_config(&format!(
+            "\nHost {}\n    HostName {}\n    User git\n    IdentityFile {}\n    IdentitiesOnly yes\n",
+            host_alias, github_host, key_file
+        ));
         println!(
             "{}",
-            style("Clave SSH añadida a GitHub correctamente.").green()
+            style(format!("Bloque Host '{}' (HostName {}) añadido a ~/.ssh/config.", host_alias, github_host)).green()
         );
+    }
+
+    add_ssh_key_to_github(key_file, host_alias, label, github_host);
+}
+
+// Login de la cuenta activa de gh para un host ("" si no hay sesión)
+fn gh_active_login(host: &str) -> String {
+    Command::new("gh")
+        .args(["api", "user", "--jq", ".login"])
+        .env("GH_HOST", host)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+fn gh_interactive(args: &[&str]) -> bool {
+    Command::new("gh").args(args).status().map(|s| s.success()).unwrap_or(false)
+}
+
+// Obliga a ELEGIR la cuenta destino (no asume la activa) y pide confirmación
+// final, por defecto NO, para no añadir la clave a la cuenta equivocada.
+fn ensure_gh_account(label: &str, host: &str) -> bool {
+    let active = gh_active_login(host);
+    println!(
+        "{}",
+        style(format!("--- Cuenta de GitHub para la clave de '{}' (host: {}) ---", label, host)).cyan()
+    );
+    let first = if active.is_empty() {
+        "Usar la cuenta activa (no hay ninguna: iniciará sesión)".to_string()
     } else {
-        println!("{}", style("Error añadiendo clave SSH a GitHub.").red());
+        format!("Usar la cuenta activa ({})", active)
+    };
+    let choice = Select::new()
+        .with_prompt("¿A qué cuenta de GitHub quieres AÑADIR esta clave?")
+        .items(&[
+            first.as_str(),
+            "Cambiar a otra cuenta ya autenticada (gh auth switch)",
+            "Iniciar sesión en otra cuenta (gh auth login)",
+        ])
+        .default(0)
+        .interact()
+        .unwrap_or(0);
+
+    // --skip-ssh-key: que gh no suba id_ed25519 por su cuenta; la clave correcta la sube este script
+    let login = ["auth", "login", "--hostname", host, "--git-protocol", "ssh", "--skip-ssh-key", "--scopes", "admin:public_key"];
+    let ok = match choice {
+        1 => gh_interactive(&["auth", "switch", "-h", host]),
+        2 => gh_interactive(&login),
+        _ if active.is_empty() => gh_interactive(&login),
+        _ => true,
+    };
+    if !ok {
+        println!("{}", style("No se pudo cambiar/iniciar sesión en GitHub CLI.").red());
+        return false;
+    }
+
+    let active = gh_active_login(host);
+    let shown = if active.is_empty() { "desconocida" } else { active.as_str() };
+    Confirm::new()
+        .with_prompt(format!(
+            "La clave de '{}' se añadirá a la cuenta {} (host: {}). ¿Es la cuenta correcta?",
+            label, shown, host
+        ))
+        .default(false)
+        .interact()
+        .unwrap_or(false)
+}
+
+// Asegurar el scope admin:public_key (necesario para `gh ssh-key add`)
+fn ensure_gh_scope(host: &str) -> bool {
+    let has_scope = Command::new("gh")
+        .args(["auth", "status", "-h", host])
+        .output()
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout).contains("admin:public_key")
+                || String::from_utf8_lossy(&o.stderr).contains("admin:public_key")
+        })
+        .unwrap_or(false);
+    has_scope || gh_interactive(&["auth", "refresh", "-h", host, "-s", "admin:public_key"])
+}
+
+// Añadir una clave SSH a la cuenta de GitHub elegida y probar la conexión por su alias
+fn add_ssh_key_to_github(key_file: &str, host_alias: &str, label: &str, github_host: &str) -> bool {
+    let public_key_path = format!("{}.pub", key_file);
+    if !Path::new(&public_key_path).exists() {
+        println!("{}", style(format!("No se encontró la clave pública SSH: {}", public_key_path)).red());
+        return false;
+    }
+
+    if !ensure_gh_account(label, github_host) || !ensure_gh_scope(github_host) {
+        println!("{}", style(format!("No se añadió la clave de '{}'.", label)).yellow());
         show_ssh_key_instructions(&public_key_path);
         return false;
     }
 
-    println!(
-        "{}",
-        style("Probando conexión SSH con GitHub...").yellow()
-    );
+    let hostname = Command::new("hostname")
+        .arg("-s")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "MacBook".to_string());
+    let title = format!("{}_{}_{}", hostname, host_alias, chrono::Local::now().format("%Y%m%d"));
+    println!("{}", style(format!("Añadiendo clave SSH con título '{}'...", title)).yellow());
+    let out = Command::new("gh")
+        .args(["ssh-key", "add", &public_key_path, "--title", &title, "--type", "authentication"])
+        .env("GH_HOST", github_host)
+        .output()
+        .expect("Error ejecutando gh");
+    let msg = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    if out.status.success() {
+        println!("{}", style("Clave SSH añadida a GitHub.").green());
+    } else if msg.to_lowercase().contains("already") {
+        println!("{}", style("La clave ya estaba registrada en la cuenta. OK.").green());
+    } else {
+        println!("{}", style(format!("No se pudo añadir la clave: {}", msg.trim())).red());
+        show_ssh_key_instructions(&public_key_path);
+        return false;
+    }
+
+    println!("{}", style(format!("Probando conexión SSH (git@{})...", host_alias)).yellow());
     let output = Command::new("ssh")
-        .args(["-T", "git@github.com"])
+        .args(["-T", "-o", "StrictHostKeyChecking=accept-new", &format!("git@{}", host_alias)])
         .output()
         .expect("Error probando SSH");
-    if String::from_utf8_lossy(&output.stderr).contains("successfully authenticated") {
-        println!("{}", style("Conexión SSH verificada correctamente.").green());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if stderr.contains("successfully authenticated") {
+        println!("{}", style(format!("Conexión verificada: {}", stderr.lines().next().unwrap_or("").trim())).green());
     } else {
-        println!(
-            "{}",
-            style("No se pudo verificar la conexión con GitHub.").yellow()
-        );
+        println!("{}", style("No se pudo verificar la conexión todavía. Revisa la clave en GitHub.").yellow());
     }
     true
 }
@@ -698,11 +880,15 @@ fn clean_zshrc() {
 fn clean_ssh_config() {
     let ssh_config = format!("{}/.ssh/config", std::env::var("HOME").unwrap());
     if Path::new(&ssh_config).exists() {
+        // Elimina bloques "Host github.com" y cualquier "Host github-*" (5 líneas cada uno)
         run_command(
-            &format!("sed -i '' '/^Host github\\.com/{{N;N;N;N;d;}}' {}", ssh_config),
-            "Eliminando entrada de GitHub en ~/.ssh/config",
+            &format!(
+                "sed -i '' -e '/^Host github\\.com$/{{N;N;N;N;d;}}' -e '/^Host github-/{{N;N;N;N;d;}}' {}",
+                ssh_config
+            ),
+            "Eliminando entradas de GitHub en ~/.ssh/config",
         );
-        println!("{}", style("Entrada de GitHub eliminada de ~/.ssh/config.").green());
+        println!("{}", style("Entradas de GitHub eliminadas de ~/.ssh/config.").green());
     }
 }
 
@@ -728,14 +914,14 @@ fn uninstall() {
     }
 
     if Confirm::new()
-        .with_prompt("¿Eliminar clave SSH (~/.ssh/id_ed25519)?")
+        .with_prompt("¿Eliminar claves SSH de GitHub (~/.ssh/id_ed25519*)?")
         .default(false)
         .interact()
         .unwrap_or(false)
     {
         let home = std::env::var("HOME").unwrap();
         run_command(
-            &format!("rm -f {}/.ssh/id_ed25519 {}/.ssh/id_ed25519.pub", home, home),
+            &format!("rm -f {}/.ssh/id_ed25519 {}/.ssh/id_ed25519.pub {}/.ssh/id_ed25519_*", home, home, home),
             "Eliminando clave SSH",
         );
         clean_ssh_config();
@@ -863,5 +1049,20 @@ fn main() {
             );
             restart_terminal();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ssh_helpers() {
+        assert_eq!(slugify("Mi Trabajo!"), "mi-trabajo");
+        assert_eq!(slugify("***"), "cuenta");
+        let cfg = "Host github.com\n    HostName github.com\nHost github-work\n";
+        assert!(has_host_block(cfg, "github-work"));
+        assert!(!has_host_block(cfg, "github-wor"));
+        assert!(!has_host_block(cfg, "github-trabajo"));
     }
 }
