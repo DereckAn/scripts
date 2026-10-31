@@ -2,7 +2,7 @@
 import numpy as np
 from music21 import key, pitch
 
-from piano import assign_hands, beat_pos, meter_from, spell
+from piano import assign_hands, beat_pos, meter_from, spell, split_voices
 
 # Beats speed up (0.5 s -> 0.25 s apart): positions follow the beats, and extend past both ends.
 beats = np.array([1.0, 1.5, 2.0, 2.25, 2.5])
@@ -23,4 +23,10 @@ assert spell(pitch.Pitch("G-4"), key.Key("G")).name == "F#"
 b = np.arange(30) * 0.4
 assert meter_from(b, b[[2, 8, 14, 19, 25]]) == (6, 2)
 assert meter_from(b, []) == (4, 0)
+# Voices: a held whole note on top while eighths move below -> two voices, nothing clipped.
+up, low = split_voices([(0, [(72, 4), (64, 0.5)])] + [(i * 0.5, [(60 + i, 0.5)]) for i in range(1, 8)])
+assert up == [(0, [72], 4)] and len(low) == 8 and low[0] == (0, [64], 0.5)
+# Plain legato line (each note overlaps the next by a 16th) stays in one voice.
+up, low = split_voices([(i, [(60 + i, 1.25)]) for i in range(4)])
+assert low == [] and [l for _, _, l in up] == [1, 1, 1, 1.25]
 print("ok")
