@@ -1,0 +1,18 @@
+# Piano to Score (piano.py). Setup from scratch:
+#   uv venv -p 3.10 .venv
+#   uv pip install -p .venv -r requirements.txt
+#   .venv/bin/python -m playwright install --only-shell chromium
+#   brew install ffmpeg fluid-synth
+#   mkdir -p soundfonts && curl -L -o soundfonts/GeneralUser-GS.sf2 https://github.com/mrbumpy409/GeneralUser-GS/raw/main/GeneralUser-GS.sf2
+# Run: .venv/bin/python piano.py  -> http://127.0.0.1:7861   Check: .venv/bin/python test_piano.py
+gradio==5.49.1
+torch==2.8.0
+numpy==1.24.3
+piano-transcription-inference==0.0.6
+transkun==2.0.1
+beat_this @ https://github.com/CPJKU/beat_this/archive/main.zip
+music21==9.9.2
+verovio==6.4.0
+librosa==0.11.0
+pretty_midi==0.2.10
+playwright==1.58.0
