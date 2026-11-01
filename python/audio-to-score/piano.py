@@ -214,10 +214,40 @@ def transkun(audio, midi_path):
             for inst in pretty_midi.PrettyMIDI(str(midi_path)).instruments for n in inst.notes]
 
 
-def transcribe(audio, engine="ByteDance", progress=gr.Progress()):
-    if not audio:
-        raise gr.Error("Upload a piano recording first.")
+MAX_MINUTES = 20
+
+
+def is_link(text):
+    """Only plain http(s) links reach yt-dlp (no options, no local paths)."""
+    u = urllib.parse.urlparse(text.strip())
+    return u.scheme in ("http", "https") and bool(u.netloc) and not text.strip().startswith("-")
+
+
+def download(link, out):
+    """Fetch the audio of a YouTube (or other yt-dlp supported) link as MP3; returns its path, named after the title."""
+    if not is_link(link):
+        raise gr.Error("That doesn't look like a link. Paste the full address, e.g. https://www.youtube.com/watch?v=…")
+    done = subprocess.run(
+        ["yt-dlp", "--no-playlist", "--no-progress", "-x", "--audio-format", "mp3",
+         "--match-filter", f"duration <= {MAX_MINUTES * 60}", "--max-filesize", "200M",
+         "-o", str(out / "%(title).120B.%(ext)s"), "--print", "after_move:filepath", "--", link.strip()],
+        capture_output=True, text=True, timeout=900)
+    path = done.stdout.strip().splitlines()[-1] if done.stdout.strip() else ""
+    if done.returncode or not Path(path).is_file():
+        reason = (done.stderr.strip().splitlines() or ["the video was skipped"])[-1]
+        if not path and not done.returncode:
+            reason = f"the video is longer than {MAX_MINUTES} minutes"
+        raise gr.Error(f"Couldn't get the audio from that link: {reason}")
+    return path
+
+
+def transcribe(audio, engine="ByteDance", link="", progress=gr.Progress()):
+    if not audio and not (link or "").strip():
+        raise gr.Error("Upload a piano recording or paste a YouTube link first.")
     out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))
+    if (link or "").strip():
+        progress(0.02, desc="Downloading audio from the link")
+        audio = download(link, out)
     progress(0.05, desc="Loading audio")
     y, _ = librosa.load(audio, sr=sample_rate, mono=True)
     progress(0.1, desc="Transcribing notes (slow on CPU)")
@@ -253,7 +283,7 @@ def transcribe(audio, engine="ByteDance", progress=gr.Progress()):
     wav.unlink()
     return (f"Done with {engine}: {len(events)} notes, ~{round(bpm)} beats/min, {meter_text} time, key {k.tonic.name} {k.mode}. "
             "Press play to follow along; click any note to jump there.",
-            player_html(pages, notes, mp3), [str(pdf), str(xml), str(midi), str(mp3), str(raw_midi)])
+            player_html(pages, notes, mp3), [str(pdf), str(xml), str(midi), str(mp3), str(raw_midi)] + ([audio] if (link or "").strip() else []))
 
 
 FOLLOW_CSS = """
@@ -298,17 +328,20 @@ FOLLOW_JS = """<script>
 with gr.Blocks(title="Piano to Score", theme=gr.themes.Soft(primary_hue="teal"),
                css=FOLLOW_CSS, head=FOLLOW_JS) as demo:
     gr.Markdown("# Piano to Score\nSolo piano recording → two-hand sheet music (right hand treble, left hand bass).")
-    audio = gr.Audio(sources=["upload"], type="filepath", label="Piano recording")
+    with gr.Row():
+        audio = gr.Audio(sources=["upload"], type="filepath", label="Piano recording")
+        link = gr.Textbox(label="…or a YouTube link", placeholder="https://www.youtube.com/watch?v=…",
+                          info=f"Used instead of the upload when filled in. Up to {MAX_MINUTES} minutes.")
     engine = gr.Radio(["ByteDance", "Transkun"], value="ByteDance", label="Transcription engine",
                       info="Try both on the same song and compare.")
     run = gr.Button("Convert", variant="primary")
     status = gr.Textbox(label="Status", interactive=False)
     sheet = gr.HTML()
-    files = gr.File(label="PDF · MusicXML (open in MuseScore to edit) · two-hand MIDI · piano audio (MP3) · raw performance MIDI",
+    files = gr.File(label="PDF · MusicXML (open in MuseScore to edit) · two-hand MIDI · piano audio (MP3) · raw performance MIDI · original audio (for links)",
                     file_count="multiple", interactive=False)
     gr.Markdown("Hands are separated by following where each hand plays; rhythm and barlines follow the detected beats and downbeats (beat_this); rhythm is snapped to 16th notes. "
                 "For cleanup, open the MusicXML in MuseScore. The raw performance MIDI keeps the exact timing.")
-    run.click(transcribe, [audio, engine], [status, sheet, files], concurrency_limit=1)
+    run.click(transcribe, [audio, engine, link], [status, sheet, files], concurrency_limit=1)
 
 if __name__ == "__main__":
     demo.queue(max_size=5).launch(server_name="127.0.0.1", server_port=7861, max_file_size="100mb",

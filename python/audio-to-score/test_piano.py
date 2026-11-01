@@ -2,7 +2,7 @@
 import numpy as np
 from music21 import key, pitch
 
-from piano import assign_hands, beat_pos, meter_from, spell, split_voices
+from piano import assign_hands, beat_pos, is_link, meter_from, spell, split_voices
 
 # Beats speed up (0.5 s -> 0.25 s apart): positions follow the beats, and extend past both ends.
 beats = np.array([1.0, 1.5, 2.0, 2.25, 2.5])
@@ -29,4 +29,7 @@ assert up == [(0, [72], 4)] and len(low) == 8 and low[0] == (0, [64], 0.5)
 # Plain legato line (each note overlaps the next by a 16th) stays in one voice.
 up, low = split_voices([(i, [(60 + i, 1.25)]) for i in range(4)])
 assert low == [] and [l for _, _, l in up] == [1, 1, 1, 1.25]
+# Links: only http(s) URLs pass; options and local paths never reach yt-dlp.
+assert is_link(" https://www.youtube.com/watch?v=abc ") and is_link("https://youtu.be/abc")
+assert not any(map(is_link, ["--exec rm", "/etc/passwd", "file:///etc/passwd", "youtube.com/watch?v=abc", ""]))
 print("ok")
