@@ -2,7 +2,7 @@
 import numpy as np
 from music21 import key, meter, note, pitch, stream
 
-from piano import assign_hands, beat_grid, beat_pos, is_link, pedal_from_cc, meter_from, spell, split_voices
+from piano import assign_hands, beat_grid, fill_bars, beat_pos, is_link, pedal_from_cc, meter_from, spell, split_voices
 
 # Beats speed up (0.5 s -> 0.25 s apart): positions follow the beats, and extend past both ends.
 beats = np.array([1.0, 1.5, 2.0, 2.25, 2.5])
@@ -48,4 +48,15 @@ for i, m in enumerate([70, 71, 72, 69]):
 shown = [(n.name, n.pitch.accidental is not None and n.pitch.accidental.displayStatus)
          for n in stream.Score([part]).makeNotation().recurse().notes]
 assert shown == [("B-", False), ("B", True), ("C", False), ("A", False)], shown
+# Missed beat: bar 2 (2..4 s) lost its 3rd beat -> refilled evenly; a genuinely short bar stays as found.
+b = np.array([0, .5, 1, 1.5, 2, 2.5, 3.5, 4, 4.5, 5, 5.5])
+assert np.allclose(fill_bars(b, [0, 2, 4]), [0, .5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5])
+short = np.array([0, .5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5])
+assert np.allclose(fill_bars(short, [0, 2, 3.5]), short)
+# An extra beat in a normal-length bar is dropped back to 4.
+assert np.allclose(fill_bars([0, .5, .7, 1, 1.5, 2, 2.5, 3, 3.5, 4], [0, 2, 4]), [0, .5, 1, 1.5, 2, 2.5, 3, 3.5, 4])
+# Mixed beat levels (0.8, 0.8, 0.4, 0.4 per 2.4 s bar) -> 6 even 0.4 s beats per bar, like the whole song.
+mixed = np.cumsum([0] + [0.8, 0.8, 0.4, 0.4] * 4)
+fixed = fill_bars(mixed, mixed[::4])
+assert np.allclose(np.diff(fixed), 0.4) and meter_from(fixed, mixed[::4])[0] == 6
 print("ok")

@@ -1,4 +1,4 @@
-"""Solo piano recording -> two-hand (grand staff) score. Runs on port 7861."""
+"""Solo piano recording -> two-hand (grand staff) score. Web app on http://127.0.0.1:7861 (page: web/index.html)."""
 import base64
 import copy
 import html
@@ -7,10 +7,12 @@ from fractions import Fraction
 import subprocess
 import sys
 import tempfile
+import threading
+import traceback
 import urllib.parse
+import uuid
 from pathlib import Path
 
-import gradio as gr
 import librosa
 import numpy as np
 import pretty_midi
@@ -19,7 +21,13 @@ import verovio
 from music21 import chord, clef, expressions, instrument, key, layout, metadata, meter, note, stream, tempo
 from piano_transcription_inference import PianoTranscription, sample_rate
 from beat_this.inference import File2Beats
+from fastapi import FastAPI, Form, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from playwright.sync_api import sync_playwright
+from pydantic import BaseModel
+import uvicorn
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -120,6 +128,37 @@ def split_voices(groups, slack=0.5):
     return voices
 
 
+def beat_step(beats):
+    """Typical beat length. When the tracker mixes levels (long, long, short, short...) the short one is the beat."""
+    gaps = np.diff(beats)
+    med, short = float(np.median(gaps)), float(np.percentile(gaps, 20))
+    if short < 0.75 * med and np.mean(np.abs(gaps - short) <= 0.15 * short) >= 0.25:
+        return short
+    return med
+
+
+def fill_bars(beats, downbeats):
+    """Repair bars where the tracker missed, added or unevenly placed beats.
+
+    A bar between two downbeats that is as long as the usual number of beats per bar but holds a different number
+    of beats gets that many evenly spaced beats instead. Bars that are really shorter or longer stay as found.
+    """
+    beats = np.asarray(beats, dtype=float)
+    if len(beats) < 2 or len(downbeats) < 2:
+        return beats
+    step = beat_step(beats)
+    sizes = [round((b - a) / step) for a, b in zip(downbeats[:-1], downbeats[1:])]
+    per_bar = int(np.bincount(sizes).argmax())
+    out = list(beats[beats < downbeats[0] - step / 4])
+    for a, b, size in zip(downbeats[:-1], downbeats[1:], sizes):
+        inside = beats[(beats >= a - step / 4) & (beats < b - step / 4)]
+        if len(inside) != per_bar and size == per_bar:
+            inside = a + (b - a) * np.arange(per_bar) / per_bar
+        out.extend(inside)
+    out.extend(beats[beats >= downbeats[-1] - step / 4])
+    return np.array(out)
+
+
 def beat_grid(onsets):
     """Onsets in beats -> {beat number: 3 or 4}: triplet eighths where they fit clearly better than 16ths."""
     by_beat = {}
@@ -151,6 +190,7 @@ def to_score(events, beats, downbeats=(), pedals=()):
     Each beat is a quarter note, split into 16ths, or into triplet eighths where the playing is in threes.
     """
     # ponytail: one meter for the whole piece, bars aligned to the first downbeat; meter changes need per-bar barlines.
+    beats = fill_bars(beats, downbeats)
     per_bar, d0 = meter_from(beats, downbeats)
     on = beat_pos([e["onset_time"] for e in events], beats)
     off = beat_pos([e["offset_time"] for e in events], beats)
@@ -176,7 +216,7 @@ def to_score(events, beats, downbeats=(), pedals=()):
             hands["lh"][start] = notes[:k]
         if notes[k:]:
             hands["rh"][start] = notes[k:]
-    bpm = 60.0 / float(np.median(np.diff(beats)))
+    bpm = 60.0 / beat_step(beats)
 
     score = stream.Score()
     for name, cl in (("rh", clef.TrebleClef()), ("lh", clef.BassClef())):
@@ -226,6 +266,10 @@ def to_score(events, beats, downbeats=(), pedals=()):
     return score, k, bpm
 
 
+class UserError(Exception):
+    """A problem the user can fix; the message is shown to them as is."""
+
+
 def render(xml_path, out_pdf, out_midi):
     """MusicXML -> (SVG pages, {note id: [start ms, end ms]}); also writes the PDF and a MIDI whose timing matches."""
     tk = verovio.toolkit(False)
@@ -234,7 +278,7 @@ def render(xml_path, out_pdf, out_midi):
     tk.loadFile(str(xml_path))
     pages = [tk.renderToSVG(i + 1) for i in range(tk.getPageCount())]
     if not pages:
-        raise gr.Error("Score rendering failed; the MusicXML download is still usable.")
+        raise UserError("Score rendering failed; the MusicXML download is still usable.")
     # Same toolkit -> SVG note ids, MIDI and timemap all agree, so playback and highlighting stay in sync.
     out_midi.write_bytes(base64.b64decode(tk.renderToMIDI()))
     notes = {}
@@ -254,13 +298,17 @@ def render(xml_path, out_pdf, out_midi):
     return pages, notes
 
 
+def files_url(path):
+    """URL under /files for a file in WORK (the only folder the server exposes)."""
+    return "/files/" + urllib.parse.quote(Path(path).resolve().relative_to(WORK).as_posix())
+
+
 def player_html(pages, notes, audio_path):
-    """Score pages + an audio player; the script in HEAD highlights notes as they play and seeks on click."""
+    """Score pages + an audio player; the page script highlights notes as they play and seeks on click."""
     data = html.escape(json.dumps([[i, s, e] for i, (s, e) in notes.items()]))
-    src = "/gradio_api/file=" + urllib.parse.quote(str(audio_path))
     sheets = "".join(f'<div class="follow-page">{s}</div>' for s in pages)
     return (f'<div class="follow" data-notes="{data}">'
-            f'<audio class="follow-audio" controls preload="auto" src="{src}"></audio>{sheets}</div>')
+            f'<audio class="follow-audio" controls preload="auto" src="{files_url(audio_path)}"></audio>{sheets}</div>')
 
 
 def transkun(audio, midi_path):
@@ -274,6 +322,7 @@ def transkun(audio, midi_path):
 
 
 MAX_MINUTES = 20
+AUDIO_TYPES = {".mp3", ".wav", ".m4a", ".flac", ".aiff", ".aif", ".ogg", ".webm", ".mp4"}
 
 
 def is_link(text):
@@ -285,7 +334,7 @@ def is_link(text):
 def download(link, out):
     """Fetch the audio of a YouTube (or other yt-dlp supported) link as MP3; returns its path, named after the title."""
     if not is_link(link):
-        raise gr.Error("That doesn't look like a link. Paste the full address, e.g. https://www.youtube.com/watch?v=…")
+        raise UserError("That doesn't look like a link. Paste the full address, e.g. https://www.youtube.com/watch?v=…")
     done = subprocess.run(
         ["yt-dlp", "--no-playlist", "--no-progress", "-x", "--audio-format", "mp3",
          "--match-filter", f"duration <= {MAX_MINUTES * 60}", "--max-filesize", "200M",
@@ -296,20 +345,37 @@ def download(link, out):
         reason = (done.stderr.strip().splitlines() or ["the video was skipped"])[-1]
         if not path and not done.returncode:
             reason = f"the video is longer than {MAX_MINUTES} minutes"
-        raise gr.Error(f"Couldn't get the audio from that link: {reason}")
+        raise UserError(f"Couldn't get the audio from that link: {reason}")
     return path
 
 
-def transcribe(audio, engine="ByteDance", link="", progress=gr.Progress()):
-    if not audio and not (link or "").strip():
-        raise gr.Error("Upload a piano recording or paste a YouTube link first.")
+def probe(path):
+    """Audio facts for the file chip; raises UserError when the file isn't audio or is too long."""
+    done = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries",
+                           "stream=channels,sample_rate:format=duration", "-of", "json", str(path)],
+                          capture_output=True, text=True, timeout=60)
+    info = json.loads(done.stdout or "{}")
+    if done.returncode or not info.get("streams"):
+        raise UserError("That file doesn't contain audio we can read.")
+    duration = float(info.get("format", {}).get("duration") or 0)
+    if duration > MAX_MINUTES * 60:
+        raise UserError(f"That recording is longer than {MAX_MINUTES} minutes. Trim it first.")
+    st = info["streams"][0]
+    return {"duration": duration, "channels": st.get("channels"), "sample_rate": int(st.get("sample_rate") or 0)}
+
+
+def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, progress=lambda frac, stage: None):
+    """Audio file (optionally just start..end seconds) -> score, player and downloads."""
     out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))
-    if (link or "").strip():
-        progress(0.02, desc="Downloading audio from the link")
-        audio = download(link, out)
-    progress(0.05, desc="Loading audio")
+    audio = str(source)
+    if start > 0 or end:
+        progress(0.02, "Cutting the selected section")
+        audio = str(out / "section.wav")
+        subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-ss", str(start)] + (["-to", str(end)] if end else [])
+                       + ["-i", str(source), audio], check=True, capture_output=True, timeout=600)
+    progress(0.05, "Loading audio")
     y, _ = librosa.load(audio, sr=sample_rate, mono=True)
-    progress(0.1, desc="Transcribing notes (slow on CPU)")
+    progress(0.1, "Hearing the notes")
     raw_midi = out / "performance.mid"
     if engine == "Transkun":
         events, pedals = transkun(audio, raw_midi)
@@ -320,90 +386,118 @@ def transcribe(audio, engine="ByteDance", link="", progress=gr.Progress()):
         events = result["est_note_events"]
         pedals = [(p["onset_time"], p["offset_time"]) for p in result["est_pedal_events"]]
     if not len(events):
-        raise gr.Error("No piano notes detected.")
-    progress(0.8, desc="Estimating tempo and writing score")
+        raise UserError("No piano notes were found in this recording.")
+    progress(0.7, "Finding the beat")
     global BEATS
     if BEATS is None:
         BEATS = File2Beats(checkpoint_path="final0", device="cpu", dbn=False)
     beats, downbeats = BEATS(audio)
     if len(beats) < 2:
         beats, downbeats = np.arange(0, len(y) / sample_rate + 0.5, 0.5), []  # no beat found: 120 BPM, 4/4
+    progress(0.8, "Writing the score")
     score, k, bpm = to_score(events, beats, downbeats, pedals)
     meter_text = score.parts[0].recurse().getElementsByClass(meter.TimeSignature).first().ratioString
-    score.insert(0, metadata.Metadata(title=Path(audio).stem))
+    score.insert(0, metadata.Metadata(title=title or Path(source).stem))
     xml = Path(score.write("musicxml", fp=out / "score.musicxml"))
-    progress(0.9, desc="Rendering pages")
+    progress(0.88, "Rendering pages")
     pdf, midi = out / "score.pdf", out / "score_two_hands.mid"
     pages, notes = render(xml, pdf, midi)
-    progress(0.95, desc="Synthesizing piano audio")
+    progress(0.95, "Making playback audio")
     wav, mp3 = out / "score_piano.wav", out / "score_piano.mp3"
     subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.8", "-r", "44100", "-F", str(wav), SOUNDFONT, str(midi)],
                    check=True, capture_output=True, timeout=600)
     subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(wav), "-q:a", "3", str(mp3)],
                    check=True, capture_output=True, timeout=600)
     wav.unlink()
-    return (f"Done with {engine}: {len(events)} notes, ~{round(bpm)} beats/min, {meter_text} time, key {k.tonic.name} {k.mode}. "
-            "Press play to follow along; click any note to jump there.",
-            player_html(pages, notes, mp3), [str(pdf), str(xml), str(midi), str(mp3), str(raw_midi)] + ([audio] if (link or "").strip() else []))
+    downloads = [("PDF", pdf), ("MusicXML", xml), ("Two-hand MIDI", midi), ("Score audio (MP3)", mp3),
+                 ("Performance MIDI", raw_midi)]
+    return {"engine": engine, "notes": len(events), "bpm": round(bpm), "meter": meter_text,
+            "key": f"{k.tonic.name.replace('-', '♭')} {k.mode}", "title": title or Path(source).stem,
+            "player": player_html(pages, notes, mp3),
+            "downloads": [{"label": label, "url": files_url(p), "name": p.name} for label, p in downloads]}
 
 
-FOLLOW_CSS = """
-.follow-audio { width: 100%; position: sticky; top: 0; z-index: 5; margin-bottom: 8px; }
-.follow-page { background: white; margin-bottom: 12px; }
-.follow g.note { cursor: pointer; }
-.follow g.note.playing, .follow g.note.playing * { fill: #0d9488; stroke: #0d9488; }
-"""
+# ---------------------------------------------------------------- web app
 
-FOLLOW_JS = """<script>
-(() => {
-  const setup = a => a._notes || (a._notes = JSON.parse(a.closest('.follow').dataset.notes)
-    .map(([id, s, e]) => [a.closest('.follow').querySelector('[id="' + id + '"]'), s, e]).filter(n => n[0]));
-  const show = a => {
-    const t = a.currentTime * 1000;
-    let first = null;
-    for (const [el, s, e] of setup(a)) {
-      const on = s <= t && t < e;
-      el.classList.toggle('playing', on);
-      if (on && !first) first = el;
-    }
-    if (first) {
-      const r = first.getBoundingClientRect();
-      if (r.top < 80 || r.bottom > innerHeight - 40) first.scrollIntoView({block: 'center', behavior: 'smooth'});
-    }
-  };
-  const loop = a => { show(a); if (!a.paused) requestAnimationFrame(() => loop(a)); };
-  const isPlayer = el => el && el.classList && el.classList.contains('follow-audio');
-  document.addEventListener('play', e => isPlayer(e.target) && loop(e.target), true);
-  document.addEventListener('seeked', e => isPlayer(e.target) && show(e.target), true);
-  document.addEventListener('click', e => {
-    const n = e.target.closest && e.target.closest('.follow g.note');
-    if (!n) return;
-    const a = n.closest('.follow').querySelector('.follow-audio');
-    const hit = setup(a).find(([el]) => el === n);
-    if (hit) { a.currentTime = hit[1] / 1000; a.play(); }
-  });
-})();
-</script>"""
+app = FastAPI(title="Piano to Score")
+app.mount("/files", StaticFiles(directory=WORK), name="files")
+SOURCES = {}  # source id -> (audio path, title)
+JOBS = {}  # job id -> {"state", "progress", "stage", "result" | "error"}
+RUN_LOCK = threading.Lock()  # ponytail: one conversion at a time (CPU-bound); a queue view if several users share it
 
 
-with gr.Blocks(title="Piano to Score", theme=gr.themes.Soft(primary_hue="teal"),
-               css=FOLLOW_CSS, head=FOLLOW_JS) as demo:
-    gr.Markdown("# Piano to Score\nSolo piano recording → two-hand sheet music (right hand treble, left hand bass).")
-    with gr.Row():
-        audio = gr.Audio(sources=["upload"], type="filepath", label="Piano recording")
-        link = gr.Textbox(label="…or a YouTube link", placeholder="https://www.youtube.com/watch?v=…",
-                          info=f"Used instead of the upload when filled in. Up to {MAX_MINUTES} minutes.")
-    engine = gr.Radio(["ByteDance", "Transkun"], value="ByteDance", label="Transcription engine",
-                      info="Try both on the same song and compare.")
-    run = gr.Button("Convert", variant="primary")
-    status = gr.Textbox(label="Status", interactive=False)
-    sheet = gr.HTML()
-    files = gr.File(label="PDF · MusicXML (open in MuseScore to edit) · two-hand MIDI · piano audio (MP3) · raw performance MIDI · original audio (for links)",
-                    file_count="multiple", interactive=False)
-    gr.Markdown("Hands are separated by following where each hand plays; rhythm and barlines follow the detected beats and downbeats (beat_this); rhythm is snapped to 16th notes. "
-                "For cleanup, open the MusicXML in MuseScore. The raw performance MIDI keeps the exact timing.")
-    run.click(transcribe, [audio, engine, link], [status, sheet, files], concurrency_limit=1)
+@app.get("/")
+def index():
+    return FileResponse(Path(__file__).parent / "web" / "index.html")
+
+
+@app.post("/api/source")
+async def add_source(file: UploadFile | None = None, link: str = Form("")):
+    """Upload a file or fetch a link -> source id plus facts for the file chip and waveform."""
+    folder = Path(tempfile.mkdtemp(prefix="src-", dir=WORK))
+    try:
+        if link.strip():
+            path = Path(await run_in_threadpool(download, link, folder))
+            title = path.stem
+        elif file is not None and file.filename:
+            ext = Path(file.filename).suffix.lower()
+            if ext not in AUDIO_TYPES:
+                raise UserError("Choose an audio file (MP3, WAV, M4A, FLAC or AIFF).")
+            path, title, size = folder / f"source{ext}", Path(file.filename).stem, 0
+            with open(path, "wb") as f:
+                while chunk := await file.read(1 << 20):
+                    size += len(chunk)
+                    if size > 200 << 20:
+                        raise UserError("That file is larger than 200 MB.")
+                    f.write(chunk)
+        else:
+            raise UserError("Choose a recording or paste a link first.")
+        info = await run_in_threadpool(probe, path)
+    except UserError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    SOURCES[folder.name] = (path, title)
+    return {"id": folder.name, "title": title, "url": files_url(path), **info}
+
+
+class ConvertRequest(BaseModel):
+    source: str
+    engine: str = "ByteDance"
+    start: float = 0.0
+    end: float | None = None
+
+
+@app.post("/api/convert")
+def convert(req: ConvertRequest):
+    if req.source not in SOURCES:
+        return JSONResponse({"error": "Load a recording first."}, status_code=400)
+    if req.engine not in ("ByteDance", "Transkun"):
+        return JSONResponse({"error": "Unknown engine."}, status_code=400)
+    path, title = SOURCES[req.source]
+    job = uuid.uuid4().hex
+    JOBS[job] = {"state": "queued", "progress": 0, "stage": "Waiting for the previous conversion"}
+
+    def step(frac, stage):
+        JOBS[job].update(state="running", progress=frac, stage=stage)
+
+    def run():
+        with RUN_LOCK:
+            try:
+                JOBS[job].update(state="done", progress=1, stage="Done",
+                                 result=transcribe(path, req.engine, max(0.0, req.start), req.end, title, step))
+            except UserError as e:
+                JOBS[job].update(state="error", error=str(e))
+            except Exception:
+                traceback.print_exc()
+                JOBS[job].update(state="error", error="Conversion failed. Try the other engine or a shorter section.")
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"job": job}
+
+
+@app.get("/api/jobs/{job}")
+def job_status(job: str):
+    return JOBS.get(job) or JSONResponse({"error": "Unknown job."}, status_code=404)
+
 
 if __name__ == "__main__":
-    demo.queue(max_size=5).launch(server_name="127.0.0.1", server_port=7861, max_file_size="100mb",
-                                  allowed_paths=[str(WORK)])  # lets the player stream the generated MP3
+    uvicorn.run(app, host="127.0.0.1", port=7861)

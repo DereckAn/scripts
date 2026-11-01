@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Piano to Score</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<!-- ponytail: Tailwind from its CDN (needs internet, like the fonts); compile with the Tailwind CLI if it must work offline. -->
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: {
+    "primary": "#00263c", "primary-container": "#1b3c53", "on-primary": "#ffffff",
+    "secondary": "#3f627c", "secondary-container": "#badefd", "on-secondary": "#ffffff", "on-secondary-container": "#40637d",
+    "surface": "#fef8f4", "surface-container-lowest": "#ffffff", "surface-container-low": "#f8f2ee",
+    "surface-container": "#f3ede9", "surface-container-high": "#ede7e3", "surface-container-highest": "#e7e1de",
+    "on-surface": "#1d1b19", "on-surface-variant": "#42474d", "outline": "#73787d", "outline-variant": "#c2c7cd",
+    "error": "#ba1a1a", "error-container": "#ffdad6", "on-error-container": "#93000a"
+  },
+  borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+  spacing: { "space-xs": "0.25rem", "space-sm": "0.5rem", "space-md": "0.75rem", "space-lg": "1.25rem", "space-xl": "2rem",
+             "gutter": "1rem", "gutter-desktop": "1.5rem" },
+  fontFamily: { "headline-lg": ["Newsreader"], "headline-md": ["Newsreader"], "headline-sm": ["Inter"], "body-md": ["Inter"],
+                "body-sm": ["Inter"], "label-lg": ["Inter"], "label-md": ["Inter"], "label-mono": ["JetBrains Mono"] },
+  fontSize: {
+    "headline-lg": ["30px", { lineHeight: "38px", letterSpacing: "-0.015em", fontWeight: "600" }],
+    "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600" }],
+    "headline-sm": ["18px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }],
+    "body-md": ["14px", { lineHeight: "20px" }], "body-sm": ["12px", { lineHeight: "18px" }],
+    "label-lg": ["13px", { lineHeight: "16px", letterSpacing: "0.01em", fontWeight: "600" }],
+    "label-md": ["11px", { lineHeight: "14px", letterSpacing: "0.04em", fontWeight: "600" }],
+    "label-mono": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "500" }]
+  } } } };
+</script>
+<style>
+  html, body { margin: 0; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400; vertical-align: middle; }
+  [hidden] { display: none !important; }
+  button:focus-visible, a:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid #3f627c; outline-offset: 2px; }
+  button:disabled { cursor: not-allowed; opacity: .55; }
+  /* Engine / arrangement cards: selected look */
+  .choice { background: #ffffff; }
+  .choice.selected { background: #f8f2ee; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  /* Follow-along score */
+  .follow-audio { width: 100%; position: sticky; top: 72px; z-index: 5; margin-bottom: 12px; }
+  .follow-page { background: white; margin-bottom: 16px; border-radius: .75rem; box-shadow: 0 1px 3px rgba(27,60,83,.08); overflow: hidden; }
+  .follow-page svg { width: 100%; height: auto; display: block; }
+  .follow g.note { cursor: pointer; }
+  /* Highlight uses colour plus an outline, so it doesn't rely on colour alone. */
+  .follow g.note.playing, .follow g.note.playing * { fill: #0d9488; stroke: #0d9488; }
+  .follow g.note.playing { filter: drop-shadow(0 0 2px #0d9488); }
+</style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col">
+
+<header class="fixed top-0 w-full z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(27,60,83,0.04)]">
+  <div class="h-16 w-full px-gutter md:px-gutter-desktop flex items-center justify-between gap-space-md">
+    <div class="flex items-center gap-space-lg">
+      <div class="flex items-center gap-space-sm">
+        <span class="material-symbols-outlined text-[28px] text-primary">piano</span>
+        <span class="font-headline-md text-headline-md text-primary tracking-tight">Piano to Score</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-space-xs px-space-sm py-0.5 rounded-full bg-surface-container-high">
+        <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+        <span class="font-label-md text-label-md text-secondary uppercase tracking-wider">Runs on this Mac</span>
+      </div>
+    </div>
+    <nav class="flex items-center gap-space-xs p-1 bg-surface-container-low rounded-lg">
+      <button type="button" data-view="start" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Convert</button>
+      <button type="button" data-view="studio" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg" disabled title="Convert a recording first">Practice Studio</button>
+      <button type="button" class="px-space-md py-1.5 rounded-lg font-label-lg text-label-lg text-on-surface-variant" disabled title="Coming soon">Library</button>
+    </nav>
+  </div>
+</header>
+
+<main class="w-full pt-16 flex-1">
+
+<!-- ============================== START / INPUT ============================== -->
+<section id="view-start" class="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl">
+
+  <div class="relative overflow-hidden rounded-xl bg-surface-container-low shadow-sm p-space-xl">
+    <div class="absolute -right-16 -top-24 w-80 h-80 rounded-full bg-secondary/5 blur-3xl pointer-events-none"></div>
+    <div class="relative flex flex-col gap-space-xs max-w-2xl">
+      <div class="flex items-center gap-space-sm font-label-mono text-label-mono text-secondary tracking-widest uppercase">
+        <span class="inline-block w-2 h-2 rounded-full bg-secondary"></span>
+        <span>Processing stays on this Mac</span>
+      </div>
+      <h1 class="font-headline-lg text-headline-lg text-primary">Turn a solo piano recording into two-hand sheet music you can play along with.</h1>
+      <p class="text-on-surface-variant">Splits the left and right hands, finds the beat, key and time signature, and marks the sustain pedal. Then play the score back and follow every note.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+
+    <!-- Left: source + trimmer -->
+    <div class="lg:col-span-7 flex flex-col gap-space-lg">
+
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="px-space-lg pt-space-lg pb-space-md flex items-center justify-between gap-space-sm">
+          <div class="flex items-center gap-space-xs font-label-lg text-label-lg text-primary">
+            <span class="material-symbols-outlined text-[20px] text-secondary">graphic_eq</span><span>1. Audio source</span>
+          </div>
+          <span class="font-label-mono text-label-mono text-on-surface-variant">Up to 20 min · 200 MB</span>
+        </div>
+        <div class="px-space-lg flex gap-space-sm" role="tablist">
+          <button type="button" id="tab-file" role="tab" class="tab px-space-md py-1.5 rounded-lg font-label-lg text-label-lg flex items-center gap-space-xs">
+            <span class="material-symbols-outlined text-[16px]">audio_file</span><span>Audio file</span></button>
+          <button type="button" id="tab-link" role="tab" class="tab px-space-md py-1.5 rounded-lg font-label-lg text-label-lg flex items-center gap-space-xs">
+            <span class="material-symbols-outlined text-[16px]">link</span><span>YouTube link</span></button>
+        </div>
+
+        <div class="p-space-lg" id="pane-file">
+          <label id="dropzone" class="relative group rounded-xl p-space-xl flex flex-col items-center justify-center gap-space-md text-center bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+            <input id="file-input" type="file" accept=".mp3,.wav,.m4a,.flac,.aiff,.aif,.ogg" class="sr-only"/>
+            <div class="w-14 h-14 rounded-full bg-surface-container-high group-hover:bg-secondary/15 flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-[28px] text-primary">cloud_upload</span>
+            </div>
+            <div class="flex flex-col gap-0.5">
+              <p class="font-headline-sm text-headline-sm text-primary">Drop a piano recording here</p>
+              <p class="text-on-surface-variant">MP3, WAV, M4A, FLAC or AIFF</p>
+            </div>
+            <span class="px-space-md py-1 rounded bg-surface-container-highest text-primary font-label-lg text-label-lg shadow-sm">Choose audio file</span>
+          </label>
+        </div>
+
+        <div class="p-space-lg" id="pane-link" hidden>
+          <form id="link-form" class="bg-surface-container-low rounded-xl p-space-lg flex flex-col gap-space-md">
+            <label for="link-input" class="font-label-lg text-label-lg text-primary flex items-center gap-space-xs">
+              <span class="material-symbols-outlined text-[18px] text-secondary">smart_display</span><span>Paste a video link</span></label>
+            <div class="flex flex-col sm:flex-row gap-space-sm">
+              <input id="link-input" type="url" required placeholder="https://www.youtube.com/watch?v=…"
+                     class="flex-1 min-w-0 bg-surface-container-lowest px-space-md py-2.5 rounded-lg outline-none focus:bg-surface-container-highest"/>
+              <button type="submit" id="fetch-btn" class="px-space-lg py-2.5 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg hover:bg-primary transition-colors flex items-center justify-center gap-space-xs">
+                <span class="material-symbols-outlined text-[18px]">download</span><span>Fetch audio</span></button>
+            </div>
+            <p class="font-label-mono text-label-mono text-on-surface-variant">Downloads the audio only, one video at a time.</p>
+          </form>
+        </div>
+
+        <div class="px-space-lg pb-space-lg flex items-center justify-between gap-space-md" id="source-chip">
+          <div class="flex items-center gap-space-md min-w-0">
+            <span id="source-dot" class="w-2.5 h-2.5 shrink-0 rounded-full bg-outline-variant"></span>
+            <div class="flex flex-col min-w-0">
+              <span id="source-name" class="font-label-lg text-label-lg text-primary truncate">No recording yet</span>
+              <span id="source-info" class="font-label-mono text-label-mono text-on-surface-variant">Choose a file or paste a link</span>
+            </div>
+          </div>
+        </div>
+        <p id="source-error" role="alert" class="mx-space-lg mb-space-lg px-space-md py-space-sm rounded-lg bg-error-container text-on-error-container" hidden></p>
+      </div>
+
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md" id="trimmer">
+        <div class="flex flex-wrap items-center justify-between gap-space-sm">
+          <div class="flex items-center gap-space-xs font-label-lg text-label-lg text-primary">
+            <span class="material-symbols-outlined text-[20px] text-secondary">tune</span><span>2. Section to convert</span>
+          </div>
+          <span id="span-display" class="px-space-sm py-0.5 rounded bg-surface-container text-primary font-label-mono text-label-mono">—</span>
+        </div>
+        <div class="relative w-full bg-surface-container-low rounded-xl p-space-sm select-none flex flex-col gap-space-xs">
+          <div id="time-marks" class="w-full flex justify-between font-label-mono text-[10px] text-on-surface-variant px-space-xs"><span>0:00</span></div>
+          <div id="wave" class="relative w-full h-20">
+            <svg id="wave-svg" class="w-full h-full text-secondary/40" viewBox="0 0 700 80" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div id="sel" class="absolute inset-y-0 bg-secondary/15 pointer-events-none" style="left:0;right:0"></div>
+            <div id="h-start" role="slider" tabindex="0" aria-label="Section start" class="handle absolute inset-y-0 -ml-1.5 w-3 bg-primary rounded-l flex items-center justify-center cursor-ew-resize shadow-md" style="left:0"><span class="w-0.5 h-6 bg-surface rounded-full"></span></div>
+            <div id="h-end" role="slider" tabindex="0" aria-label="Section end" class="handle absolute inset-y-0 -ml-1.5 w-3 bg-primary rounded-r flex items-center justify-center cursor-ew-resize shadow-md" style="left:100%"><span class="w-0.5 h-6 bg-surface rounded-full"></span></div>
+            <div id="playhead" class="absolute inset-y-0 w-0.5 bg-secondary pointer-events-none" hidden></div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs font-label-mono text-label-mono">
+            <div class="flex items-center gap-space-sm">
+              <button type="button" id="audition" class="flex items-center gap-space-xs px-space-md py-1 rounded-full bg-primary-container text-on-primary hover:bg-primary transition-colors shadow-sm" disabled>
+                <span class="material-symbols-outlined text-[16px]">play_arrow</span><span>Listen to section</span></button>
+              <button type="button" id="loop" aria-pressed="false" title="Loop section" class="p-1 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors" disabled>
+                <span class="material-symbols-outlined text-[18px]">repeat</span></button>
+            </div>
+            <div class="flex items-center gap-space-md text-on-surface-variant">
+              <span>Start: <strong id="t-start" class="text-primary">0:00.0</strong></span>
+              <span>End: <strong id="t-end" class="text-primary">0:00.0</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="font-label-mono text-label-mono text-on-surface-variant">Quick range:</span>
+          <div class="flex items-center gap-space-xs font-label-mono text-label-mono">
+            <button type="button" data-range="all" class="range px-2.5 py-1 rounded bg-surface-container-high text-primary" disabled>Whole recording</button>
+            <button type="button" data-range="60" class="range px-2.5 py-1 rounded bg-surface-container-low text-on-surface-variant hover:text-primary" disabled>First 60 s</button>
+          </div>
+        </div>
+        <audio id="source-audio" preload="auto" hidden></audio>
+      </div>
+    </div>
+
+    <!-- Right: engine, arrangement, convert -->
+    <div class="lg:col-span-5 flex flex-col gap-space-lg">
+
+      <fieldset class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <legend class="sr-only">Transcription engine</legend>
+        <div class="flex items-center gap-space-xs font-label-lg text-label-lg text-primary">
+          <span class="material-symbols-outlined text-[20px] text-secondary">psychology</span><span>3. Transcription engine</span>
+        </div>
+        <label class="choice selected flex items-start gap-space-md p-space-md rounded-xl cursor-pointer hover:bg-surface-container transition-colors">
+          <input type="radio" name="engine" value="ByteDance" checked class="mt-1 accent-primary w-4 h-4"/>
+          <div class="flex flex-col gap-0.5">
+            <div class="flex items-center gap-space-xs">
+              <span class="font-headline-sm text-headline-sm text-primary">Engine A</span>
+              <span class="font-label-mono text-[11px] text-primary px-1.5 rounded bg-surface-container-high">ByteDance</span>
+            </div>
+            <p class="text-on-surface-variant">Catches more notes, including soft inner ones. Slower.</p>
+          </div>
+        </label>
+        <label class="choice flex items-start gap-space-md p-space-md rounded-xl cursor-pointer hover:bg-surface-container-low transition-colors">
+          <input type="radio" name="engine" value="Transkun" class="mt-1 accent-primary w-4 h-4"/>
+          <div class="flex flex-col gap-0.5">
+            <div class="flex items-center gap-space-xs">
+              <span class="font-headline-sm text-headline-sm text-primary">Engine B</span>
+              <span class="font-label-mono text-[11px] text-on-surface-variant px-1.5 rounded bg-surface-container-low">Transkun</span>
+            </div>
+            <p class="text-on-surface-variant">A cleaner, slightly sparser score. About 3× faster.</p>
+          </div>
+        </label>
+        <div class="p-space-sm rounded-lg bg-surface-container-high/60 flex items-center gap-space-sm font-label-mono text-label-mono text-on-surface-variant">
+          <span class="material-symbols-outlined text-[16px] text-secondary">info</span>
+          <span>Not sure? Convert with both and compare. The other engine is one click away afterwards.</span>
+        </div>
+      </fieldset>
+
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-space-xs font-label-lg text-label-lg text-primary">
+            <span class="material-symbols-outlined text-[20px] text-secondary">piano</span><span>4. Arrangement</span>
+          </div>
+          <span class="font-label-mono text-label-mono text-on-surface-variant">Two-hand staff</span>
+        </div>
+        <div class="grid grid-cols-2 gap-space-sm">
+          <div class="choice selected flex flex-col gap-1 p-space-md rounded-xl">
+            <div class="flex items-center justify-between"><span class="font-headline-sm text-headline-sm text-primary">Original</span>
+              <span class="material-symbols-outlined text-[18px] text-primary">check_circle</span></div>
+            <span class="font-label-mono text-label-mono text-secondary">Note for note</span>
+            <p class="font-body-sm text-body-sm text-on-surface-variant pt-1">Everything that was played, in both hands.</p>
+          </div>
+          <div class="choice flex flex-col gap-1 p-space-md rounded-xl opacity-60" aria-disabled="true">
+            <div class="flex items-center justify-between"><span class="font-headline-sm text-headline-sm text-primary">Easy Piano</span>
+              <span class="font-label-md text-label-md uppercase text-on-surface-variant px-1.5 rounded bg-surface-container-high">Soon</span></div>
+            <span class="font-label-mono text-label-mono text-on-surface-variant">Simplified</span>
+            <p class="font-body-sm text-body-sm text-on-surface-variant pt-1">Melody plus a simple left hand, for practice.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-space-sm">
+        <button type="button" id="convert" disabled class="group w-full py-4 px-space-xl rounded-xl bg-primary text-on-primary font-headline-md text-headline-md flex items-center justify-center gap-space-md shadow-md hover:bg-primary-container active:scale-[0.99] transition-all">
+          <span class="material-symbols-outlined text-[26px]">music_note</span><span>Convert to sheet music</span>
+          <span class="material-symbols-outlined text-[22px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+        </button>
+        <div id="progress" class="flex flex-col gap-space-xs" hidden>
+          <div class="h-1.5 w-full rounded-full bg-surface-container-high overflow-hidden"><div id="progress-bar" class="h-full bg-secondary transition-all" style="width:0"></div></div>
+          <span id="progress-stage" class="font-label-mono text-label-mono text-secondary" aria-live="polite"></span>
+        </div>
+        <p id="convert-error" role="alert" class="px-space-md py-space-sm rounded-lg bg-error-container text-on-error-container" hidden></p>
+        <div class="flex items-center justify-between font-label-mono text-label-mono text-on-surface-variant px-space-xs">
+          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock</span>Your audio stays on this Mac</span>
+          <span>Shortcut: <kbd class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-semibold">Return ↵</kbd></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+    <div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col gap-space-sm">
+      <div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">splitscreen</span></div>
+      <h2 class="font-headline-sm text-headline-sm text-primary">Two hands, two voices</h2>
+      <p class="text-on-surface-variant">Notes go to the hand that is playing nearby, and held notes keep sounding in their own voice.</p>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col gap-space-sm">
+      <div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">music_cast</span></div>
+      <h2 class="font-headline-sm text-headline-sm text-primary">Beat, key and bars</h2>
+      <p class="text-on-surface-variant">Finds the beat and downbeats, the time signature and the key, writes triplets where the music is in threes, and marks the pedal.</p>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col gap-space-sm">
+      <div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">print</span></div>
+      <h2 class="font-headline-sm text-headline-sm text-primary">Print or keep editing</h2>
+      <p class="text-on-surface-variant">Download a PDF to print, or MusicXML and MIDI to finish the score in MuseScore.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PRACTICE STUDIO (result) ============================== -->
+<section id="view-studio" class="w-full max-w-5xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-lg" hidden>
+  <div class="flex flex-wrap items-start justify-between gap-space-md">
+    <div class="flex flex-col gap-space-sm min-w-0">
+      <h1 id="r-title" class="font-headline-lg text-headline-lg text-primary break-words"></h1>
+      <div id="r-chips" class="flex flex-wrap gap-space-xs font-label-mono text-label-mono"></div>
+    </div>
+    <div class="flex flex-wrap gap-space-sm">
+      <button type="button" id="other-engine" class="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container-high text-primary font-label-lg text-label-lg hover:bg-surface-container-highest">
+        <span class="material-symbols-outlined text-[18px]">compare_arrows</span><span>Try Engine B</span></button>
+      <button type="button" id="new-conversion" class="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg hover:bg-primary">
+        <span class="material-symbols-outlined text-[18px]">add</span><span>New conversion</span></button>
+    </div>
+  </div>
+  <div class="flex flex-wrap items-center gap-space-sm bg-surface-container-lowest rounded-xl shadow-sm p-space-md">
+    <span class="font-label-lg text-label-lg text-primary flex items-center gap-space-xs mr-space-sm"><span class="material-symbols-outlined text-[18px] text-secondary">download</span>Downloads</span>
+    <div id="r-downloads" class="flex flex-wrap gap-space-xs"></div>
+  </div>
+  <p class="font-label-mono text-label-mono text-on-surface-variant">Press play to follow along. Click any note to jump there.</p>
+  <div id="r-player"></div>
+</section>
+</main>
+
+<footer class="w-full bg-surface-container-low/90">
+  <div class="h-9 w-full px-gutter md:px-gutter-desktop flex items-center justify-between font-label-mono text-label-mono text-on-surface-variant">
+    <span>Engine: <span id="f-engine" class="text-primary font-semibold">A · ByteDance</span></span>
+    <span class="flex items-center gap-1"><span id="f-dot" class="w-1.5 h-1.5 rounded-full bg-secondary"></span><span id="f-status">Ready</span></span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const fmt = (t, dec) => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (dec ? s.toFixed(1).padStart(4, '0') : String(Math.floor(s)).padStart(2, '0')); };
+  const state = { source: null, duration: 0, start: 0, end: 0, lastEngine: null };
+
+  // ---------- views & nav
+  const show = view => {
+    $('view-start').hidden = view !== 'start';
+    $('view-studio').hidden = view !== 'studio';
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      const on = b.dataset.view === view;
+      b.classList.toggle('bg-primary-container', on); b.classList.toggle('text-on-primary', on); b.classList.toggle('shadow-sm', on);
+      b.classList.toggle('text-on-surface-variant', !on);
+      b.toggleAttribute('aria-current', on);
+    });
+    scrollTo(0, 0);
+  };
+  document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+  show('start');
+
+  // ---------- tabs
+  const tab = which => {
+    [['file', $('tab-file'), $('pane-file')], ['link', $('tab-link'), $('pane-link')]].forEach(([k, t, p]) => {
+      const on = k === which;
+      p.hidden = !on; t.setAttribute('aria-selected', on);
+      t.classList.toggle('bg-primary-container', on); t.classList.toggle('text-on-primary', on); t.classList.toggle('shadow-sm', on);
+      t.classList.toggle('text-on-surface-variant', !on); t.classList.toggle('hover:bg-surface-container-high', !on);
+    });
+  };
+  $('tab-file').onclick = () => tab('file'); $('tab-link').onclick = () => tab('link'); tab('file');
+
+  // ---------- loading a source
+  const setStatus = (text, busy) => { $('f-status').textContent = text; $('f-dot').classList.toggle('animate-pulse', !!busy); };
+  const showError = (el, msg) => { el.textContent = msg || ''; el.hidden = !msg; };
+
+  async function loadSource(body, label) {
+    showError($('source-error'));
+    $('source-name').textContent = label; $('source-info').textContent = 'Loading…';
+    $('source-dot').className = 'w-2.5 h-2.5 shrink-0 rounded-full bg-secondary animate-pulse';
+    $('convert').disabled = true; setStatus('Loading audio', true);
+    try {
+      const r = await fetch('/api/source', { method: 'POST', body });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Could not load that audio.');
+      state.source = d.id; state.duration = d.duration;
+      $('source-name').textContent = d.title;
+      $('source-info').textContent = [d.channels === 1 ? 'Mono' : d.channels === 2 ? 'Stereo' : d.channels + ' ch',
+        d.sample_rate ? (d.sample_rate / 1000).toFixed(1) + ' kHz' : null, fmt(d.duration)].filter(Boolean).join(' · ');
+      $('source-dot').className = 'w-2.5 h-2.5 shrink-0 rounded-full bg-secondary';
+      $('source-audio').src = d.url;
+      setRange(0, d.duration);
+      ['audition', 'loop', 'convert'].forEach(id => $(id).disabled = false);
+      document.querySelectorAll('.range').forEach(b => b.disabled = false);
+      drawWave(d.url, d.duration);
+      setStatus('Ready');
+    } catch (e) {
+      state.source = null;
+      $('source-name').textContent = 'No recording yet'; $('source-info').textContent = 'Choose a file or paste a link';
+      $('source-dot').className = 'w-2.5 h-2.5 shrink-0 rounded-full bg-outline-variant';
+      showError($('source-error'), e.message); setStatus('Ready');
+    }
+  }
+  const sendFile = f => { if (!f) return; const b = new FormData(); b.append('file', f); loadSource(b, f.name); };
+  $('file-input').onchange = e => sendFile(e.target.files[0]);
+  const dz = $('dropzone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('bg-surface-container'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('bg-surface-container'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('bg-surface-container'); sendFile(e.dataTransfer.files[0]); });
+  $('link-form').onsubmit = e => {
+    e.preventDefault();
+    const b = new FormData(); b.append('link', $('link-input').value);
+    loadSource(b, 'Fetching from the link… (can take a minute)');
+  };
+
+  // ---------- waveform + trimming
+  async function drawWave(url, duration) {
+    const svg = $('wave-svg'); svg.innerHTML = '';
+    const marks = $('time-marks'); marks.innerHTML = '';
+    for (let i = 0; i <= 5; i++) marks.insertAdjacentHTML('beforeend', `<span>${fmt(duration * i / 5)}</span>`);
+    try {
+      const buf = await (await fetch(url)).arrayBuffer();
+      const audio = await new (window.AudioContext || window.webkitAudioContext)().decodeAudioData(buf);
+      const data = audio.getChannelData(0), bins = 350, size = Math.floor(data.length / bins);
+      const peaks = [];
+      for (let i = 0; i < bins; i++) { let m = 0; for (let j = i * size; j < (i + 1) * size; j += 16) m = Math.max(m, Math.abs(data[j])); peaks.push(m); }
+      const top = Math.max(...peaks) || 1;
+      svg.innerHTML = peaks.map((p, i) => { const h = Math.max(1, p / top * 38); return `<rect x="${i * 2}" y="${40 - h}" width="1.4" height="${h * 2}" fill="currentColor"/>`; }).join('');
+    } catch { /* waveform is decoration; trimming still works without it */ }
+  }
+  function setRange(start, end) {
+    state.start = Math.max(0, Math.min(start, state.duration - 1));
+    state.end = Math.min(state.duration, Math.max(end, state.start + 1));
+    const a = state.start / state.duration * 100, b = state.end / state.duration * 100;
+    $('h-start').style.left = a + '%'; $('h-end').style.left = b + '%';
+    $('sel').style.left = a + '%'; $('sel').style.right = (100 - b) + '%';
+    $('t-start').textContent = fmt(state.start, 1); $('t-end').textContent = fmt(state.end, 1);
+    const whole = state.start < 0.05 && state.end > state.duration - 0.05;
+    $('span-display').textContent = `${fmt(state.start)} – ${fmt(state.end)}` + (whole ? ' (whole recording)' : '');
+    document.querySelectorAll('.range').forEach(b => {
+      const on = b.dataset.range === 'all' ? whole : (state.start < 0.05 && Math.abs(state.end - Math.min(60, state.duration)) < 0.05);
+      b.classList.toggle('bg-surface-container-high', on); b.classList.toggle('text-primary', on);
+      b.classList.toggle('bg-surface-container-low', !on); b.classList.toggle('text-on-surface-variant', !on);
+    });
+  }
+  [['h-start', 'start'], ['h-end', 'end']].forEach(([id, which]) => {
+    const h = $(id);
+    h.addEventListener('pointerdown', e => {
+      if (!state.duration) return;
+      h.setPointerCapture(e.pointerId);
+      const move = ev => {
+        const r = $('wave').getBoundingClientRect(), t = (ev.clientX - r.left) / r.width * state.duration;
+        which === 'start' ? setRange(t, state.end) : setRange(state.start, t);
+      };
+      h.onpointermove = move;
+      h.onpointerup = () => { h.onpointermove = null; };
+    });
+    h.addEventListener('keydown', e => {
+      const d = { ArrowLeft: -1, ArrowRight: 1 }[e.key]; if (!d || !state.duration) return;
+      e.preventDefault(); const step = e.shiftKey ? 5 : 0.5;
+      which === 'start' ? setRange(state.start + d * step, state.end) : setRange(state.start, state.end + d * step);
+    });
+  });
+  document.querySelectorAll('.range').forEach(b => b.onclick = () =>
+    b.dataset.range === 'all' ? setRange(0, state.duration) : setRange(0, Math.min(60, state.duration)));
+
+  const src = $('source-audio'); let looping = false;
+  $('loop').onclick = () => { looping = !looping; $('loop').setAttribute('aria-pressed', looping); $('loop').classList.toggle('text-secondary', looping); $('loop').classList.toggle('bg-secondary-container', looping); };
+  const auditionUI = playing => {
+    $('audition').querySelector('.material-symbols-outlined').textContent = playing ? 'pause' : 'play_arrow';
+    $('audition').lastElementChild.textContent = playing ? 'Pause' : 'Listen to section';
+    $('playhead').hidden = !playing;
+  };
+  $('audition').onclick = () => {
+    if (!src.paused) { src.pause(); return; }
+    if (src.currentTime < state.start || src.currentTime >= state.end - 0.05) src.currentTime = state.start;
+    src.play();
+  };
+  src.onplay = () => auditionUI(true); src.onpause = () => auditionUI(false);
+  src.ontimeupdate = () => {
+    $('playhead').style.left = (src.currentTime / state.duration * 100) + '%';
+    if (src.currentTime >= state.end) { if (looping) src.currentTime = state.start; else src.pause(); }
+  };
+
+  // ---------- engine cards
+  const engineName = v => v === 'Transkun' ? 'B · Transkun' : 'A · ByteDance';
+  document.querySelectorAll('input[name=engine]').forEach(r => r.onchange = () => {
+    document.querySelectorAll('input[name=engine]').forEach(x => x.closest('.choice').classList.toggle('selected', x.checked));
+    $('f-engine').textContent = engineName(r.value);
+  });
+  const engine = () => document.querySelector('input[name=engine]:checked').value;
+
+  // ---------- convert
+  async function convert(eng) {
+    if (!state.source) return;
+    showError($('convert-error'));
+    $('convert').disabled = true; $('other-engine').disabled = true;
+    $('progress').hidden = false; $('progress-bar').style.width = '2%'; $('progress-stage').textContent = 'Starting…';
+    setStatus('Converting', true);
+    const whole = state.start < 0.05 && state.end > state.duration - 0.05;
+    try {
+      const r = await fetch('/api/convert', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: state.source, engine: eng, start: whole ? 0 : state.start, end: whole ? null : state.end }) });
+      const d = await r.json(); if (!r.ok) throw new Error(d.error);
+      let job;
+      do {
+        await new Promise(res => setTimeout(res, 800));
+        job = await (await fetch('/api/jobs/' + d.job)).json();
+        $('progress-bar').style.width = Math.max(2, job.progress * 100) + '%';
+        $('progress-stage').textContent = job.stage;
+        if ($('view-studio').hidden === false) setStatus(job.stage, true);
+      } while (job.state === 'queued' || job.state === 'running');
+      if (job.state === 'error') throw new Error(job.error);
+      showResult(job.result); setStatus('Done');
+    } catch (e) {
+      showError($('convert-error'), e.message); setStatus('Ready'); show('start');
+    } finally {
+      $('convert').disabled = !state.source; $('other-engine').disabled = false; $('progress').hidden = true;
+    }
+  }
+  $('convert').onclick = () => convert(engine());
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !$('view-start').hidden && !['INPUT', 'TEXTAREA', 'BUTTON'].includes(document.activeElement?.tagName) && !$('convert').disabled) {
+      e.preventDefault(); $('convert').click();
+    }
+  });
+
+  // ---------- practice studio
+  const chip = (icon, text) => `<span class="flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container-high text-primary"><span class="material-symbols-outlined text-[14px] text-secondary">${icon}</span>${text}</span>`;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function showResult(r) {
+    state.lastEngine = r.engine;
+    $('r-title').textContent = r.title;
+    $('r-chips').innerHTML = [chip('key', esc(r.key)), chip('timer', esc(r.meter) + ' time'), chip('speed', '♩ = ' + r.bpm),
+      chip('music_note', r.notes + ' notes'), chip('psychology', 'Engine ' + esc(engineName(r.engine)))].join('');
+    $('r-downloads').innerHTML = r.downloads.map(f =>
+      `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
+    $('r-player').innerHTML = r.player;
+    const other = r.engine === 'Transkun' ? 'ByteDance' : 'Transkun';
+    $('other-engine').lastElementChild.textContent = 'Try Engine ' + (other === 'Transkun' ? 'B' : 'A');
+    $('other-engine').onclick = () => convert(other);
+    const studio = document.querySelector('[data-view=studio]'); studio.disabled = false; studio.removeAttribute('title');
+    show('studio');
+  }
+  $('new-conversion').onclick = () => show('start');
+
+  // ---------- follow-along: highlight sounding notes, auto-scroll, click a note to jump
+  const notesOf = a => a._notes || (a._notes = JSON.parse(a.closest('.follow').dataset.notes)
+    .map(([id, s, e]) => [a.closest('.follow').querySelector('[id="' + id + '"]'), s, e]).filter(n => n[0]));
+  const paint = a => {
+    const t = a.currentTime * 1000; let first = null;
+    for (const [el, s, e] of notesOf(a)) { const on = s <= t && t < e; el.classList.toggle('playing', on); if (on && !first) first = el; }
+    if (first) { const r = first.getBoundingClientRect(); if (r.top < 140 || r.bottom > innerHeight - 60) first.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  };
+  const loop = a => { paint(a); if (!a.paused) requestAnimationFrame(() => loop(a)); };
+  const isFollow = el => el && el.classList && el.classList.contains('follow-audio');
+  document.addEventListener('play', e => isFollow(e.target) && loop(e.target), true);
+  document.addEventListener('seeked', e => isFollow(e.target) && paint(e.target), true);
+  // A note's box includes its stem, so a click on the white space between head and stem counts too.
+  const noteAt = (e) => {
+    const direct = e.target.closest && e.target.closest('.follow g.note');
+    if (direct || !(e.target.closest && e.target.closest('.follow-page'))) return direct;
+    const pad = 3;
+    return [...e.target.closest('.follow').querySelectorAll('g.note')].find(n => {
+      const r = n.getBoundingClientRect();
+      return e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+    });
+  };
+  document.addEventListener('click', e => {
+    const n = noteAt(e); if (!n) return;
+    const a = n.closest('.follow').querySelector('.follow-audio');
+    const hit = notesOf(a).find(([el]) => el === n);
+    if (hit) { a.currentTime = hit[1] / 1000; a.play(); }
+  });
+})();
+</script>
+</body>
+</html>
