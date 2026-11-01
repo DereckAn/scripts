@@ -68,6 +68,8 @@ tailwind.config = { theme: { extend: {
         <span class="font-label-md text-label-md text-secondary uppercase tracking-wider">Runs on this Mac</span>
       </div>
     </div>
+    <button type="button" id="bg-pill" hidden class="flex items-center gap-space-xs px-space-md py-1.5 rounded-full bg-secondary-container text-primary font-label-lg text-label-lg">
+      <span class="material-symbols-outlined text-[16px]">hourglass_top</span><span id="bg-pill-text">Converting…</span></button>
     <nav class="flex items-center gap-space-xs p-1 bg-surface-container-low rounded-lg">
       <button type="button" data-view="start" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Convert</button>
       <button type="button" data-view="studio" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg" disabled title="Convert a recording first">Practice Studio</button>
@@ -254,10 +256,6 @@ tailwind.config = { theme: { extend: {
           <span class="material-symbols-outlined text-[26px]">music_note</span><span>Convert to sheet music</span>
           <span class="material-symbols-outlined text-[22px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
         </button>
-        <div id="progress" class="flex flex-col gap-space-xs" hidden>
-          <div class="h-1.5 w-full rounded-full bg-surface-container-high overflow-hidden"><div id="progress-bar" class="h-full bg-secondary transition-all" style="width:0"></div></div>
-          <span id="progress-stage" class="font-label-mono text-label-mono text-secondary" aria-live="polite"></span>
-        </div>
         <p id="convert-error" role="alert" class="px-space-md py-space-sm rounded-lg bg-error-container text-on-error-container" hidden></p>
         <div class="flex items-center justify-between font-label-mono text-label-mono text-on-surface-variant px-space-xs">
           <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock</span>Your audio stays on this Mac</span>
@@ -282,6 +280,85 @@ tailwind.config = { theme: { extend: {
       <div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[22px]">print</span></div>
       <h2 class="font-headline-sm text-headline-sm text-primary">Print or keep editing</h2>
       <p class="text-on-surface-variant">Download a PDF to print, or MusicXML and MIDI to finish the score in MuseScore.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PROCESSING ============================== -->
+<section id="view-processing" class="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl" hidden>
+  <div class="w-full bg-surface-container-low rounded-xl shadow-sm p-space-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-space-lg">
+    <div class="flex items-center gap-space-lg min-w-0">
+      <div class="w-14 h-14 rounded-lg bg-surface-container-high flex items-center justify-center text-primary shadow-sm shrink-0">
+        <span class="material-symbols-outlined text-[30px]" style="font-variation-settings:'FILL' 1">graphic_eq</span>
+      </div>
+      <div class="flex flex-col min-w-0">
+        <h1 id="p-title" class="font-headline-md text-headline-md text-primary tracking-tight truncate"></h1>
+        <div id="p-info" class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm flex-wrap mt-0.5"></div>
+      </div>
+    </div>
+    <div class="flex flex-col items-start md:items-end gap-1.5 w-full md:w-auto shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="relative flex w-2 h-2"><span class="absolute inset-0 rounded-full bg-secondary animate-ping"></span><span class="relative w-2 h-2 rounded-full bg-secondary"></span></span>
+        <span id="p-time" class="font-label-mono text-label-mono text-primary">0:00 elapsed</span>
+      </div>
+      <div class="w-full md:w-72 h-2 rounded-full bg-surface-container-highest overflow-hidden"><div id="p-bar" class="h-full bg-secondary rounded-full transition-all duration-500" style="width:0"></div></div>
+      <span id="p-step" class="font-body-sm text-body-sm text-on-surface-variant" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+    <div class="lg:col-span-5 flex flex-col gap-space-lg">
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl flex flex-col gap-space-lg">
+        <span class="font-label-md text-label-md uppercase tracking-wider text-secondary">What's happening</span>
+        <ol id="p-stages" class="flex flex-col gap-space-md"></ol>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col gap-space-sm shadow-sm">
+        <div class="flex items-center gap-space-sm text-secondary">
+          <span class="material-symbols-outlined text-[18px]">lightbulb</span>
+          <span class="font-label-md text-label-md uppercase tracking-wider">While you wait</span>
+        </div>
+        <p id="p-tip" class="font-headline-sm text-headline-sm text-primary font-normal leading-relaxed"></p>
+      </div>
+      <div class="flex items-center gap-space-md">
+        <button type="button" id="p-background" class="flex-1 px-space-md py-2.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container-high transition-colors font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm">
+          <span class="material-symbols-outlined text-[18px]">dock_to_right</span><span>Run in background</span></button>
+        <button type="button" id="p-cancel" class="px-space-md py-2.5 rounded-lg bg-surface-container-low hover:bg-error-container text-error transition-colors font-label-lg text-label-lg flex items-center gap-1.5 shadow-sm">
+          <span>Cancel</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-mono text-[10px]">esc</kbd></button>
+      </div>
+    </div>
+
+    <div class="lg:col-span-7 flex flex-col gap-space-lg">
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-xl flex flex-col gap-space-lg">
+        <div class="flex items-center justify-between flex-wrap gap-space-sm">
+          <div class="flex items-center gap-space-sm">
+            <span class="material-symbols-outlined text-secondary text-[22px]">piano</span>
+            <span class="font-headline-sm text-headline-sm text-primary">Notes found</span>
+          </div>
+          <div id="roll-legend" class="flex items-center gap-space-md font-label-mono text-label-mono text-on-surface-variant" hidden>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>Right hand</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:#c2956b"></span>Left hand</span>
+          </div>
+        </div>
+        <div class="w-full bg-surface-container-low rounded-lg p-space-md">
+          <div class="flex items-center justify-between mb-2 font-label-mono text-label-mono text-on-surface-variant">
+            <span>A0 – C8</span><span id="roll-count">Listening…</span>
+          </div>
+          <svg id="roll" class="w-full h-44 text-secondary rounded select-none" viewBox="0 0 680 180" preserveAspectRatio="none" role="img" aria-label="Piano roll of the notes found"></svg>
+        </div>
+      </div>
+      <div class="flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between">
+          <span class="font-label-lg text-label-lg text-primary">First page preview</span>
+          <span id="preview-tag" class="font-label-mono text-label-mono text-secondary"></span>
+        </div>
+        <div id="preview" class="w-full bg-white rounded-lg shadow-sm overflow-hidden flex items-center justify-center text-on-surface-variant" style="height:260px">
+          <span class="font-label-mono text-label-mono">The score appears here once it's drawn.</span>
+        </div>
+      </div>
+      <div class="w-full bg-surface-container-low rounded-xl p-space-md flex items-center justify-between flex-wrap gap-space-md font-label-mono text-label-mono text-on-surface-variant">
+        <span>Runs on this Mac's processor · one conversion at a time</span>
+        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-secondary">lock</span>Your audio stays on this Mac</span>
+      </div>
     </div>
   </div>
 </section>
@@ -325,6 +402,7 @@ tailwind.config = { theme: { extend: {
   // ---------- views & nav
   const show = view => {
     $('view-start').hidden = view !== 'start';
+    $('view-processing').hidden = view !== 'processing';
     $('view-studio').hidden = view !== 'studio';
     document.querySelectorAll('.nav-btn').forEach(b => {
       const on = b.dataset.view === view;
@@ -361,10 +439,11 @@ tailwind.config = { theme: { extend: {
       const r = await fetch('/api/source', { method: 'POST', body });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Could not load that audio.');
-      state.source = d.id; state.duration = d.duration;
+      state.source = d.id; state.duration = d.duration; state.title = d.title;
       $('source-name').textContent = d.title;
-      $('source-info').textContent = [d.channels === 1 ? 'Mono' : d.channels === 2 ? 'Stereo' : d.channels + ' ch',
-        d.sample_rate ? (d.sample_rate / 1000).toFixed(1) + ' kHz' : null, fmt(d.duration)].filter(Boolean).join(' · ');
+      state.info = [d.channels === 1 ? 'Mono' : d.channels === 2 ? 'Stereo' : d.channels + ' ch',
+        d.sample_rate ? (d.sample_rate / 1000).toFixed(1) + ' kHz' : null].filter(Boolean).join(' · ');
+      $('source-info').textContent = state.info + ' · ' + fmt(d.duration);
       $('source-dot').className = 'w-2.5 h-2.5 shrink-0 rounded-full bg-secondary';
       $('source-audio').src = d.url;
       setRange(0, d.duration);
@@ -469,35 +548,138 @@ tailwind.config = { theme: { extend: {
   const engine = () => document.querySelector('input[name=engine]:checked').value;
 
   // ---------- convert
+  const TIPS = [
+    'Engine B is about three times faster. If this takes too long, try it on the same section.',
+    'In the Practice Studio, click any note to jump the playback there.',
+    'Download the MusicXML to fix notes or fingering in MuseScore.',
+    'Shorter sections convert faster: pick just the passage you are practising.',
+    'Not happy with the result? Convert again with the other engine and compare.'
+  ];
+  const run = { job: null, background: false, started: 0, timer: null, rollKey: '', previewSet: false };
+
+  function stageHTML(st, i) {
+    const done = st.state === 'done', on = st.state === 'active';
+    const badge = done ? `<div class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-on-primary shrink-0 mt-0.5 shadow-sm"><span class="material-symbols-outlined text-[16px]">check</span></div>`
+      : on ? `<div class="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-on-secondary shrink-0 mt-0.5 animate-pulse"><span class="material-symbols-outlined text-[18px]">graphic_eq</span></div>`
+      : `<div class="w-7 h-7 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant shrink-0 mt-0.5 font-label-mono text-label-mono">${i + 1}</div>`;
+    const right = done ? `<span class="font-label-mono text-label-mono text-secondary">${st.seconds}s</span>`
+      : on ? `<span class="font-label-mono text-label-mono text-secondary">${Math.round((performance.now() - (st._t || performance.now())) / 1000)}s</span>` : '';
+    const box = on ? 'p-space-md rounded-lg bg-secondary-container/40 shadow-sm relative overflow-hidden'
+      : done ? 'p-space-sm rounded-lg bg-surface-container-low/60' : 'p-space-sm rounded-lg opacity-40';
+    return `<li class="flex items-start gap-space-md ${box}">${on ? '<div class="absolute left-0 inset-y-0 w-1.5 bg-secondary"></div>' : ''}${badge}
+      <div class="flex flex-col min-w-0 flex-1"><div class="flex items-center justify-between gap-2">
+        <span class="font-label-lg text-label-lg ${st.state === 'pending' ? 'text-on-surface' : 'text-primary'}">${i + 1}. ${esc(st.name)}</span>${right}</div>
+        ${st.detail ? `<p class="font-body-sm text-body-sm text-on-surface-variant">${esc(st.detail)}</p>` : ''}
+        ${on ? '<div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-2 overflow-hidden"><div class="h-full w-1/3 bg-secondary rounded-full animate-pulse"></div></div>' : ''}
+      </div></li>`;
+  }
+
+  function drawRoll(job) {
+    const key = (job.roll ? job.roll.length : 0) + '|' + (job.hands || '');
+    if (!job.roll || key === run.rollKey) return;
+    run.rollKey = key;
+    const len = job.length || Math.max(...job.roll.map(n => n[1])) || 1;
+    const y = p => 175 - (p - 21) / 87 * 170;
+    const guides = [[79, 'G5'], [72, 'C5'], [60, 'Middle C'], [48, 'C3'], [40, 'E2']].map(([p, l]) =>
+      `<line x1="0" x2="680" y1="${y(p)}" y2="${y(p)}" stroke="currentColor" stroke-opacity="${p === 60 ? .2 : .08}" ${p === 60 ? '' : 'stroke-dasharray="4 4"'}/>` +
+      `<text x="6" y="${y(p) - 3}" font-size="9" fill="#42474d" font-family="JetBrains Mono">${l}</text>`).join('');
+    const notes = job.roll.map((n, i) => {
+      const left = job.hands && job.hands[i] === 'l';
+      const x = n[0] / len * 680, w = Math.max(2, (n[1] - n[0]) / len * 680);
+      return `<rect x="${x.toFixed(1)}" y="${(y(n[2]) - 2).toFixed(1)}" width="${w.toFixed(1)}" height="4" rx="2" fill="${left ? '#c2956b' : 'currentColor'}" opacity=".85"/>`;
+    }).join('');
+    $('roll').innerHTML = guides + notes;
+    $('roll-count').textContent = job.roll.length + ' notes' + (job.hands ? ' · split by hand' : '');
+    $('roll-legend').hidden = !job.hands;
+  }
+
+  function paintJob(job) {
+    job.stages.forEach((st, i) => { if (st.state === 'active') st._t = run.stageStart[i] ??= performance.now(); });
+    $('p-stages').innerHTML = job.stages.map(stageHTML).join('');
+    const pct = Math.round(job.progress * 100);
+    $('p-bar').style.width = Math.max(2, pct) + '%';
+    $('p-step').textContent = job.state === 'queued' ? 'Waiting for the previous conversion to finish'
+      : job.stage >= 0 && job.stage < job.stages.length ? `Step ${job.stage + 1} of ${job.stages.length}: ${job.stages[job.stage].name}` : 'Finishing';
+    drawRoll(job);
+    if (job.preview && !run.previewSet) {
+      run.previewSet = true;
+      $('preview').innerHTML = `<div class="w-full self-start">${job.preview}</div>`;
+      $('preview').querySelector('svg').setAttribute('style', 'width:100%;height:auto;display:block');
+    }
+    if (job.key) $('preview-tag').textContent = `${job.key} · ${job.meter} time`;
+    $('bg-pill-text').textContent = `Converting… ${pct}%`;
+    setStatus(job.state === 'queued' ? 'Waiting' : 'Converting ' + pct + '%', true);
+  }
+
   async function convert(eng) {
-    if (!state.source) return;
+    if (!state.source || run.job) return;
     showError($('convert-error'));
-    $('convert').disabled = true; $('other-engine').disabled = true;
-    $('progress').hidden = false; $('progress-bar').style.width = '2%'; $('progress-stage').textContent = 'Starting…';
-    setStatus('Converting', true);
     const whole = state.start < 0.05 && state.end > state.duration - 0.05;
+    let d;
     try {
       const r = await fetch('/api/convert', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: state.source, engine: eng, start: whole ? 0 : state.start, end: whole ? null : state.end }) });
-      const d = await r.json(); if (!r.ok) throw new Error(d.error);
-      let job;
+      d = await r.json(); if (!r.ok) throw new Error(d.error);
+    } catch (e) { showError($('convert-error'), e.message); return; }
+
+    Object.assign(run, { job: d.job, background: false, started: performance.now(), rollKey: '', previewSet: false, stageStart: {} });
+    $('p-title').textContent = state.title;
+    $('p-info').innerHTML = [esc(whole ? fmt(state.duration) + ' recording' : `Section ${fmt(state.start)} – ${fmt(state.end)}`),
+      esc(state.info), 'Engine ' + esc(engineName(eng)), 'Two-hand grand staff']
+      .map((t, i) => (i ? '<span class="w-1 h-1 rounded-full bg-outline-variant"></span>' : '') + `<span>${t}</span>`).join('');
+    $('roll').innerHTML = ''; $('roll-count').textContent = 'Listening…'; $('roll-legend').hidden = true;
+    $('preview').innerHTML = '<span class="font-label-mono text-label-mono">The score appears here once it\'s drawn.</span>'; $('preview-tag').textContent = '';
+    let tip = Math.floor(Math.random() * TIPS.length); $('p-tip').textContent = TIPS[tip];
+    $('convert').disabled = true; $('other-engine').disabled = true;
+    show('processing');
+    clearInterval(run.timer);
+    run.timer = setInterval(() => {
+      const s = (performance.now() - run.started) / 1000;
+      $('p-time').textContent = fmt(s) + ' elapsed';
+      if (Math.floor(s) % 9 === 8) $('p-tip').textContent = TIPS[++tip % TIPS.length];
+    }, 1000);
+
+    let job;
+    try {
       do {
-        await new Promise(res => setTimeout(res, 800));
+        await new Promise(res => setTimeout(res, 700));
         job = await (await fetch('/api/jobs/' + d.job)).json();
-        $('progress-bar').style.width = Math.max(2, job.progress * 100) + '%';
-        $('progress-stage').textContent = job.stage;
-        if ($('view-studio').hidden === false) setStatus(job.stage, true);
+        paintJob(job);
       } while (job.state === 'queued' || job.state === 'running');
-      if (job.state === 'error') throw new Error(job.error);
-      showResult(job.result); setStatus('Done');
-    } catch (e) {
-      showError($('convert-error'), e.message); setStatus('Ready'); show('start');
-    } finally {
-      $('convert').disabled = !state.source; $('other-engine').disabled = false; $('progress').hidden = true;
+    } catch { job = { state: 'error', error: 'Lost contact with the app. Is it still running?' }; }
+    clearInterval(run.timer);
+    const wasBackground = run.background;
+    run.job = null; $('convert').disabled = !state.source; $('other-engine').disabled = false;
+    if (job.state === 'done') {
+      setStatus('Done');
+      fillResult(job.result);
+      if (wasBackground) { $('bg-pill-text').textContent = 'Score ready — open'; $('bg-pill').querySelector('.material-symbols-outlined').textContent = 'check_circle'; }
+      else { $('bg-pill').hidden = true; show('studio'); }
+    } else {
+      $('bg-pill').hidden = true; setStatus('Ready'); show('start');
+      showError($('convert-error'), job.state === 'cancelled' ? 'Conversion cancelled.' : job.error);
     }
   }
   $('convert').onclick = () => convert(engine());
+  $('p-background').onclick = () => {
+    run.background = true; $('bg-pill').hidden = false;
+    $('bg-pill').querySelector('.material-symbols-outlined').textContent = 'hourglass_top';
+    show('start');
+  };
+  $('bg-pill').onclick = () => {
+    $('bg-pill').hidden = true;
+    if (run.job) { run.background = false; show('processing'); }
+    else show('studio');
+  };
+  const cancelRun = async () => {
+    if (!run.job) return;
+    $('p-cancel').disabled = true; $('p-step').textContent = 'Cancelling after this step…';
+    await fetch(`/api/jobs/${run.job}/cancel`, { method: 'POST' });
+    $('p-cancel').disabled = false;
+  };
+  $('p-cancel').onclick = cancelRun;
   window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('view-processing').hidden) { e.preventDefault(); cancelRun(); }
     if (e.key === 'Enter' && !$('view-start').hidden && !['INPUT', 'TEXTAREA', 'BUTTON'].includes(document.activeElement?.tagName) && !$('convert').disabled) {
       e.preventDefault(); $('convert').click();
     }
@@ -506,7 +688,7 @@ tailwind.config = { theme: { extend: {
   // ---------- practice studio
   const chip = (icon, text) => `<span class="flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container-high text-primary"><span class="material-symbols-outlined text-[14px] text-secondary">${icon}</span>${text}</span>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  function showResult(r) {
+  function fillResult(r) {
     state.lastEngine = r.engine;
     $('r-title').textContent = r.title;
     $('r-chips').innerHTML = [chip('key', esc(r.key)), chip('timer', esc(r.meter) + ' time'), chip('speed', '♩ = ' + r.bpm),
@@ -518,7 +700,6 @@ tailwind.config = { theme: { extend: {
     $('other-engine').lastElementChild.textContent = 'Try Engine ' + (other === 'Transkun' ? 'B' : 'A');
     $('other-engine').onclick = () => convert(other);
     const studio = document.querySelector('[data-view=studio]'); studio.disabled = false; studio.removeAttribute('title');
-    show('studio');
   }
   $('new-conversion').onclick = () => show('start');
 

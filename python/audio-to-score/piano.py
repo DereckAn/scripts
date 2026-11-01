@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import traceback
 import urllib.parse
 import uuid
@@ -185,7 +186,7 @@ def pedal_from_cc(changes):
 
 
 def to_score(events, beats, downbeats=(), pedals=()):
-    """Note events (seconds) + beat/downbeat times + pedal spans -> music21 grand-staff Score.
+    """Note events (seconds) + beat/downbeat times + pedal spans -> (music21 grand-staff Score, key, bpm, hand per event).
 
     Each beat is a quarter note, split into 16ths, or into triplet eighths where the playing is in threes.
     """
@@ -204,18 +205,20 @@ def to_score(events, beats, downbeats=(), pedals=()):
         return i + Fraction(round((x - i) * div), div)
 
     groups = {}
-    for e, a, b in zip(events, on, off):
+    for i, (e, a, b) in enumerate(zip(events, on, off)):
         start = q(a)
         shortest = Fraction(1, grid.get(int(np.floor(a - origin)), 4))
-        groups.setdefault(start, []).append((e["midi_note"], max(shortest, q(b) - start)))
-    hands = {"lh": {}, "rh": {}}
+        groups.setdefault(start, []).append((e["midi_note"], max(shortest, q(b) - start), i))
+    hands, hand_of = {"lh": {}, "rh": {}}, ["r"] * len(events)
     starts = sorted(groups)
     sorted_groups = [sorted(groups[s]) for s in starts]
-    for start, notes, k in zip(starts, sorted_groups, assign_hands([[p for p, _ in g] for g in sorted_groups])):
+    for start, notes, k in zip(starts, sorted_groups, assign_hands([[p for p, _, _ in g] for g in sorted_groups])):
+        for _, _, i in notes[:k]:
+            hand_of[i] = "l"
         if notes[:k]:
-            hands["lh"][start] = notes[:k]
+            hands["lh"][start] = [(p, l) for p, l, _ in notes[:k]]
         if notes[k:]:
-            hands["rh"][start] = notes[k:]
+            hands["rh"][start] = [(p, l) for p, l, _ in notes[k:]]
     bpm = 60.0 / beat_step(beats)
 
     score = stream.Score()
@@ -263,7 +266,7 @@ def to_score(events, beats, downbeats=(), pedals=()):
         for m in part.getElementsByClass(stream.Measure):
             for i, v in enumerate(m.voices):
                 v.id = str(i + 1)
-    return score, k, bpm
+    return score, k, bpm, hand_of
 
 
 class UserError(Exception):
@@ -364,18 +367,27 @@ def probe(path):
     return {"duration": duration, "channels": st.get("channels"), "sample_rate": int(st.get("sample_rate") or 0)}
 
 
-def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, progress=lambda frac, stage: None):
-    """Audio file (optionally just start..end seconds) -> score, player and downloads."""
+STAGES = ["Loading audio", "Hearing the notes", "Finding the beat", "Writing the score",
+          "Rendering notation", "Making playback audio"]
+STAGE_WEIGHT = [0.05, 0.5, 0.12, 0.1, 0.15, 0.08]  # rough share of the total time, for the overall bar
+
+
+def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, progress=lambda stage, detail=None, **data: None):
+    """Audio file (optionally just start..end seconds) -> score, player and downloads.
+
+    progress(i) starts stage i of STAGES; progress(i, detail, **data) adds what that stage found
+    (data: roll, hands, preview) for the processing page.
+    """
     out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))
     audio = str(source)
+    progress(0)
     if start > 0 or end:
-        progress(0.02, "Cutting the selected section")
         audio = str(out / "section.wav")
         subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-ss", str(start)] + (["-to", str(end)] if end else [])
                        + ["-i", str(source), audio], check=True, capture_output=True, timeout=600)
-    progress(0.05, "Loading audio")
     y, _ = librosa.load(audio, sr=sample_rate, mono=True)
-    progress(0.1, "Hearing the notes")
+    progress(0, f"{fmt_time(len(y) / sample_rate)} of audio" + (" (selected section)" if audio != str(source) else ""))
+    progress(1)
     raw_midi = out / "performance.mid"
     if engine == "Transkun":
         events, pedals = transkun(audio, raw_midi)
@@ -387,34 +399,47 @@ def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, prog
         pedals = [(p["onset_time"], p["offset_time"]) for p in result["est_pedal_events"]]
     if not len(events):
         raise UserError("No piano notes were found in this recording.")
-    progress(0.7, "Finding the beat")
+    roll = [[round(float(e["onset_time"]), 2), round(float(e["offset_time"]), 2), int(e["midi_note"])] for e in events]  # plain floats: numpy ones break JSON
+    progress(1, f"{len(events)} notes found", roll=roll, length=round(len(y) / sample_rate, 2))
+    progress(2)
     global BEATS
     if BEATS is None:
         BEATS = File2Beats(checkpoint_path="final0", device="cpu", dbn=False)
     beats, downbeats = BEATS(audio)
     if len(beats) < 2:
         beats, downbeats = np.arange(0, len(y) / sample_rate + 0.5, 0.5), []  # no beat found: 120 BPM, 4/4
-    progress(0.8, "Writing the score")
-    score, k, bpm = to_score(events, beats, downbeats, pedals)
+    even = fill_bars(beats, downbeats)
+    progress(2, f"{meter_from(even, downbeats)[0]}/4 time · ♩ = {round(60 / beat_step(even))} · {len(pedals)} pedal presses")
+    progress(3)
+    score, k, bpm, hand_of = to_score(events, beats, downbeats, pedals)
     meter_text = score.parts[0].recurse().getElementsByClass(meter.TimeSignature).first().ratioString
+    key_text = f"{k.tonic.name.replace('-', '♭')} {k.mode}"
     score.insert(0, metadata.Metadata(title=title or Path(source).stem))
     xml = Path(score.write("musicxml", fp=out / "score.musicxml"))
-    progress(0.88, "Rendering pages")
+    progress(3, f"Right hand {hand_of.count('r')} notes · left hand {hand_of.count('l')} notes · {key_text}",
+             hands="".join(hand_of), key=key_text, meter=meter_text)
+    progress(4)
     pdf, midi = out / "score.pdf", out / "score_two_hands.mid"
     pages, notes = render(xml, pdf, midi)
-    progress(0.95, "Making playback audio")
+    progress(4, f"{len(pages)} page{'s' * (len(pages) != 1)}", preview=pages[0])
+    progress(5)
     wav, mp3 = out / "score_piano.wav", out / "score_piano.mp3"
     subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.8", "-r", "44100", "-F", str(wav), SOUNDFONT, str(midi)],
                    check=True, capture_output=True, timeout=600)
     subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(wav), "-q:a", "3", str(mp3)],
                    check=True, capture_output=True, timeout=600)
     wav.unlink()
+    progress(5, f"{fmt_time(max((e for _, e in notes.values()), default=0) / 1000)} of score audio")
     downloads = [("PDF", pdf), ("MusicXML", xml), ("Two-hand MIDI", midi), ("Score audio (MP3)", mp3),
                  ("Performance MIDI", raw_midi)]
     return {"engine": engine, "notes": len(events), "bpm": round(bpm), "meter": meter_text,
-            "key": f"{k.tonic.name.replace('-', '♭')} {k.mode}", "title": title or Path(source).stem,
+            "key": key_text, "title": title or Path(source).stem,
             "player": player_html(pages, notes, mp3),
             "downloads": [{"label": label, "url": files_url(p), "name": p.name} for label, p in downloads]}
+
+
+def fmt_time(seconds):
+    return f"{int(seconds // 60)}:{int(seconds % 60):02d}"
 
 
 # ---------------------------------------------------------------- web app
@@ -466,6 +491,10 @@ class ConvertRequest(BaseModel):
     end: float | None = None
 
 
+class Cancelled(Exception):
+    pass
+
+
 @app.post("/api/convert")
 def convert(req: ConvertRequest):
     if req.source not in SOURCES:
@@ -473,30 +502,63 @@ def convert(req: ConvertRequest):
     if req.engine not in ("ByteDance", "Transkun"):
         return JSONResponse({"error": "Unknown engine."}, status_code=400)
     path, title = SOURCES[req.source]
-    job = uuid.uuid4().hex
-    JOBS[job] = {"state": "queued", "progress": 0, "stage": "Waiting for the previous conversion"}
+    job_id = uuid.uuid4().hex
+    job = JOBS[job_id] = {"state": "queued", "progress": 0, "stage": -1, "cancel": False,
+                          "stages": [{"name": n, "state": "pending", "seconds": None, "detail": ""} for n in STAGES]}
+    began = {}
 
-    def step(frac, stage):
-        JOBS[job].update(state="running", progress=frac, stage=stage)
+    def step(i, detail=None, **data):
+        if job["cancel"]:
+            raise Cancelled()
+        now = time.monotonic()
+        for j in range(i):  # everything before stage i is finished
+            st = job["stages"][j]
+            if st["state"] != "done":
+                st.update(state="done", seconds=round(now - began.get(j, now), 1))
+        if i < len(STAGES) and job["stages"][i]["state"] == "pending":
+            began[i] = now
+            job["stages"][i]["state"] = "active"
+        if detail and i < len(STAGES):
+            job["stages"][i]["detail"] = detail
+        job.update(state="running", stage=i, progress=round(sum(STAGE_WEIGHT[:i]), 3), **data)
 
     def run():
         with RUN_LOCK:
+            if job["cancel"]:
+                job.update(state="cancelled")
+                return
             try:
-                JOBS[job].update(state="done", progress=1, stage="Done",
-                                 result=transcribe(path, req.engine, max(0.0, req.start), req.end, title, step))
+                result = transcribe(path, req.engine, max(0.0, req.start), req.end, title, step)
+                step(len(STAGES))
+                job.update(state="done", progress=1, result=result)
+            except Cancelled:
+                job.update(state="cancelled")
             except UserError as e:
-                JOBS[job].update(state="error", error=str(e))
+                job.update(state="error", error=str(e))
             except Exception:
                 traceback.print_exc()
-                JOBS[job].update(state="error", error="Conversion failed. Try the other engine or a shorter section.")
+                job.update(state="error", error="Conversion failed. Try the other engine or a shorter section.")
 
     threading.Thread(target=run, daemon=True).start()
-    return {"job": job}
+    return {"job": job_id, "stages": STAGES}
 
 
-@app.get("/api/jobs/{job}")
-def job_status(job: str):
-    return JOBS.get(job) or JSONResponse({"error": "Unknown job."}, status_code=404)
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str):
+    job = JOBS.get(job_id)
+    if job is None:
+        return JSONResponse({"error": "Unknown job."}, status_code=404)
+    return {k: v for k, v in job.items() if k != "cancel"}
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def cancel(job_id: str):
+    """Stops at the next stage boundary (a stage already running finishes first)."""
+    job = JOBS.get(job_id)
+    if job is None:
+        return JSONResponse({"error": "Unknown job."}, status_code=404)
+    job["cancel"] = True
+    return {"ok": True}
 
 
 if __name__ == "__main__":
