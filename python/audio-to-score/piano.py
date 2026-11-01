@@ -1,7 +1,9 @@
 """Solo piano recording -> two-hand (grand staff) score. Runs on port 7861."""
 import base64
+import copy
 import html
 import json
+from fractions import Fraction
 import subprocess
 import sys
 import tempfile
@@ -14,7 +16,7 @@ import numpy as np
 import pretty_midi
 import torch
 import verovio
-from music21 import chord, clef, instrument, key, layout, metadata, meter, note, stream, tempo
+from music21 import chord, clef, expressions, instrument, key, layout, metadata, meter, note, stream, tempo
 from piano_transcription_inference import PianoTranscription, sample_rate
 from beat_this.inference import File2Beats
 from playwright.sync_api import sync_playwright
@@ -65,12 +67,18 @@ def assign_hands(groups, lh=48.0, rh=72.0):
 def spell(p, k):
     """Respell a pitch to fit key k: scale notes as in the key, others sharp in sharp keys, flat in flat keys."""
     names = {s.name for s in k.getPitches()}
+    out = p
     for cand in [p] + p.getAllCommonEnharmonics():
         if cand.name in names:
-            return cand
-    if p.accidental is not None and (p.accidental.alter > 0) != (k.sharps >= 0):
-        return p.getEnharmonic()
-    return p
+            out = cand
+            break
+    else:
+        if p.accidental is not None and (p.accidental.alter > 0) != (k.sharps >= 0):
+            out = p.getEnharmonic()
+    if out.accidental is not None and out.accidental.alter == 0:
+        out = copy.deepcopy(out)
+        out.accidental = None  # notes made from MIDI numbers carry an explicit natural that would print as ♮
+    return out
 
 
 def meter_from(beats, downbeats):
@@ -112,18 +120,54 @@ def split_voices(groups, slack=0.5):
     return voices
 
 
-def to_score(events, beats, downbeats=()):
-    """Note events (seconds) + beat/downbeat times -> music21 grand-staff Score, quantized to 16ths."""
+def beat_grid(onsets):
+    """Onsets in beats -> {beat number: 3 or 4}: triplet eighths where they fit clearly better than 16ths."""
+    by_beat = {}
+    for x in onsets:
+        by_beat.setdefault(int(np.floor(x)), []).append(x - np.floor(x))
+    grid = {}
+    for b, fracs in by_beat.items():
+        err = lambda div: sum(abs(f - round(f * div) / div) for f in fracs)
+        # Bias toward 16ths: beat-tracking jitter alone shouldn't turn a beat into triplets.
+        grid[b] = 3 if err(3) < 0.5 * err(4) else 4
+    return grid
+
+
+def pedal_from_cc(changes):
+    """Sustain-pedal control changes [(time, value)] -> [(down, up)] seconds."""
+    spans, down = [], None
+    for t, v in sorted(changes):
+        if v >= 64 and down is None:
+            down = t
+        elif v < 64 and down is not None:
+            spans.append((down, t))
+            down = None
+    return spans + ([(down, float("inf"))] if down is not None else [])
+
+
+def to_score(events, beats, downbeats=(), pedals=()):
+    """Note events (seconds) + beat/downbeat times + pedal spans -> music21 grand-staff Score.
+
+    Each beat is a quarter note, split into 16ths, or into triplet eighths where the playing is in threes.
+    """
     # ponytail: one meter for the whole piece, bars aligned to the first downbeat; meter changes need per-bar barlines.
     per_bar, d0 = meter_from(beats, downbeats)
     on = beat_pos([e["onset_time"] for e in events], beats)
     off = beat_pos([e["offset_time"] for e in events], beats)
     origin = d0 - per_bar * np.ceil((d0 - on.min()) / per_bar)  # bar line at or before the first note
-    q = lambda b: round((b - origin) * 4) / 4  # one beat = one quarter note, grid = 16ths
+    grid = beat_grid(on - origin)
+
+    def q(b):
+        x = b - origin
+        i = int(np.floor(x))
+        div = grid.get(i, 4)
+        return i + Fraction(round((x - i) * div), div)
+
     groups = {}
     for e, a, b in zip(events, on, off):
         start = q(a)
-        groups.setdefault(start, []).append((e["midi_note"], max(0.25, q(b) - start)))
+        shortest = Fraction(1, grid.get(int(np.floor(a - origin)), 4))
+        groups.setdefault(start, []).append((e["midi_note"], max(shortest, q(b) - start)))
     hands = {"lh": {}, "rh": {}}
     starts = sorted(groups)
     sorted_groups = [sorted(groups[s]) for s in starts]
@@ -161,6 +205,18 @@ def to_score(events, beats, downbeats=()):
                 n.pitches = tuple(spell(p, k) for p in n.pitches)
             else:
                 n.pitch = spell(n.pitch, k)
+    # Pedal marks go under the left hand (the right hand if the left is silent), from the first to the last
+    # note struck while the pedal is down.
+    rh_part, lh_part = score.parts
+    pedal_part = lh_part if lh_part.recurse().notes else rh_part
+    struck = sorted(((n.offset, n) for n in pedal_part.recurse().notes), key=lambda x: x[0])
+    for down, up in pedals:
+        lo = q(beat_pos([down], beats)[0])
+        hi = q(beat_pos([up], beats)[0]) if np.isfinite(up) else float("inf")
+        held = [n for o, n in struck if lo <= o < hi]
+        if held:
+            pedal_part.insert(0, expressions.PedalMark(held[0], held[-1]) if len(held) > 1
+                              else expressions.PedalMark(held[0]))
     score.insert(0, layout.StaffGroup(list(score.parts), symbol="brace"))
     score = score.makeNotation()
     for part in score.parts:  # makeNotation numbers voices from 0; MusicXML readers expect 1, 2
@@ -208,10 +264,13 @@ def player_html(pages, notes, audio_path):
 
 
 def transkun(audio, midi_path):
+    """-> (note events, pedal spans) in the same shape the ByteDance engine gives."""
     subprocess.run([str(Path(sys.executable).parent / "transkun"), audio, str(midi_path)],
                    check=True, capture_output=True, timeout=1800)
-    return [{"onset_time": n.start, "offset_time": n.end, "midi_note": n.pitch, "velocity": n.velocity}
-            for inst in pretty_midi.PrettyMIDI(str(midi_path)).instruments for n in inst.notes]
+    insts = pretty_midi.PrettyMIDI(str(midi_path)).instruments
+    events = [{"onset_time": n.start, "offset_time": n.end, "midi_note": n.pitch, "velocity": n.velocity}
+              for inst in insts for n in inst.notes]
+    return events, pedal_from_cc([(c.time, c.value) for inst in insts for c in inst.control_changes if c.number == 64])
 
 
 MAX_MINUTES = 20
@@ -253,11 +312,13 @@ def transcribe(audio, engine="ByteDance", link="", progress=gr.Progress()):
     progress(0.1, desc="Transcribing notes (slow on CPU)")
     raw_midi = out / "performance.mid"
     if engine == "Transkun":
-        events = transkun(audio, raw_midi)
+        events, pedals = transkun(audio, raw_midi)
     else:
         global MODEL
         MODEL = MODEL or PianoTranscription(device=torch.device("cpu"))
-        events = MODEL.transcribe(y, str(raw_midi))["est_note_events"]
+        result = MODEL.transcribe(y, str(raw_midi))
+        events = result["est_note_events"]
+        pedals = [(p["onset_time"], p["offset_time"]) for p in result["est_pedal_events"]]
     if not len(events):
         raise gr.Error("No piano notes detected.")
     progress(0.8, desc="Estimating tempo and writing score")
@@ -267,7 +328,7 @@ def transcribe(audio, engine="ByteDance", link="", progress=gr.Progress()):
     beats, downbeats = BEATS(audio)
     if len(beats) < 2:
         beats, downbeats = np.arange(0, len(y) / sample_rate + 0.5, 0.5), []  # no beat found: 120 BPM, 4/4
-    score, k, bpm = to_score(events, beats, downbeats)
+    score, k, bpm = to_score(events, beats, downbeats, pedals)
     meter_text = score.parts[0].recurse().getElementsByClass(meter.TimeSignature).first().ratioString
     score.insert(0, metadata.Metadata(title=Path(audio).stem))
     xml = Path(score.write("musicxml", fp=out / "score.musicxml"))
