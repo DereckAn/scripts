@@ -45,7 +45,8 @@ tailwind.config = { theme: { extend: {
   .choice { background: #ffffff; }
   .choice.selected { background: #f8f2ee; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
   /* Follow-along score */
-  .follow-audio { width: 100%; position: sticky; top: 72px; z-index: 5; margin-bottom: 12px; }
+  #ctx .follow-page { margin: 0; border-radius: 0; box-shadow: none; }
+  #ctx { overflow-y: auto; }
   .follow-page { background: white; margin-bottom: 16px; border-radius: .75rem; box-shadow: 0 1px 3px rgba(27,60,83,.08); overflow: hidden; }
   .follow-page svg { width: 100%; height: auto; display: block; }
   .follow g.note { cursor: pointer; }
@@ -363,26 +364,99 @@ tailwind.config = { theme: { extend: {
   </div>
 </section>
 
-<!-- ============================== PRACTICE STUDIO (result) ============================== -->
-<section id="view-studio" class="w-full max-w-5xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-lg" hidden>
-  <div class="flex flex-wrap items-start justify-between gap-space-md">
-    <div class="flex flex-col gap-space-sm min-w-0">
-      <h1 id="r-title" class="font-headline-lg text-headline-lg text-primary break-words"></h1>
-      <div id="r-chips" class="flex flex-wrap gap-space-xs font-label-mono text-label-mono"></div>
+<!-- ============================== PRACTICE STUDIO ============================== -->
+<section id="view-studio" class="w-full flex flex-col" hidden>
+  <div class="sticky top-16 z-30 w-full bg-surface-container-low px-gutter md:px-gutter-desktop py-space-sm flex flex-wrap items-center justify-between gap-space-md shadow-sm">
+    <div class="flex items-center gap-space-md min-w-0">
+      <button type="button" id="s-back" title="New conversion" class="w-8 h-8 shrink-0 rounded-lg bg-surface-container flex items-center justify-center text-primary hover:bg-surface-container-high">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span></button>
+      <span id="s-title" class="font-headline-sm text-headline-sm text-primary tracking-tight truncate max-w-xs md:max-w-md"></span>
+      <div id="s-chips" class="hidden sm:flex items-center gap-space-xs"></div>
     </div>
-    <div class="flex flex-wrap gap-space-sm">
-      <button type="button" id="other-engine" class="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container-high text-primary font-label-lg text-label-lg hover:bg-surface-container-highest">
-        <span class="material-symbols-outlined text-[18px]">compare_arrows</span><span>Try Engine B</span></button>
-      <button type="button" id="new-conversion" class="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg hover:bg-primary">
-        <span class="material-symbols-outlined text-[18px]">add</span><span>New conversion</span></button>
+    <div class="flex items-center gap-space-md flex-wrap">
+      <div class="flex items-center bg-surface-container p-0.5 rounded-lg shadow-inner" role="group" aria-label="View">
+        <button type="button" data-sview="waterfall" class="sview flex items-center gap-1.5 px-3 py-1 rounded font-label-lg text-label-lg"><span class="material-symbols-outlined text-[15px]">waterfall_chart</span>Waterfall</button>
+        <button type="button" data-sview="sheet" class="sview flex items-center gap-1.5 px-3 py-1 rounded font-label-lg text-label-lg"><span class="material-symbols-outlined text-[15px]">music_note</span>Sheet music</button>
+      </div>
+      <div class="flex items-center gap-1 bg-surface-container-high p-0.5 rounded-lg" role="group" aria-label="Hands">
+        <button type="button" data-hand="r" aria-pressed="true" class="hand px-2.5 py-1 rounded font-label-md text-label-md uppercase tracking-wide flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#7cc4f5"></span><span>Right hand</span></button>
+        <button type="button" data-hand="l" aria-pressed="true" class="hand px-2.5 py-1 rounded font-label-md text-label-md uppercase tracking-wide flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#d4b896"></span><span>Left hand</span></button>
+      </div>
+    </div>
+    <div class="flex items-center gap-space-sm">
+      <div class="flex items-center bg-surface-container rounded-lg p-0.5 font-label-md text-label-md" role="group" aria-label="Sound">
+        <button type="button" data-src="synth" class="ssrc px-2.5 py-1 rounded">Score</button>
+        <button type="button" data-src="orig" class="ssrc px-2.5 py-1 rounded">Original audio</button>
+      </div>
+      <div class="relative">
+        <button type="button" id="s-export" aria-expanded="false" class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-lg text-label-lg flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">file_download</span><span class="hidden sm:inline">Export</span></button>
+        <div id="s-export-menu" hidden class="absolute right-0 mt-1 w-56 z-40 bg-surface-container-lowest rounded-xl shadow-xl p-1 flex flex-col"></div>
+      </div>
+      <button type="button" id="other-engine" title="Convert again with the other engine" class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-lg text-label-lg flex items-center gap-1">
+        <span class="material-symbols-outlined text-[16px]">compare_arrows</span><span class="hidden md:inline">Try Engine B</span></button>
     </div>
   </div>
-  <div class="flex flex-wrap items-center gap-space-sm bg-surface-container-lowest rounded-xl shadow-sm p-space-md">
-    <span class="font-label-lg text-label-lg text-primary flex items-center gap-space-xs mr-space-sm"><span class="material-symbols-outlined text-[18px] text-secondary">download</span>Downloads</span>
-    <div id="r-downloads" class="flex flex-wrap gap-space-xs"></div>
+
+  <div id="s-waterfall" class="relative w-full select-none" style="height:calc(100vh - 16rem);min-height:420px;background:#00263c">
+    <canvas id="wf" class="absolute inset-0 w-full h-full"></canvas>
+    <div id="ctx-card" class="absolute top-4 right-4 z-20 w-80 max-w-[calc(100%-2rem)] bg-surface/95 backdrop-blur-md p-space-sm rounded-xl shadow-xl flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-1.5 font-label-lg text-label-lg text-primary"><span class="material-symbols-outlined text-secondary text-[16px]">visibility</span><span id="ctx-label">Score</span></span>
+        <button type="button" id="ctx-toggle" title="Hide score" class="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[16px]">close_fullscreen</span></button>
+      </div>
+      <div id="ctx" class="w-full bg-white rounded overflow-hidden" style="height:150px"></div>
+      <div class="flex items-center justify-between text-[11px] font-label-mono text-on-surface-variant"><span id="ctx-tempo"></span><span id="ctx-hands" class="text-secondary font-semibold"></span></div>
+    </div>
+    <button type="button" id="ctx-open" hidden class="absolute top-4 right-4 z-20 h-8 px-3 rounded-lg bg-surface/95 text-primary font-label-lg text-label-lg flex items-center gap-1 shadow"><span class="material-symbols-outlined text-[16px]">visibility</span>Score</button>
   </div>
-  <p class="font-label-mono text-label-mono text-on-surface-variant">Press play to follow along. Click any note to jump there.</p>
-  <div id="r-player"></div>
+
+  <div id="s-sheet" class="w-full max-w-5xl mx-auto px-gutter md:px-gutter-desktop py-space-lg" hidden>
+    <p class="font-label-mono text-label-mono text-on-surface-variant mb-space-sm">Click any note to jump there.</p>
+    <div id="sheet"></div>
+  </div>
+
+  <div class="sticky bottom-0 z-30 w-full bg-surface-container py-space-sm px-gutter md:px-gutter-desktop shadow-md flex flex-col gap-space-xs">
+    <div class="w-full flex items-center gap-space-md">
+      <span id="t-now" class="font-label-mono text-label-mono text-primary font-semibold w-14">0:00.0</span>
+      <div id="scrub" class="relative flex-1 h-4 flex items-center cursor-pointer group" role="slider" tabindex="0" aria-label="Position">
+        <div class="w-full h-1.5 bg-surface-variant rounded-full overflow-hidden"><div id="scrub-fill" class="h-full bg-secondary rounded-full" style="width:0"></div></div>
+        <div id="scrub-loop" hidden class="absolute h-1.5 bg-secondary-fixed opacity-70 pointer-events-none rounded-sm" style="background:#a7cbe8"></div>
+        <div id="scrub-thumb" class="absolute -ml-2 w-4 h-4 rounded-full bg-primary-container shadow-md group-hover:scale-125 transition-transform flex items-center justify-center pointer-events-none" style="left:0"><div class="w-1.5 h-1.5 rounded-full bg-surface"></div></div>
+      </div>
+      <span id="t-total" class="font-label-mono text-label-mono text-on-surface-variant w-12">0:00</span>
+      <span id="t-bar" class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-mono text-label-mono">Bar 1 / 1</span>
+    </div>
+    <div class="w-full flex flex-wrap items-center justify-between gap-space-md pt-1">
+      <div class="flex flex-wrap items-center gap-space-sm">
+        <button type="button" id="b-prev" title="Previous bar [←]" class="w-9 h-9 rounded-lg bg-surface-container-highest hover:bg-surface-container-high flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">skip_previous</span></button>
+        <button type="button" id="b-play" title="Play / pause [Space]" class="h-10 px-4 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center gap-2 shadow-sm">
+          <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">play_arrow</span><span>Play</span>
+          <kbd class="ml-1 text-[10px] font-label-mono opacity-60 bg-surface/20 px-1 rounded">Space</kbd></button>
+        <button type="button" id="b-next" title="Next bar [→]" class="w-9 h-9 rounded-lg bg-surface-container-highest hover:bg-surface-container-high flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">skip_next</span></button>
+        <div class="h-6 w-px bg-outline-variant/40 mx-1"></div>
+        <button type="button" id="b-metro" aria-pressed="false" title="Metronome [M]" class="tgl h-9 px-3 rounded-lg font-label-md text-label-md uppercase tracking-wider flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">timer</span>Metronome</button>
+        <button type="button" id="b-count" aria-pressed="false" title="Count in one bar before playing" class="tgl h-9 px-3 rounded-lg font-label-md text-label-md uppercase tracking-wider flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">touch_app</span>Count-in</button>
+        <button type="button" id="b-loop" aria-pressed="false" title="Loop the current two bars [L]" class="tgl h-9 px-3 rounded-lg font-label-md text-label-md uppercase tracking-wider flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">loop</span><span id="b-loop-text">Loop</span></button>
+      </div>
+      <div class="flex flex-wrap items-center gap-space-lg">
+        <div class="flex items-center gap-space-sm bg-surface-container-low px-3 py-1.5 rounded-lg shadow-sm">
+          <label for="rate" class="font-label-md text-label-md uppercase text-on-surface-variant">Speed</label>
+          <input id="rate" type="range" min="50" max="120" step="5" value="100" class="w-24 accent-secondary cursor-pointer"/>
+          <span id="rate-text" class="font-label-mono text-label-mono font-semibold text-primary w-28">100%</span>
+          <div class="flex gap-1">
+            <button type="button" data-rate="50" class="rate-btn px-1.5 py-0.5 rounded text-[10px] font-label-mono">0.5×</button>
+            <button type="button" data-rate="75" class="rate-btn px-1.5 py-0.5 rounded text-[10px] font-label-mono">0.75×</button>
+            <button type="button" data-rate="100" class="rate-btn px-1.5 py-0.5 rounded text-[10px] font-label-mono">1×</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-on-surface-variant">volume_up</span>
+          <input id="vol" type="range" min="0" max="100" value="80" aria-label="Volume" class="w-20 accent-secondary cursor-pointer"/>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 </main>
 
@@ -686,51 +760,269 @@ tailwind.config = { theme: { extend: {
   });
 
   // ---------- practice studio
-  const chip = (icon, text) => `<span class="flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container-high text-primary"><span class="material-symbols-outlined text-[14px] text-secondary">${icon}</span>${text}</span>`;
+  const chip = (text, strong) => `<span class="px-2.5 py-0.5 rounded-full ${strong ? 'bg-secondary-container text-on-secondary-container font-label-md text-label-md uppercase tracking-wider font-semibold' : 'bg-surface-container-high text-on-surface-variant font-label-mono text-label-mono'}">${text}</span>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const COLORS = { r: '#7cc4f5', l: '#d4b896' };
+  const A = { r: new Audio(), l: new Audio(), o: new Audio() };
+  Object.values(A).forEach(a => { a.preload = 'auto'; a.preservesPitch = true; });
+  const S = { d: null, src: 'synth', on: { r: true, l: true }, rate: 1, vol: 0.8, loop: null, metro: false, count: false,
+              view: 'waterfall', playing: false, lastBeat: null, ctx: true };
+  let ac = null;
+  const audioCtx = () => ac || (ac = new (window.AudioContext || window.webkitAudioContext)());
+
+  // score time <-> recording time, through the per-beat map (linear beyond its ends)
+  const interp = (x, pts, from, to) => {
+    if (!pts.length) return x;
+    let i = pts.findIndex(p => p[from] > x);
+    if (i === -1) i = pts.length - 1; else if (i === 0) i = 1;
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i)];
+    if (!b || b[from] === a[from]) return a[to] + (x - a[from]);
+    return a[to] + (x - a[from]) * (b[to] - a[to]) / (b[from] - a[from]);
+  };
+  const toRec = t => interp(t, S.d.timing, 0, 1), toScore = t => interp(t, S.d.timing, 1, 0);
+  const now = () => S.src === 'synth' ? A.r.currentTime : toScore(A.o.currentTime);
+  const beatSec = () => 60 / S.d.bpm;
+  const barAt = t => { let i = 0; while (i + 1 < S.d.bars.length && S.d.bars[i + 1] <= t + 1e-3) i++; return i; };
+  const barEnd = i => S.d.bars[i + 1] ?? S.d.duration;
+
+  function setVolumes() {
+    A.r.volume = S.on.r ? S.vol : 0; A.l.volume = S.on.l ? S.vol : 0; A.o.volume = S.vol;
+    Object.values(A).forEach(a => a.playbackRate = S.rate);
+  }
+  function seek(t) {
+    t = Math.max(0, Math.min(t, S.d.duration));
+    if (S.src === 'synth') { A.r.currentTime = t; A.l.currentTime = t; } else A.o.currentTime = Math.max(0, toRec(t));
+    S.lastBeat = null; frame();
+  }
+  const players = () => S.src === 'synth' ? [A.r, A.l] : [A.o];
+  async function play() {
+    if (S.playing) return;
+    S.playing = true; playUI();
+    if (S.count) {  // one bar of clicks at the practice speed, then go
+      const c = audioCtx(), step = beatSec() / S.rate;
+      for (let i = 0; i < S.d.per_bar; i++) click(i === 0, c.currentTime + 0.05 + i * step);
+      await new Promise(r => setTimeout(r, (0.05 + S.d.per_bar * step) * 1000));
+      if (!S.playing) return;
+    }
+    if (S.src === 'synth') A.l.currentTime = A.r.currentTime;
+    await Promise.all(players().map(a => a.play().catch(() => {})));
+    requestAnimationFrame(tick);
+  }
+  function pause() { S.playing = false; Object.values(A).forEach(a => a.pause()); playUI(); }
+  function playUI() {
+    $('b-play').firstElementChild.textContent = S.playing ? 'pause' : 'play_arrow';
+    $('b-play').children[1].textContent = S.playing ? 'Pause' : 'Play';
+  }
+  function click(accent, when) {
+    const c = audioCtx(), o = c.createOscillator(), g = c.createGain();
+    o.frequency.value = accent ? 1600 : 1000; o.connect(g); g.connect(c.destination);
+    const t = when ?? c.currentTime;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5 * Math.max(S.vol, 0.2), t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); o.start(t); o.stop(t + 0.06);
+  }
+  function tick() {
+    if (!S.playing) return;
+    const t = now();
+    if (S.src === 'synth' && Math.abs(A.l.currentTime - A.r.currentTime) > 0.06) A.l.currentTime = A.r.currentTime;
+    if (S.loop && t >= S.loop[1]) seek(S.loop[0]);
+    if (S.metro) {
+      const b = Math.floor((t + 0.01) / beatSec());
+      if (S.lastBeat !== null && b !== S.lastBeat) click(b % S.d.per_bar === 0);
+      S.lastBeat = b;
+    }
+    if (players()[0].ended || t >= S.d.duration + 0.5) { pause(); seek(S.loop ? S.loop[0] : 0); return; }
+    frame();
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- drawing
+  function frame() {
+    if (!S.d) return;
+    const t = now(), bar = barAt(t);
+    $('t-now').textContent = fmt(t, 1);
+    const pct = t / S.d.duration * 100;
+    $('scrub-fill').style.width = pct + '%'; $('scrub-thumb').style.left = pct + '%';
+    $('t-bar').textContent = `Bar ${bar + 1} / ${S.d.bars.length}`;
+    if (S.view === 'waterfall') drawWaterfall(t);
+    highlight($('sheet'), t, S.view === 'sheet' && S.playing ? 'page' : null);
+    if (S.view === 'waterfall' && S.ctx) highlight($('ctx'), t, 'box');
+    $('ctx-label').textContent = `Score · bar ${bar + 1}`;
+  }
+
+  function keyLayout(lo, hi) {
+    const black = p => [1, 3, 6, 8, 10].includes(p % 12);
+    const whites = []; for (let p = lo; p <= hi; p++) if (!black(p)) whites.push(p);
+    return { black, whites };
+  }
+  function drawWaterfall(t) {
+    const cv = $('wf'), dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+    if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const { lo, hi } = S.range, { black, whites } = keyLayout(lo, hi);
+    const KH = 80, y0 = H - KH, ww = W / whites.length, LOOK = 3.2, pps = y0 / LOOK;
+    const keyX = p => {
+      if (!black(p)) { const i = whites.indexOf(p); return [i * ww, ww]; }
+      const i = whites.indexOf(p - 1); return [(i + 1) * ww - ww * 0.3, ww * 0.6];
+    };
+    // background + lanes
+    const bg = g.createLinearGradient(0, 0, 0, y0); bg.addColorStop(0, '#00263c'); bg.addColorStop(0.5, '#0f2f45'); bg.addColorStop(1, '#00263c');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    for (let p = lo; p <= hi; p++) if (black(p)) { const [x, w] = keyX(p); g.fillStyle = 'rgba(255,255,255,0.025)'; g.fillRect(x, 0, w, y0); }
+    for (let i = 0; i < whites.length; i++) if (whites[i] % 12 === 0) { g.fillStyle = 'rgba(194,199,205,0.12)'; g.fillRect(i * ww, 0, 1, y0); }
+    // loop region
+    if (S.loop) {
+      const a = y0 - (S.loop[0] - t) * pps, b = y0 - (S.loop[1] - t) * pps;
+      g.fillStyle = 'rgba(167,203,232,0.10)'; g.fillRect(0, Math.max(0, b), W, Math.min(y0, a) - Math.max(0, b));
+    }
+    // bar lines
+    g.font = '600 20px Newsreader, serif';
+    S.d.bars.forEach((bt, i) => {
+      const y = y0 - (bt - t) * pps; if (y < -20 || y > y0) return;
+      g.fillStyle = 'rgba(194,199,205,0.22)'; g.fillRect(0, y, W, 1);
+      g.fillStyle = 'rgba(254,248,244,0.30)'; g.fillText('Bar ' + (i + 1), 14, y - 6);
+    });
+    // falling notes
+    const active = {};
+    for (const [s, e, p, h] of S.d.notes) {
+      if (e < t || s > t + LOOK || p < lo || p > hi) continue;
+      const [x, w] = keyX(p), top = y0 - (e - t) * pps, bot = Math.min(y0, y0 - (s - t) * pps);
+      const on = s <= t && t < e, muted = !S.on[h] && S.src === 'synth';
+      if (on) active[p] = h;
+      g.globalAlpha = muted ? 0.25 : on ? 1 : 0.85;
+      g.shadowColor = COLORS[h]; g.shadowBlur = on && !muted ? 16 : 0;
+      g.fillStyle = COLORS[h];
+      const r = Math.min(4, w / 2); g.beginPath(); g.roundRect(x + 1, top, w - 2, Math.max(3, bot - top), r); g.fill();
+    }
+    g.globalAlpha = 1; g.shadowBlur = 0;
+    // strike line + keyboard
+    g.fillStyle = 'rgba(186,222,253,0.8)'; g.fillRect(0, y0 - 2, W, 2);
+    whites.forEach((p, i) => {
+      g.fillStyle = active[p] ? COLORS[active[p]] : '#fef8f4'; g.fillRect(i * ww, y0, ww, KH);
+      g.fillStyle = 'rgba(115,120,125,0.35)'; g.fillRect(i * ww + ww - 1, y0, 1, KH);
+      if (p % 12 === 0) { g.fillStyle = '#42474d'; g.font = '500 10px JetBrains Mono, monospace'; g.textAlign = 'center'; g.fillText('C' + (p / 12 - 1), i * ww + ww / 2, H - 6); g.textAlign = 'left'; }
+    });
+    for (let p = lo; p <= hi; p++) if (black(p)) {
+      const [x, w] = keyX(p); g.fillStyle = active[p] ? COLORS[active[p]] : '#32302e';
+      g.beginPath(); g.roundRect(x, y0, w, KH * 0.6, [0, 0, 3, 3]); g.fill();
+    }
+  }
+
+  // score highlighting (sheet view and the small score card)
+  const noteList = root => root._notes || (root._notes = JSON.parse(root.querySelector('.follow')?.dataset.notes || '[]')
+    .map(([id, s, e]) => [root.querySelector('[id="' + id + '"]'), s / 1000, e / 1000]).filter(n => n[0]));
+  function highlight(root, t, scroll) {
+    let first = null;
+    for (const [el, s, e] of noteList(root)) { const on = s <= t && t < e; el.classList.toggle('playing', on); if (on && !first) first = el; }
+    if (!first || !scroll) return;
+    if (scroll === 'box') {
+      const r = first.getBoundingClientRect(), b = root.getBoundingClientRect();
+      const target = root.scrollTop + (r.top - b.top) - b.height / 2;
+      if (Math.abs(target - root.scrollTop) > b.height / 3) root.scrollTo({ top: target, behavior: 'smooth' });
+    } else {
+      const r = first.getBoundingClientRect();
+      if (r.top < 180 || r.bottom > innerHeight - 140) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  // ---------- controls
   function fillResult(r) {
-    state.lastEngine = r.engine;
-    $('r-title').textContent = r.title;
-    $('r-chips').innerHTML = [chip('key', esc(r.key)), chip('timer', esc(r.meter) + ' time'), chip('speed', '♩ = ' + r.bpm),
-      chip('music_note', r.notes + ' notes'), chip('psychology', 'Engine ' + esc(engineName(r.engine)))].join('');
-    $('r-downloads').innerHTML = r.downloads.map(f =>
-      `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
-    $('r-player').innerHTML = r.player;
+    pause();
+    const d = r.studio; S.d = d; S.loop = null; S.src = 'synth'; S.on = { r: true, l: true };
+    const ps = d.notes.map(n => n[2]);
+    let lo = Math.min(...ps), hi = Math.max(...ps);
+    lo = Math.max(21, lo - (lo % 12)); hi = Math.min(108, hi + (11 - hi % 12));
+    while (hi - lo < 47) { lo = Math.max(21, lo - 12); if (hi - lo < 47) hi = Math.min(108, hi + 12); }
+    S.range = { lo, hi };
+    A.r.src = d.rh; A.l.src = d.lh; A.o.src = d.original; setVolumes();
+    $('s-title').textContent = r.title;
+    $('s-chips').innerHTML = chip(esc(r.key), true) + chip(esc(r.meter)) + chip('♩ = ' + r.bpm) + chip(r.notes + ' notes') + chip('Engine ' + esc(engineName(r.engine)));
+    $('s-export-menu').innerHTML = r.downloads.map(f =>
+      `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-2 rounded-lg hover:bg-surface-container-low text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
+    $('sheet').innerHTML = r.player; $('ctx').innerHTML = r.player;
+    $('sheet')._notes = null; $('ctx')._notes = null;
+    $('t-total').textContent = fmt(d.duration);
     const other = r.engine === 'Transkun' ? 'ByteDance' : 'Transkun';
     $('other-engine').lastElementChild.textContent = 'Try Engine ' + (other === 'Transkun' ? 'B' : 'A');
-    $('other-engine').onclick = () => convert(other);
-    const studio = document.querySelector('[data-view=studio]'); studio.disabled = false; studio.removeAttribute('title');
+    $('other-engine').onclick = () => { pause(); convert(other); };
+    const nav = document.querySelector('[data-view=studio]'); nav.disabled = false; nav.removeAttribute('title');
+    refreshControls(); seek(0);
   }
-  $('new-conversion').onclick = () => show('start');
-
-  // ---------- follow-along: highlight sounding notes, auto-scroll, click a note to jump
-  const notesOf = a => a._notes || (a._notes = JSON.parse(a.closest('.follow').dataset.notes)
-    .map(([id, s, e]) => [a.closest('.follow').querySelector('[id="' + id + '"]'), s, e]).filter(n => n[0]));
-  const paint = a => {
-    const t = a.currentTime * 1000; let first = null;
-    for (const [el, s, e] of notesOf(a)) { const on = s <= t && t < e; el.classList.toggle('playing', on); if (on && !first) first = el; }
-    if (first) { const r = first.getBoundingClientRect(); if (r.top < 140 || r.bottom > innerHeight - 60) first.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  function seg(sel, on, cls = ['bg-primary', 'text-on-primary', 'shadow-sm'], off = ['text-on-surface-variant']) {
+    document.querySelectorAll(sel).forEach(b => { const a = on(b); cls.forEach(c => b.classList.toggle(c, a)); off.forEach(c => b.classList.toggle(c, !a)); b.setAttribute('aria-pressed', a); });
+  }
+  function refreshControls() {
+    seg('.sview', b => b.dataset.sview === S.view);
+    seg('.ssrc', b => b.dataset.src === S.src, ['bg-secondary', 'text-on-secondary', 'font-semibold']);
+    seg('.hand', b => S.on[b.dataset.hand], ['bg-primary-container', 'text-on-primary']);
+    document.querySelectorAll('.hand').forEach(b => { b.disabled = S.src === 'orig'; b.title = S.src === 'orig' ? "The original recording can't be split by hand" : (S.on[b.dataset.hand] ? 'Mute this hand' : 'Unmute this hand'); });
+    seg('#b-metro', () => S.metro, ['bg-secondary-container', 'text-on-secondary-container'], ['bg-surface-container-highest', 'text-on-surface-variant']);
+    seg('#b-count', () => S.count, ['bg-secondary-container', 'text-on-secondary-container'], ['bg-surface-container-highest', 'text-on-surface-variant']);
+    seg('#b-loop', () => !!S.loop, ['bg-secondary', 'text-on-secondary'], ['bg-surface-container-highest', 'text-on-surface-variant']);
+    seg('.rate-btn', b => +b.dataset.rate === Math.round(S.rate * 100), ['bg-secondary', 'text-on-secondary'], ['bg-surface-container-high']);
+    $('b-loop-text').textContent = S.loop ? `Loop · bars ${barAt(S.loop[0]) + 1}–${barAt(S.loop[1] - 0.01) + 1}` : 'Loop';
+    $('scrub-loop').hidden = !S.loop;
+    if (S.loop) { $('scrub-loop').style.left = S.loop[0] / S.d.duration * 100 + '%'; $('scrub-loop').style.width = (S.loop[1] - S.loop[0]) / S.d.duration * 100 + '%'; }
+    $('rate').value = Math.round(S.rate * 100);
+    $('rate-text').textContent = `${Math.round(S.rate * 100)}% (♩ = ${Math.round(S.d.bpm * S.rate)})`;
+    $('ctx-tempo').textContent = `♩ = ${Math.round(S.d.bpm * S.rate)} (${Math.round(S.rate * 100)}%)`;
+    $('ctx-hands').textContent = S.src === 'orig' ? 'Original audio' : S.on.r && S.on.l ? 'Hands together' : S.on.r ? 'Right hand only' : S.on.l ? 'Left hand only' : 'Both hands muted';
+    $('s-waterfall').hidden = S.view !== 'waterfall'; $('s-sheet').hidden = S.view !== 'sheet';
+    $('ctx-card').hidden = !S.ctx; $('ctx-open').hidden = S.ctx;
+    frame();
+  }
+  document.querySelectorAll('.sview').forEach(b => b.onclick = () => { S.view = b.dataset.sview; refreshControls(); });
+  document.querySelectorAll('.hand').forEach(b => b.onclick = () => { S.on[b.dataset.hand] = !S.on[b.dataset.hand]; setVolumes(); refreshControls(); });
+  document.querySelectorAll('.ssrc').forEach(b => b.onclick = () => {
+    if (b.dataset.src === S.src) return;
+    const t = now(), was = S.playing; pause(); S.src = b.dataset.src; seek(t); refreshControls(); if (was) play();
+  });
+  document.querySelectorAll('.rate-btn').forEach(b => b.onclick = () => { S.rate = +b.dataset.rate / 100; setVolumes(); refreshControls(); });
+  $('rate').oninput = e => { S.rate = +e.target.value / 100; setVolumes(); refreshControls(); };
+  $('vol').oninput = e => { S.vol = +e.target.value / 100; setVolumes(); };
+  $('b-play').onclick = () => S.playing ? pause() : play();
+  $('b-prev').onclick = () => { const t = now(), i = barAt(t); seek(t - S.d.bars[i] > 0.5 || i === 0 ? S.d.bars[i] : S.d.bars[i - 1]); };
+  $('b-next').onclick = () => { const i = barAt(now()); if (i + 1 < S.d.bars.length) seek(S.d.bars[i + 1]); };
+  $('b-metro').onclick = () => { S.metro = !S.metro; S.lastBeat = null; if (S.metro) audioCtx(); refreshControls(); };
+  $('b-count').onclick = () => { S.count = !S.count; if (S.count) audioCtx(); refreshControls(); };
+  $('b-loop').onclick = () => {
+    if (S.loop) S.loop = null;
+    else { const i = barAt(now()); S.loop = [S.d.bars[i], barEnd(Math.min(i + 1, S.d.bars.length - 1))]; seek(S.loop[0]); }
+    refreshControls();
   };
-  const loop = a => { paint(a); if (!a.paused) requestAnimationFrame(() => loop(a)); };
-  const isFollow = el => el && el.classList && el.classList.contains('follow-audio');
-  document.addEventListener('play', e => isFollow(e.target) && loop(e.target), true);
-  document.addEventListener('seeked', e => isFollow(e.target) && paint(e.target), true);
+  $('ctx-toggle').onclick = () => { S.ctx = false; refreshControls(); };
+  $('ctx-open').onclick = () => { S.ctx = true; refreshControls(); };
+  $('s-back').onclick = () => { pause(); show('start'); };
+  $('s-export').onclick = e => { e.stopPropagation(); const m = $('s-export-menu'); m.hidden = !m.hidden; $('s-export').setAttribute('aria-expanded', !m.hidden); };
+  document.addEventListener('click', () => { $('s-export-menu').hidden = true; });
+  const scrubTo = e => { const r = $('scrub').getBoundingClientRect(); seek((e.clientX - r.left) / r.width * S.d.duration); };
+  $('scrub').addEventListener('pointerdown', e => { $('scrub').setPointerCapture(e.pointerId); scrubTo(e); $('scrub').onpointermove = scrubTo; });
+  $('scrub').addEventListener('pointerup', () => { $('scrub').onpointermove = null; });
+  $('scrub').addEventListener('keydown', e => { const d = { ArrowLeft: -5, ArrowRight: 5 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); seek(now() + d); } });
   // A note's box includes its stem, so a click on the white space between head and stem counts too.
-  const noteAt = (e) => {
+  const noteAt = e => {
     const direct = e.target.closest && e.target.closest('.follow g.note');
     if (direct || !(e.target.closest && e.target.closest('.follow-page'))) return direct;
-    const pad = 3;
     return [...e.target.closest('.follow').querySelectorAll('g.note')].find(n => {
       const r = n.getBoundingClientRect();
-      return e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+      return e.clientX >= r.left - 3 && e.clientX <= r.right + 3 && e.clientY >= r.top - 3 && e.clientY <= r.bottom + 3;
     });
   };
   document.addEventListener('click', e => {
     const n = noteAt(e); if (!n) return;
-    const a = n.closest('.follow').querySelector('.follow-audio');
-    const hit = notesOf(a).find(([el]) => el === n);
-    if (hit) { a.currentTime = hit[1] / 1000; a.play(); }
+    const root = n.closest('#sheet, #ctx'); if (!root) return;
+    const hit = noteList(root).find(([el]) => el === n);
+    if (hit) { seek(hit[1]); play(); }
   });
+  window.addEventListener('keydown', e => {
+    if ($('view-studio').hidden || !S.d || ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && document.activeElement.type !== 'range') return;
+    const k = e.key.toLowerCase();
+    if (k === ' ') { e.preventDefault(); S.playing ? pause() : play(); }
+    else if (k === 'm') $('b-metro').click();
+    else if (k === 'l') $('b-loop').click();
+    else if (e.key === 'ArrowLeft' && document.activeElement?.id !== 'scrub') { e.preventDefault(); $('b-prev').click(); }
+    else if (e.key === 'ArrowRight' && document.activeElement?.id !== 'scrub') { e.preventDefault(); $('b-next').click(); }
+  });
+  addEventListener('resize', () => S.d && frame());
 })();
 </script>
 </body>

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import librosa
 import numpy as np
+import mido
 import pretty_midi
 import torch
 import verovio
@@ -150,13 +151,15 @@ def fill_bars(beats, downbeats):
     step = beat_step(beats)
     sizes = [round((b - a) / step) for a, b in zip(downbeats[:-1], downbeats[1:])]
     per_bar = int(np.bincount(sizes).argmax())
-    out = list(beats[beats < downbeats[0] - step / 4])
+    # Lead-in before the first downbeat and the tail after the last one: evenly spaced at the beat length.
+    lead = round((downbeats[0] - beats[0]) / step)
+    out = list(downbeats[0] - step * np.arange(lead, 0, -1))
     for a, b, size in zip(downbeats[:-1], downbeats[1:], sizes):
         inside = beats[(beats >= a - step / 4) & (beats < b - step / 4)]
         if len(inside) != per_bar and size == per_bar:
             inside = a + (b - a) * np.arange(per_bar) / per_bar
         out.extend(inside)
-    out.extend(beats[beats >= downbeats[-1] - step / 4])
+    out.extend(downbeats[-1] + step * np.arange(max(0, round((beats[-1] - downbeats[-1]) / step)) + 1))
     return np.array(out)
 
 
@@ -186,7 +189,8 @@ def pedal_from_cc(changes):
 
 
 def to_score(events, beats, downbeats=(), pedals=()):
-    """Note events (seconds) + beat/downbeat times + pedal spans -> (music21 grand-staff Score, key, bpm, hand per event).
+    """Note events (seconds) + beat/downbeat times + pedal spans -> (music21 grand-staff Score, key, bpm, hand per event,
+    [[score seconds, recording seconds] per beat]).
 
     Each beat is a quarter note, split into 16ths, or into triplet eighths where the playing is in threes.
     """
@@ -266,7 +270,9 @@ def to_score(events, beats, downbeats=(), pedals=()):
         for m in part.getElementsByClass(stream.Measure):
             for i, v in enumerate(m.voices):
                 v.id = str(i + 1)
-    return score, k, bpm, hand_of
+    beat_sec = 60.0 / round(bpm)  # the score plays at the rounded metronome mark
+    timing = [[round((j - origin) * beat_sec, 3), round(float(t), 3)] for j, t in enumerate(beats)]
+    return score, k, bpm, hand_of, timing
 
 
 class UserError(Exception):
@@ -274,7 +280,8 @@ class UserError(Exception):
 
 
 def render(xml_path, out_pdf, out_midi):
-    """MusicXML -> (SVG pages, {note id: [start ms, end ms]}); also writes the PDF and a MIDI whose timing matches."""
+    """MusicXML -> (SVG pages, {note id: [start ms, end ms]}, bar start ms); also writes the PDF and a MIDI
+    whose timing matches."""
     tk = verovio.toolkit(False)
     tk.setResourcePath(str(Path(verovio.__file__).parent / "data"))
     tk.setOptions({"pageWidth": 2100, "pageHeight": 2970, "scale": 40, "adjustPageHeight": False})
@@ -284,8 +291,10 @@ def render(xml_path, out_pdf, out_midi):
         raise UserError("Score rendering failed; the MusicXML download is still usable.")
     # Same toolkit -> SVG note ids, MIDI and timemap all agree, so playback and highlighting stay in sync.
     out_midi.write_bytes(base64.b64decode(tk.renderToMIDI()))
-    notes = {}
-    for ev in tk.renderToTimemap({"includeMeasures": False, "includeRests": False}):
+    notes, bars = {}, []
+    for ev in tk.renderToTimemap({"includeMeasures": True, "includeRests": False}):
+        if "measureOn" in ev:
+            bars.append(ev["tstamp"])
         for i in ev.get("on", []):
             notes[i] = [ev["tstamp"], ev["tstamp"]]
         for i in ev.get("off", []):
@@ -298,7 +307,7 @@ def render(xml_path, out_pdf, out_midi):
         page.set_content(f"<html><body style='margin:0'>{printable}</body></html>")
         page.pdf(path=str(out_pdf), format="A4")
         browser.close()
-    return pages, notes
+    return pages, notes, bars
 
 
 def files_url(path):
@@ -306,12 +315,11 @@ def files_url(path):
     return "/files/" + urllib.parse.quote(Path(path).resolve().relative_to(WORK).as_posix())
 
 
-def player_html(pages, notes, audio_path):
-    """Score pages + an audio player; the page script highlights notes as they play and seeks on click."""
+def player_html(pages, notes):
+    """Score pages + note timings; the page highlights notes as they play and seeks on click."""
     data = html.escape(json.dumps([[i, s, e] for i, (s, e) in notes.items()]))
     sheets = "".join(f'<div class="follow-page">{s}</div>' for s in pages)
-    return (f'<div class="follow" data-notes="{data}">'
-            f'<audio class="follow-audio" controls preload="auto" src="{files_url(audio_path)}"></audio>{sheets}</div>')
+    return f'<div class="follow" data-notes="{data}">{sheets}</div>'
 
 
 def transkun(audio, midi_path):
@@ -411,7 +419,7 @@ def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, prog
     even = fill_bars(beats, downbeats)
     progress(2, f"{meter_from(even, downbeats)[0]}/4 time · ♩ = {round(60 / beat_step(even))} · {len(pedals)} pedal presses")
     progress(3)
-    score, k, bpm, hand_of = to_score(events, beats, downbeats, pedals)
+    score, k, bpm, hand_of, timing = to_score(events, beats, downbeats, pedals)
     meter_text = score.parts[0].recurse().getElementsByClass(meter.TimeSignature).first().ratioString
     key_text = f"{k.tonic.name.replace('-', '♭')} {k.mode}"
     score.insert(0, metadata.Metadata(title=title or Path(source).stem))
@@ -420,22 +428,50 @@ def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, prog
              hands="".join(hand_of), key=key_text, meter=meter_text)
     progress(4)
     pdf, midi = out / "score.pdf", out / "score_two_hands.mid"
-    pages, notes = render(xml, pdf, midi)
+    pages, notes, bars = render(xml, pdf, midi)
     progress(4, f"{len(pages)} page{'s' * (len(pages) != 1)}", preview=pages[0])
     progress(5)
-    wav, mp3 = out / "score_piano.wav", out / "score_piano.mp3"
-    subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.8", "-r", "44100", "-F", str(wav), SOUNDFONT, str(midi)],
-                   check=True, capture_output=True, timeout=600)
-    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(wav), "-q:a", "3", str(mp3)],
-                   check=True, capture_output=True, timeout=600)
-    wav.unlink()
+    mp3 = out / "score_piano.mp3"
+    synth(midi, mp3)
+    hand_audio, waterfall = {}, []
+    for hand, path in split_hands(midi, out).items():
+        hand_audio[hand] = out / f"score_{hand}.mp3"
+        synth(path, hand_audio[hand])
+        waterfall += [[round(n.start, 3), round(n.end, 3), n.pitch, hand[0]]
+                      for inst in pretty_midi.PrettyMIDI(str(path)).instruments for n in inst.notes]
     progress(5, f"{fmt_time(max((e for _, e in notes.values()), default=0) / 1000)} of score audio")
     downloads = [("PDF", pdf), ("MusicXML", xml), ("Two-hand MIDI", midi), ("Score audio (MP3)", mp3),
                  ("Performance MIDI", raw_midi)]
     return {"engine": engine, "notes": len(events), "bpm": round(bpm), "meter": meter_text,
             "key": key_text, "title": title or Path(source).stem,
-            "player": player_html(pages, notes, mp3),
+            "player": player_html(pages, notes),
+            "studio": {"rh": files_url(hand_audio["rh"]), "lh": files_url(hand_audio["lh"]), "original": files_url(audio),
+                       "notes": sorted(waterfall), "bars": [b / 1000 for b in bars], "timing": timing,
+                       "bpm": round(bpm), "per_bar": int(meter_text.split("/")[0]),
+                       "duration": max([n[1] for n in waterfall] + [0])},
             "downloads": [{"label": label, "url": files_url(p), "name": p.name} for label, p in downloads]}
+
+
+def synth(midi, mp3):
+    """MIDI -> MP3 with the piano soundfont."""
+    wav = mp3.with_suffix(".wav")
+    subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.8", "-r", "44100", "-F", str(wav), SOUNDFONT, str(midi)],
+                   check=True, capture_output=True, timeout=600)
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(wav), "-q:a", "3", str(mp3)],
+                   check=True, capture_output=True, timeout=600)
+    wav.unlink()
+
+
+def split_hands(midi, out):
+    """Verovio's MIDI has a tempo track then one track per staff (right hand, left hand) -> one MIDI per hand."""
+    full = mido.MidiFile(str(midi))
+    paths = {}
+    for hand, track in (("rh", 1), ("lh", 2)):
+        one = mido.MidiFile(ticks_per_beat=full.ticks_per_beat)
+        one.tracks = [full.tracks[0]] + ([full.tracks[track]] if track < len(full.tracks) else [])
+        paths[hand] = out / f"score_{hand}.mid"
+        one.save(str(paths[hand]))
+    return paths
 
 
 def fmt_time(seconds):

@@ -59,4 +59,7 @@ assert np.allclose(fill_bars([0, .5, .7, 1, 1.5, 2, 2.5, 3, 3.5, 4], [0, 2, 4]),
 mixed = np.cumsum([0] + [0.8, 0.8, 0.4, 0.4] * 4)
 fixed = fill_bars(mixed, mixed[::4])
 assert np.allclose(np.diff(fixed), 0.4) and meter_from(fixed, mixed[::4])[0] == 6
+# Uneven lead-in before the first downbeat (0.8 s gap at a 0.4 s beat) is evened out too.
+lead = fill_bars(np.r_[0.0, 0.8, np.arange(1.2, 6.0, 0.4)], [1.2, 3.6])
+assert np.allclose(lead[:4], [0.0, 0.4, 0.8, 1.2]) and np.allclose(np.diff(lead), 0.4)
 print("ok")
