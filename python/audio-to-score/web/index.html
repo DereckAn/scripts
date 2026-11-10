@@ -48,6 +48,7 @@ tailwind.config = { theme: { extend: {
   #ctx .follow-page { margin: 0; border-radius: 0; box-shadow: none; }
   #ctx { overflow-y: auto; }
   .follow-page { background: white; margin-bottom: 16px; border-radius: .75rem; box-shadow: 0 1px 3px rgba(27,60,83,.08); overflow: hidden; }
+  .follow-page img { width: 100%; height: auto; display: block; }
   .follow-page svg { width: 100%; height: auto; display: block; }
   .follow g.note { cursor: pointer; }
   /* Highlight uses colour plus an outline, so it doesn't rely on colour alone. */
@@ -58,7 +59,7 @@ tailwind.config = { theme: { extend: {
 <body class="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col">
 
 <header class="fixed top-0 w-full z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(27,60,83,0.04)]">
-  <div class="h-16 w-full px-gutter md:px-gutter-desktop flex items-center justify-between gap-space-md">
+  <div class="min-h-16 sm:h-16 py-2 sm:py-0 w-full px-gutter md:px-gutter-desktop flex flex-wrap sm:flex-nowrap items-center justify-between gap-space-md">
     <div class="flex items-center gap-space-lg">
       <div class="flex items-center gap-space-sm">
         <span class="material-symbols-outlined text-[28px] text-primary">piano</span>
@@ -71,15 +72,16 @@ tailwind.config = { theme: { extend: {
     </div>
     <button type="button" id="bg-pill" hidden class="flex items-center gap-space-xs px-space-md py-1.5 rounded-full bg-secondary-container text-primary font-label-lg text-label-lg">
       <span class="material-symbols-outlined text-[16px]">hourglass_top</span><span id="bg-pill-text">Converting…</span></button>
-    <nav class="flex items-center gap-space-xs p-1 bg-surface-container-low rounded-lg">
+    <nav class="flex items-center gap-space-xs p-1 bg-surface-container-low rounded-lg max-w-full overflow-x-auto">
       <button type="button" data-view="start" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Convert</button>
+      <button type="button" data-view="labels" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Label sheet</button>
       <button type="button" data-view="studio" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg" disabled title="Convert a recording first">Practice Studio</button>
       <button type="button" class="px-space-md py-1.5 rounded-lg font-label-lg text-label-lg text-on-surface-variant" disabled title="Coming soon">Library</button>
     </nav>
   </div>
 </header>
 
-<main class="w-full pt-16 flex-1">
+<main class="w-full pt-28 sm:pt-16 flex-1">
 
 <!-- ============================== START / INPUT ============================== -->
 <section id="view-start" class="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl">
@@ -458,6 +460,62 @@ tailwind.config = { theme: { extend: {
     </div>
   </div>
 </section>
+<section id="view-labels" hidden class="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl">
+  <div class="relative overflow-hidden rounded-xl bg-surface-container-low shadow-sm p-space-xl">
+    <div class="flex flex-col gap-space-xs max-w-2xl">
+      <span class="font-label-mono text-label-mono text-secondary tracking-widest uppercase">Read it. Name it. Play it.</span>
+      <h1 class="font-headline-lg text-headline-lg text-primary">Get to know every note on your sheet.</h1>
+      <p class="text-on-surface-variant">Upload a piano sheet as a PDF or SVG and add names inside the original notes. Choose C, D, E or Do, Re, Mi, then download a sheet to practise with.</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+    <div class="lg:col-span-7 flex flex-col gap-space-lg">
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <div class="flex flex-wrap items-center justify-between gap-space-sm">
+          <span class="font-label-lg text-label-lg text-primary"><span class="material-symbols-outlined text-secondary text-[20px]">picture_as_pdf</span> 1. Piano sheet</span>
+          <span class="font-label-mono text-label-mono text-on-surface-variant">Up to 30 pages · 50 MB</span>
+        </div>
+        <label id="pdf-dropzone" class="group rounded-xl p-space-xl flex flex-col items-center gap-space-md text-center bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+          <input id="pdf-input" type="file" accept=".pdf,.svg,application/pdf,image/svg+xml" multiple class="sr-only"/>
+          <span class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-[28px] text-primary">upload_file</span></span>
+          <span class="font-headline-sm text-headline-sm text-primary">Drop a piano sheet here</span>
+          <span class="text-on-surface-variant">One PDF or up to 30 SVG pages · SVGs sort by filename</span>
+          <span class="px-space-md py-1 rounded bg-surface-container-highest text-primary font-label-lg text-label-lg shadow-sm">Choose PDF or SVG files</span>
+        </label>
+        <div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-secondary">description</span><div class="min-w-0 flex-1"><p id="pdf-name" class="font-label-lg text-label-lg text-primary truncate">No sheet yet</p><p id="pdf-info" class="font-label-mono text-label-mono text-on-surface-variant">Choose a PDF or SVG to get started</p></div><a id="pdf-original" hidden target="_blank" rel="noopener" class="text-secondary font-label-lg text-label-lg underline">Original PDF</a></div>
+        <p id="pdf-error" role="alert" hidden class="p-space-md rounded-lg bg-error-container text-on-error-container"></p>
+      </div>
+      <div id="pdf-progress" hidden class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md" aria-live="polite">
+        <div class="flex justify-between items-center"><span class="font-headline-sm text-headline-sm text-primary">Naming your notes</span><button id="pdf-cancel" type="button" class="px-space-md py-1.5 rounded-lg text-error hover:bg-error-container font-label-lg text-label-lg">Cancel</button></div>
+        <p id="pdf-step" class="text-on-surface-variant"></p>
+        <div class="h-2 rounded-full bg-surface-container-highest overflow-hidden"><div id="pdf-bar" class="h-full bg-secondary transition-all duration-500" style="width:0"></div></div>
+        <ol id="pdf-stages" class="flex flex-col gap-space-md"></ol>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Recognition can take several minutes. You can use the other views while it runs.</p>
+      </div>
+    </div>
+    <div class="lg:col-span-5 flex flex-col gap-space-lg">
+      <fieldset class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <legend class="sr-only">Note naming system</legend>
+        <span class="font-label-lg text-label-lg text-primary"><span class="material-symbols-outlined text-secondary text-[20px]">music_note</span> 2. Note names</span>
+        <label class="choice selected flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="letters" checked class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Letter names</span><span class="font-label-mono text-label-mono text-secondary">C · D · E · F · G · A · B</span></span></label>
+        <label class="choice flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="solfege" class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Solfège · fixed Do</span><span class="font-label-mono text-label-mono text-secondary">Do · Re · Mi · Fa · Sol · La · Si</span></span></label>
+        <div class="bg-surface-container-low rounded-lg p-space-md"><p class="text-on-surface-variant">Names follow the written note: C is always Do. Sharps, flats and naturals stay beside the notes or in the key signature.</p></div>
+      </fieldset>
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <p class="font-headline-sm text-headline-sm text-primary">A little help reading the music.</p>
+        <p class="text-on-surface-variant">Names appear inside the noteheads, in both hands. Filled notes use white letters; hollow notes use dark letters.</p>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Labels are added directly to your original pages. Layout, spacing and markings stay in place. SVG pages convert to PDF automatically. Check the detected names before practising.</p>
+        <p id="pdf-setup" hidden class="p-space-md rounded-lg bg-surface-container-low text-on-surface-variant">PDF recognition needs Audiveris installed on this Mac. See the project's README.md for setup.</p>
+        <button id="pdf-label" type="button" disabled class="px-space-lg py-3 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">auto_fix_high</span><span>Add note names</span></button>
+      </div>
+    </div>
+  </div>
+  <div id="pdf-result" hidden class="flex flex-col gap-space-lg">
+    <div class="flex flex-wrap items-center justify-between gap-space-md"><div><h2 id="pdf-result-title" class="font-headline-md text-headline-md text-primary"></h2><p id="pdf-result-info" class="font-label-mono text-label-mono text-secondary"></p></div><div id="pdf-downloads" class="flex flex-wrap gap-space-sm"></div></div>
+    <div class="flex items-center gap-space-md justify-end"><label for="pdf-zoom" class="font-label-mono text-label-mono text-secondary">Preview zoom</label><input id="pdf-zoom" type="range" min="100" max="300" step="25" value="100" class="accent-primary w-32"/><output id="pdf-zoom-value" for="pdf-zoom" class="font-label-mono text-label-mono text-primary">100%</output></div>
+    <div class="max-w-4xl w-full mx-auto overflow-x-auto rounded-xl"><div id="pdf-sheet" class="w-full"></div></div>
+  </div>
+</section>
 </main>
 
 <footer class="w-full bg-surface-container-low/90">
@@ -478,6 +536,7 @@ tailwind.config = { theme: { extend: {
     $('view-start').hidden = view !== 'start';
     $('view-processing').hidden = view !== 'processing';
     $('view-studio').hidden = view !== 'studio';
+    $('view-labels').hidden = view !== 'labels';
     document.querySelectorAll('.nav-btn').forEach(b => {
       const on = b.dataset.view === view;
       b.classList.toggle('bg-primary-container', on); b.classList.toggle('text-on-primary', on); b.classList.toggle('shadow-sm', on);
@@ -762,6 +821,103 @@ tailwind.config = { theme: { extend: {
   // ---------- practice studio
   const chip = (text, strong) => `<span class="px-2.5 py-0.5 rounded-full ${strong ? 'bg-secondary-container text-on-secondary-container font-label-md text-label-md uppercase tracking-wider font-semibold' : 'bg-surface-container-high text-on-surface-variant font-label-mono text-label-mono'}">${text}</span>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  // ---------- PDF note names (same source, job and download patterns as audio)
+  const pdf = { source: null, job: null, ready: false, loading: false };
+  const pdfControls = () => {
+    $('pdf-label').disabled = !pdf.source || !pdf.ready || !!pdf.job || pdf.loading;
+    $('pdf-input').disabled = !!pdf.job || pdf.loading;
+    document.querySelectorAll('input[name=naming]').forEach(r => r.disabled = !!pdf.job);
+  };
+  fetch('/api/sheets/setup').then(r => r.json()).then(d => {
+    pdf.ready = d.ready; $('pdf-setup').hidden = d.ready; pdfControls();
+  }).catch(() => showError($('pdf-error'), 'Could not check PDF recognition setup. Reload the page.'));
+  document.querySelectorAll('input[name=naming]').forEach(r => r.onchange = () => {
+    document.querySelectorAll('input[name=naming]').forEach(x => x.closest('.choice').classList.toggle('selected', x.checked));
+  });
+  async function loadSheets(selected) {
+    const files = Array.from(selected || []);
+    if (!files.length || pdf.job || pdf.loading) return;
+    pdf.source = null; pdf.loading = true; pdfControls();
+    $('pdf-result').hidden = true; $('pdf-progress').hidden = true; $('pdf-original').hidden = true;
+    showError($('pdf-error'));
+    $('pdf-name').textContent = files.length === 1 ? files[0].name : `${files.length} SVG pages`;
+    $('pdf-info').textContent = 'Reading sheet…';
+    try {
+      const isSVG = files.every(f => /\.svg$/i.test(f.name));
+      if (!isSVG && (files.length !== 1 || !/\.pdf$/i.test(files[0].name))) {
+        throw new Error('Choose one PDF or a set of SVG pages. Upload these formats separately.');
+      }
+      let file = files[0];
+      if (isSVG) {
+        $('pdf-info').textContent = 'Converting SVG pages to PDF…';
+        const { svgSheetsToPdf } = await import('/assets/vendor/score-pdf-bridge.js');
+        const blob = await svgSheetsToPdf(files, progress => {
+          $('pdf-info').textContent = `Converting SVG page ${progress.current} of ${progress.total}…`;
+        });
+        file = new File([blob], files[0].name.replace(/\.svg$/i, '') + (files.length > 1 ? '-merged' : '') + '.pdf', { type: 'application/pdf' });
+      }
+      const body = new FormData(); body.append('file', file);
+      const response = await fetch('/api/sheets/source', { method: 'POST', body });
+      const d = await response.json();
+      if (!response.ok) throw new Error(d.error || 'Could not load this sheet.');
+      pdf.source = d.id; $('pdf-name').textContent = d.title;
+      $('pdf-original').href = d.url; $('pdf-original').hidden = false;
+      $('pdf-original').textContent = isSVG ? 'Converted PDF' : 'Original PDF';
+      $('pdf-info').textContent = `${d.pages} page${d.pages === 1 ? '' : 's'} · ${(file.size / 1048576).toFixed(1)} MB · ${isSVG ? 'SVG converted · ' : ''}Ready`;
+    } catch (e) { $('pdf-info').textContent = 'Choose another sheet to try again'; showError($('pdf-error'), e.message); }
+    finally { pdf.loading = false; $('pdf-input').value = ''; pdfControls(); }
+  }
+  $('pdf-input').onchange = e => loadSheets(e.target.files);
+  const pdfDrop = $('pdf-dropzone');
+  pdfDrop.ondragover = e => { e.preventDefault(); pdfDrop.classList.add('bg-surface-container'); };
+  pdfDrop.ondragleave = () => pdfDrop.classList.remove('bg-surface-container');
+  pdfDrop.ondrop = e => { e.preventDefault(); pdfDrop.classList.remove('bg-surface-container'); loadSheets(e.dataTransfer.files); };
+  $('pdf-label').onclick = async () => {
+    if (!pdf.source || pdf.job || !pdf.ready) return;
+    // Reserve the button before the request so double-clicks cannot create duplicate jobs.
+    pdf.job = 'starting'; pdfControls(); showError($('pdf-error'));
+    $('pdf-result').hidden = true;
+    try {
+      const response = await fetch('/api/sheets/label', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: pdf.source, naming: document.querySelector('input[name=naming]:checked').value }) });
+      const d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not start labeling.');
+      pdf.job = d.job; $('pdf-progress').hidden = false; $('pdf-cancel').disabled = false;
+      const stageStart = {};
+      let job;
+      do {
+        const status = await fetch('/api/jobs/' + pdf.job);
+        job = await status.json(); if (!status.ok) throw new Error(job.error || 'Could not check progress.');
+        job.stages.forEach((s, i) => { if (s.state === 'active') s._t = stageStart[i] ??= performance.now(); });
+        $('pdf-stages').innerHTML = job.stages.map(stageHTML).join('');
+        $('pdf-bar').style.width = Math.max(2, job.progress * 100) + '%';
+        $('pdf-step').textContent = job.state === 'queued' ? 'Waiting for the previous conversion to finish' : job.stages[job.stage]?.name || 'Finishing…';
+        if (job.state === 'queued' || job.state === 'running') await new Promise(r => setTimeout(r, 1000));
+      } while (job.state === 'queued' || job.state === 'running');
+      if (job.state !== 'done') throw new Error(job.state === 'cancelled' ? 'PDF labeling cancelled.' : job.error);
+      const result = job.result;
+      $('pdf-result-title').textContent = result.title;
+      $('pdf-result-info').textContent = `${result.naming === 'letters' ? 'Letter names · C, D, E' : 'Fixed Do · Do, Re, Mi'} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} labels · Original layout preserved`;
+      $('pdf-sheet').innerHTML = result.player;
+      $('pdf-zoom').value = 100; $('pdf-zoom-value').textContent = '100%'; $('pdf-sheet').style.width = '100%';
+      $('pdf-downloads').innerHTML = result.downloads.map(f => `<a href="${esc(f.url)}" download="${esc(f.name)}" class="px-space-lg py-2.5 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg hover:bg-primary">${esc(f.label)}</a>`).join('');
+      $('pdf-result').hidden = false;
+      $('pdf-step').textContent = 'Your labeled sheet is ready';
+    } catch (e) { showError($('pdf-error'), e.message || 'Lost contact with the app. Reload to try again.'); }
+    finally { pdf.job = null; $('pdf-progress').hidden = true; pdfControls(); }
+  };
+  $('pdf-cancel').onclick = async () => {
+    if (!pdf.job || pdf.job === 'starting') return;
+    $('pdf-cancel').disabled = true;
+    try {
+      const response = await fetch(`/api/jobs/${pdf.job}/cancel`, { method: 'POST' });
+      if (!response.ok) throw new Error('Could not cancel. Try again.');
+      $('pdf-step').textContent = 'Cancelling after the current step…';
+    } catch (e) { showError($('pdf-error'), e.message); $('pdf-cancel').disabled = false; }
+  };
+  $('pdf-zoom').oninput = e => {
+    $('pdf-sheet').style.width = e.target.value + '%';
+    $('pdf-zoom-value').textContent = e.target.value + '%';
+  };
   const COLORS = { r: '#7cc4f5', l: '#d4b896' };
   const A = { r: new Audio(), l: new Audio(), o: new Audio() };
   Object.values(A).forEach(a => { a.preload = 'auto'; a.preservesPitch = true; });

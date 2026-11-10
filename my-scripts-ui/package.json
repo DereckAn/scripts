@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "bun@1.1.0",
   "scripts": {
+    "build:score-pdf": "bun build src/utils/score-pdf-bridge.ts --target browser --minify --outfile ../python/audio-to-score/web/vendor/score-pdf-bridge.js",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",

@@ -30,6 +30,8 @@ from fastapi.staticfiles import StaticFiles
 from playwright.sync_api import sync_playwright
 from pydantic import BaseModel
 import uvicorn
+from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
+                          pdf_info, recognize, note_positions, annotate_pdf, pdf_previews)
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -285,7 +287,8 @@ def render(xml_path, out_pdf, out_midi):
     tk = verovio.toolkit(False)
     tk.setResourcePath(str(Path(verovio.__file__).parent / "data"))
     tk.setOptions({"pageWidth": 2100, "pageHeight": 2970, "scale": 40, "adjustPageHeight": False})
-    tk.loadFile(str(xml_path))
+    if not tk.loadFile(str(xml_path)):
+        raise UserError("The recognized music could not be rendered. Try a clearer PDF.")
     pages = [tk.renderToSVG(i + 1) for i in range(tk.getPageCount())]
     if not pages:
         raise UserError("Score rendering failed; the MusicXML download is still usable.")
@@ -300,12 +303,18 @@ def render(xml_path, out_pdf, out_midi):
         for i in ev.get("off", []):
             if i in notes:
                 notes[i][1] = ev["tstamp"]
-    printable = "".join(f'<div style="page-break-after:always">{s}</div>' for s in pages)
+    printable = "".join(f'<div class="score-page">{s}</div>' for s in pages)
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.set_content(f"<html><body style='margin:0'>{printable}</body></html>")
-        page.pdf(path=str(out_pdf), format="A4")
+        page.set_content("<html><head><style>"
+                         "@page { size: A4; margin: 0; }"
+                         "body { margin: 0; }"
+                         ".score-page { width: 210mm; height: 297mm; break-after: page; overflow: hidden; }"
+                         ".score-page:last-child { break-after: auto; }"
+                         ".score-page > svg { display: block; width: 100%; height: 100%; }"
+                         f"</style></head><body>{printable}</body></html>")
+        page.pdf(path=str(out_pdf), format="A4", prefer_css_page_size=True, print_background=True)
         browser.close()
     return pages, notes, bars
 
@@ -482,7 +491,9 @@ def fmt_time(seconds):
 
 app = FastAPI(title="Piano to Score")
 app.mount("/files", StaticFiles(directory=WORK), name="files")
+app.mount("/assets", StaticFiles(directory=Path(__file__).parent / "web"), name="assets")
 SOURCES = {}  # source id -> (audio path, title)
+SHEETS = {}  # source id -> (PDF path, title)
 JOBS = {}  # job id -> {"state", "progress", "stage", "result" | "error"}
 RUN_LOCK = threading.Lock()  # ponytail: one conversion at a time (CPU-bound); a queue view if several users share it
 
@@ -531,6 +542,81 @@ class Cancelled(Exception):
     pass
 
 
+@app.get("/api/sheets/setup")
+def sheet_setup():
+    return {"ready": audiveris_command() is not None}
+
+
+@app.post("/api/sheets/source")
+async def add_sheet(file: UploadFile):
+    folder = Path(tempfile.mkdtemp(prefix="sheet-", dir=WORK))
+    try:
+        if not file.filename or Path(file.filename).suffix.lower() != ".pdf":
+            raise SheetError("Choose a piano sheet in PDF format.")
+        path, size = folder / "source.pdf", 0
+        with path.open("wb") as dest:
+            while chunk := await file.read(1 << 20):
+                size += len(chunk)
+                if size > 50 << 20:
+                    raise SheetError("That PDF is larger than 50 MB.")
+                dest.write(chunk)
+        info = await run_in_threadpool(pdf_info, path)
+    except SheetError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    title = Path(file.filename).stem
+    SHEETS[folder.name] = (path, title)
+    return {"id": folder.name, "title": title, "url": files_url(path), **info}
+
+
+class LabelRequest(BaseModel):
+    source: str
+    naming: str = "letters"
+
+
+@app.post("/api/sheets/label")
+def label_sheet(req: LabelRequest):
+    if req.source not in SHEETS:
+        return JSONResponse({"error": "Upload a sheet PDF first."}, status_code=400)
+    if req.naming not in NAMING:
+        return JSONResponse({"error": "Choose letter names or fixed-Do solfège."}, status_code=400)
+    if not audiveris_command():
+        return JSONResponse({"error": "Install Audiveris to recognize PDFs (see README.md)."}, status_code=503)
+    path, title = SHEETS[req.source]
+
+    def work(step):
+        step(0)
+        info = pdf_info(path)
+        step(1)
+        # Cache recognition: changing naming styles only needs a new text overlay.
+        recognition = path.parent / "recognized"
+        recognition.mkdir(exist_ok=True)
+        marker = recognition / "complete.json"
+        if marker.is_file():
+            scores = [recognition / name for name in json.loads(marker.read_text())]
+        else:
+            scores = recognize(path, recognition, lambda detail: step(1, detail))
+            marker.write_text(json.dumps([s.relative_to(recognition).as_posix() for s in scores]))
+        step(2)
+        out = Path(tempfile.mkdtemp(prefix="labels-", dir=WORK))
+        books = sorted({book for score in scores for book in score.parent.glob("*.omr")})
+        if len(books) != 1:
+            raise SheetError("The original note positions are missing. Upload the sheet again to recognize it.")
+        positions = note_positions(books[0], info["pages"])
+        pdf = out / "labeled.pdf"
+        count = annotate_pdf(path, pdf, positions, req.naming)
+        step(3)
+        previews = pdf_previews(pdf, out)
+        player = "".join(f'<div class="follow-page"><img src="{files_url(image)}" '
+                         f'alt="Labeled sheet, page {i}" loading="lazy"/></div>'
+                         for i, image in enumerate(previews, 1))
+        return {"title": title, "naming": req.naming, "pages": info["pages"], "notes": count,
+                "player": player,
+                "downloads": [{"label": "Labeled PDF", "url": files_url(pdf), "name": pdf.name}]}
+
+    return start_job(work, SHEET_STAGES, [0.05, 0.7, 0.2, 0.05],
+                     "PDF labeling failed. Try a clearer scan or fewer pages.")
+
+
 @app.post("/api/convert")
 def convert(req: ConvertRequest):
     if req.source not in SOURCES:
@@ -538,9 +624,15 @@ def convert(req: ConvertRequest):
     if req.engine not in ("ByteDance", "Transkun"):
         return JSONResponse({"error": "Unknown engine."}, status_code=400)
     path, title = SOURCES[req.source]
+    return start_job(lambda step: transcribe(path, req.engine, max(0.0, req.start), req.end, title, step),
+                     STAGES, STAGE_WEIGHT, "Conversion failed. Try the other engine or a shorter section.")
+
+
+def start_job(work, stages, weights, failure_message):
+    """Both conversion flows share queue, progress, cancellation and status polling."""
     job_id = uuid.uuid4().hex
     job = JOBS[job_id] = {"state": "queued", "progress": 0, "stage": -1, "cancel": False,
-                          "stages": [{"name": n, "state": "pending", "seconds": None, "detail": ""} for n in STAGES]}
+                          "stages": [{"name": n, "state": "pending", "seconds": None, "detail": ""} for n in stages]}
     began = {}
 
     def step(i, detail=None, **data):
@@ -551,12 +643,12 @@ def convert(req: ConvertRequest):
             st = job["stages"][j]
             if st["state"] != "done":
                 st.update(state="done", seconds=round(now - began.get(j, now), 1))
-        if i < len(STAGES) and job["stages"][i]["state"] == "pending":
+        if i < len(stages) and job["stages"][i]["state"] == "pending":
             began[i] = now
             job["stages"][i]["state"] = "active"
-        if detail and i < len(STAGES):
+        if detail and i < len(stages):
             job["stages"][i]["detail"] = detail
-        job.update(state="running", stage=i, progress=round(sum(STAGE_WEIGHT[:i]), 3), **data)
+        job.update(state="running", stage=i, progress=round(sum(weights[:i]), 3), **data)
 
     def run():
         with RUN_LOCK:
@@ -564,19 +656,19 @@ def convert(req: ConvertRequest):
                 job.update(state="cancelled")
                 return
             try:
-                result = transcribe(path, req.engine, max(0.0, req.start), req.end, title, step)
-                step(len(STAGES))
+                result = work(step)
+                step(len(stages))
                 job.update(state="done", progress=1, result=result)
             except Cancelled:
                 job.update(state="cancelled")
-            except UserError as e:
+            except (UserError, SheetError) as e:
                 job.update(state="error", error=str(e))
             except Exception:
                 traceback.print_exc()
-                job.update(state="error", error="Conversion failed. Try the other engine or a shorter section.")
+                job.update(state="error", error=failure_message)
 
     threading.Thread(target=run, daemon=True).start()
-    return {"job": job_id, "stages": STAGES}
+    return {"job": job_id, "stages": stages}
 
 
 @app.get("/api/jobs/{job_id}")
