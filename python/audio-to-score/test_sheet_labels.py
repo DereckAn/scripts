@@ -5,6 +5,7 @@ import tempfile
 import time
 import unittest
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
@@ -29,8 +30,19 @@ class SheetLabelsTests(unittest.TestCase):
           <head pitch="0" shape="WHOLE_NOTE" staff="2"><bounds x="200" y="500" w="40" h="20"/></head>
           <head pitch="0" shape="NOTEHEAD_VOID" staff="1"><bounds x="600" y="200" w="30" h="20"/></head>
         </system></sheet>'''
+        root = ET.fromstring(xml)
+        glyphs = ET.SubElement(root, 'glyph-index')
+        for i, head in enumerate(root.iter('head')):
+            bounds = head.find('bounds')
+            head.set('glyph', str(i))
+            glyph = ET.SubElement(glyphs, 'glyph', id=str(i), left=bounds.get('x'), top=bounds.get('y'))
+            table = ET.SubElement(glyph, 'run-table', orientation='VERTICAL',
+                                 width=bounds.get('w'), height=bounds.get('h'))
+            for x in range(int(bounds.get('w'))):
+                hollow = 'BLACK' not in head.get('shape') and 3 <= x < int(bounds.get('w')) - 3
+                ET.SubElement(table, 'runs').text = '3 14 3' if hollow else '20'
         with zipfile.ZipFile(book, 'w') as archive:
-            archive.writestr('sheet#1/sheet#1.xml', xml)
+            archive.writestr('sheet#1/sheet#1.xml', ET.tostring(root))
         return book
 
     def test_short_ending_staff_retries_the_whole_pdf(self):
@@ -122,6 +134,9 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertEqual((source['title'], source['pages']), ('Practice', 1))
         self.assertEqual(client.post('/api/sheets/label', json={'source': source['id'], 'naming': 'invalid'}).status_code, 400)
         self.assertEqual(client.post('/api/sheets/label', json={'source': 'missing'}).status_code, 400)
+        for options in [{'show_names': False, 'color_notes': False}, {'font': 'missing'},
+                        {'label_color': 'invalid'}, {'note_colors': {'c': 'bad'}}]:
+            self.assertEqual(client.post('/api/sheets/label', json={'source': source['id'], **options}).status_code, 400)
         with patch.object(piano, 'audiveris_command', return_value=None):
             self.assertEqual(client.post('/api/sheets/label', json={'source': source['id']}).status_code, 503)
 
@@ -189,8 +204,10 @@ class SheetLabelsTests(unittest.TestCase):
         with patch.object(piano, 'audiveris_command', return_value='/fake/audiveris'), \
                 patch.object(piano, 'recognize', side_effect=recognized) as recognize_call, \
                 patch.object(piano, 'render', side_effect=AssertionError('Must not reconstruct a PDF')):
-            for naming in ('letters', 'solfege'):
-                jobid = client.post('/api/sheets/label', json={'source': upload['id'], 'naming': naming}).json()['job']
+            for options in [{'naming': 'letters'}, {'naming': 'solfege', 'font': 'mono', 'label_color': '#0088ff'},
+                            {'show_names': False, 'color_notes': True},
+                            {'naming': 'solfege', 'show_names': True, 'color_notes': True, 'font': 'serif'}]:
+                jobid = client.post('/api/sheets/label', json={'source': upload['id'], **options}).json()['job']
                 for _ in range(100):
                     job = client.get('/api/jobs/'+jobid).json()
                     if job['state'] not in ('queued', 'running'):

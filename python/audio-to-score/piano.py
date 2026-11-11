@@ -31,7 +31,7 @@ from playwright.sync_api import sync_playwright
 from pydantic import BaseModel
 import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
-                          pdf_info, recognize, note_positions, annotate_pdf, pdf_previews)
+                          pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style)
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -571,6 +571,11 @@ async def add_sheet(file: UploadFile):
 class LabelRequest(BaseModel):
     source: str
     naming: str = "letters"
+    show_names: bool = True
+    color_notes: bool = False
+    font: str = "sans"
+    label_color: str = "auto"
+    note_colors: dict[str, str] | None = None
 
 
 @app.post("/api/sheets/label")
@@ -579,6 +584,10 @@ def label_sheet(req: LabelRequest):
         return JSONResponse({"error": "Upload a sheet PDF first."}, status_code=400)
     if req.naming not in NAMING:
         return JSONResponse({"error": "Choose letter names or fixed-Do solfège."}, status_code=400)
+    try:
+        style = validate_style(req.show_names, req.color_notes, req.font, req.label_color, req.note_colors)
+    except SheetError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
     if not audiveris_command():
         return JSONResponse({"error": "Install Audiveris to recognize PDFs (see README.md)."}, status_code=503)
     path, title = SHEETS[req.source]
@@ -603,13 +612,14 @@ def label_sheet(req: LabelRequest):
             raise SheetError("The original note positions are missing. Upload the sheet again to recognize it.")
         positions = note_positions(books[0], info["pages"])
         pdf = out / "labeled.pdf"
-        count = annotate_pdf(path, pdf, positions, req.naming)
+        count = annotate_pdf(path, pdf, positions, req.naming, **style)
         step(3)
         previews = pdf_previews(pdf, out)
         player = "".join(f'<div class="follow-page"><img src="{files_url(image)}" '
                          f'alt="Labeled sheet, page {i}" loading="lazy"/></div>'
                          for i, image in enumerate(previews, 1))
         return {"title": title, "naming": req.naming, "pages": info["pages"], "notes": count,
+                "style": style,
                 "player": player,
                 "downloads": [{"label": "Labeled PDF", "url": files_url(pdf), "name": pdf.name}]}
 

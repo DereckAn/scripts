@@ -465,7 +465,7 @@ tailwind.config = { theme: { extend: {
     <div class="flex flex-col gap-space-xs max-w-2xl">
       <span class="font-label-mono text-label-mono text-secondary tracking-widest uppercase">Read it. Name it. Play it.</span>
       <h1 class="font-headline-lg text-headline-lg text-primary">Get to know every note on your sheet.</h1>
-      <p class="text-on-surface-variant">Upload a piano sheet as a PDF or SVG and add names inside the original notes. Choose C, D, E or Do, Re, Mi, then download a sheet to practise with.</p>
+      <p class="text-on-surface-variant">Upload a piano sheet as a PDF or SVG. Add note names, color the noteheads, or use both, then download a sheet to practise with.</p>
     </div>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
@@ -486,7 +486,7 @@ tailwind.config = { theme: { extend: {
         <p id="pdf-error" role="alert" hidden class="p-space-md rounded-lg bg-error-container text-on-error-container"></p>
       </div>
       <div id="pdf-progress" hidden class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md" aria-live="polite">
-        <div class="flex justify-between items-center"><span class="font-headline-sm text-headline-sm text-primary">Naming your notes</span><button id="pdf-cancel" type="button" class="px-space-md py-1.5 rounded-lg text-error hover:bg-error-container font-label-lg text-label-lg">Cancel</button></div>
+        <div class="flex justify-between items-center"><span class="font-headline-sm text-headline-sm text-primary">Styling your sheet</span><button id="pdf-cancel" type="button" class="px-space-md py-1.5 rounded-lg text-error hover:bg-error-container font-label-lg text-label-lg">Cancel</button></div>
         <p id="pdf-step" class="text-on-surface-variant"></p>
         <div class="h-2 rounded-full bg-surface-container-highest overflow-hidden"><div id="pdf-bar" class="h-full bg-secondary transition-all duration-500" style="width:0"></div></div>
         <ol id="pdf-stages" class="flex flex-col gap-space-md"></ol>
@@ -494,19 +494,54 @@ tailwind.config = { theme: { extend: {
       </div>
     </div>
     <div class="lg:col-span-5 flex flex-col gap-space-lg">
-      <fieldset class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
-        <legend class="sr-only">Note naming system</legend>
-        <span class="font-label-lg text-label-lg text-primary"><span class="material-symbols-outlined text-secondary text-[20px]">music_note</span> 2. Note names</span>
-        <label class="choice selected flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="letters" checked class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Letter names</span><span class="font-label-mono text-label-mono text-secondary">C · D · E · F · G · A · B</span></span></label>
-        <label class="choice flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="solfege" class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Solfège · fixed Do</span><span class="font-label-mono text-label-mono text-secondary">Do · Re · Mi · Fa · Sol · La · Si</span></span></label>
-        <div class="bg-surface-container-low rounded-lg p-space-md"><p class="text-on-surface-variant">Names follow the written note: C is always Do. Sharps, flats and naturals stay beside the notes or in the key signature.</p></div>
+      <fieldset id="pdf-style-controls" class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-lg">
+        <legend class="sr-only">Sheet style</legend>
+        <span class="font-label-lg text-label-lg text-primary"><span class="material-symbols-outlined text-secondary text-[20px]">palette</span> 2. Sheet style</span>
+        <div class="grid grid-cols-2 gap-space-sm">
+          <label class="choice selected p-space-md rounded-xl cursor-pointer flex items-start gap-space-sm"><input id="pdf-show-names" type="checkbox" checked class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-label-lg text-label-lg text-primary">Note names</span><span class="font-body-sm text-body-sm text-on-surface-variant">Letters inside the heads</span></span></label>
+          <label class="choice p-space-md rounded-xl cursor-pointer flex items-start gap-space-sm"><input id="pdf-color-notes" type="checkbox" class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-label-lg text-label-lg text-primary">Note colors</span><span class="font-body-sm text-body-sm text-on-surface-variant">A color for each pitch</span></span></label>
+        </div>
+        <p id="pdf-options-hint" hidden role="status" class="font-body-sm text-body-sm text-on-surface-variant">Turn on note names, note colors, or both.</p>
+        <fieldset id="pdf-name-controls" class="flex flex-col gap-space-md">
+          <legend class="sr-only">Note name settings</legend>
+          <label class="choice selected flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="letters" checked class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Letter names</span><span class="font-label-mono text-label-mono text-secondary">C · D · E · F · G · A · B</span></span></label>
+          <label class="choice flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="solfege" class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Solfège · fixed Do</span><span class="font-label-mono text-label-mono text-secondary">Do · Re · Mi · Fa · Sol · La · Si</span></span></label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+            <label class="flex flex-col gap-space-xs font-label-lg text-label-lg text-primary" for="pdf-font">Label font<select id="pdf-font" class="bg-surface-container-low rounded-lg p-space-sm font-body-md text-body-md"><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></label>
+            <label class="flex flex-col gap-space-xs font-label-lg text-label-lg text-primary" for="pdf-label-color-mode">Label color<select id="pdf-label-color-mode" class="bg-surface-container-low rounded-lg p-space-sm font-body-md text-body-md"><option value="auto">Automatic contrast</option><option value="custom">Custom color</option></select></label>
+          </div>
+          <label id="pdf-custom-color-control" hidden class="flex items-center justify-between gap-space-sm font-label-lg text-label-lg text-primary">Custom label color<input id="pdf-label-color" aria-label="Custom label color" type="color" value="#ffffff" class="w-12 h-9 rounded cursor-pointer bg-transparent"/></label>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">C is always Do. Automatic contrast uses light or dark letters to suit each notehead. Custom color applies to every label.</p>
+        </fieldset>
+        <fieldset id="pdf-palette-controls" hidden disabled class="flex flex-col gap-space-md">
+          <legend class="sr-only">Note color palette</legend>
+          <div class="flex items-center justify-between gap-space-sm"><span class="font-label-lg text-label-lg text-primary">Pitch colors</span><button id="pdf-reset-colors" type="button" class="font-label-lg text-label-lg text-secondary underline">Reset colors</button></div>
+          <div class="grid grid-cols-2 gap-space-sm"><label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>C / Do</span><input type="color" data-note-color="c" value="#dc2626" aria-label="C / Do note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
+<label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>D / Re</span><input type="color" data-note-color="d" value="#ea580c" aria-label="D / Re note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
+<label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>E / Mi</span><input type="color" data-note-color="e" value="#ca8a04" aria-label="E / Mi note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
+<label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>F / Fa</span><input type="color" data-note-color="f" value="#16a34a" aria-label="F / Fa note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
+<label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>G / Sol</span><input type="color" data-note-color="g" value="#0284c7" aria-label="G / Sol note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
+<label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>A / La</span><input type="color" data-note-color="a" value="#7c3aed" aria-label="A / La note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
+<label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>B / Si</span><input type="color" data-note-color="b" value="#db2777" aria-label="B / Si note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label></div>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">Each written note keeps its color in every octave. Half and whole notes use a colored ring with a hollow center.</p>
+        </fieldset>
+        <div class="bg-surface-container-low rounded-xl px-space-md py-space-sm">
+          <span class="font-label-mono text-label-mono text-secondary">Style preview</span>
+          <svg id="pdf-style-preview" viewBox="0 0 300 78" class="w-full h-20" role="img" aria-label="Preview of filled and hollow note styles">
+            <path d="M65 46V8 M155 46V8 M245 46V8" stroke="#1d1b19" stroke-width="2" fill="none"/>
+            <ellipse data-preview-head="c" cx="52" cy="47" rx="15" ry="11" fill="#000000"/>
+            <ellipse data-preview-head="d" cx="142" cy="47" rx="15" ry="11" fill="none" stroke="#000000" stroke-width="4"/>
+            <ellipse data-preview-head="g" cx="232" cy="47" rx="15" ry="11" fill="#000000"/>
+            <g text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700"><text data-preview-name="c" x="52" y="47">C</text><text data-preview-name="d" x="142" y="47">D</text><text data-preview-name="g" x="232" y="47">G</text></g>
+          </svg>
+        </div>
       </fieldset>
       <div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
         <p class="font-headline-sm text-headline-sm text-primary">A little help reading the music.</p>
-        <p class="text-on-surface-variant">Names appear inside the noteheads, in both hands. Filled notes use white letters; hollow notes use dark letters.</p>
+        <p class="text-on-surface-variant">Use note names, note colors, or both in either hand. Filled noteheads are colored solid; half and whole notes keep a hollow center with a colored ring.</p>
         <p class="font-body-sm text-body-sm text-on-surface-variant">Labels are added directly to your original pages. Layout, spacing and markings stay in place. SVG pages convert to PDF automatically. Check the detected names before practising.</p>
         <p id="pdf-setup" hidden class="p-space-md rounded-lg bg-surface-container-low text-on-surface-variant">PDF recognition needs Audiveris installed on this Mac. See the project's README.md for setup.</p>
-        <button id="pdf-label" type="button" disabled class="px-space-lg py-3 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">auto_fix_high</span><span>Add note names</span></button>
+        <button id="pdf-label" type="button" disabled class="px-space-lg py-3 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">auto_fix_high</span><span>Apply to sheet</span></button>
       </div>
     </div>
   </div>
@@ -823,16 +858,61 @@ tailwind.config = { theme: { extend: {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   // ---------- PDF note names (same source, job and download patterns as audio)
   const pdf = { source: null, job: null, ready: false, loading: false };
-  const pdfControls = () => {
-    $('pdf-label').disabled = !pdf.source || !pdf.ready || !!pdf.job || pdf.loading;
-    $('pdf-input').disabled = !!pdf.job || pdf.loading;
-    document.querySelectorAll('input[name=naming]').forEach(r => r.disabled = !!pdf.job);
+  const paletteInputs = [...document.querySelectorAll('[data-note-color]')];
+  const defaultPalette = Object.fromEntries(paletteInputs.map(input => [input.dataset.noteColor, input.value]));
+  const sheetStyle = () => ({
+    show_names: $('pdf-show-names').checked, color_notes: $('pdf-color-notes').checked,
+    font: $('pdf-font').value,
+    label_color: $('pdf-label-color-mode').value === 'auto' ? 'auto' : $('pdf-label-color').value,
+    note_colors: Object.fromEntries(paletteInputs.map(input => [input.dataset.noteColor, input.value]))
+  });
+  const contrastText = hex => {
+    const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const linear = rgb.map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const luminance = linear.reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+    return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? '#000000' : '#ffffff';
   };
+  const stylePreview = () => {
+    const style = sheetStyle(), solfege = document.querySelector('input[name=naming]:checked').value === 'solfege';
+    const family = { sans: 'Arial, sans-serif', serif: 'Times New Roman, serif', mono: 'Courier New, monospace' }[style.font];
+    ['c', 'd', 'g'].forEach(step => {
+      const color = style.color_notes ? style.note_colors[step] : '#000000', hollow = step === 'd';
+      const head = document.querySelector(`[data-preview-head="${step}"]`);
+      head.setAttribute(hollow ? 'stroke' : 'fill', color);
+      const text = document.querySelector(`[data-preview-name="${step}"]`);
+      text.textContent = solfege ? { c: 'Do', d: 'Re', g: 'Sol' }[step] : step.toUpperCase();
+      text.style.display = style.show_names ? '' : 'none';
+      text.style.fontFamily = family;
+      text.setAttribute('fill', style.label_color === 'auto' ? (hollow ? '#000000' : contrastText(color)) : style.label_color);
+    });
+  };
+  const pdfControls = () => {
+    const style = sheetStyle(), busy = !!pdf.job;
+    $('pdf-label').disabled = !pdf.source || !pdf.ready || busy || pdf.loading || !(style.show_names || style.color_notes);
+    $('pdf-input').disabled = !!pdf.job || pdf.loading;
+    $('pdf-style-controls').disabled = busy;
+    $('pdf-name-controls').disabled = busy || !style.show_names;
+    $('pdf-name-controls').hidden = !style.show_names;
+    $('pdf-palette-controls').disabled = busy || !style.color_notes;
+    $('pdf-palette-controls').hidden = !style.color_notes;
+    $('pdf-custom-color-control').hidden = $('pdf-label-color-mode').value !== 'custom';
+    $('pdf-label-color').disabled = busy || $('pdf-label-color-mode').value !== 'custom';
+    $('pdf-options-hint').hidden = style.show_names || style.color_notes;
+    ['pdf-show-names', 'pdf-color-notes'].forEach(id => $(id).closest('.choice').classList.toggle('selected', $(id).checked));
+    stylePreview();
+  };
+  ['pdf-show-names', 'pdf-color-notes', 'pdf-font', 'pdf-label-color-mode'].forEach(id => $(id).onchange = pdfControls);
+  [...paletteInputs, $('pdf-label-color')].forEach(input => input.oninput = pdfControls);
+  $('pdf-reset-colors').onclick = () => {
+    paletteInputs.forEach(input => input.value = defaultPalette[input.dataset.noteColor]); pdfControls();
+  };
+  pdfControls();
   fetch('/api/sheets/setup').then(r => r.json()).then(d => {
     pdf.ready = d.ready; $('pdf-setup').hidden = d.ready; pdfControls();
   }).catch(() => showError($('pdf-error'), 'Could not check PDF recognition setup. Reload the page.'));
   document.querySelectorAll('input[name=naming]').forEach(r => r.onchange = () => {
     document.querySelectorAll('input[name=naming]').forEach(x => x.closest('.choice').classList.toggle('selected', x.checked));
+    pdfControls();
   });
   async function loadSheets(selected) {
     const files = Array.from(selected || []);
@@ -874,12 +954,13 @@ tailwind.config = { theme: { extend: {
   pdfDrop.ondrop = e => { e.preventDefault(); pdfDrop.classList.remove('bg-surface-container'); loadSheets(e.dataTransfer.files); };
   $('pdf-label').onclick = async () => {
     if (!pdf.source || pdf.job || !pdf.ready) return;
+    if (!$('pdf-show-names').checked && !$('pdf-color-notes').checked) return;
     // Reserve the button before the request so double-clicks cannot create duplicate jobs.
     pdf.job = 'starting'; pdfControls(); showError($('pdf-error'));
     $('pdf-result').hidden = true;
     try {
       const response = await fetch('/api/sheets/label', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: pdf.source, naming: document.querySelector('input[name=naming]:checked').value }) });
+        body: JSON.stringify({ source: pdf.source, naming: document.querySelector('input[name=naming]:checked').value, ...sheetStyle() }) });
       const d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not start labeling.');
       pdf.job = d.job; $('pdf-progress').hidden = false; $('pdf-cancel').disabled = false;
       const stageStart = {};
@@ -896,7 +977,10 @@ tailwind.config = { theme: { extend: {
       if (job.state !== 'done') throw new Error(job.state === 'cancelled' ? 'PDF labeling cancelled.' : job.error);
       const result = job.result;
       $('pdf-result-title').textContent = result.title;
-      $('pdf-result-info').textContent = `${result.naming === 'letters' ? 'Letter names · C, D, E' : 'Fixed Do · Do, Re, Mi'} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} labels · Original layout preserved`;
+      const style = result.style, description = [];
+      if (style.show_names) description.push(result.naming === 'letters' ? 'Letter names' : 'Fixed Do');
+      if (style.color_notes) description.push('Colored noteheads');
+      $('pdf-result-info').textContent = `${description.join(' + ')} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} notes styled · Original layout preserved`;
       $('pdf-sheet').innerHTML = result.player;
       $('pdf-zoom').value = 100; $('pdf-zoom-value').textContent = '100%'; $('pdf-sheet').style.width = '100%';
       $('pdf-downloads').innerHTML = result.downloads.map(f => `<a href="${esc(f.url)}" download="${esc(f.name)}" class="px-space-lg py-2.5 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg hover:bg-primary">${esc(f.label)}</a>`).join('');

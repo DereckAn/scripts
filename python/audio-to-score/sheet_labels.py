@@ -17,7 +17,95 @@ class SheetError(Exception):
 
 NAMING = {"letters": dict(zip("cdefgab", "C D E F G A B".split())),
           "solfege": dict(zip("cdefgab", "Do Re Mi Fa Sol La Si".split()))}
-SHEET_STAGES = ["Reading the PDF", "Recognizing the music", "Adding note names", "Preparing downloads"]
+FONTS = {"sans": "hebo", "serif": "tibo", "mono": "cobo"}
+NOTE_COLORS = dict(zip("cdefgab", ["#dc2626", "#ea580c", "#ca8a04", "#16a34a",
+                                    "#0284c7", "#7c3aed", "#db2777"]))
+SHEET_STAGES = ["Reading the PDF", "Recognizing the music", "Styling the notes", "Preparing downloads"]
+
+
+def validate_style(show_names=True, color_notes=False, font="sans", label_color="auto", note_colors=None):
+    if not show_names and not color_notes:
+        raise SheetError("Turn on note names, note colors, or both.")
+    if font not in FONTS:
+        raise SheetError("Choose Sans serif, Serif, or Monospace for the note names.")
+    if label_color != "auto" and not re.fullmatch(r"#[0-9a-fA-F]{6}", label_color):
+        raise SheetError("Choose a label color in #RRGGBB format, or automatic contrast.")
+    palette = {**NOTE_COLORS, **(note_colors or {})}
+    if set(palette) != set(NOTE_COLORS) or any(not re.fullmatch(r"#[0-9a-fA-F]{6}", c) for c in palette.values()):
+        raise SheetError("Choose a #RRGGBB color for each note, C through B.")
+    return {"show_names": show_names, "color_notes": color_notes, "font": font,
+            "label_color": label_color, "note_colors": palette}
+
+
+def rgb(hex_color):
+    return tuple(int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+
+
+def contrast_color(background):
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in background]
+    luminance = sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722)))
+    return (0, 0, 0) if (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) else (1, 1, 1)
+
+
+def glyph_ink(glyph, width, height):
+    """The recognized head's actual ink, excluding its hole, staff and stem.
+
+    Audiveris run lengths alternate foreground/background, beginning with a
+    foreground length (possibly zero). Return normalized vector rectangles;
+    no page or note image needs to be rasterized in the exported PDF.
+    """
+    if glyph is None:
+        return []
+    table = glyph.find("run-table")
+    if table is None:
+        return []
+    left, top = float(glyph.get("left")), float(glyph.get("top"))
+    vertical = table.get("orientation") == "VERTICAL"
+    rectangles = []
+    for index, column in enumerate(table.findall("runs")):
+        offset = 0
+        for i, length in enumerate(map(int, (column.text or "").split())):
+            if i % 2 == 0 and length:
+                if vertical:
+                    box = (left + index, top + offset, left + index + 1, top + offset + length)
+                else:
+                    box = (left + offset, top + index, left + offset + length, top + index + 1)
+                rectangles.append([box[0] / width, box[1] / height, box[2] / width, box[3] / height])
+            offset += length
+    return rectangles
+
+
+def vector_head(drawings, box):
+    """The PDF's own filled notehead path inside `box`, or None (scans, font glyphs, ambiguous art).
+
+    Redrawing this exact path in color looks native: no original black edge shows
+    around it. A lighter fill painted later over the head (a white hole) would be
+    hidden by the redraw, so such heads use the ink fallback instead.
+    """
+    def fits(r):
+        return (0.5 * box.width <= r.width <= 1.6 * box.width and 0.5 * box.height <= r.height <= 1.6 * box.height
+                and (r & box).get_area() > 0.6 * r.get_area())
+
+    dark = [d for d in drawings if d.get("fill") is not None and sum(d["fill"]) < 1.5 and fits(d["rect"])]
+    if not dark:
+        return None
+    head = max(dark, key=lambda d: (d["rect"] & box).get_area())
+    covered = any(d["seqno"] > head["seqno"] and d.get("fill") not in (None, head["fill"])
+                  and d["rect"].intersects(head["rect"]) for d in drawings)
+    return None if covered else head
+
+
+def draw_path(shape, path):
+    """Redraw a get_drawings() path; its points are already in unrotated page space."""
+    for kind, *args in path["items"]:
+        if kind == "l":
+            shape.draw_line(*args)
+        elif kind == "c":
+            shape.draw_bezier(*args)
+        elif kind == "re":
+            shape.draw_rect(args[0])
+        elif kind == "qu":
+            shape.draw_quad(args[0])
 
 
 def audiveris_command():
@@ -115,6 +203,7 @@ def note_positions(book, page_count):
             if width <= 0 or height <= 0:
                 raise SheetError("Recognition returned invalid page dimensions.")
             notes, seen = [], set()
+            glyphs = {g.get("id"): g for g in root.iter("glyph")}
             for system in root.iter("system"):
                 clefs = {}
                 for symbol in system.iter("clef"):
@@ -146,7 +235,8 @@ def note_positions(book, page_count):
                         continue
                     seen.add(location)
                     notes.append({"box": [x / width, y / height, (x + w) / width, (y + h) / height],
-                                  "step": step, "filled": "BLACK" in head.get("shape", "")})
+                                  "step": step, "filled": "BLACK" in head.get("shape", ""),
+                                  "ink": glyph_ink(glyphs.get(head.get("glyph")), width, height)})
             pages[index] = notes
     if set(pages) != set(range(page_count)):
         raise SheetError("Recognition did not return positions for every page. No partial PDF was created.")
@@ -155,26 +245,51 @@ def note_positions(book, page_count):
     return [pages[i] for i in range(page_count)]
 
 
-def annotate_pdf(source, output, positions, naming):
-    """Append text to the original PDF; keep its pages, artwork, metadata and boxes."""
+def annotate_pdf(source, output, positions, naming, *, show_names=True, color_notes=False,
+                 font="sans", label_color="auto", note_colors=None):
+    """Overlay names and/or colored head ink without replacing original pages."""
     if naming not in NAMING:
         raise SheetError("Choose letter names or fixed-Do solfège.")
-    font = pymupdf.Font("hebo")
+    style = validate_style(show_names, color_notes, font, label_color, note_colors)
+    fontname = FONTS[font]
+    text_font = pymupdf.Font(fontname)
     count = 0
     with pymupdf.open(source) as pdf:
         if len(pdf) != len(positions):
             raise SheetError("The recognized pages do not match the uploaded PDF.")
         for page, notes in zip(pdf, positions):
             shape = page.new_shape()
+            drawings = page.get_drawings() if color_notes else []
+
+            def page_box(normalized):
+                a, b, c, d = normalized
+                return pymupdf.Rect(a * page.rect.width, b * page.rect.height,
+                                    c * page.rect.width, d * page.rect.height)
+
             for item in notes:
-                box = pymupdf.Rect(item["box"])
-                box = pymupdf.Rect(box.x0 * page.rect.width, box.y0 * page.rect.height,
-                                   box.x1 * page.rect.width, box.y1 * page.rect.height)
+                box = page_box(item["box"])
+                head_color = rgb(style["note_colors"][item["step"]]) if color_notes else (0, 0, 0)
+                head = vector_head(drawings, box * page.derotation_matrix) if color_notes else None
+                if head:
+                    draw_path(shape, head)
+                    shape.finish(color=None, fill=head_color, width=0,
+                                 even_odd=head.get("even_odd") or False, closePath=head.get("closePath") or False)
+                elif color_notes:
+                    if not item.get("ink"):
+                        raise SheetError("The shape of a notehead is missing. Upload the sheet again to recognize it.")
+                    for ink in item["ink"]:
+                        clipped = page_box(ink) & box
+                        if not clipped.is_empty:
+                            shape.draw_rect(clipped * page.derotation_matrix)
+                    shape.finish(color=None, fill=head_color, width=0)
+                count += 1
+                if not show_names:
+                    continue
                 name = NAMING[naming][item["step"]]
                 # Font metrics center the visible letters inside the head. A small
                 # horizontal stretch keeps two/three-letter names tall enough to read.
                 size = box.height * (0.72 if item["filled"] else 0.55)
-                text_width = font.text_length(name, fontsize=size)
+                text_width = text_font.text_length(name, fontsize=size)
                 available = box.width * (0.76 if item["filled"] else 0.57)
                 stretch = min(1.0, available / text_width)
                 start = pymupdf.Point((box.x0 + box.x1 - text_width * stretch) / 2,
@@ -182,10 +297,10 @@ def annotate_pdf(source, output, positions, naming):
                 start = start * page.derotation_matrix
                 # The scale is applied in unrotated PDF coordinates.
                 scale = pymupdf.Matrix(stretch, 1) if page.rotation in (0, 180) else pymupdf.Matrix(1, stretch)
-                shape.insert_text(start, name, fontsize=size, fontname="hebo",
-                                  color=(1, 1, 1) if item["filled"] else (0, 0, 0),
+                text_color = (contrast_color(head_color) if item["filled"] else (0, 0, 0)) if label_color == "auto" else rgb(label_color)
+                shape.insert_text(start, name, fontsize=size, fontname=fontname,
+                                  color=text_color,
                                   rotate=page.rotation, morph=(start, scale))
-                count += 1
             shape.commit(overlay=True)
         pdf.save(output, deflate=True)
     return count

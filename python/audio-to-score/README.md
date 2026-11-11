@@ -2,7 +2,7 @@
 
 Run `.venv/bin/python piano.py` and open http://127.0.0.1:7861.
 The **Convert** view transcribes piano recordings. **Label sheet** recognizes
-printed piano scores and puts letter names or fixed-Do solfège inside noteheads.
+printed piano scores and adds note names, pitch colors, or both to the original noteheads.
 Both tools run locally and share the same queue and download storage.
 Uploaded sheets are annotated directly; Verovio remains the renderer for audio transcriptions.
 
@@ -62,7 +62,16 @@ vector artwork; external fonts/images must be embedded or converted to paths.
 - Fixed Do: Do, Re, Mi, Fa, Sol, La, Si. C is always Do, regardless of key.
 - Labels follow written pitch spelling. Sharps, flats, naturals and key signatures
   remain in the notation; the label inside a C-sharp head is C (or Do).
-- Filled heads use white text; half and whole notes use dark text in the hollow.
+- Note names and note colors are independent toggles. Enable either one or both.
+- Name fonts: Sans serif (Helvetica Bold), Serif (Times Bold), and Monospace
+  (Courier Bold). Labels fit inside the existing heads.
+- Label color can be custom, or automatic contrast: light/dark text based on the
+  filled head's color and dark text in hollow heads. The style sample updates live.
+- Each written pitch C through B has a customizable color shared by every octave;
+  C/Do defaults to red. Reset colors restores the original seven-color palette.
+- Recoloring overlays only the actual notehead ink saved in the Audiveris glyph
+  run table, as vector shapes. The gaps in half/whole-note rings remain transparent;
+  their hollow centers and staff lines through those centers are preserved.
 - Labels are appended to the **original PDF** using notehead positions from the
   Audiveris `.omr` book. Page count, dimensions, crop, rotation, artwork, metadata,
   spacing, titles and markings remain in place. The uploaded file is never overwritten.
@@ -70,7 +79,8 @@ vector artwork; external fonts/images must be embedded or converted to paths.
   preview uses PNG images. Download one annotated PDF containing every original page.
 - Recognition still can misidentify or miss notes. Check labels against the original.
   Missing page-position data stops the job instead of creating a partial result.
-- Changing the naming system reuses recognition. Jobs and cached sources are
+- Changing names, fonts, label colors or the note palette reuses recognition.
+  Jobs and cached sources are
   tracked in memory for the current server session; files live in the temporary
   `piano-to-score` folder. Recognition diagnostics are in `recognized/recognition.log`
   below the upload's temporary folder.
@@ -80,7 +90,7 @@ vector artwork; external fonts/images must be embedded or converted to paths.
 
 ```sh
 .venv/bin/python test_piano.py
-.venv/bin/python -m unittest test_sheet_labels test_svg_import
+.venv/bin/python -m unittest test_sheet_labels test_svg_import test_note_styles
 ```
 
 The PDF tests cover upload validation, the short-staff retry, note position and clef
@@ -90,3 +100,7 @@ including cropped pages and 0/90/180/270-degree rotations.
 
 SVG tests run the bundled shared converter in Chromium and check natural filename
 order, intrinsic page sizes, vector output, local references and input validation.
+
+Style tests cover names-only, colors-only, combined output, actual PDF fonts and
+text colors, automatic contrast, shared pitch colors, hollow centers, staff lines,
+vector recoloring, validation and cached recognition across style changes.
