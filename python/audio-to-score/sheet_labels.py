@@ -7,7 +7,11 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 import re
+import contextlib
+import importlib.util
+import io
 
+import numpy as np
 import pymupdf
 
 
@@ -106,6 +110,64 @@ def draw_path(shape, path):
             shape.draw_rect(args[0])
         elif kind == "qu":
             shape.draw_quad(args[0])
+
+
+AI_DPI = 300  # page render size for the AI mask; typical scan resolution
+
+
+def ai_model():
+    """oemer's notehead segmentation model, or None when it isn't installed."""
+    spec = importlib.util.find_spec("oemer")
+    if not spec:
+        return None
+    model = Path(spec.submodule_search_locations[0]) / "checkpoints/seg_net"
+    return model if (model / "model.onnx").is_file() else None
+
+
+def notehead_mask(image_path):
+    """True where the AI sees notehead ink, at the image's own size."""
+    import cv2
+    from oemer.inference import inference
+    with contextlib.redirect_stdout(io.StringIO()):  # oemer prints batch progress
+        classes, _ = inference(str(ai_model()), str(image_path))
+    height, width = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE).shape
+    return cv2.resize((classes == 2).astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST) > 0
+
+
+def ai_recolor(page, notes, palette, folder):
+    """Recolor the page's own notehead pixels found by the AI; returns the indexes of notes it colored.
+
+    Works on any page (scans, image-only PDFs, font noteheads). Pixels keep their
+    original darkness, blended toward the note color, so edges stay soft and native.
+    """
+    import cv2
+    pix = page.get_pixmap(dpi=AI_DPI, alpha=False)
+    image = folder / f"page-{page.number + 1}.png"
+    pix.save(image)
+    pixels = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)
+    ink = 1 - pixels.min(axis=2) / 255
+    # The mask comes from a downscaled page; grow it a pixel to cover anti-aliased edges.
+    mask = cv2.dilate(notehead_mask(image).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+    overlay, done = np.zeros((pix.h, pix.w, 4), np.uint8), set()
+    for i, item in enumerate(notes):
+        x0, y0 = int(item["box"][0] * pix.w) - 2, int(item["box"][1] * pix.h) - 2
+        x1, y1 = int(item["box"][2] * pix.w) + 3, int(item["box"][3] * pix.h) + 3
+        x0, y0 = max(x0, 0), max(y0, 0)
+        heads = mask[y0:y1, x0:x1] & (ink[y0:y1, x0:x1] > 0.08)
+        if heads.sum() < 0.15 * (x1 - x0) * (y1 - y0):  # the AI missed this head
+            continue
+        color = np.array([int(palette[item["step"]][k:k + 2], 16) for k in (1, 3, 5)])
+        dark = ink[y0:y1, x0:x1][heads][:, None]
+        region = overlay[y0:y1, x0:x1]
+        region[heads, :3] = (dark * color + (1 - dark) * 255).round()
+        region[heads, 3] = 255
+        done.add(i)
+    if done:
+        layer = pymupdf.Pixmap(pymupdf.csRGB, pix.w, pix.h, overlay.tobytes(), True)
+        # The render is upright as displayed; place it in unrotated space, turned with the page.
+        page.insert_image(page.rect * page.derotation_matrix, stream=layer.tobytes("png"),
+                          overlay=True, rotate=page.rotation)
+    return done
 
 
 def audiveris_command():
@@ -246,31 +308,47 @@ def note_positions(book, page_count):
 
 
 def annotate_pdf(source, output, positions, naming, *, show_names=True, color_notes=False,
-                 font="sans", label_color="auto", note_colors=None):
-    """Overlay names and/or colored head ink without replacing original pages."""
+                 font="sans", label_color="auto", note_colors=None, method="vector",
+                 progress=lambda detail: None):
+    """Overlay names and/or colored head ink without replacing original pages.
+
+    method "vector" recolors the PDF's own head shapes; "ai" recolors the page's
+    head pixels found by a local AI model (for scans and unusual PDFs).
+    """
     if naming not in NAMING:
         raise SheetError("Choose letter names or fixed-Do solfège.")
+    if method not in ("vector", "ai"):
+        raise SheetError("Choose the standard or AI coloring method.")
+    use_ai = method == "ai" and color_notes
+    if use_ai and not ai_model():
+        raise SheetError("AI coloring needs the oemer model. Install it, then restart the app (see README.md).")
     style = validate_style(show_names, color_notes, font, label_color, note_colors)
     fontname = FONTS[font]
     text_font = pymupdf.Font(fontname)
     count = 0
-    with pymupdf.open(source) as pdf:
+    with pymupdf.open(source) as pdf, tempfile.TemporaryDirectory() as scratch:
         if len(pdf) != len(positions):
             raise SheetError("The recognized pages do not match the uploaded PDF.")
         for page, notes in zip(pdf, positions):
-            shape = page.new_shape()
             drawings = page.get_drawings() if color_notes else []
+            ai_done = set()
+            if use_ai:
+                progress(f"AI coloring page {page.number + 1} of {len(pdf)}")
+                ai_done = ai_recolor(page, notes, style["note_colors"], Path(scratch))
+            shape = page.new_shape()
 
             def page_box(normalized):
                 a, b, c, d = normalized
                 return pymupdf.Rect(a * page.rect.width, b * page.rect.height,
                                     c * page.rect.width, d * page.rect.height)
 
-            for item in notes:
+            for index, item in enumerate(notes):
                 box = page_box(item["box"])
                 head_color = rgb(style["note_colors"][item["step"]]) if color_notes else (0, 0, 0)
                 head = vector_head(drawings, box * page.derotation_matrix) if color_notes else None
-                if head:
+                if index in ai_done:
+                    pass
+                elif head:
                     draw_path(shape, head)
                     shape.finish(color=None, fill=head_color, width=0,
                                  even_odd=head.get("even_odd") or False, closePath=head.get("closePath") or False)

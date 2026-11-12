@@ -35,6 +35,17 @@ page), recognition automatically retries with a smaller minimum staff width.
 Small pages with insufficient recognition resolution also retry at 600 DPI.
 All attempts include every page; failed pages are never silently dropped.
 
+### AI coloring setup (optional)
+
+```sh
+uv pip install -p .venv oemer==0.1.5 numpy==1.24.3 opencv-python==4.11.0.86
+curl -L -o .venv/lib/python3.10/site-packages/oemer/checkpoints/seg_net/model.onnx \
+  https://github.com/BreezeWhite/oemer/releases/download/checkpoints/2nd_model.onnx
+```
+
+Only the 38 MB notehead model is needed. Newer oemer releases require `onnxruntime-gpu`,
+which has no macOS build. Restart the app; the AI option is enabled when the model exists.
+
 ## SVG input
 
 The same upload area accepts one PDF or up to 30 SVG pages. SVG pages are sorted
@@ -69,9 +80,15 @@ vector artwork; external fonts/images must be embedded or converted to paths.
   filled head's color and dark text in hollow heads. The style sample updates live.
 - Each written pitch C through B has a customizable color shared by every octave;
   C/Do defaults to red. Reset colors restores the original seven-color palette.
-- Recoloring overlays only the actual notehead ink saved in the Audiveris glyph
-  run table, as vector shapes. The gaps in half/whole-note rings remain transparent;
-  their hollow centers and staff lines through those centers are preserved.
+- Coloring method **Standard**: when the PDF draws each head as its own vector shape
+  (exports from notation apps), that exact shape is redrawn in color, so it looks
+  native. Otherwise it overlays the notehead ink saved in the Audiveris glyph run
+  table, as vector shapes. Hollow ring centers and staff lines through them are kept.
+- Coloring method **AI · scans**: each page is rendered at 300 dpi and oemer's local
+  segmentation model finds the notehead pixels (no stems or staff lines). Only those
+  pixels inside each recognized note are recolored, keeping their original darkness,
+  and laid over the page as a transparent image. Notes the AI misses use Standard.
+  Runs on CPU, roughly a minute per page.
 - Labels are appended to the **original PDF** using notehead positions from the
   Audiveris `.omr` book. Page count, dimensions, crop, rotation, artwork, metadata,
   spacing, titles and markings remain in place. The uploaded file is never overwritten.

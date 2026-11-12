@@ -515,6 +515,11 @@ tailwind.config = { theme: { extend: {
         </fieldset>
         <fieldset id="pdf-palette-controls" hidden disabled class="flex flex-col gap-space-md">
           <legend class="sr-only">Note color palette</legend>
+          <div role="radiogroup" aria-label="Coloring method" class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+            <label class="choice selected p-space-md rounded-xl cursor-pointer flex items-start gap-space-sm"><input type="radio" name="color-method" value="vector" checked class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-label-lg text-label-lg text-primary">Standard</span><span class="font-body-sm text-body-sm text-on-surface-variant">Fast. Best for PDFs exported from notation apps</span></span></label>
+            <label class="choice p-space-md rounded-xl cursor-pointer flex items-start gap-space-sm"><input id="pdf-method-ai" type="radio" name="color-method" value="ai" class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-label-lg text-label-lg text-primary">AI · scans</span><span class="font-body-sm text-body-sm text-on-surface-variant">Recolors the page's own note pixels. About a minute per page</span></span></label>
+          </div>
+          <p id="pdf-ai-setup" hidden class="font-body-sm text-body-sm text-on-surface-variant">AI coloring needs the oemer model. See the project's README.md for setup.</p>
           <div class="flex items-center justify-between gap-space-sm"><span class="font-label-lg text-label-lg text-primary">Pitch colors</span><button id="pdf-reset-colors" type="button" class="font-label-lg text-label-lg text-secondary underline">Reset colors</button></div>
           <div class="grid grid-cols-2 gap-space-sm"><label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>C / Do</span><input type="color" data-note-color="c" value="#dc2626" aria-label="C / Do note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
 <label class="flex items-center justify-between gap-space-sm bg-surface-container-low rounded-lg p-space-sm font-label-lg text-label-lg text-primary"><span>D / Re</span><input type="color" data-note-color="d" value="#ea580c" aria-label="D / Re note color" class="w-9 h-8 rounded cursor-pointer bg-transparent"/></label>
@@ -857,12 +862,13 @@ tailwind.config = { theme: { extend: {
   const chip = (text, strong) => `<span class="px-2.5 py-0.5 rounded-full ${strong ? 'bg-secondary-container text-on-secondary-container font-label-md text-label-md uppercase tracking-wider font-semibold' : 'bg-surface-container-high text-on-surface-variant font-label-mono text-label-mono'}">${text}</span>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   // ---------- PDF note names (same source, job and download patterns as audio)
-  const pdf = { source: null, job: null, ready: false, loading: false };
+  const pdf = { source: null, job: null, ready: false, ai: false, loading: false };
   const paletteInputs = [...document.querySelectorAll('[data-note-color]')];
   const defaultPalette = Object.fromEntries(paletteInputs.map(input => [input.dataset.noteColor, input.value]));
   const sheetStyle = () => ({
     show_names: $('pdf-show-names').checked, color_notes: $('pdf-color-notes').checked,
     font: $('pdf-font').value,
+    method: document.querySelector('input[name=color-method]:checked').value,
     label_color: $('pdf-label-color-mode').value === 'auto' ? 'auto' : $('pdf-label-color').value,
     note_colors: Object.fromEntries(paletteInputs.map(input => [input.dataset.noteColor, input.value]))
   });
@@ -899,16 +905,20 @@ tailwind.config = { theme: { extend: {
     $('pdf-label-color').disabled = busy || $('pdf-label-color-mode').value !== 'custom';
     $('pdf-options-hint').hidden = style.show_names || style.color_notes;
     ['pdf-show-names', 'pdf-color-notes'].forEach(id => $(id).closest('.choice').classList.toggle('selected', $(id).checked));
+    $('pdf-method-ai').disabled = busy || !pdf.ai;
+    $('pdf-ai-setup').hidden = pdf.ai;
+    document.querySelectorAll('input[name=color-method]').forEach(x => x.closest('.choice').classList.toggle('selected', x.checked));
     stylePreview();
   };
   ['pdf-show-names', 'pdf-color-notes', 'pdf-font', 'pdf-label-color-mode'].forEach(id => $(id).onchange = pdfControls);
+  document.querySelectorAll('input[name=color-method]').forEach(r => r.onchange = pdfControls);
   [...paletteInputs, $('pdf-label-color')].forEach(input => input.oninput = pdfControls);
   $('pdf-reset-colors').onclick = () => {
     paletteInputs.forEach(input => input.value = defaultPalette[input.dataset.noteColor]); pdfControls();
   };
   pdfControls();
   fetch('/api/sheets/setup').then(r => r.json()).then(d => {
-    pdf.ready = d.ready; $('pdf-setup').hidden = d.ready; pdfControls();
+    pdf.ready = d.ready; pdf.ai = d.ai; $('pdf-setup').hidden = d.ready; pdfControls();
   }).catch(() => showError($('pdf-error'), 'Could not check PDF recognition setup. Reload the page.'));
   document.querySelectorAll('input[name=naming]').forEach(r => r.onchange = () => {
     document.querySelectorAll('input[name=naming]').forEach(x => x.closest('.choice').classList.toggle('selected', x.checked));

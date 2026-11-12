@@ -31,7 +31,8 @@ from playwright.sync_api import sync_playwright
 from pydantic import BaseModel
 import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
-                          pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style)
+                          pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
+                          ai_model)
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -544,7 +545,7 @@ class Cancelled(Exception):
 
 @app.get("/api/sheets/setup")
 def sheet_setup():
-    return {"ready": audiveris_command() is not None}
+    return {"ready": audiveris_command() is not None, "ai": ai_model() is not None}
 
 
 @app.post("/api/sheets/source")
@@ -576,6 +577,7 @@ class LabelRequest(BaseModel):
     font: str = "sans"
     label_color: str = "auto"
     note_colors: dict[str, str] | None = None
+    method: str = "vector"
 
 
 @app.post("/api/sheets/label")
@@ -588,6 +590,10 @@ def label_sheet(req: LabelRequest):
         style = validate_style(req.show_names, req.color_notes, req.font, req.label_color, req.note_colors)
     except SheetError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
+    if req.method not in ("vector", "ai"):
+        return JSONResponse({"error": "Choose the standard or AI coloring method."}, status_code=400)
+    if req.method == "ai" and req.color_notes and not ai_model():
+        return JSONResponse({"error": "Install the AI model to use AI coloring (see README.md)."}, status_code=503)
     if not audiveris_command():
         return JSONResponse({"error": "Install Audiveris to recognize PDFs (see README.md)."}, status_code=503)
     path, title = SHEETS[req.source]
@@ -612,14 +618,15 @@ def label_sheet(req: LabelRequest):
             raise SheetError("The original note positions are missing. Upload the sheet again to recognize it.")
         positions = note_positions(books[0], info["pages"])
         pdf = out / "labeled.pdf"
-        count = annotate_pdf(path, pdf, positions, req.naming, **style)
+        count = annotate_pdf(path, pdf, positions, req.naming, **style, method=req.method,
+                             progress=lambda detail: step(2, detail))
         step(3)
         previews = pdf_previews(pdf, out)
         player = "".join(f'<div class="follow-page"><img src="{files_url(image)}" '
                          f'alt="Labeled sheet, page {i}" loading="lazy"/></div>'
                          for i, image in enumerate(previews, 1))
         return {"title": title, "naming": req.naming, "pages": info["pages"], "notes": count,
-                "style": style,
+                "style": style, "method": req.method,
                 "player": player,
                 "downloads": [{"label": "Labeled PDF", "url": files_url(pdf), "name": pdf.name}]}
 

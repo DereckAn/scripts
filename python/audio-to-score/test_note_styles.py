@@ -2,6 +2,7 @@
 from pathlib import Path
 import tempfile
 import unittest
+import unittest.mock
 import xml.etree.ElementTree as ET
 
 import pymupdf
@@ -125,6 +126,50 @@ class NoteStyleTests(unittest.TestCase):
                     for x, y in [(.1, .2), (.45, .475), (.9, .8)]:
                         self.assertEqual(at(x, y), pa.pixel(int(x * pa.width), int(y * pa.height)))
                     self.assertFalse(b.get_images(), 'Recoloring must remain vector-based')
+
+    def test_ai_method_recolors_masked_pixels_and_falls_back_per_note(self):
+        """A fake mask stands in for the model: it 'sees' only dark pixels on the left half."""
+        import numpy as np
+        import sheet_labels
+
+        def fake_mask(image_path):
+            pix = pymupdf.Pixmap(str(image_path))
+            dark = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n).min(axis=2) < 128
+            dark[:, pix.w // 2:] = False
+            return dark
+
+        with tempfile.TemporaryDirectory() as folder, \
+                unittest.mock.patch.object(sheet_labels, 'notehead_mask', fake_mask), \
+                unittest.mock.patch.object(sheet_labels, 'ai_model', lambda: Path(folder)):
+            folder = Path(folder)
+            source, positions = folder / 'scan.pdf', []
+            with pymupdf.open() as doc:
+                for rotation in (0, 90, 180, 270):
+                    page = doc.new_page(width=300, height=200)
+                    page.set_rotation(rotation)
+                    W, H = page.rect.width, page.rect.height
+                    for x in (0.2, 0.6):
+                        page.draw_oval(pymupdf.Rect(x * W, .4 * H, (x + .1) * W, .55 * H) * page.derotation_matrix,
+                                       color=None, fill=(0, 0, 0))
+                    positions.append([{'step': 'c', 'filled': True, 'box': [.2, .4, .3, .55]},
+                                      {'step': 'd', 'filled': True, 'box': [.6, .4, .7, .55]}])
+                doc.save(source)
+            target = folder / 'ai.pdf'
+            steps = []
+            annotate_pdf(source, target, positions, 'letters', show_names=False, color_notes=True, method='ai',
+                         note_colors={'c': '#ff0000', 'd': '#00ff00'}, progress=steps.append)
+            self.assertEqual(steps, [f'AI coloring page {i} of 4' for i in range(1, 5)])
+            with pymupdf.open(source) as old, pymupdf.open(target) as new:
+                for a, b in zip(old, new):
+                    pa, pb = a.get_pixmap(dpi=144), b.get_pixmap(dpi=144)
+                    at = lambda p, x, y: p.pixel(int(x * p.width), int(y * p.height))
+                    self.assertEqual(at(pb, .25, .475), (255, 0, 0), f'AI-colored head, rotation {a.rotation}')
+                    self.assertEqual(at(pb, .65, .475), (0, 255, 0), 'Missed head falls back to its vector shape')
+                    for x, y in [(.1, .2), (.45, .475), (.9, .8), (.25, .3)]:
+                        self.assertEqual(at(pb, x, y), at(pa, x, y), 'Nothing outside the heads may change')
+                    self.assertEqual(len(b.get_images()), 1, 'One transparent overlay per page')
+            with self.assertRaises(SheetError):
+                annotate_pdf(source, target, positions, 'letters', color_notes=True, method='magic')
 
     def test_automatic_contrast_and_invalid_settings(self):
         self.assertEqual(contrast_color(rgb('#000000')), (1, 1, 1))
