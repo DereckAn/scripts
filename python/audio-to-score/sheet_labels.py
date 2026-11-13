@@ -21,7 +21,12 @@ class SheetError(Exception):
 
 NAMING = {"letters": dict(zip("cdefgab", "C D E F G A B".split())),
           "solfege": dict(zip("cdefgab", "Do Re Mi Fa Sol La Si".split()))}
-FONTS = {"sans": "hebo", "serif": "tibo", "mono": "cobo"}
+FONT_DIR = Path(__file__).parent / "web/fonts"
+# Built-in PDF fonts by name; others are Bold cuts of Google Fonts (OFL) in web/fonts,
+# embedded and subset into the PDF. Adding a font = one entry here + one in the page's picker.
+FONTS = {"sans": "hebo", "serif": "tibo", "mono": "cobo",
+         "garamond": FONT_DIR / "eb-garamond-bold.ttf", "spartan": FONT_DIR / "league-spartan-bold.ttf",
+         "newsreader": FONT_DIR / "newsreader-bold.ttf", "bodoni": FONT_DIR / "bodoni-moda-bold.ttf"}
 NOTE_COLORS = dict(zip("cdefgab", ["#dc2626", "#ea580c", "#ca8a04", "#16a34a",
                                     "#0284c7", "#7c3aed", "#db2777"]))
 SHEET_STAGES = ["Reading the PDF", "Recognizing the music", "Styling the notes", "Preparing downloads"]
@@ -31,7 +36,7 @@ def validate_style(show_names=True, color_notes=False, font="sans", label_color=
     if not show_names and not color_notes:
         raise SheetError("Turn on note names, note colors, or both.")
     if font not in FONTS:
-        raise SheetError("Choose Sans serif, Serif, or Monospace for the note names.")
+        raise SheetError("Choose one of the listed fonts for the note names.")
     if label_color != "auto" and not re.fullmatch(r"#[0-9a-fA-F]{6}", label_color):
         raise SheetError("Choose a label color in #RRGGBB format, or automatic contrast.")
     palette = {**NOTE_COLORS, **(note_colors or {})}
@@ -404,8 +409,9 @@ def annotate_pdf(source, output, positions, naming, *, show_names=True, color_no
     if use_ai and not ai_model():
         raise SheetError("AI coloring needs the oemer model. Install it, then restart the app (see README.md).")
     style = validate_style(show_names, color_notes, font, label_color, note_colors)
-    fontname = FONTS[font]
-    text_font = pymupdf.Font(fontname)
+    font_file = str(FONTS[font]) if isinstance(FONTS[font], Path) else None
+    fontname = font if font_file else FONTS[font]
+    text_font = pymupdf.Font(fontfile=font_file) if font_file else pymupdf.Font(fontname)
     count = 0
     with pymupdf.open(source) as pdf, tempfile.TemporaryDirectory() as scratch:
         if len(pdf) != len(positions):
@@ -457,11 +463,14 @@ def annotate_pdf(source, output, positions, naming, *, show_names=True, color_no
                 # The scale is applied in unrotated PDF coordinates.
                 scale = pymupdf.Matrix(stretch, 1) if page.rotation in (0, 180) else pymupdf.Matrix(1, stretch)
                 text_color = (contrast_color(head_color) if item["filled"] else (0, 0, 0)) if label_color == "auto" else rgb(label_color)
-                shape.insert_text(start, name, fontsize=size, fontname=fontname,
+                shape.insert_text(start, name, fontsize=size, fontname=fontname, fontfile=font_file,
                                   color=text_color,
                                   rotate=page.rotation, morph=(start, scale))
             shape.commit(overlay=True)
-        pdf.save(output, deflate=True)
+        if font_file and show_names:
+            pdf.subset_fonts()  # keep only the letters used (Do, Re, …), not the whole font
+        # garbage=3 merges the per-page copies of an embedded font; built-in fonts need none.
+        pdf.save(output, garbage=3 if font_file else 0, deflate=True)
     return count
 
 

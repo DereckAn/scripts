@@ -54,6 +54,11 @@ tailwind.config = { theme: { extend: {
   /* Highlight uses colour plus an outline, so it doesn't rely on colour alone. */
   .follow g.note.playing, .follow g.note.playing * { fill: #0d9488; stroke: #0d9488; }
   .follow g.note.playing { filter: drop-shadow(0 0 2px #0d9488); }
+  /* Same files the PDF embeds, so the preview matches the download. */
+  @font-face { font-family: 'Label EB Garamond'; src: url('/assets/fonts/eb-garamond-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Label League Spartan'; src: url('/assets/fonts/league-spartan-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Label Newsreader'; src: url('/assets/fonts/newsreader-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Label Bodoni Moda'; src: url('/assets/fonts/bodoni-moda-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
 </style>
 </head>
 <body class="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col">
@@ -507,7 +512,7 @@ tailwind.config = { theme: { extend: {
           <label class="choice selected flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="letters" checked class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Letter names</span><span class="font-label-mono text-label-mono text-secondary">C · D · E · F · G · A · B</span></span></label>
           <label class="choice flex items-start gap-space-md p-space-md rounded-xl cursor-pointer"><input type="radio" name="naming" value="solfege" class="mt-1 accent-primary w-4 h-4"/><span><span class="block font-headline-sm text-headline-sm text-primary">Solfège · fixed Do</span><span class="font-label-mono text-label-mono text-secondary">Do · Re · Mi · Fa · Sol · La · Si</span></span></label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-            <label class="flex flex-col gap-space-xs font-label-lg text-label-lg text-primary" for="pdf-font">Label font<select id="pdf-font" class="bg-surface-container-low rounded-lg p-space-sm font-body-md text-body-md"><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></label>
+            <label class="flex flex-col gap-space-xs font-label-lg text-label-lg text-primary" for="pdf-font">Label font<select id="pdf-font" class="bg-surface-container-low rounded-lg p-space-sm font-body-md text-body-md"><optgroup label="Classic"><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option></optgroup><optgroup label="Google Fonts"><option value="garamond">EB Garamond</option><option value="spartan">League Spartan</option><option value="newsreader">Newsreader</option><option value="bodoni">Bodoni Moda</option></optgroup></select></label>
             <label class="flex flex-col gap-space-xs font-label-lg text-label-lg text-primary" for="pdf-label-color-mode">Label color<select id="pdf-label-color-mode" class="bg-surface-container-low rounded-lg p-space-sm font-body-md text-body-md"><option value="auto">Automatic contrast</option><option value="custom">Custom color</option></select></label>
           </div>
           <label id="pdf-custom-color-control" hidden class="flex items-center justify-between gap-space-sm font-label-lg text-label-lg text-primary">Custom label color<input id="pdf-label-color" aria-label="Custom label color" type="color" value="#ffffff" class="w-12 h-9 rounded cursor-pointer bg-transparent"/></label>
@@ -885,7 +890,9 @@ tailwind.config = { theme: { extend: {
   };
   const stylePreview = () => {
     const style = sheetStyle(), solfege = document.querySelector('input[name=naming]:checked').value === 'solfege';
-    const family = { sans: 'Arial, sans-serif', serif: 'Times New Roman, serif', mono: 'Courier New, monospace' }[style.font];
+    const family = { sans: 'Arial, sans-serif', serif: 'Times New Roman, serif', mono: 'Courier New, monospace',
+      garamond: 'Label EB Garamond, serif', spartan: 'Label League Spartan, sans-serif',
+      newsreader: 'Label Newsreader, serif', bodoni: 'Label Bodoni Moda, serif' }[style.font];
     ['c', 'd', 'g'].forEach(step => {
       const color = style.color_notes ? style.note_colors[step] : '#000000', hollow = step === 'd';
       const head = document.querySelector(`[data-preview-head="${step}"]`);

@@ -72,7 +72,9 @@ class NoteStyleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
             source, positions = self.fixture(folder)
-            for font, expected in [('sans', 'Helvetica-Bold'), ('serif', 'Times-Bold'), ('mono', 'Courier-Bold')]:
+            for font, expected in [('sans', 'Helvetica-Bold'), ('serif', 'Times-Bold'), ('mono', 'Courier-Bold'),
+                                   ('garamond', 'EBGaramond-Bold'), ('spartan', 'LeagueSpartan-Bold'),
+                                   ('newsreader', 'Newsreader16pt-Regular'), ('bodoni', 'BodoniModa-Regular')]:
                 for colored in (False, True):
                     target = folder / f'{font}-{colored}.pdf'
                     annotate_pdf(source, target, positions, 'solfege', font=font, color_notes=colored,

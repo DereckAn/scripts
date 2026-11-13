@@ -87,8 +87,13 @@ vector artwork; external fonts/images must be embedded or converted to paths.
 - Labels follow written pitch spelling. Sharps, flats, naturals and key signatures
   remain in the notation; the label inside a C-sharp head is C (or Do).
 - Note names and note colors are independent toggles. Enable either one or both.
-- Name fonts: Sans serif (Helvetica Bold), Serif (Times Bold), and Monospace
-  (Courier Bold). Labels fit inside the existing heads.
+- Name fonts: Sans serif (Helvetica Bold), Serif (Times Bold), Monospace (Courier Bold),
+  plus EB Garamond, League Spartan, Newsreader and Bodoni Moda (Google Fonts, SIL Open
+  Font License, see `web/fonts/OFL-*.txt`). Those are Bold static cuts made from the
+  variable fonts with fontTools (`wght` 700, `opsz` 12 for small text), embedded and
+  subset into the PDF; the style preview loads the same files. To add another font,
+  put its `.ttf` in `web/fonts` and add one entry to `FONTS` in `sheet_labels.py`, one
+  `<option>` and one `@font-face` in `web/index.html`. Labels fit inside the heads.
 - Label color can be custom, or automatic contrast: light/dark text based on the
   filled head's color and dark text in hollow heads. The style sample updates live.
 - Each written pitch C through B has a customizable color shared by every octave;
