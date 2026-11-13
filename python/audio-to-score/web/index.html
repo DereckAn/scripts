@@ -476,13 +476,13 @@ tailwind.config = { theme: { extend: {
           <span class="font-label-mono text-label-mono text-on-surface-variant">Up to 30 pages · 50 MB</span>
         </div>
         <label id="pdf-dropzone" class="group rounded-xl p-space-xl flex flex-col items-center gap-space-md text-center bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
-          <input id="pdf-input" type="file" accept=".pdf,.svg,application/pdf,image/svg+xml" multiple class="sr-only"/>
+          <input id="pdf-input" type="file" accept=".pdf,.svg,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/*" multiple class="sr-only"/>
           <span class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-[28px] text-primary">upload_file</span></span>
           <span class="font-headline-sm text-headline-sm text-primary">Drop a piano sheet here</span>
-          <span class="text-on-surface-variant">One PDF or up to 30 SVG pages · SVGs sort by filename</span>
-          <span class="px-space-md py-1 rounded bg-surface-container-highest text-primary font-label-lg text-label-lg shadow-sm">Choose PDF or SVG files</span>
+          <span class="text-on-surface-variant">One PDF or image, or up to 30 SVG pages · SVGs sort by filename</span>
+          <span class="px-space-md py-1 rounded bg-surface-container-highest text-primary font-label-lg text-label-lg shadow-sm">Choose a PDF, image or SVG files</span>
         </label>
-        <div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-secondary">description</span><div class="min-w-0 flex-1"><p id="pdf-name" class="font-label-lg text-label-lg text-primary truncate">No sheet yet</p><p id="pdf-info" class="font-label-mono text-label-mono text-on-surface-variant">Choose a PDF or SVG to get started</p></div><a id="pdf-original" hidden target="_blank" rel="noopener" class="text-secondary font-label-lg text-label-lg underline">Original PDF</a></div>
+        <div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-secondary">description</span><div class="min-w-0 flex-1"><p id="pdf-name" class="font-label-lg text-label-lg text-primary truncate">No sheet yet</p><p id="pdf-info" class="font-label-mono text-label-mono text-on-surface-variant">Choose a PDF, photo/scan image or SVG to get started</p></div><a id="pdf-original" hidden target="_blank" rel="noopener" class="text-secondary font-label-lg text-label-lg underline">Original PDF</a></div>
         <p id="pdf-error" role="alert" hidden class="p-space-md rounded-lg bg-error-container text-on-error-container"></p>
       </div>
       <div id="pdf-progress" hidden class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md" aria-live="polite">
@@ -547,6 +547,11 @@ tailwind.config = { theme: { extend: {
         <p class="font-body-sm text-body-sm text-on-surface-variant">Labels are added directly to your original pages. Layout, spacing and markings stay in place. SVG pages convert to PDF automatically. Check the detected names before practising.</p>
         <p id="pdf-setup" hidden class="p-space-md rounded-lg bg-surface-container-low text-on-surface-variant">PDF recognition needs Audiveris installed on this Mac. See the project's README.md for setup.</p>
         <button id="pdf-label" type="button" disabled class="px-space-lg py-3 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">auto_fix_high</span><span>Apply to sheet</span></button>
+        <div class="flex flex-col gap-space-xs pt-space-sm">
+          <button id="pdf-clean" type="button" disabled class="px-space-lg py-2.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container-high font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">high_quality</span><span>Make clean PDF</span></button>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">For scans and photos: traces the page into a sharp vector PDF that stays crisp at any zoom, keeping the original layout and shapes. No note names or colors.</p>
+          <p id="pdf-clean-setup" hidden class="font-body-sm text-body-sm text-on-surface-variant">Clean PDF needs potrace (<code>brew install potrace</code>). See README.md.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -862,7 +867,7 @@ tailwind.config = { theme: { extend: {
   const chip = (text, strong) => `<span class="px-2.5 py-0.5 rounded-full ${strong ? 'bg-secondary-container text-on-secondary-container font-label-md text-label-md uppercase tracking-wider font-semibold' : 'bg-surface-container-high text-on-surface-variant font-label-mono text-label-mono'}">${text}</span>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   // ---------- PDF note names (same source, job and download patterns as audio)
-  const pdf = { source: null, job: null, ready: false, ai: false, loading: false };
+  const pdf = { source: null, job: null, ready: false, ai: false, clean: false, loading: false };
   const paletteInputs = [...document.querySelectorAll('[data-note-color]')];
   const defaultPalette = Object.fromEntries(paletteInputs.map(input => [input.dataset.noteColor, input.value]));
   const sheetStyle = () => ({
@@ -895,6 +900,7 @@ tailwind.config = { theme: { extend: {
   const pdfControls = () => {
     const style = sheetStyle(), busy = !!pdf.job;
     $('pdf-label').disabled = !pdf.source || !pdf.ready || busy || pdf.loading || !(style.show_names || style.color_notes);
+    $('pdf-clean').disabled = !pdf.source || !pdf.clean || busy || pdf.loading;
     $('pdf-input').disabled = !!pdf.job || pdf.loading;
     $('pdf-style-controls').disabled = busy;
     $('pdf-name-controls').disabled = busy || !style.show_names;
@@ -918,7 +924,8 @@ tailwind.config = { theme: { extend: {
   };
   pdfControls();
   fetch('/api/sheets/setup').then(r => r.json()).then(d => {
-    pdf.ready = d.ready; pdf.ai = d.ai; $('pdf-setup').hidden = d.ready; pdfControls();
+    pdf.ready = d.ready; pdf.ai = d.ai; pdf.clean = d.clean; $('pdf-setup').hidden = d.ready;
+    $('pdf-clean-setup').hidden = d.clean; pdfControls();
   }).catch(() => showError($('pdf-error'), 'Could not check PDF recognition setup. Reload the page.'));
   document.querySelectorAll('input[name=naming]').forEach(r => r.onchange = () => {
     document.querySelectorAll('input[name=naming]').forEach(x => x.closest('.choice').classList.toggle('selected', x.checked));
@@ -934,8 +941,8 @@ tailwind.config = { theme: { extend: {
     $('pdf-info').textContent = 'Reading sheet…';
     try {
       const isSVG = files.every(f => /\.svg$/i.test(f.name));
-      if (!isSVG && (files.length !== 1 || !/\.pdf$/i.test(files[0].name))) {
-        throw new Error('Choose one PDF or a set of SVG pages. Upload these formats separately.');
+      if (!isSVG && (files.length !== 1 || !/\.(pdf|png|jpe?g|webp|tiff?)$/i.test(files[0].name))) {
+        throw new Error('Choose one PDF or image, or a set of SVG pages. Upload these formats separately.');
       }
       let file = files[0];
       if (isSVG) {
@@ -952,8 +959,8 @@ tailwind.config = { theme: { extend: {
       if (!response.ok) throw new Error(d.error || 'Could not load this sheet.');
       pdf.source = d.id; $('pdf-name').textContent = d.title;
       $('pdf-original').href = d.url; $('pdf-original').hidden = false;
-      $('pdf-original').textContent = isSVG ? 'Converted PDF' : 'Original PDF';
-      $('pdf-info').textContent = `${d.pages} page${d.pages === 1 ? '' : 's'} · ${(file.size / 1048576).toFixed(1)} MB · ${isSVG ? 'SVG converted · ' : ''}Ready`;
+      $('pdf-original').textContent = /\.pdf$/i.test(file.name) && !isSVG ? 'Original PDF' : 'Converted PDF';
+      $('pdf-info').textContent = `${d.pages} page${d.pages === 1 ? '' : 's'} · ${(file.size / 1048576).toFixed(1)} MB · ${isSVG ? 'SVG converted · ' : /\.pdf$/i.test(file.name) ? '' : 'Image converted · '}Ready`;
     } catch (e) { $('pdf-info').textContent = 'Choose another sheet to try again'; showError($('pdf-error'), e.message); }
     finally { pdf.loading = false; $('pdf-input').value = ''; pdfControls(); }
   }
@@ -962,15 +969,22 @@ tailwind.config = { theme: { extend: {
   pdfDrop.ondragover = e => { e.preventDefault(); pdfDrop.classList.add('bg-surface-container'); };
   pdfDrop.ondragleave = () => pdfDrop.classList.remove('bg-surface-container');
   pdfDrop.ondrop = e => { e.preventDefault(); pdfDrop.classList.remove('bg-surface-container'); loadSheets(e.dataTransfer.files); };
-  $('pdf-label').onclick = async () => {
+  $('pdf-label').onclick = () => {
     if (!pdf.source || pdf.job || !pdf.ready) return;
     if (!$('pdf-show-names').checked && !$('pdf-color-notes').checked) return;
-    // Reserve the button before the request so double-clicks cannot create duplicate jobs.
+    runSheet('/api/sheets/label', { naming: document.querySelector('input[name=naming]:checked').value, ...sheetStyle() },
+             'Your labeled sheet is ready');
+  };
+  $('pdf-clean').onclick = () => {
+    if (pdf.source && !pdf.job && pdf.clean) runSheet('/api/sheets/clean', {}, 'Your clean PDF is ready');
+  };
+  async function runSheet(endpoint, options, doneMessage) {
+    // Reserve the buttons before the request so double-clicks cannot create duplicate jobs.
     pdf.job = 'starting'; pdfControls(); showError($('pdf-error'));
     $('pdf-result').hidden = true;
     try {
-      const response = await fetch('/api/sheets/label', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: pdf.source, naming: document.querySelector('input[name=naming]:checked').value, ...sheetStyle() }) });
+      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: pdf.source, ...options }) });
       const d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not start labeling.');
       pdf.job = d.job; $('pdf-progress').hidden = false; $('pdf-cancel').disabled = false;
       const stageStart = {};
@@ -984,21 +998,24 @@ tailwind.config = { theme: { extend: {
         $('pdf-step').textContent = job.state === 'queued' ? 'Waiting for the previous conversion to finish' : job.stages[job.stage]?.name || 'Finishing…';
         if (job.state === 'queued' || job.state === 'running') await new Promise(r => setTimeout(r, 1000));
       } while (job.state === 'queued' || job.state === 'running');
-      if (job.state !== 'done') throw new Error(job.state === 'cancelled' ? 'PDF labeling cancelled.' : job.error);
+      if (job.state !== 'done') throw new Error(job.state === 'cancelled' ? 'Cancelled.' : job.error);
       const result = job.result;
       $('pdf-result-title').textContent = result.title;
-      const style = result.style, description = [];
-      if (style.show_names) description.push(result.naming === 'letters' ? 'Letter names' : 'Fixed Do');
-      if (style.color_notes) description.push('Colored noteheads');
-      $('pdf-result-info').textContent = `${description.join(' + ')} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} notes styled · Original layout preserved`;
+      if (result.info) $('pdf-result-info').textContent = result.info;
+      else {
+        const style = result.style, description = [];
+        if (style.show_names) description.push(result.naming === 'letters' ? 'Letter names' : 'Fixed Do');
+        if (style.color_notes) description.push('Colored noteheads');
+        $('pdf-result-info').textContent = `${description.join(' + ')} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} notes styled · Original layout preserved`;
+      }
       $('pdf-sheet').innerHTML = result.player;
       $('pdf-zoom').value = 100; $('pdf-zoom-value').textContent = '100%'; $('pdf-sheet').style.width = '100%';
       $('pdf-downloads').innerHTML = result.downloads.map(f => `<a href="${esc(f.url)}" download="${esc(f.name)}" class="px-space-lg py-2.5 rounded-lg bg-primary-container text-on-primary font-label-lg text-label-lg hover:bg-primary">${esc(f.label)}</a>`).join('');
       $('pdf-result').hidden = false;
-      $('pdf-step').textContent = 'Your labeled sheet is ready';
+      $('pdf-step').textContent = doneMessage;
     } catch (e) { showError($('pdf-error'), e.message || 'Lost contact with the app. Reload to try again.'); }
     finally { pdf.job = null; $('pdf-progress').hidden = true; pdfControls(); }
-  };
+  }
   $('pdf-cancel').onclick = async () => {
     if (!pdf.job || pdf.job === 'starting') return;
     $('pdf-cancel').disabled = true;

@@ -170,6 +170,87 @@ def ai_recolor(page, notes, palette, folder):
     return done
 
 
+TRACE_DPI = 600  # high enough that traced curves follow the scan's real shapes
+IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp"}
+
+
+def image_to_pdf(image, output):
+    """A sheet photo or scan as a one-page PDF, A4 wide, keeping the picture's aspect.
+
+    Images rarely carry a trustworthy DPI, and a 72-dpi guess makes pages meters
+    wide, so the page size is fixed to sheet-music paper width instead.
+    """
+    try:
+        with pymupdf.open(image) as picture, pymupdf.open() as pdf:
+            width, height = picture[0].rect.width, picture[0].rect.height
+            page = pdf.new_page(width=595, height=595 * height / width)
+            page.insert_image(page.rect, filename=str(image))
+            pdf.save(output, deflate=True)
+    except Exception as exc:
+        raise SheetError("That image could not be read. Try a PNG or JPG export.") from exc
+
+
+def tracer_command():
+    return shutil.which("potrace")
+
+
+def is_vector_page(page):
+    return not page.get_images() and bool(page.get_drawings() or page.get_text().strip())
+
+
+def trace_page(page, folder):
+    """Clean the page's ink and trace it into vector curves at the page's displayed size."""
+    import cv2
+    pix = page.get_pixmap(dpi=TRACE_DPI, colorspace=pymupdf.csGRAY, alpha=False)
+    gray = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w)
+    # Even out uneven lighting from phone photos, then pick the ink/paper cut automatically.
+    # The paper estimate's window must be wider than any ink shape (heads are ~50 px
+    # at 600 dpi), or the shape itself is taken for shadowed paper and erased.
+    paper = cv2.GaussianBlur(cv2.dilate(gray, np.ones((121, 121), np.uint8)), (0, 0), 35)
+    flat = cv2.divide(gray, paper, scale=255)
+    # A light blur rounds off the scan's pixel steps (more, sigma 2.5+, erases thin staff
+    # lines). Cut halfway between this page's ink and paper: 128 for a crisp black scan,
+    # higher for a photo whose ink is dark gray, so faint thin lines survive.
+    smooth = cv2.GaussianBlur(flat, (0, 0), 1.5)
+    darkest = np.percentile(smooth, 0.5)
+    ink = (smooth < (float(darkest) + 255) / 2).astype(np.uint8) * 255
+    bitmap = folder / f"page-{page.number + 1}.pbm"
+    cv2.imwrite(str(bitmap), 255 - ink)  # potrace traces black pixels
+    traced = bitmap.with_suffix(".pdf")
+    # -t drops dust specks; -O 0.05 keeps curves close to the ink where stems and staff
+    # lines meet heads; -r keeps the page's physical size.
+    done = subprocess.run([tracer_command(), "-b", "pdf", "-t", "12", "-a", "1", "-O", "0.05",
+                           "-r", str(TRACE_DPI),
+                           "-o", str(traced), str(bitmap)], capture_output=True, text=True, timeout=600)
+    if done.returncode:
+        raise SheetError("A page could not be converted to vector form. Try a clearer scan.")
+    return traced
+
+
+def clean_pdf(source, output, progress=lambda detail: None):
+    """A vector PDF of the sheet: scanned pages traced into crisp curves, vector pages kept.
+
+    Ink shapes, layout and page size stay as in the original; only paper tone,
+    noise and blur are removed, so the sheet stays sharp at any zoom.
+    """
+    if not tracer_command():
+        raise SheetError("Clean PDF needs potrace. Install it with Homebrew, then restart the app (see README.md).")
+    traced_pages = 0
+    with pymupdf.open(source) as pdf, pymupdf.open() as out, tempfile.TemporaryDirectory() as scratch:
+        for page in pdf:
+            if is_vector_page(page):
+                out.insert_pdf(pdf, from_page=page.number, to_page=page.number)
+                continue
+            progress(f"Tracing page {page.number + 1} of {len(pdf)}")
+            with pymupdf.open(trace_page(page, Path(scratch))) as traced:
+                target = out.new_page(width=page.rect.width, height=page.rect.height)
+                target.show_pdf_page(target.rect, traced, 0)
+            traced_pages += 1
+        out.set_metadata(pdf.metadata)
+        out.save(output, garbage=3, deflate=True)
+    return traced_pages
+
+
 def audiveris_command():
     """An explicit executable, a PATH installation, or the bundled macOS launcher."""
     candidates = [os.environ.get("AUDIVERIS_BIN"), shutil.which("audiveris"),

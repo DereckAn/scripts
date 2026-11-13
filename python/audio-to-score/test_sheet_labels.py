@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+import urllib.parse
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -139,6 +140,61 @@ class SheetLabelsTests(unittest.TestCase):
             self.assertEqual(client.post('/api/sheets/label', json={'source': source['id'], **options}).status_code, 400)
         with patch.object(piano, 'audiveris_command', return_value=None):
             self.assertEqual(client.post('/api/sheets/label', json={'source': source['id']}).status_code, 503)
+
+    def test_image_upload_and_clean_pdf_job(self):
+        """A photo uploads as a PDF; the clean job traces it to vector and keeps the page."""
+        if not piano.tracer_command():
+            self.skipTest('potrace is not installed')
+        with pymupdf.open() as doc:
+            page = doc.new_page(width=300, height=200)
+            page.draw_line((20, 100), (280, 100), width=1.2)
+            page.draw_oval(pymupdf.Rect(100, 92, 116, 104), color=None, fill=(0, 0, 0))
+            png = page.get_pixmap(dpi=300, alpha=False).tobytes('png')
+        client = TestClient(piano.app)
+        self.assertEqual(client.post('/api/sheets/source', files={'file': ('a.gif', png, 'image/gif')}).status_code, 400)
+        upload = client.post('/api/sheets/source', files={'file': ('Phone photo.png', png, 'image/png')})
+        self.assertEqual(upload.status_code, 200)
+        source = upload.json()
+        self.assertEqual((source['title'], source['pages']), ('Phone photo', 1))
+        self.assertTrue(source['url'].endswith('.pdf'))
+        self.assertEqual(client.post('/api/sheets/clean', json={'source': 'missing'}).status_code, 400)
+        with patch.object(piano, 'tracer_command', return_value=None):
+            self.assertEqual(client.post('/api/sheets/clean', json={'source': source['id']}).status_code, 503)
+        job = client.post('/api/sheets/clean', json={'source': source['id']}).json()['job']
+        for _ in range(100):
+            status = client.get(f'/api/jobs/{job}').json()
+            if status['state'] not in ('queued', 'running'):
+                break
+            time.sleep(0.1)
+        self.assertEqual(status['state'], 'done', status.get('error'))
+        self.assertIn('1 scanned page traced', status['result']['info'])
+        clean = piano.WORK / urllib.parse.unquote(status['result']['downloads'][0]['url'].split('/files/', 1)[1])
+        with pymupdf.open(clean) as pdf:
+            self.assertEqual(pdf[0].rect.width, 595)
+            self.assertAlmostEqual(pdf[0].rect.height, 595 * 200 / 300, delta=1)
+            self.assertFalse(pdf[0].get_images(), 'Clean PDF must be vector only')
+            pix = pdf[0].get_pixmap(dpi=72, alpha=False)
+            dark = lambda x, y: pix.pixel(int(x * pix.width), int(y * pix.height))[0] < 100
+            self.assertTrue(dark(108 / 300, 98 / 200), 'Notehead kept')
+            self.assertTrue(dark(60 / 300, 100 / 200), 'Staff line kept')
+            self.assertFalse(dark(200 / 300, 60 / 200), 'Paper stays white')
+
+    def test_clean_pdf_keeps_vector_pages_untouched(self):
+        if not piano.tracer_command():
+            self.skipTest('potrace is not installed')
+        from sheet_labels import clean_pdf
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            source = folder / 'mixed.pdf'
+            with pymupdf.open() as doc:
+                page = doc.new_page(width=300, height=200)
+                page.insert_text((20, 40), 'Engraved title')
+                page.draw_line((20, 100), (280, 100))
+                doc.save(source)
+            self.assertEqual(clean_pdf(source, folder / 'out.pdf'), 0)
+            with pymupdf.open(source) as a, pymupdf.open(folder / 'out.pdf') as b:
+                self.assertEqual(b[0].get_text(), a[0].get_text())
+                self.assertEqual(b[0].get_drawings(), a[0].get_drawings())
 
     def test_overlay_preserves_original_pages_and_only_changes_noteheads(self):
         with tempfile.TemporaryDirectory() as folder:

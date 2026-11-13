@@ -46,6 +46,19 @@ curl -L -o .venv/lib/python3.10/site-packages/oemer/checkpoints/seg_net/model.on
 Only the 38 MB notehead model is needed. Newer oemer releases require `onnxruntime-gpu`,
 which has no macOS build. Restart the app; the AI option is enabled when the model exists.
 
+## Clean PDF (scans and photos)
+
+Upload a PDF or an image (PNG, JPG, WEBP, TIFF; images become a one-page, A4-wide PDF,
+so labeling works on them too) and press **Make clean PDF**. Each scanned page is
+rendered at 600 dpi; uneven lighting and paper tone are flattened, the ink is cut
+halfway between the page's own ink and paper levels, and potrace traces it into vector
+curves at the original page size. The result is a small, vector-only PDF that stays
+sharp at any zoom, with the original layout and symbol shapes. Pages that are already
+vector are copied unchanged. Needs `brew install potrace`.
+
+Limits: very faint or broken lines in blurry photos can show small gaps, and strokes
+can come out slightly bolder than a gray photo. Pages are not straightened or cropped.
+
 ## SVG input
 
 The same upload area accepts one PDF or up to 30 SVG pages. SVG pages are sorted

@@ -32,7 +32,7 @@ from pydantic import BaseModel
 import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
-                          ai_model)
+                          ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES)
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -545,22 +545,29 @@ class Cancelled(Exception):
 
 @app.get("/api/sheets/setup")
 def sheet_setup():
-    return {"ready": audiveris_command() is not None, "ai": ai_model() is not None}
+    return {"ready": audiveris_command() is not None, "ai": ai_model() is not None,
+            "clean": tracer_command() is not None}
 
 
 @app.post("/api/sheets/source")
 async def add_sheet(file: UploadFile):
     folder = Path(tempfile.mkdtemp(prefix="sheet-", dir=WORK))
     try:
-        if not file.filename or Path(file.filename).suffix.lower() != ".pdf":
-            raise SheetError("Choose a piano sheet in PDF format.")
-        path, size = folder / "source.pdf", 0
+        ext = Path(file.filename or "").suffix.lower()
+        if ext != ".pdf" and ext not in IMAGE_TYPES:
+            raise SheetError("Choose a piano sheet as a PDF or an image (PNG, JPG, WEBP, TIFF).")
+        path, size = folder / f"upload{ext}", 0
         with path.open("wb") as dest:
             while chunk := await file.read(1 << 20):
                 size += len(chunk)
                 if size > 50 << 20:
-                    raise SheetError("That PDF is larger than 50 MB.")
+                    raise SheetError("That file is larger than 50 MB.")
                 dest.write(chunk)
+        if ext in IMAGE_TYPES:  # photos and scans become a one-page PDF; every feature then applies
+            await run_in_threadpool(image_to_pdf, path, folder / "source.pdf")
+            path = folder / "source.pdf"
+        else:
+            path = path.rename(folder / "source.pdf")
         info = await run_in_threadpool(pdf_info, path)
     except SheetError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
@@ -632,6 +639,40 @@ def label_sheet(req: LabelRequest):
 
     return start_job(work, SHEET_STAGES, [0.05, 0.7, 0.2, 0.05],
                      "PDF labeling failed. Try a clearer scan or fewer pages.")
+
+
+class CleanRequest(BaseModel):
+    source: str
+
+
+@app.post("/api/sheets/clean")
+def clean_sheet(req: CleanRequest):
+    if req.source not in SHEETS:
+        return JSONResponse({"error": "Upload a sheet first."}, status_code=400)
+    if not tracer_command():
+        return JSONResponse({"error": "Install potrace to make a clean PDF (see README.md)."}, status_code=503)
+    path, title = SHEETS[req.source]
+
+    def work(step):
+        step(0)
+        pages = pdf_info(path)["pages"]
+        step(1)
+        out = Path(tempfile.mkdtemp(prefix="clean-", dir=WORK))
+        pdf = out / f"{title}-clean.pdf"
+        traced = clean_pdf(path, pdf, lambda detail: step(1, detail))
+        step(2)
+        previews = pdf_previews(pdf, out)
+        player = "".join(f'<div class="follow-page"><img src="{files_url(image)}" '
+                         f'alt="Clean sheet, page {i}" loading="lazy"/></div>'
+                         for i, image in enumerate(previews, 1))
+        kept = pages - traced
+        info = f"{traced} scanned page{'s' if traced != 1 else ''} traced to vector"
+        info += f" · {kept} vector page{'s' if kept != 1 else ''} kept as is" if kept else ""
+        return {"title": title, "pages": pages, "info": info + " · Original layout preserved", "player": player,
+                "downloads": [{"label": "Clean PDF", "url": files_url(pdf), "name": pdf.name}]}
+
+    return start_job(work, ["Reading the sheet", "Tracing the pages", "Preparing downloads"], [0.05, 0.8, 0.15],
+                     "Making the clean PDF failed. Try a clearer scan.")
 
 
 @app.post("/api/convert")
