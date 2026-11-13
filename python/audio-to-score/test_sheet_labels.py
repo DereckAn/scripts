@@ -179,6 +179,31 @@ class SheetLabelsTests(unittest.TestCase):
             self.assertTrue(dark(60 / 300, 100 / 200), 'Staff line kept')
             self.assertFalse(dark(200 / 300, 60 / 200), 'Paper stays white')
 
+    def test_converted_score_gets_names_and_colors(self):
+        """The audio path: a rendered score is restyled from its own MusicXML, screen and PDF alike."""
+        from music21 import note, stream
+        folder = Path(tempfile.mkdtemp(prefix='piano-test-', dir=piano.WORK))
+        part = stream.Part([note.Note('C4', quarterLength=1), note.Note('D4', quarterLength=2), note.Note('F#4', quarterLength=1)])
+        part.write('musicxml', fp=folder / 'score.musicxml')
+        client = TestClient(piano.app)
+        for bad in ('../x', 'piano-missing'):
+            self.assertEqual(client.post('/api/scores/style', json={'score': bad}).status_code, 400)
+        self.assertEqual(client.post('/api/scores/style', json={'score': folder.name, 'show_names': True,
+                                                               'font': 'nope'}).status_code, 400)
+        d = client.post('/api/scores/style', json={'score': folder.name, 'naming': 'solfege', 'show_names': True,
+                                                    'color_notes': True, 'font': 'spartan',
+                                                    'note_colors': {'c': '#ff0000'}}).json()
+        self.assertEqual(d['player'].count('class="note-name"'), 3)
+        self.assertIn('fill="#ff0000"', d['player'])
+        self.assertIn('>Fa</text>', d['player'], 'F-sharp is labeled by its written letter')
+        with pymupdf.open(piano.WORK / urllib.parse.unquote(d['pdf']['url'].split('/files/', 1)[1])) as pdf:
+            self.assertEqual([w for w in pdf[0].get_text().split() if w in ('Do', 'Re', 'Fa')], ['Do', 'Re', 'Fa'])
+            self.assertTrue(any('LeagueSpartan' in f[3] for f in pdf[0].get_fonts()), 'Chosen font is embedded')
+        plain = client.post('/api/scores/style', json={'score': folder.name}).json()
+        self.assertNotIn('note-name', plain['player'])
+        self.assertEqual(plain['pdf']['name'], 'score.pdf')
+        self.assertFalse(list(folder.glob('score-*.mid')), 'Restyling leaves no stray MIDI files')
+
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():
             self.skipTest('potrace is not installed')

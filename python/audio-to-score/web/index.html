@@ -54,6 +54,7 @@ tailwind.config = { theme: { extend: {
   /* Highlight uses colour plus an outline, so it doesn't rely on colour alone. */
   .follow g.note.playing, .follow g.note.playing * { fill: #0d9488; stroke: #0d9488; }
   .follow g.note.playing { filter: drop-shadow(0 0 2px #0d9488); }
+  .follow g.note.playing text.note-name { fill: #fff; stroke: none; }
   /* Same files the PDF embeds, so the preview matches the download. */
   @font-face { font-family: 'Label EB Garamond'; src: url('/assets/fonts/eb-garamond-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
   @font-face { font-family: 'Label League Spartan'; src: url('/assets/fonts/league-spartan-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
@@ -419,7 +420,13 @@ tailwind.config = { theme: { extend: {
   </div>
 
   <div id="s-sheet" class="w-full max-w-5xl mx-auto px-gutter md:px-gutter-desktop py-space-lg" hidden>
-    <p class="font-label-mono text-label-mono text-on-surface-variant mb-space-sm">Click any note to jump there.</p>
+    <div id="score-style" class="flex flex-wrap items-center gap-space-sm mb-space-sm" role="group" aria-label="Note names and colors">
+      <label class="flex items-center gap-1.5 px-space-sm py-1 rounded-lg bg-surface-container-low cursor-pointer font-label-lg text-label-lg text-primary"><input id="sc-names" type="checkbox" class="accent-primary w-4 h-4"/>Note names</label>
+      <label class="flex items-center gap-1.5 px-space-sm py-1 rounded-lg bg-surface-container-low cursor-pointer font-label-lg text-label-lg text-primary"><input id="sc-colors" type="checkbox" class="accent-primary w-4 h-4"/>Note colors</label>
+      <select id="sc-naming" aria-label="Note name style" class="bg-surface-container-low rounded-lg px-space-sm py-1 font-body-md text-body-md"><option value="letters">C D E</option><option value="solfege">Do Re Mi</option></select>
+      <span id="sc-status" role="status" class="font-label-mono text-label-mono text-on-surface-variant"></span>
+    </div>
+    <p class="font-label-mono text-label-mono text-on-surface-variant mb-space-sm">Click any note to jump there. Font, pitch colors and label color follow your Label sheet settings; the PDF export matches.</p>
     <div id="sheet"></div>
   </div>
 
@@ -1214,6 +1221,8 @@ tailwind.config = { theme: { extend: {
       `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-2 rounded-lg hover:bg-surface-container-low text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
     $('sheet').innerHTML = r.player; $('ctx').innerHTML = r.player;
     $('sheet')._notes = null; $('ctx')._notes = null;
+    current = r; scoreStyleControls();
+    if ($('sc-names').checked || $('sc-colors').checked) styleScore();
     $('t-total').textContent = fmt(d.duration);
     const other = r.engine === 'Transkun' ? 'ByteDance' : 'Transkun';
     $('other-engine').lastElementChild.textContent = 'Try Engine ' + (other === 'Transkun' ? 'B' : 'A');
@@ -1221,6 +1230,32 @@ tailwind.config = { theme: { extend: {
     const nav = document.querySelector('[data-view=studio]'); nav.disabled = false; nav.removeAttribute('title');
     refreshControls(); seek(0);
   }
+  // ---------- note names/colors on the converted score (re-rendered on the server, seconds)
+  let current = null, styling = 0;
+  function scoreStyleControls() {
+    const ok = !!current?.score;
+    ['sc-names', 'sc-colors', 'sc-naming'].forEach(id => $(id).disabled = !ok);
+    $('sc-naming').disabled = !ok || !$('sc-names').checked;
+    $('score-style').title = ok ? '' : 'Convert this recording again to add note names or colors';
+  }
+  async function styleScore() {
+    if (!current?.score) return;
+    const run = ++styling, look = sheetStyle();  // latest click wins if several are in flight
+    scoreStyleControls(); $('sc-status').textContent = 'Updating score…';
+    try {
+      const response = await fetch('/api/scores/style', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: current.score, naming: $('sc-naming').value, show_names: $('sc-names').checked,
+          color_notes: $('sc-colors').checked, font: look.font, label_color: look.label_color, note_colors: look.note_colors }) });
+      const d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not update the score.');
+      if (run !== styling) return;
+      $('sheet').innerHTML = d.player; $('ctx').innerHTML = d.player;
+      $('sheet')._notes = null; $('ctx')._notes = null;
+      const pdfLink = [...$('s-export-menu').querySelectorAll('a')].find(a => a.textContent === 'PDF');
+      if (pdfLink) { pdfLink.href = d.pdf.url; pdfLink.download = d.pdf.name; }
+      $('sc-status').textContent = '';
+    } catch (e) { if (run === styling) $('sc-status').textContent = e.message; }
+  }
+  ['sc-names', 'sc-colors', 'sc-naming'].forEach(id => $(id).addEventListener('change', styleScore));
   function seg(sel, on, cls = ['bg-primary', 'text-on-primary', 'shadow-sm'], off = ['text-on-surface-variant']) {
     document.querySelectorAll(sel).forEach(b => { const a = on(b); cls.forEach(c => b.classList.toggle(c, a)); off.forEach(c => b.classList.toggle(c, !a)); b.setAttribute('aria-pressed', a); });
   }

@@ -3,6 +3,7 @@ import base64
 import copy
 import html
 import json
+import re
 from fractions import Fraction
 import subprocess
 import sys
@@ -32,7 +33,8 @@ from pydantic import BaseModel
 import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
-                          ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES)
+                          ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
+                          FONTS, FONT_CSS, rgb, contrast_color)
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -282,9 +284,57 @@ class UserError(Exception):
     """A problem the user can fix; the message is shown to them as is."""
 
 
-def render(xml_path, out_pdf, out_midi):
+# Runs in the print page: color heads and center a name in each, sized like the PDF labels.
+# fill is a presentation attribute, so the player's "playing" highlight CSS still wins.
+STYLE_NOTES_JS = """async ({notes, font, faces}) => {
+  for (const [family, url] of faces) document.fonts.add(await new FontFace(family, `url(${url})`, {weight: '700'}).load());
+  const ns = 'http://www.w3.org/2000/svg';
+  for (const [id, filled, fill, text, ink] of notes) {
+    const head = document.getElementById(id)?.querySelector('.notehead');
+    if (!head) continue;
+    if (fill) head.setAttribute('fill', fill);
+    if (!text) continue;
+    const box = head.getBBox(), t = document.createElementNS(ns, 'text');
+    t.textContent = text;
+    t.setAttribute('class', 'note-name');
+    t.setAttribute('x', box.x + box.width / 2);
+    t.setAttribute('y', box.y + box.height / 2);
+    t.setAttribute('font-size', box.height * (filled ? 0.72 : 0.55));
+    t.setAttribute('font-family', font);
+    t.setAttribute('font-weight', '700');
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dominant-baseline', 'central');
+    t.setAttribute('fill', ink);
+    head.appendChild(t);
+    const room = box.width * (filled ? 0.76 : 0.57);
+    if (t.getComputedTextLength() > room) { t.setAttribute('textLength', room); t.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
+  }
+  return [...document.querySelectorAll('.score-page > svg')].map(svg => svg.outerHTML);
+}"""
+
+
+def note_styles(tk, pages, naming, style):
+    """[id, filled, head color, name, name color] for every note Verovio drew. Pitch letter
+    comes from the score itself (written spelling, like the sheet labels)."""
+    rows = []
+    for svg in pages:
+        for nid in re.findall(r'<g id="([^"]+)" class="note"', svg):
+            attr = tk.getElementAttr(nid)
+            if attr.get("pname") not in NAMING[naming]:
+                continue
+            step, filled = attr["pname"], attr.get("dur") not in ("1", "2", "breve", "long")
+            fill = style["note_colors"][step] if style["color_notes"] else None
+            if style["label_color"] != "auto":
+                ink = style["label_color"]
+            else:  # same rule as the PDF labels: contrast on filled heads, dark in hollow rings
+                ink = "#000000" if not filled or contrast_color(rgb(fill or "#000000")) == (0, 0, 0) else "#ffffff"
+            rows.append([nid, filled, fill, NAMING[naming][step] if style["show_names"] else None, ink])
+    return rows
+
+
+def render(xml_path, out_pdf, out_midi, naming="letters", style=None):
     """MusicXML -> (SVG pages, {note id: [start ms, end ms]}, bar start ms); also writes the PDF and a MIDI
-    whose timing matches."""
+    whose timing matches. With a style (validate_style), noteheads get colors and/or names on both."""
     tk = verovio.toolkit(False)
     tk.setResourcePath(str(Path(verovio.__file__).parent / "data"))
     tk.setOptions({"pageWidth": 2100, "pageHeight": 2970, "scale": 40, "adjustPageHeight": False})
@@ -315,6 +365,13 @@ def render(xml_path, out_pdf, out_midi):
                          ".score-page:last-child { break-after: auto; }"
                          ".score-page > svg { display: block; width: 100%; height: 100%; }"
                          f"</style></head><body>{printable}</body></html>")
+        if style:
+            font = FONTS[style["font"]]
+            faces = ([[FONT_CSS[style["font"]].split(",")[0].strip("'"),
+                       "data:font/ttf;base64," + base64.b64encode(font.read_bytes()).decode()]]
+                     if isinstance(font, Path) else [])
+            pages = page.evaluate(STYLE_NOTES_JS, {"notes": note_styles(tk, pages, naming, style),
+                                                   "font": FONT_CSS[style["font"]], "faces": faces})
         page.pdf(path=str(out_pdf), format="A4", prefer_css_page_size=True, print_background=True)
         browser.close()
     return pages, notes, bars
@@ -453,7 +510,7 @@ def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, prog
     downloads = [("PDF", pdf), ("MusicXML", xml), ("Two-hand MIDI", midi), ("Score audio (MP3)", mp3),
                  ("Performance MIDI", raw_midi)]
     return {"engine": engine, "notes": len(events), "bpm": round(bpm), "meter": meter_text,
-            "key": key_text, "title": title or Path(source).stem,
+            "key": key_text, "title": title or Path(source).stem, "score": out.name,
             "player": player_html(pages, notes),
             "studio": {"rh": files_url(hand_audio["rh"]), "lh": files_url(hand_audio["lh"]), "original": files_url(audio),
                        "notes": sorted(waterfall), "bars": [b / 1000 for b in bars], "timing": timing,
@@ -673,6 +730,45 @@ def clean_sheet(req: CleanRequest):
 
     return start_job(work, ["Reading the sheet", "Tracing the pages", "Preparing downloads"], [0.05, 0.8, 0.15],
                      "Making the clean PDF failed. Try a clearer scan.")
+
+
+class ScoreStyleRequest(BaseModel):
+    score: str
+    naming: str = "letters"
+    show_names: bool = False
+    color_notes: bool = False
+    font: str = "sans"
+    label_color: str = "auto"
+    note_colors: dict[str, str] | None = None
+
+
+@app.post("/api/scores/style")
+def style_score(req: ScoreStyleRequest):
+    """Re-render a converted score with note names/colors (or plain again); seconds, no re-transcription."""
+    folder = WORK / req.score
+    xml = folder / "score.musicxml"
+    if not re.fullmatch(r"piano-[\w-]+", req.score) or not xml.is_file():
+        return JSONResponse({"error": "That score is no longer available. Convert the recording again."}, status_code=400)
+    if req.naming not in NAMING:
+        return JSONResponse({"error": "Choose letter names or fixed-Do solfège."}, status_code=400)
+    style = None
+    if req.show_names or req.color_notes:
+        try:
+            style = validate_style(req.show_names, req.color_notes, req.font, req.label_color, req.note_colors)
+        except SheetError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+    # A new file name each time so the browser never shows a cached older style.
+    # ponytail: earlier styled PDFs stay in the temp folder until it is cleared.
+    pdf = folder / f"score-{uuid.uuid4().hex[:8]}.pdf"
+    midi = folder / f"{pdf.stem}.mid"  # render() writes one; the original MIDI download stays untouched
+    try:
+        pages, notes, _ = render(xml, pdf, midi, req.naming, style)
+    except UserError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    finally:
+        midi.unlink(missing_ok=True)
+    return {"player": player_html(pages, notes),
+            "pdf": {"label": "PDF", "url": files_url(pdf), "name": "score-labeled.pdf" if style else "score.pdf"}}
 
 
 @app.post("/api/convert")

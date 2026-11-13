@@ -29,6 +29,12 @@ FONTS = {"sans": "hebo", "serif": "tibo", "mono": "cobo",
          "newsreader": FONT_DIR / "newsreader-bold.ttf", "bodoni": FONT_DIR / "bodoni-moda-bold.ttf"}
 NOTE_COLORS = dict(zip("cdefgab", ["#dc2626", "#ea580c", "#ca8a04", "#16a34a",
                                     "#0284c7", "#7c3aed", "#db2777"]))
+# CSS families for SVG labels (rendered scores and the page preview). File fonts are
+# declared as "Label <name>" with @font-face pointing at the same files the PDF embeds.
+FONT_CSS = {"sans": "Arial, Helvetica, sans-serif", "serif": "'Times New Roman', Times, serif",
+            "mono": "'Courier New', Courier, monospace", "garamond": "'Label EB Garamond', serif",
+            "spartan": "'Label League Spartan', sans-serif", "newsreader": "'Label Newsreader', serif",
+            "bodoni": "'Label Bodoni Moda', serif"}
 SHEET_STAGES = ["Reading the PDF", "Recognizing the music", "Styling the notes", "Preparing downloads"]
 
 
