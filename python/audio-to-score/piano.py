@@ -34,7 +34,7 @@ import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
-                          FONTS, FONT_CSS, rgb, contrast_color)
+                          FONTS, FONT_CSS, rgb, contrast_color, recognition_copy)
 
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
@@ -680,16 +680,21 @@ def label_sheet(req: LabelRequest):
         books = sorted({book for score in scores for book in score.parent.glob("*.omr")})
         if len(books) != 1:
             raise SheetError("The original note positions are missing. Upload the sheet again to recognize it.")
-        positions = note_positions(books[0], info["pages"])
+        skipped = []
+        positions = note_positions(books[0], info["pages"], skipped)
         pdf = out / "labeled.pdf"
-        count = annotate_pdf(path, pdf, positions, req.naming, **style, method=req.method,
+        # Oversized pages (e.g. 1 px = 1 pt exports) come back at A4, the same copy Audiveris
+        # read; normal PDFs are labeled as uploaded. Positions are page-relative either way.
+        sheet = recognition_copy(path, recognition)
+        count = annotate_pdf(sheet, pdf, positions, req.naming, **style, method=req.method,
                              progress=lambda detail: step(2, detail))
         step(3)
         previews = pdf_previews(pdf, out)
         player = "".join(f'<div class="follow-page"><img src="{files_url(image)}" '
                          f'alt="Labeled sheet, page {i}" loading="lazy"/></div>'
                          for i, image in enumerate(previews, 1))
-        return {"title": title, "naming": req.naming, "pages": info["pages"], "notes": count,
+        return {"title": title, "naming": req.naming, "pages": info["pages"], "notes": count, "skipped": skipped[0],
+                "resized": sheet != path,
                 "style": style, "method": req.method,
                 "player": player,
                 "downloads": [{"label": "Labeled PDF", "url": files_url(pdf), "name": pdf.name}]}

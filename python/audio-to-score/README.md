@@ -112,6 +112,12 @@ vector artwork; external fonts/images must be embedded or converted to paths.
   spacing, titles and markings remain in place. The uploaded file is never overwritten.
 - The PDF remains vector-based when the original is vector-based. Only the browser
   preview uses PNG images. Download one annotated PDF containing every original page.
+- Oversized pages (over Audiveris's 20-megapixel limit at 300 dpi, about A3, e.g. PDFs
+  exported at 1 px = 1 pt) are read from an A4-sized copy, and the labeled PDF is returned
+  at that A4 size. Normal-sized PDFs are labeled exactly as uploaded.
+- If a line's clef is not recognized (octave clefs are sometimes missed), each staff keeps
+  the clef it ended the previous line with. Notes with no clef to go on are left
+  unlabeled and counted in the result instead of failing the whole job.
 - Recognition still can misidentify or miss notes. Check labels against the original.
   Missing page-position data stops the job instead of creating a partial result.
 - Changing names, fonts, label colors or the note palette reuses recognition.

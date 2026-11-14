@@ -284,10 +284,36 @@ def pdf_info(path):
         raise SheetError("That PDF could not be read. Try exporting it again.") from exc
 
 
+AUDIVERIS_MAX_AREA = 20_000_000 * (72 / 300) ** 2  # its 20-megapixel page limit at 300 dpi, in pt²
+
+
+def recognition_copy(path, folder):
+    """The PDF Audiveris should read: the original, or an A4-sized copy when pages are oversized.
+
+    Audiveris renders PDFs at 300 dpi and drops any page over 20 megapixels (about A3).
+    Exports that map 1 px to 1 pt make pages meters wide. Positions it returns are
+    page-relative, so labels from the copy still land on the original pages.
+    """
+    with pymupdf.open(path) as pdf:
+        if all(p.rect.width * p.rect.height <= AUDIVERIS_MAX_AREA for p in pdf):
+            return path
+        with pymupdf.open() as copy:
+            for page in pdf:
+                k = min(1, 842 / max(page.rect.width, page.rect.height))
+                target = copy.new_page(width=page.rect.width * k, height=page.rect.height * k)
+                target.show_pdf_page(target.rect, pdf, page.number)
+            copy.save(folder / "recognition-source.pdf", garbage=3, deflate=True)
+    return folder / "recognition-source.pdf"
+
+
 def recognize(path, folder, progress=lambda detail: None):
     command = audiveris_command()
     if not command:
         raise SheetError("PDF recognition needs Audiveris. Install it, then restart the app (see README.md).")
+    readable = recognition_copy(path, folder)
+    if readable != path:
+        progress("Pages are oversized; reading an A4-sized copy")
+    path = readable
     logs = []
     short_staves, high_resolution = False, False
     for _ in range(3):
@@ -329,26 +355,31 @@ def recognize(path, folder, progress=lambda detail: None):
     if "No system found" in log:
         raise SheetError("A page's music staves could not be detected, even after retrying short staves. "
                          "The whole PDF was kept; try a different export of the score.")
+    if "Too large image" in log:
+        raise SheetError("The pages are too large for music recognition, even at A4 size. "
+                         "Try exporting the sheet at a normal paper size.")
     raise SheetError("Music recognition could not complete. Try a different PDF export or scan; "
                      "technical details are saved in recognition.log.")
 
 
-def note_positions(book, page_count):
+def note_positions(book, page_count, skipped=None):
     """Read original raster coordinates and written pitch from Audiveris's .omr.
 
     Pitch is a diatonic staff position, positive downwards from the middle line.
     A clef's reference pitch makes this work for clef changes and ledger notes,
     including C clefs. Octave transpositions do not change the letter name.
+
+    When a line's clef was not recognized, the clef that staff (same position in the
+    line, e.g. the left hand) ended the previous line with still applies, as in printed
+    music. Notes with no clef to go on are left unlabeled and counted in `skipped`.
     """
-    pages = {}
+    pages, carried, missing = {}, {}, 0
     references = {"TREBLE": 4, "BASS": 3, "BARITONE": 3, "ALTO": 0,
                   "TENOR": 0, "MEZZO_SOPRANO": 0, "SOPRANO": 0}
     with zipfile.ZipFile(book) as archive:
-        for filename in archive.namelist():
-            match = re.fullmatch(r"sheet#(\d+)/sheet#\1.xml", filename)
-            if not match:
-                continue
-            index = int(match[1]) - 1
+        sheets = [m for m in map(lambda n: re.fullmatch(r"sheet#(\d+)/sheet#\1.xml", n), archive.namelist()) if m]
+        for match in sorted(sheets, key=lambda m: int(m[1])):  # page order, so clefs carry forward
+            filename, index = match[0], int(match[1]) - 1
             root = ET.fromstring(archive.read(filename))
             picture = root.find("picture")
             if picture is None:
@@ -359,6 +390,7 @@ def note_positions(book, page_count):
             notes, seen = [], set()
             glyphs = {g.get("id"): g for g in root.iter("glyph")}
             for system in root.iter("system"):
+                staves = list(dict.fromkeys(staff.get("id") for staff in system.iter("staff")))
                 clefs = {}
                 for symbol in system.iter("clef"):
                     bounds = symbol.find("bounds")
@@ -378,10 +410,11 @@ def note_positions(book, page_count):
                     available = clefs.get(head.get("staff"), [])
                     # The header clef can extend slightly into the first note's x.
                     prior = [symbol for cx, symbol in available if cx <= x + w / 2]
-                    if not prior:
-                        raise SheetError(f"Could not resolve a note's clef on page {index + 1}. "
-                                         "Try a clearer export of the sheet.")
-                    symbol = prior[-1]
+                    position = staves.index(head.get("staff")) if head.get("staff") in staves else None
+                    symbol = prior[-1] if prior else carried.get(position)
+                    if symbol is None:
+                        missing += 1
+                        continue
                     step = "cdefgab"[(references[symbol.get("kind")] + round(float(symbol.get("pitch")))
                                       - round(float(head.get("pitch")))) % 7]
                     location = (x, y, w, h)
@@ -391,7 +424,12 @@ def note_positions(book, page_count):
                     notes.append({"box": [x / width, y / height, (x + w) / width, (y + h) / height],
                                   "step": step, "filled": "BLACK" in head.get("shape", ""),
                                   "ink": glyph_ink(glyphs.get(head.get("glyph")), width, height)})
+                for position, staff in enumerate(staves):
+                    if clefs.get(staff):
+                        carried[position] = clefs[staff][-1][1]
             pages[index] = notes
+    if skipped is not None:
+        skipped.append(missing)
     if set(pages) != set(range(page_count)):
         raise SheetError("Recognition did not return positions for every page. No partial PDF was created.")
     if not any(pages.values()):

@@ -18,6 +18,14 @@ import piano
 from sheet_labels import SheetError, annotate_pdf, note_positions, pdf_info, recognize
 
 
+def blank_pdf(path, pages=1, width=595, height=842):
+    with pymupdf.open() as pdf:
+        for _ in range(pages):
+            pdf.new_page(width=width, height=height)
+        pdf.save(path)
+    return path
+
+
 class SheetLabelsTests(unittest.TestCase):
     def make_book(self, folder):
         book = folder / 'source.omr'
@@ -49,7 +57,7 @@ class SheetLabelsTests(unittest.TestCase):
     def test_short_ending_staff_retries_the_whole_pdf(self):
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
-            source = folder / 'four-pages.pdf'
+            source = blank_pdf(folder / 'four-pages.pdf', 4)
             calls = []
 
             def run(args, **kwargs):
@@ -77,7 +85,7 @@ class SheetLabelsTests(unittest.TestCase):
             with patch('sheet_labels.audiveris_command', return_value='/fake/audiveris'), \
                     patch('sheet_labels.subprocess.run', return_value=subprocess.CompletedProcess([], 1, 'Export failed', '')) as run:
                 with self.assertRaisesRegex(SheetError, 'could not complete'):
-                    recognize(folder / 'source.pdf', folder)
+                    recognize(blank_pdf(folder / 'source.pdf'), folder)
             self.assertEqual(run.call_count, 1)
 
     def test_small_svg_pages_retry_at_higher_recognition_resolution(self):
@@ -95,7 +103,7 @@ class SheetLabelsTests(unittest.TestCase):
 
             with patch('sheet_labels.audiveris_command', return_value='/fake/audiveris'), \
                     patch('sheet_labels.subprocess.run', side_effect=run):
-                recognize(folder / 'source.pdf', folder)
+                recognize(blank_pdf(folder / 'source.pdf'), folder)
             self.assertEqual(len(calls), 2)
             self.assertIn('org.audiveris.omr.image.ImageLoading.pdfResolution=600', calls[1])
             self.assertTrue(all('-sheets' not in args for args in calls))
@@ -109,6 +117,69 @@ class SheetLabelsTests(unittest.TestCase):
             self.assertEqual(pages[0][0]['box'], [0.1, 0.25, 0.13, 0.275])
             with self.assertRaisesRegex(SheetError, 'every page'):
                 note_positions(book, 2)
+
+    def test_missed_clefs_carry_over_from_the_previous_line(self):
+        """Audiveris can miss a line's clef (e.g. an octave bass clef); the staff keeps its clef."""
+        def sheet(systems):
+            body = ''.join('<system>' + ''.join(f'<staff id="{i}"/>' for i in staves) + clefs + heads + '</system>'
+                           for staves, clefs, heads in systems)
+            return f'<sheet><picture width="1000" height="800"/>{body}</sheet>'.encode()
+        head = '<head pitch="0" shape="NOTEHEAD_BLACK" staff="{}"><bounds x="{}" y="{}" w="30" h="20"/></head>'
+        treble, bass = '<clef kind="TREBLE" pitch="2" staff="{}"><bounds x="0"/></clef>', '<clef kind="BASS" pitch="-2" staff="{}"><bounds x="0"/></clef>'
+        with tempfile.TemporaryDirectory() as folder:
+            book = Path(folder) / 'source.omr'
+            with zipfile.ZipFile(book, 'w') as archive:  # page 2 stored first: pages must still be read in order
+                archive.writestr('sheet#2/sheet#2.xml', sheet([(('1', '2'), '', head.format(1, 100, 100) + head.format(2, 100, 300))]))
+                archive.writestr('sheet#1/sheet#1.xml', sheet([
+                    (('1', '2'), treble.format(1) + bass.format(2), head.format(1, 100, 100) + head.format(2, 100, 300)),
+                    (('3', '4'), treble.format(3), head.format(3, 200, 500) + head.format(4, 200, 700))]))
+            skipped = []
+            pages = note_positions(book, 2, skipped)
+            # Middle line: B in treble, D in bass; line 2 and page 2 keep each staff's clef.
+            self.assertEqual([n['step'] for n in pages[0]], ['b', 'd', 'b', 'd'])
+            self.assertEqual([n['step'] for n in pages[1]], ['b', 'd'])
+            self.assertEqual(skipped, [0])
+
+            with zipfile.ZipFile(book, 'w') as archive:  # no clef anywhere for the lower staff
+                archive.writestr('sheet#1/sheet#1.xml', sheet([
+                    (('1', '2'), treble.format(1), head.format(1, 100, 100) + head.format(2, 100, 300))]))
+            skipped = []
+            pages = note_positions(book, 1, skipped)
+            self.assertEqual([n['step'] for n in pages[0]], ['b'], 'Unknown-clef notes are skipped, not fatal')
+            self.assertEqual(skipped, [1])
+
+    def test_oversized_pages_are_read_from_an_a4_copy(self):
+        from sheet_labels import recognition_copy
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            normal = blank_pdf(folder / 'normal.pdf', 2)
+            self.assertEqual(recognition_copy(normal, folder), normal)
+            huge = folder / 'huge.pdf'
+            with pymupdf.open() as pdf:
+                for _ in range(2):  # 1 px = 1 pt exports: ~31 x 44 in, 122 MP at 300 dpi
+                    page = pdf.new_page(width=2233, height=3156)
+                    page.draw_rect(pymupdf.Rect(1000, 1500, 1200, 1600), color=None, fill=(0, 0, 0))
+                pdf.save(huge)
+            copy = recognition_copy(huge, folder)
+            self.assertNotEqual(copy, huge)
+            with pymupdf.open(copy) as pdf:
+                self.assertEqual(len(pdf), 2)
+                self.assertAlmostEqual(max(pdf[0].rect.width, pdf[0].rect.height), 842, places=1)
+                ink = pdf[0].get_drawings()[0]['rect']
+                k = 842 / 3156
+                self.assertAlmostEqual(ink.x0 / pdf[0].rect.width, 1000 / 2233, places=3, msg='Same relative position')
+                self.assertAlmostEqual(ink.y0, 1500 * k, places=1)
+            calls = []
+
+            def run(args, **kwargs):
+                calls.append(args)
+                return subprocess.CompletedProcess(args, 1, 'Too large image: 122,343,753 pixels', '')
+
+            with patch('sheet_labels.audiveris_command', return_value='/fake/audiveris'), \
+                    patch('sheet_labels.subprocess.run', side_effect=run):
+                with self.assertRaisesRegex(SheetError, 'too large'):
+                    recognize(huge, folder)
+            self.assertEqual(calls[0][-1], str(copy), 'Audiveris reads the A4 copy, not the original')
 
     def test_invalid_and_encrypted_pdfs(self):
         with tempfile.TemporaryDirectory() as folder:

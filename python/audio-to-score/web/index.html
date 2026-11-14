@@ -1020,7 +1020,7 @@ tailwind.config = { theme: { extend: {
         const style = result.style, description = [];
         if (style.show_names) description.push(result.naming === 'letters' ? 'Letter names' : 'Fixed Do');
         if (style.color_notes) description.push('Colored noteheads');
-        $('pdf-result-info').textContent = `${description.join(' + ')} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} notes styled · Original layout preserved`;
+        $('pdf-result-info').textContent = `${description.join(' + ')} · ${result.pages} page${result.pages === 1 ? '' : 's'} · ${result.notes} notes styled${result.skipped ? ` · ${result.skipped} left unlabeled (clef not recognized)` : ''} · ${result.resized ? 'Oversized pages resized to A4' : 'Original layout preserved'}`;
       }
       $('pdf-sheet').innerHTML = result.player;
       $('pdf-zoom').value = 100; $('pdf-zoom-value').textContent = '100%'; $('pdf-sheet').style.width = '100%';
