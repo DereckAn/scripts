@@ -12,7 +12,6 @@ export interface SvgFile {
   /** Intrinsic size in pixels, taken from width/height or viewBox. */
   width: number;
   height: number;
-  error?: string;
 }
 
 export interface PdfSettings {
@@ -36,11 +35,5 @@ export const PAGE_SIZES_MM: Record<Exclude<PageSizeMode, 'auto'>, { width: numbe
   a4: { width: 210, height: 297 },
   letter: { width: 215.9, height: 279.4 },
 };
-
-export const PAGE_SIZE_OPTIONS: Array<{ value: PageSizeMode; label: string; description: string }> = [
-  { value: 'auto', label: 'Automático', description: 'Cada página conserva el tamaño original del SVG' },
-  { value: 'a4', label: 'A4', description: '210 × 297 mm, el estándar para partituras' },
-  { value: 'letter', label: 'Carta', description: '216 × 279 mm, estándar en Norteamérica' },
-];
 
 export const MAX_SVG_SIZE = 25 * 1024 * 1024; // 25MB por archivo

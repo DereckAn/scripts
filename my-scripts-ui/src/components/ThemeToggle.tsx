@@ -28,7 +28,7 @@ function subscribeTheme(onChange: () => void) {
   };
 }
 
-export default function ThemeToggle({ className, showLabel = false }: { className?: string; showLabel?: boolean }) {
+export default function ThemeToggle({ className, showLabel = false }: { className: string; showLabel?: boolean }) {
   const isDark = useSyncExternalStore(subscribeTheme, getTheme, serverTheme);
   const toggleTheme = () => {
     const dark = !getTheme();
@@ -40,10 +40,10 @@ export default function ThemeToggle({ className, showLabel = false }: { classNam
 
   return (
     <button type="button" onClick={toggleTheme}
-      className={className ?? 'p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors'}
+      className={className}
       aria-label={isDark ? 'Activar tema claro' : 'Activar tema oscuro'}
       title={isDark ? 'Activar tema claro' : 'Activar tema oscuro'}>
-      {className ? <Icon aria-hidden="true" /> : <span className="text-lg">{isDark ? '🌙' : '☀️'}</span>}
+      <Icon aria-hidden="true" />
       {showLabel && <span>{isDark ? 'Oscuro' : 'Claro'}</span>}
     </button>
   );

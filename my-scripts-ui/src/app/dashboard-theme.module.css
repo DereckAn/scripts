@@ -144,7 +144,7 @@
 .available { margin-left: 4px; color: var(--dash-subtle); font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; }
 .filter { display: flex; align-items: center; gap: 7px; color: var(--dash-subtle); font-family: var(--font-geist-mono), monospace; font-size: 10px; }
 .filter select { max-width: 130px; padding: 5px 9px; border: 1px solid var(--dash-border); border-radius: 4px; background: var(--dash-inset); color: var(--dash-text); cursor: pointer; }
-.toolGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.toolGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .toolCard { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 24px; padding: 20px; border: 1px solid var(--dash-border); border-radius: 7px; background: var(--dash-surface); box-shadow: var(--dash-shadow); transition: background 160ms, border-color 160ms; }
 .toolCard:hover { background: var(--dash-inset); border-color: var(--dash-accent); }
 .cardContent { display: grid; gap: 14px; }

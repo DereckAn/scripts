@@ -18,7 +18,6 @@ All commands run from `my-scripts-ui/`:
 ```bash
 bun dev          # Development server with Turbopack at http://localhost:3000
 bun run build    # Production build
-bun run lint     # ESLint
 bun run type-check  # TypeScript type check (no emit)
 ```
 
@@ -28,24 +27,23 @@ Bun is the required package manager (not npm/yarn).
 
 Uses **Next.js App Router** with the following layout:
 
-- `src/app/` — Pages and API routes. Each feature has a matching page directory (e.g., `generate-scripts/`, `convert-images/`) and API route under `api/`.
+- `src/app/` — Dashboard and client-side tool pages (`generate-scripts/`, `convert-images/`, and `svg-to-pdf/`).
 - `src/components/` — Reusable React components, typically one per feature area.
 - `src/data/apps.ts` — Static database of 40+ applications with OS-specific install commands (Homebrew, APT, DNF, Pacman, Snap, Flatpak).
-- `src/utils/` — Pure utility functions that mirror the feature areas (script generation, image conversion, scraping, etc.).
+- `src/utils/` — Utilities for script generation, image conversion, and SVG-to-PDF conversion.
 - `src/types/` — TypeScript interfaces per feature.
-- `src/lib/utils.ts` — `cn()` helper for Tailwind class merging.
 
 Path alias `@/*` maps to `./src/*`.
 
 ### Features and Data Flow
 
-**Script Generator** (`/generate-scripts`): Users select a target OS and apps → frontend POSTs to `/api/generate-script` → server builds a bash script from `src/utils/script-generator.ts` using the app database in `src/data/apps.ts` → user downloads script + README.
+**Script Generator** (`/generate-scripts`): Users select a target OS and apps → the browser generates Bash and README previews using `src/utils/script-generator.ts` and `src/data/apps.ts` → users download individual files or a ZIP.
 
-**Image Converter** (`/convert-images`): Client-side upload → `/api/convert-image` → returns converted file (JPEG/PNG/WEBP/AVIF).
+**Image Converter** (`/convert-images`): Client-side upload and conversion → users download JPEG, PNG, WebP, or AVIF files individually or in a ZIP.
 
-**Social Media Galleries** (`/instagram-photos`, `/twitter-photos`): API routes proxy requests to external APIs; auth tokens handled server-side.
+**SVG to PDF** (`/svg-to-pdf`): SVG/SVGZ upload → users arrange pages and configure paper settings → jsPDF and svg2pdf.js generate a merged PDF or individual PDFs in a ZIP.
 
-**AI Image Analysis** (`/image-analysis`): Connects to local LLM providers (Ollama, LM Studio) configured via `AIProviderConfig` component.
+**Shared UI**: The dashboard and all three tools use `src/components/dashboard/WorkspaceShell.tsx` for navigation and light/dark themes.
 
 ## Automation Scripts
 

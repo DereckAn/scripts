@@ -17,7 +17,7 @@ export function outputName(image: ImageFile, format: ImageFormat, pattern: strin
 export default function useImageBatch() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [settings, setSettings] = useState<ConversionSettings>({ format: 'webp', quality: 85,
-    maintainAspectRatio: true, removeMetadata: true, backgroundColor: '#ffffff', flattenTransparency: false });
+    maintainAspectRatio: true, backgroundColor: '#ffffff', flattenTransparency: false });
   const [pattern, setPattern] = useState('{name}_opt.{ext}');
   const [supported, setSupported] = useState<ImageFormat[]>(['jpg', 'png', 'webp']);
   const [running, setRunning] = useState(false);

@@ -11,7 +11,6 @@ This is a Next.js 15 application with TypeScript, Tailwind CSS v4, and React 19.
 - **Development**: `bun dev` - Starts development server with Turbopack at http://localhost:3000
 - **Build**: `bun run build` - Creates production build
 - **Start**: `bun start` - Starts production server
-- **Lint**: `bun run lint` - Runs ESLint with Next.js rules
 - **Type check**: `bun run type-check` - TypeScript type checking (no emit)
 
 **Note**: Bun is the required package manager for this project.
@@ -22,7 +21,6 @@ This is a Next.js 15 application with TypeScript, Tailwind CSS v4, and React 19.
 - **Styling**: Tailwind CSS v4 with PostCSS
 - **TypeScript**: Configured with path mapping (`@/*` maps to `./src/*`)
 - **Fonts**: Uses Geist Sans and Geist Mono from Google Fonts
-- **Linting**: ESLint with Next.js core web vitals and TypeScript rules
 
 ## Key Files
 
@@ -30,7 +28,6 @@ This is a Next.js 15 application with TypeScript, Tailwind CSS v4, and React 19.
 - `src/app/page.tsx` - Homepage component
 - `src/app/globals.css` - Global styles with Tailwind directives
 - `tsconfig.json` - TypeScript configuration with path aliases
-- `eslint.config.mjs` - ESLint configuration using flat config format
 
 <!-- BEGIN:nextjs-agent-rules -->
 

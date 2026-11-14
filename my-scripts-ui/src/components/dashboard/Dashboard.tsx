@@ -3,13 +3,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, Check, ChevronRight, CircleHelp, FileDown, FolderOpen,
-  Layers3, Monitor, Search, Settings2, Terminal } from 'lucide-react';
+  Layers3, Image, Music, Search, Settings2, Terminal } from 'lucide-react';
 import WorkspaceShell from './WorkspaceShell';
 import styles from '@/app/dashboard-theme.module.css';
 import { tools } from './tools';
 
 const normalized = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const categories = ['Todos', 'Medios', 'Extracción', 'Sistema', 'Social', 'IA local', 'Música'];
+const categories = ['Todos', ...new Set(tools.map(tool => tool.category))];
 
 export default function Dashboard() {
   const [query, setQuery] = useState('');
@@ -28,7 +28,7 @@ export default function Dashboard() {
               <div className={styles.heroCopy}>
                 <div className={styles.eyebrow}><span className={styles.pill}><span className={styles.statusDot} />Tu caja de herramientas</span><span>Medios · Código · Automatización</span></div>
                 <h1 id="dashboard-title">Panel de Utilidades</h1>
-                <p>Un espacio para convertir, extraer, crear y automatizar. Elige tu próxima tarea y encuentra aquí la herramienta para resolverla.</p>
+                <p>Un espacio para convertir, crear y automatizar. Elige tu próxima tarea y encuentra aquí la herramienta para resolverla.</p>
               </div>
               <div className={styles.searchArea}>
                 <label htmlFor="dashboard-search">Acceso rápido global</label>
@@ -37,9 +37,9 @@ export default function Dashboard() {
             </div>
             <div className={styles.metrics}>
               <div className={styles.metric}><span className={styles.metricIcon}><Layers3 size={21} /></span><div><small>Utilidades</small><strong>{tools.length} herramientas disponibles</strong></div></div>
-              <div className={styles.metric}><span className={styles.metricIcon}><Monitor size={21} /></span><div><small>IA local</small><strong>Ollama / LM Studio</strong></div></div>
+              <div className={styles.metric}><span className={styles.metricIcon}><Image size={21} /></span><div><small>Imágenes</small><strong>JPEG · PNG · WebP · AVIF</strong></div></div>
               <div className={styles.metric}><span className={styles.metricIcon}><Terminal size={21} /></span><div><small>Automatización</small><strong>macOS y Linux</strong></div></div>
-              <div className={styles.metric}><span className={styles.metricIcon}><FileDown size={21} /></span><div><small>Exportación</small><strong>PDF · ZIP · JSON · CSV</strong></div></div>
+              <div className={styles.metric}><span className={styles.metricIcon}><FileDown size={21} /></span><div><small>Exportación</small><strong>PDF · ZIP · Bash · Markdown</strong></div></div>
             </div>
           </section>
           <section id="herramientas" aria-labelledby="tools-heading" className={styles.toolsSection}>
@@ -67,15 +67,15 @@ export default function Dashboard() {
             <div className={styles.shortcuts}>
               <div className={styles.boxHeading}><FolderOpen size={19} aria-hidden="true" /><h2>Empieza por una tarea</h2><span>Accesos directos</span></div>
               {[
-                { path: '/convert-images', title: 'Preparar imágenes para tu próximo proyecto', detail: 'Formatos, dimensiones y calidad', icon: tools[0].icon },
+                { path: '/convert-images', title: 'Preparar imágenes para tu próximo proyecto', detail: 'Formatos, dimensiones y calidad', icon: Image },
                 { path: '/generate-scripts', title: 'Configurar un nuevo entorno de trabajo', detail: 'Aplicaciones y scripts de instalación', icon: Terminal },
-                { path: '/svg-to-pdf', title: 'Reunir las páginas de una partitura', detail: 'Páginas SVG en un solo PDF', icon: tools[6].icon },
+                { path: '/svg-to-pdf', title: 'Reunir las páginas de una partitura', detail: 'Páginas SVG en un solo PDF', icon: Music },
               ].map(item => <Link href={item.path} key={item.path} className={styles.shortcut}><span className={styles.shortcutIcon}><item.icon size={18} aria-hidden="true" /></span><span><strong>{item.title}</strong><small>{item.detail}</small></span><ChevronRight size={16} aria-hidden="true" /></Link>)}
             </div>
             <aside className={styles.workspaceNote}>
               <div className={styles.boxHeading}><BookOpen size={19} aria-hidden="true" /><h2>Tu espacio, a tu ritmo</h2></div>
               <p>Abre cada herramienta para configurar sus opciones, procesar tus archivos y descargar los resultados.</p>
-              <div className={styles.noteInset}><CircleHelp size={18} aria-hidden="true" /><span>Los requisitos y ajustes de conexión se encuentran dentro de cada utilidad.</span></div>
+              <div className={styles.noteInset}><CircleHelp size={18} aria-hidden="true" /><span>Las opciones de formato y configuración se encuentran dentro de cada utilidad.</span></div>
               <span className={styles.noteFooter}>Todo empieza con una tarea.</span>
             </aside>
           </section>

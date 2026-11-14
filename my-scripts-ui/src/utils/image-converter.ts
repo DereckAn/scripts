@@ -176,17 +176,6 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export async function downloadMultipleImages(images: ImageFile[], format: ImageFormat): Promise<void> {
-  for (const image of images) {
-    if (image.convertedBlob) {
-      const filename = generateFileName(image.name, image.convertedFormat ?? format, image.customName ?? image.convertedName);
-      downloadBlob(image.convertedBlob, filename);
-      // Add delay to prevent browser from blocking multiple downloads
-      await new Promise(resolve => setTimeout(resolve, 300));
-    }
-  }
-}
-
 export async function createZipArchive(images: ImageFile[], format: ImageFormat): Promise<Blob> {
   const zip = new JSZip();
   const names = new Set<string>();

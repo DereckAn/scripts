@@ -7,11 +7,11 @@ import { CATEGORIES } from '@/components/script-generator/config';
 import styles from '@/app/generate-scripts/generator.module.css';
 
 export default function AppSelector({ app, selectedOS, isSelected, onToggle }: {
-  app: App; selectedOS: OperatingSystem | null; isSelected: boolean; onToggle: (id: string) => void;
+  app: App; selectedOS: OperatingSystem; isSelected: boolean; onToggle: (id: string) => void;
 }) {
   const category = CATEGORIES.find(item => item.id === app.category);
   const Icon = category?.icon || CATEGORIES[0].icon;
-  const command = selectedOS ? getInstallCommand(app, selectedOS) : '';
+  const command = getInstallCommand(app, selectedOS);
   return (
     <label className={`${styles.packageCard} ${isSelected ? styles.packageSelected : ''}`}>
       <input type="checkbox" checked={isSelected} disabled={!command} onChange={() => onToggle(app.id)} aria-label={`Seleccionar ${app.name}`} />

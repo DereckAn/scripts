@@ -6,7 +6,6 @@ export const APPS: App[] = [
     id: 'raycast',
     name: 'Raycast',
     description: 'Blazingly fast, totally extendable launcher',
-    icon: '🚀',
     category: 'productivity',
     macosOnly: true,
     install: {
@@ -18,7 +17,6 @@ export const APPS: App[] = [
     id: 'spotify',
     name: 'Spotify',
     description: 'Music streaming service',
-    icon: '🎵',
     category: 'productivity',
     install: {
       macos: { cask: 'spotify' },
@@ -32,7 +30,6 @@ export const APPS: App[] = [
     id: 'amphetamine',
     name: 'Amphetamine',
     description: 'Keep your Mac awake',
-    icon: '☕',
     category: 'productivity',
     macosOnly: true,
     install: {
@@ -48,7 +45,6 @@ export const APPS: App[] = [
     id: 'vscode',
     name: 'Visual Studio Code',
     description: 'Code editor by Microsoft',
-    icon: '📝',
     category: 'code-editors',
     install: {
       macos: { cask: 'visual-studio-code' },
@@ -62,7 +58,6 @@ export const APPS: App[] = [
     id: 'cursor',
     name: 'Cursor',
     description: 'AI-powered code editor',
-    icon: '🎯',
     category: 'code-editors',
     install: {
       macos: { cask: 'cursor' },
@@ -76,7 +71,6 @@ export const APPS: App[] = [
     id: 'intellij',
     name: 'IntelliJ IDEA',
     description: 'Java IDE by JetBrains',
-    icon: '🧠',
     category: 'code-editors',
     install: {
       macos: { cask: 'intellij-idea' },
@@ -90,7 +84,6 @@ export const APPS: App[] = [
     id: 'vim',
     name: 'Vim',
     description: 'Vi IMproved text editor',
-    icon: '📄',
     category: 'code-editors',
     install: {
       macos: { homebrew: 'vim' },
@@ -104,7 +97,6 @@ export const APPS: App[] = [
     id: 'webstorm',
     name: 'WebStorm',
     description: 'JavaScript IDE by JetBrains',
-    icon: '🌐',
     category: 'code-editors',
     install: {
       macos: { cask: 'webstorm' },
@@ -118,7 +110,6 @@ export const APPS: App[] = [
     id: 'zed',
     name: 'Zed',
     description: 'High-performance multiplayer code editor',
-    icon: '⚡',
     category: 'code-editors',
     install: {
       macos: { cask: 'zed' },
@@ -132,7 +123,6 @@ export const APPS: App[] = [
     id: 'vscodium',
     name: 'VSCodium',
     description: 'Open source version of VS Code',
-    icon: '📝',
     category: 'code-editors',
     install: {
       macos: { cask: 'vscodium' },
@@ -148,7 +138,6 @@ export const APPS: App[] = [
     id: 'warp',
     name: 'Warp',
     description: 'The terminal for the 21st century',
-    icon: '🚀',
     category: 'terminals',
     macosOnly: true,
     install: {
@@ -160,7 +149,6 @@ export const APPS: App[] = [
     id: 'iterm2',
     name: 'iTerm2',
     description: 'Terminal emulator for macOS',
-    icon: '💻',
     category: 'terminals',
     macosOnly: true,
     install: {
@@ -174,7 +162,6 @@ export const APPS: App[] = [
     id: 'chrome',
     name: 'Google Chrome',
     description: 'Web browser by Google',
-    icon: '🌐',
     category: 'browsers',
     install: {
       macos: { cask: 'google-chrome' },
@@ -188,7 +175,6 @@ export const APPS: App[] = [
     id: 'brave',
     name: 'Brave',
     description: 'Privacy-focused web browser',
-    icon: '🦁',
     category: 'browsers',
     install: {
       macos: { cask: 'brave-browser' },
@@ -202,7 +188,6 @@ export const APPS: App[] = [
     id: 'edge',
     name: 'Microsoft Edge',
     description: 'Web browser by Microsoft',
-    icon: '🌊',
     category: 'browsers',
     install: {
       macos: { cask: 'microsoft-edge' },
@@ -216,7 +201,6 @@ export const APPS: App[] = [
     id: 'firefox',
     name: 'Firefox',
     description: 'Open source web browser',
-    icon: '🦊',
     category: 'browsers',
     install: {
       macos: { cask: 'firefox' },
@@ -230,7 +214,6 @@ export const APPS: App[] = [
     id: 'opera',
     name: 'Opera',
     description: 'Web browser with built-in VPN',
-    icon: '🎭',
     category: 'browsers',
     install: {
       macos: { cask: 'opera' },
@@ -246,7 +229,6 @@ export const APPS: App[] = [
     id: 'git',
     name: 'Git',
     description: 'Version control system',
-    icon: '🌳',
     category: 'development-tools',
     install: {
       macos: { homebrew: 'git' },
@@ -260,7 +242,6 @@ export const APPS: App[] = [
     id: 'github-cli',
     name: 'GitHub CLI',
     description: 'GitHub command line interface',
-    icon: '🐙',
     category: 'development-tools',
     install: {
       macos: { homebrew: 'gh' },
@@ -274,7 +255,6 @@ export const APPS: App[] = [
     id: 'aws-cli',
     name: 'AWS CLI',
     description: 'Amazon Web Services command line interface',
-    icon: '☁️',
     category: 'development-tools',
     install: {
       macos: { homebrew: 'awscli' },
@@ -288,7 +268,6 @@ export const APPS: App[] = [
     id: 'docker',
     name: 'Docker Desktop',
     description: 'Containerization platform',
-    icon: '🐳',
     category: 'development-tools',
     install: {
       macos: { cask: 'docker' },
@@ -307,7 +286,6 @@ export const APPS: App[] = [
     id: 'llm-studio',
     name: 'LLM Studio',
     description: 'Local LLM management',
-    icon: '🤖',
     category: 'development-tools',
     install: {
       macos: { cask: 'lm-studio' },
@@ -323,7 +301,6 @@ export const APPS: App[] = [
     id: 'python',
     name: 'Python',
     description: 'Python programming language',
-    icon: '🐍',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'python' },
@@ -343,7 +320,6 @@ export const APPS: App[] = [
     id: 'java',
     name: 'Java',
     description: 'Java Development Kit',
-    icon: '☕',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'openjdk' },
@@ -357,7 +333,6 @@ export const APPS: App[] = [
     id: 'rust',
     name: 'Rust',
     description: 'Rust programming language',
-    icon: '🦀',
     category: 'programming-languages',
     install: {
       macos: { command: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y' },
@@ -377,7 +352,6 @@ export const APPS: App[] = [
     id: 'nodejs',
     name: 'Node.js',
     description: 'JavaScript runtime',
-    icon: '📗',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'node' },
@@ -391,7 +365,6 @@ export const APPS: App[] = [
     id: 'ruby',
     name: 'Ruby',
     description: 'Ruby programming language',
-    icon: '💎',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'ruby' },
@@ -405,7 +378,6 @@ export const APPS: App[] = [
     id: 'go',
     name: 'Go',
     description: 'Go programming language',
-    icon: '🐹',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'go' },
@@ -419,7 +391,6 @@ export const APPS: App[] = [
     id: 'csharp',
     name: 'C#/.NET',
     description: '.NET development platform',
-    icon: '🔷',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'dotnet' },
@@ -433,7 +404,6 @@ export const APPS: App[] = [
     id: 'cpp',
     name: 'C++',
     description: 'C++ compiler and tools',
-    icon: '⚙️',
     category: 'programming-languages',
     install: {
       macos: { command: 'xcode-select --install' },
@@ -447,7 +417,6 @@ export const APPS: App[] = [
     id: 'php',
     name: 'PHP',
     description: 'PHP programming language',
-    icon: '🐘',
     category: 'programming-languages',
     install: {
       macos: { homebrew: 'php' },
@@ -463,7 +432,6 @@ export const APPS: App[] = [
     id: 'laravel',
     name: 'Laravel',
     description: 'PHP web framework',
-    icon: '🏗️',
     category: 'frameworks',
     install: {
       macos: { command: 'composer global require laravel/installer' },
@@ -483,7 +451,6 @@ export const APPS: App[] = [
     id: 'kubernetes',
     name: 'Kubernetes',
     description: 'Container orchestration',
-    icon: '⚓',
     category: 'frameworks',
     install: {
       macos: { homebrew: 'kubectl' },

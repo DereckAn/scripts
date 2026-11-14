@@ -1,9 +1,12 @@
 # My Scripts UI
 
-A Next.js 15 application for generating custom installation scripts for macOS and Linux systems. This tool allows users to create automated installation scripts for popular development tools, applications, and programming languages with a user-friendly web interface.
+A Next.js application with a dashboard and three utilities: image conversion, installation script generation, and SVG-to-PDF conversion. All pages share responsive navigation and light/dark themes.
 
 ## Features
 
+- **Image converter** (`/convert-images`): Batch conversion to JPEG, PNG, WebP, and AVIF, resizing, previews, and individual or ZIP downloads.
+- **SVG to PDF** (`/svg-to-pdf`): SVG/SVGZ uploads, page previews and reordering, A4/Carta/original sizes, orientation and margins, merged PDF or individual PDFs in a ZIP.
+- **Script generator** (`/generate-scripts`): Application filters, live Bash/README previews, local configuration history, and individual or ZIP downloads.
 - 🎯 **Smart OS Detection**: Automatically filters apps based on selected operating system
 - 📦 **Comprehensive App Database**: Support for 40+ popular applications and tools
 - 🔧 **Multiple Package Managers**: Homebrew (macOS), APT, DNF, Pacman, AUR, Snap, Flatpak
@@ -127,8 +130,6 @@ bun run build
 # Start production server
 bun start
 
-# Run ESLint
-bun run lint
 
 # Type check without emitting files
 bun run type-check
@@ -139,18 +140,16 @@ bun run type-check
 \`\`\`
 src/
 ├── app/                          # Next.js App Router
-│   ├── api/                      # API routes
-│   │   └── generate-script/      # Script generation endpoint
 │   ├── convert-images/           # Image conversion page
 │   ├── generate-scripts/         # Script generation page (main feature)
-│   ├── web-scraping/            # Web scraping page
+│   ├── svg-to-pdf/              # SVG/SVGZ to PDF conversion page
 │   ├── globals.css              # Global styles
 │   ├── layout.tsx               # Root layout
 │   └── page.tsx                 # Homepage
 ├── components/                   # Reusable React components
 │   ├── AppSelector.tsx          # Individual app selection component
-│   ├── CategorySection.tsx      # App category grouping component
-│   ├── Navbar.tsx              # Sidebar navigation
+│   ├── dashboard/              # Dashboard, tool catalog, and shared WorkspaceShell
+│   ├── script-generator/       # Script generator configuration
 │   └── ThemeToggle.tsx         # Dark/light theme switcher
 ├── data/                        # Static data
 │   └── apps.ts                 # Application database
@@ -200,36 +199,7 @@ Generated scripts include:
 # Completion message
 \`\`\`
 
-## API Endpoints
-
-### POST /api/generate-script
-
-Generate installation script and README.
-
-**Request Body**:
-\`\`\`json
-{
-  "os": "macos" | "ubuntu" | "fedora" | "arch",
-  "selectedApps": ["app-id-1", "app-id-2"],
-  "options": {
-    "updateSystem": boolean,
-    "createBackup": boolean,
-    "showProgress": boolean,
-    "configureDotfiles": boolean,
-    "installOhMyZsh": boolean
-  }
-}
-\`\`\`
-
-**Response**:
-\`\`\`json
-{
-  "script": "#!/bin/bash\\n...",
-  "readme": "# Installation Script\\n...",
-  "filename": "install-script-macos.sh",
-  "readmeFilename": "README-macos.md"
-}
-\`\`\`
+All three tools process files and generate downloads in the browser; no API setup is required.
 
 ## Configuration
 
@@ -245,7 +215,6 @@ To add a new application to the database:
   id: 'unique-app-id',
   name: 'App Name',
   description: 'Brief description',
-  icon: '🎯',
   category: 'category-name',
   macosOnly?: boolean,  // Optional: macOS only
   linuxOnly?: boolean,  // Optional: Linux only

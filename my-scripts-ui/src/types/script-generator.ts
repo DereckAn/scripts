@@ -4,7 +4,6 @@ export interface App {
   id: string;
   name: string;
   description: string;
-  icon: string;
   category: string;
   macosOnly?: boolean;
   linuxOnly?: boolean;
@@ -51,15 +50,3 @@ export interface ScriptConfig {
   selectedApps: string[];
   options: ScriptOptions;
 }
-
-export const APP_CATEGORIES = [
-  'productivity',
-  'code-editors',
-  'terminals',
-  'browsers',
-  'development-tools',
-  'programming-languages',
-  'frameworks'
-] as const;
-
-export type AppCategory = typeof APP_CATEGORIES[number];
