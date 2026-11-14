@@ -1,301 +1,91 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, FileArchive, FileDown, Loader2 } from 'lucide-react';
+import { Check, FileArchive, FileDown, FileMusic, Layers, Loader2, Monitor, RectangleHorizontal, RectangleVertical, Terminal } from 'lucide-react';
+import WorkspaceShell from '@/components/dashboard/WorkspaceShell';
 import SvgPageList from '@/components/SvgPageList';
 import SvgUploader from '@/components/SvgUploader';
-import {
-  PAGE_SIZE_OPTIONS,
-  PageSizeMode,
-  PdfProgress,
-  PdfSettings,
-  SvgFile,
-} from '@/types/svg-to-pdf';
-import {
-  buildIndividualPdfs,
-  buildMergedPdf,
-  createPdfZip,
-  downloadBlob,
-  formatFileSize,
-  moveSvgFile,
-  sanitizeFileName,
-  sortSvgFilesByName,
-} from '@/utils/svg-to-pdf';
+import type { PageSizeMode, PdfProgress, PdfSettings, SvgFile } from '@/types/svg-to-pdf';
+import { buildIndividualPdfs, buildMergedPdf, createPdfZip, downloadBlob, formatFileSize, moveSvgFile, sanitizeFileName, sortSvgFilesByName } from '@/utils/svg-to-pdf';
+import styles from './converter.module.css';
+
+const FORMATS: { value: PageSizeMode; label: string; dimensions: string; detail: string }[] = [
+  { value: 'a4', label: 'A4', dimensions: '210 × 297 mm', detail: 'Estándar europeo' },
+  { value: 'letter', label: 'Carta', dimensions: '215.9 × 279.4 mm', detail: 'Estándar US' },
+  { value: 'auto', label: 'Original', dimensions: 'Dimensiones del SVG', detail: 'Tamaño de cada página' },
+];
 
 export default function SvgToPdfPage() {
   const [files, setFiles] = useState<SvgFile[]>([]);
-  const [settings, setSettings] = useState<PdfSettings>({
-    pageSize: 'a4',
-    margin: 10,
-    fileName: 'partitura',
-  });
-  const [isWorking, setIsWorking] = useState(false);
+  const [settings, setSettings] = useState<PdfSettings>({ pageSize: 'a4', margin: 10, fileName: 'partitura', orientation: 'portrait' });
+  const [merged, setMerged] = useState(true);
+  const [individual, setIndividual] = useState(true);
+  const [working, setWorking] = useState<'merged' | 'zip' | null>(null);
+  const [reading, setReading] = useState(false);
   const [progress, setProgress] = useState<PdfProgress | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Blob URLs for the thumbnails must outlive renders but be released on unmount.
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('Añade tus páginas SVG para preparar el documento.');
   const filesRef = useRef<SvgFile[]>([]);
+  const mounted = useRef(true);
+  const jobLock = useRef(false);
   filesRef.current = files;
-  useEffect(() => {
-    return () => {
-      filesRef.current.forEach((file) => URL.revokeObjectURL(file.preview));
-    };
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; filesRef.current.forEach(file => URL.revokeObjectURL(file.preview)); }; }, []);
+  const busy = !!working || reading;
+
+  const addFiles = useCallback((incoming: SvgFile[]) => {
+    if (!mounted.current) { incoming.forEach(file => URL.revokeObjectURL(file.preview)); return; }
+    // New batches are naturally ordered without undoing the user's existing page order.
+    setFiles(prev => [...prev, ...sortSvgFilesByName(incoming)]);
+    setError(''); setStatus(`${incoming.length} páginas añadidas. Revisa el orden antes de compilar.`);
   }, []);
+  const remove = (id: string) => {
+    const file = files.find(item => item.id === id);
+    if (file) URL.revokeObjectURL(file.preview);
+    setFiles(prev => prev.filter(file => file.id !== id)); setProgress(null); setStatus('Página eliminada de la compilación.');
+  };
+  const clear = () => {
+    files.forEach(file => URL.revokeObjectURL(file.preview)); setFiles([]); setProgress(null); setError(''); setStatus('Cola vacía. Añade tus páginas SVG para comenzar.');
+  };
+  const runJob = async (kind: 'merged' | 'zip') => {
+    if (!files.length || jobLock.current || reading || (kind === 'merged' ? !merged : !individual)) return;
+    jobLock.current = true; setWorking(kind); setError(''); setProgress(null);
+    setStatus(kind === 'merged' ? 'Preparando el PDF multipágina…' : 'Preparando los PDFs individuales…');
+    const started = performance.now(), snapshot = [...files], config = { ...settings };
+    const onProgress = (value: PdfProgress) => { if (mounted.current) setProgress(value); };
+    try {
+      const output = kind === 'merged' ? await buildMergedPdf(snapshot, config, onProgress)
+        : await createPdfZip(await buildIndividualPdfs(snapshot, config, onProgress));
+      if (!mounted.current) return;
+      const name = `${sanitizeFileName(config.fileName)}${kind === 'merged' ? '.pdf' : '-paginas.zip'}`;
+      downloadBlob(output, name);
+      setStatus(`${name} generado · ${snapshot.length} páginas · ${formatFileSize(output.size)} · ${((performance.now() - started) / 1000).toFixed(1)} s`);
+    } catch (error) {
+      if (mounted.current) { setError(error instanceof Error ? error.message : 'No se pudo generar el PDF.'); setStatus('La compilación no se completó. Revisa los archivos e inténtalo de nuevo.'); setProgress(null); }
+    } finally { jobLock.current = false; if (mounted.current) setWorking(null); }
+  };
+  const outputName = `${sanitizeFileName(settings.fileName)}.pdf`;
+  const format = FORMATS.find(format => format.value === settings.pageSize)!;
+  const orientation = settings.pageSize === 'auto' ? 'Orientación original' : settings.orientation === 'landscape' ? 'Horizontal' : 'Vertical';
 
-  const handleFilesAdded = useCallback((newFiles: SvgFile[]) => {
-    // Keep the whole list sorted so the page order matches the file names.
-    setFiles((prev) => sortSvgFilesByName([...prev, ...newFiles]));
-    setError(null);
-  }, []);
-
-  const handleReorder = useCallback((from: number, to: number) => {
-    setFiles((prev) => moveSvgFile(prev, from, to));
-  }, []);
-
-  const handleRemove = useCallback((id: string) => {
-    setFiles((prev) => {
-      const target = prev.find((file) => file.id === id);
-      if (target) URL.revokeObjectURL(target.preview);
-      return prev.filter((file) => file.id !== id);
-    });
-  }, []);
-
-  const handleClear = useCallback(() => {
-    setFiles((prev) => {
-      prev.forEach((file) => URL.revokeObjectURL(file.preview));
-      return [];
-    });
-  }, []);
-
-  const handleSortByName = useCallback(() => {
-    setFiles((prev) => sortSvgFilesByName(prev));
-  }, []);
-
-  const runJob = useCallback(
-    async (job: (onProgress: (value: PdfProgress) => void) => Promise<void>) => {
-      if (files.length === 0 || isWorking) return;
-
-      setIsWorking(true);
-      setError(null);
-      try {
-        await job(setProgress);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'No se pudo generar el PDF');
-      } finally {
-        setIsWorking(false);
-        setTimeout(() => setProgress(null), 1500);
-      }
-    },
-    [files.length, isWorking]
-  );
-
-  const handleMerge = useCallback(() => {
-    return runJob(async (onProgress) => {
-      const blob = await buildMergedPdf(files, settings, onProgress);
-      downloadBlob(blob, `${sanitizeFileName(settings.fileName)}.pdf`);
-    });
-  }, [files, runJob, settings]);
-
-  const handleIndividual = useCallback(() => {
-    return runJob(async (onProgress) => {
-      const pdfs = await buildIndividualPdfs(files, settings, onProgress);
-      const zip = await createPdfZip(pdfs);
-      downloadBlob(zip, `${sanitizeFileName(settings.fileName)}-paginas.zip`);
-    });
-  }, [files, runJob, settings]);
-
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200 dark:from-stone-950 dark:via-stone-900 dark:to-stone-800">
-      <div className="absolute inset-0 bg-grid-stone-900/[0.04] dark:bg-grid-stone-100/[0.02]" />
-
-      <div className="relative p-8 pt-20">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-stone-900 to-stone-700 dark:from-stone-100 dark:to-stone-300 rounded-xl mb-8 shadow-lg">
-              <span className="text-2xl">🎼</span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-6">
-              Partituras SVG a PDF
-            </h1>
-            <p className="text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto leading-relaxed">
-              Sube tus partituras en SVG, se ordenan solas por nombre y las unes en un único PDF
-              vectorial listo para imprimir.
-            </p>
-          </div>
-
-          <div className="space-y-8">
-            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
-              <SvgUploader onFilesAdded={handleFilesAdded} />
-            </div>
-
-            {files.length > 0 && (
-              <>
-                <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
-                  <SvgPageList
-                    files={files}
-                    onReorder={handleReorder}
-                    onRemove={handleRemove}
-                    onSortByName={handleSortByName}
-                    onClear={handleClear}
-                  />
-                </div>
-
-                <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60 space-y-6">
-                  <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-                    Opciones del PDF
-                  </h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-3">
-                      Tamaño de página
-                    </label>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      {PAGE_SIZE_OPTIONS.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() =>
-                            setSettings((prev) => ({
-                              ...prev,
-                              pageSize: option.value as PageSizeMode,
-                            }))
-                          }
-                          className={`text-left p-4 rounded-xl border transition-all duration-200 ${
-                            settings.pageSize === option.value
-                              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20'
-                              : 'border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600'
-                          }`}
-                        >
-                          <span className="block font-medium text-stone-900 dark:text-stone-100">
-                            {option.label}
-                          </span>
-                          <span className="block text-sm text-stone-500 dark:text-stone-400 mt-1">
-                            {option.description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div>
-                      <label
-                        htmlFor="pdf-name"
-                        className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2"
-                      >
-                        Nombre del archivo
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          id="pdf-name"
-                          type="text"
-                          value={settings.fileName}
-                          onChange={(e) =>
-                            setSettings((prev) => ({ ...prev, fileName: e.target.value }))
-                          }
-                          className="flex-1 px-4 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                        />
-                        <span className="text-stone-500 dark:text-stone-400">.pdf</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="pdf-margin"
-                        className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2"
-                      >
-                        Margen: {settings.margin} mm
-                      </label>
-                      <input
-                        id="pdf-margin"
-                        type="range"
-                        min={0}
-                        max={30}
-                        step={1}
-                        value={settings.margin}
-                        disabled={settings.pageSize === 'auto'}
-                        onChange={(e) =>
-                          setSettings((prev) => ({ ...prev, margin: Number(e.target.value) }))
-                        }
-                        className="w-full accent-indigo-600 disabled:opacity-40"
-                      />
-                      <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                        {settings.pageSize === 'auto'
-                          ? 'Sin margen: la página usa el tamaño original del SVG.'
-                          : 'Espacio en blanco alrededor de la partitura.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {progress && (
-                  <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-stone-200/60 dark:border-stone-800/60">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-                        🔄 Generando PDF...
-                      </h3>
-                      <span className="text-sm text-stone-600 dark:text-stone-400">
-                        {progress.current} de {progress.total} ({progress.percentage}%)
-                      </span>
-                    </div>
-
-                    <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-3 mb-2">
-                      <div
-                        className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
-                        style={{ width: `${progress.percentage}%` }}
-                      />
-                    </div>
-
-                    <p className="text-sm text-stone-600 dark:text-stone-400">
-                      {progress.currentFile}
-                    </p>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
-                    <p className="text-sm text-red-800 dark:text-red-200">⚠️ {error}</p>
-                  </div>
-                )}
-
-                <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-stone-200/60 dark:border-stone-800/60">
-                  <div className="flex flex-wrap gap-4 items-center justify-between">
-                    <div className="flex flex-wrap gap-4">
-                      <button
-                        onClick={handleMerge}
-                        disabled={isWorking}
-                        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-stone-400 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center gap-2"
-                      >
-                        {isWorking ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <FileDown className="w-5 h-5" />
-                        )}
-                        <span>Unir en un PDF ({files.length} páginas)</span>
-                      </button>
-
-                      <button
-                        onClick={handleIndividual}
-                        disabled={isWorking}
-                        className="border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center gap-2"
-                      >
-                        <FileArchive className="w-5 h-5" />
-                        <span>PDF por página (.zip)</span>
-                      </button>
-                    </div>
-
-                    <div className="text-sm text-stone-600 dark:text-stone-400 flex items-center gap-2">
-                      <Download className="w-4 h-4" />
-                      {files.length} archivos · {formatFileSize(totalSize)}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+  return <WorkspaceShell title="SVG a PDF" mainId="svg-main" sectionHref="#pdf-export" sectionLabel="Compilar documento">
+    <div className={styles.converter}>
+      <header className={styles.titleBlock}><div><div className={styles.eyebrow}><span><FileMusic size={17} />Música y documentos</span><code>SVG → PDF</code></div><h1>Compilador de SVG a PDF / Partituras Musicales</h1><p>Convierte y ensambla tus páginas SVG en un PDF vectorial. Ajusta el formato, revisa el orden y descarga tu partitura lista para imprimir.</p></div><span className={styles.localBadge}><Monitor size={15} />Procesamiento local</span></header>
+      <section className={`${styles.panel} ${styles.settings}`} aria-label="Configuración del documento">
+        <fieldset disabled={busy} className={styles.formatField}><legend>Formato y dimensiones</legend><div className={styles.formats}>{FORMATS.map(format => <label key={format.value} className={`${styles.formatCard} ${settings.pageSize === format.value ? styles.selectedFormat : ''}`}><span><strong>{format.label}</strong><input type="radio" name="pageSize" aria-label={format.label} checked={settings.pageSize === format.value} onChange={() => setSettings(prev => ({ ...prev, pageSize: format.value }))} /></span><code>{format.dimensions}</code><small>{format.detail}</small></label>)}</div></fieldset>
+        <fieldset disabled={busy} className={styles.layoutField}><legend className={styles.srOnly}>Diseño de página</legend><div className={styles.layoutControls}><div><span className={styles.controlLabel}>Orientación</span><div className={styles.orientation} role="group" aria-label="Orientación"><button type="button" disabled={settings.pageSize === 'auto'} aria-pressed={settings.orientation === 'portrait'} onClick={() => setSettings(prev => ({ ...prev, orientation: 'portrait' }))}><RectangleVertical size={15} />Vertical</button><button type="button" disabled={settings.pageSize === 'auto'} aria-pressed={settings.orientation === 'landscape'} onClick={() => setSettings(prev => ({ ...prev, orientation: 'landscape' }))}><RectangleHorizontal size={15} />Horizontal</button></div></div><div><label className={styles.controlLabel} htmlFor="pdf-margin">Márgenes: {settings.pageSize === 'auto' ? 0 : settings.margin} mm</label><input id="pdf-margin" type="range" min={0} max={30} step={1} value={settings.margin} disabled={settings.pageSize === 'auto'} onChange={event => setSettings(prev => ({ ...prev, margin: Number(event.target.value) }))} /><small>{settings.pageSize === 'auto' ? 'El tamaño original no añade márgenes.' : 'Espacio alrededor de cada página.'}</small></div></div><label className={styles.controlLabel} htmlFor="pdf-name">Nombre de salida</label><div className={styles.nameField}><FileDown size={16} /><input id="pdf-name" value={settings.fileName} onChange={event => setSettings(prev => ({ ...prev, fileName: event.target.value }))} /><span>.pdf</span></div></fieldset>
+        <fieldset className={styles.modes} disabled={busy}><legend>Modos de generación</legend><label><span><strong>PDF único multipágina</strong><small>Consolida las páginas en el orden elegido</small></span><input type="checkbox" checked={merged} onChange={event => setMerged(event.target.checked)} /></label><label><span><strong>ZIP de PDFs individuales</strong><small>Un archivo PDF por cada página SVG</small></span><input type="checkbox" checked={individual} onChange={event => setIndividual(event.target.checked)} /></label><span className={styles.modeHint}><Layers size={13} />Conversión con jsPDF + svg2pdf.js</span></fieldset>
+      </section>
+      <SvgPageList files={files} disabled={busy} onReorder={(from, to) => { setFiles(prev => moveSvgFile(prev, from, to)); setProgress(null); setStatus('Orden de páginas actualizado.'); }} onRemove={remove} onSortByName={() => { setFiles(prev => sortSvgFilesByName(prev)); setProgress(null); setStatus('Páginas ordenadas por nombre.'); }} onReverse={() => { setFiles(prev => [...prev].reverse()); setProgress(null); setStatus('Orden de páginas invertido.'); }} onClear={clear}>
+        <SvgUploader onFilesAdded={addFiles} maxFiles={Math.max(0, 100 - files.length)} disabled={!!working} onReadingChange={setReading} />
+      </SvgPageList>
+      <p className={styles.fontHint}>Para conservar símbolos musicales con mayor fidelidad, exporta el SVG con las fuentes convertidas en trazados. Las fuentes externas pueden variar al convertir.</p>
+      <section id="pdf-export" className={`${styles.panel} ${styles.exportPanel}`} aria-labelledby="export-title" aria-busy={!!working}>
+        <div className={styles.exportTop}><div><h2 id="export-title"><span className={styles.dot} />{working ? 'Compilando documento…' : `${files.length} páginas listas para compilar`}</h2><p>Documento destino: <strong>{outputName}</strong></p><code>{format.label} · {orientation} · Márgenes {settings.pageSize === 'auto' ? 0 : settings.margin} mm</code></div><div className={styles.exportButtons}><button type="button" className={styles.secondaryButton} disabled={!files.length || busy || !individual} onClick={() => void runJob('zip')}>{working === 'zip' ? <Loader2 size={17} className={styles.spin} /> : <FileArchive size={17} />}Descargar ZIP (PDFs individuales)</button><button type="button" className={styles.primaryButton} disabled={!files.length || busy || !merged} onClick={() => void runJob('merged')}>{working === 'merged' ? <Loader2 size={18} className={styles.spin} /> : <FileDown size={18} />}Compilar PDF multipágina ({files.length})</button></div></div>
+        {!merged && !individual && <p className={styles.notice}>Activa al menos un modo de generación para descargar el documento.</p>}
+        {progress && <div className={styles.progress}><div><span>{working ? progress.currentFile : 'Compilación completada'}</span><code>{progress.current} / {progress.total} · {progress.percentage}%</code></div><div role="progressbar" aria-label="Progreso de compilación" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percentage}><span style={{ width: `${progress.percentage}%` }} /></div></div>}
+        {error && <p className={styles.notice} role="alert">{error}</p>}
+        <div className={styles.console} role="status" aria-live="polite"><Terminal size={15} /><code>[SVG a PDF]</code><span>{status}</span>{!working && !!progress && !error && <Check size={15} />}</div>
+      </section>
     </div>
-  );
+  </WorkspaceShell>;
 }

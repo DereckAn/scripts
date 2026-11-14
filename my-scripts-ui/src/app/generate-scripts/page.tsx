@@ -1,393 +1,139 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { OperatingSystem, ScriptOptions, ScriptConfig } from '@/types/script-generator';
-import { APPS } from '@/data/apps';
-import CategorySection from '@/components/CategorySection';
-import { generateInstallScript, generateReadme } from '@/utils/script-generator';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import JSZip from 'jszip';
+import { Archive, ArrowRight, Check, CheckCircle2, Clipboard, Code2, Download, FileText,
+  History, Layers3, Search, Settings2, Terminal, X } from 'lucide-react';
+import WorkspaceShell from '@/components/dashboard/WorkspaceShell';
+import AppSelector from '@/components/AppSelector';
+import { CATEGORIES, DEFAULT_OPTIONS, HISTORY_KEY, OPTIONS, SYSTEMS, configKey, readHistory, type Artifact } from '@/components/script-generator/config';
+import type { OperatingSystem, ScriptConfig } from '@/types/script-generator';
+import { generateInstallScript, generateReadme, getAvailableApps, getInstallCommand } from '@/utils/script-generator';
+import { downloadBlob, formatFileSize } from '@/utils/image-converter';
+import styles from './generator.module.css';
 
-const OS_OPTIONS = [
-  { id: 'macos' as OperatingSystem, name: 'macOS', icon: '🍎', desc: 'Homebrew, Cask' },
-  { id: 'ubuntu' as OperatingSystem, name: 'Ubuntu/Debian', icon: '🐧', desc: 'APT, Snap' },
-  { id: 'fedora' as OperatingSystem, name: 'Fedora', icon: '🎩', desc: 'DNF, Flatpak' },
-  { id: 'arch' as OperatingSystem, name: 'Arch Linux', icon: '🏔️', desc: 'Pacman, AUR' }
-];
-
-const CATEGORIES = [
-  { id: 'productivity', name: 'Herramientas de Productividad', icon: '📊' },
-  { id: 'code-editors', name: 'Editores de Código', icon: '💻' },
-  { id: 'terminals', name: 'Terminales', icon: '💻' },
-  { id: 'browsers', name: 'Navegadores', icon: '🌐' },
-  { id: 'development-tools', name: 'Herramientas de Desarrollo', icon: '🔧' },
-  { id: 'programming-languages', name: 'Lenguajes de Programación', icon: '📝' },
-  { id: 'frameworks', name: 'Frameworks', icon: '🏗️' }
-];
+const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export default function GenerateScriptsPage() {
-  const [selectedOS, setSelectedOS] = useState<OperatingSystem | null>(null);
-  const [selectedApps, setSelectedApps] = useState<string[]>([]);
-  const [options, setOptions] = useState<ScriptOptions>({
-    updateSystem: true,
-    createBackup: false,
-    showProgress: true,
-    configureDotfiles: false,
-    installOhMyZsh: false
-  });
-  const [generatedScript, setGeneratedScript] = useState<string>('');
-  const [generatedReadme, setGeneratedReadme] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'script' | 'readme'>('script');
-
-  // Group apps by category
-  const appsByCategory = useMemo(() => {
-    const grouped: Record<string, typeof APPS> = {};
-    APPS.forEach(app => {
-      if (!grouped[app.category]) {
-        grouped[app.category] = [];
-      }
-      grouped[app.category].push(app);
-    });
-    return grouped;
+  const [os, setOS] = useState<OperatingSystem>('ubuntu');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [options, setOptions] = useState({ ...DEFAULT_OPTIONS });
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [tab, setTab] = useState<'script' | 'readme'>('script');
+  const [artifact, setArtifact] = useState<Artifact | null>(null);
+  const [history, setHistory] = useState<Artifact[]>([]);
+  const [copied, setCopied] = useState('');
+  const [error, setError] = useState('');
+  const [packing, setPacking] = useState(false);
+  const historyDialog = useRef<HTMLDialogElement>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    try { setHistory(readHistory(localStorage.getItem(HISTORY_KEY))); } catch { /* History is optional. */ }
+    return () => { if (copyTimer.current) clearTimeout(copyTimer.current); };
   }, []);
 
-  // Get available apps for selected OS
-  const availableApps = useMemo(() => {
-    if (!selectedOS) return APPS;
-    return APPS.filter(app => {
-      if (selectedOS === 'macos') return !app.linuxOnly;
-      return !app.macosOnly;
-    });
-  }, [selectedOS]);
+  const available = useMemo(() => getAvailableApps(os), [os]);
+  const filtered = useMemo(() => available.filter(app => (category === 'all' || category === app.category) &&
+    normalize(`${app.name} ${app.description} ${getInstallCommand(app, os)}`).includes(normalize(query.trim()))), [available, category, query, os]);
+  const config: ScriptConfig = useMemo(() => ({ os, selectedApps: selected, options }), [os, selected, options]);
+  const signature = configKey(config);
+  const compiled = !!artifact && configKey(artifact.config) === signature;
+  const draft = useMemo(() => selected.length ? { script: generateInstallScript(config), readme: generateReadme(config) } : null, [config, selected.length]);
+  const preview = compiled ? artifact : draft;
+  const code = preview ? preview[tab] : '';
+  const system = SYSTEMS.find(item => item.id === os)!;
+  const scriptName = `install-script-${os}.sh`, readmeName = `README-${os}.md`;
+  const quickCommand = `chmod +x ${scriptName} && ./${scriptName}`;
+  const bytes = preview ? new TextEncoder().encode(preview.script).length : 0;
+  const lineCount = preview ? preview.script.trimEnd().split('\n').length : 0;
 
-  const handleOSChange = (os: OperatingSystem) => {
-    setSelectedOS(os);
-    // Remove apps that are not compatible with the new OS
-    setSelectedApps(prev => prev.filter(appId => {
-      const app = APPS.find(a => a.id === appId);
-      if (!app) return false;
-      if (os === 'macos') return !app.linuxOnly;
-      return !app.macosOnly;
-    }));
+  const changeOS = (next: OperatingSystem) => {
+    const compatible = new Set(getAvailableApps(next).map(app => app.id));
+    setOS(next); setSelected(prev => prev.filter(id => compatible.has(id))); setError('');
   };
-
-  const handleToggleApp = (appId: string) => {
-    setSelectedApps(prev => 
-      prev.includes(appId) 
-        ? prev.filter(id => id !== appId)
-        : [...prev, appId]
-    );
+  const toggleApp = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]);
+  const generate = () => {
+    if (!selected.length) return;
+    const result: Artifact = { id: crypto.randomUUID(), createdAt: new Date().toISOString(),
+      config: { os, selectedApps: [...selected], options: { ...options } },
+      script: generateInstallScript(config), readme: generateReadme(config) };
+    setArtifact(result); setError('');
+    const next = [result, ...history.filter(item => configKey(item.config) !== signature)].slice(0, 5);
+    setHistory(next);
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch { /* Keep this session's history. */ }
   };
-
-  const handleOptionChange = (option: keyof ScriptOptions, value: boolean) => {
-    setOptions(prev => ({ ...prev, [option]: value }));
-  };
-
-  const handleGenerateScript = () => {
-    if (!selectedOS || selectedApps.length === 0) return;
-
-    const config: ScriptConfig = {
-      os: selectedOS,
-      selectedApps,
-      options
-    };
-
-    const script = generateInstallScript(config);
-    const readme = generateReadme(config);
-    
-    setGeneratedScript(script);
-    setGeneratedReadme(readme);
-  };
-
-  const handleDownloadScript = () => {
-    if (!generatedScript) return;
-    
-    const blob = new Blob([generatedScript], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `install-script-${selectedOS}.sh`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadReadme = () => {
-    if (!generatedReadme) return;
-    
-    const blob = new Blob([generatedReadme], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `README-${selectedOS}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleCopyToClipboard = async (content: string) => {
+  const copy = async (text: string, which: string) => {
     try {
-      await navigator.clipboard.writeText(content);
-      // You could add a toast notification here
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
-    }
+      await navigator.clipboard.writeText(text); setCopied(which); setError('');
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(''), 1800);
+    } catch { setError('No se pudo copiar al portapapeles. Puedes seleccionar el texto o descargar el archivo.'); }
   };
+  const download = (kind: 'script' | 'readme') => {
+    if (!compiled || !artifact) return;
+    downloadBlob(new Blob([artifact[kind]], { type: kind === 'script' ? 'text/x-shellscript;charset=utf-8' : 'text/markdown;charset=utf-8' }), kind === 'script' ? scriptName : readmeName);
+  };
+  const bundle = async () => {
+    if (!compiled || !artifact || packing) return;
+    const snapshot = artifact, target = snapshot.config.os;
+    setPacking(true);
+    try {
+      const zip = new JSZip();
+      zip.file(`install-script-${target}.sh`, snapshot.script);
+      zip.file(`README-${target}.md`, snapshot.readme);
+      downloadBlob(await zip.generateAsync({ type: 'blob' }), `setup-${target}.zip`);
+    } catch { setError('No se pudo preparar el paquete ZIP. Inténtalo de nuevo.'); }
+    finally { setPacking(false); }
+  };
+  const restore = (item: Artifact) => {
+    setOS(item.config.os); setSelected([...item.config.selectedApps]); setOptions({ ...item.config.options });
+    setArtifact(item); setError(''); historyDialog.current?.close();
+  };
+  const steps = [
+    { target: 'target-system', title: 'Sistema operativo', ready: true },
+    { target: 'package-picker', title: 'Selección de paquetes', ready: selected.length > 0 },
+    { target: 'system-options', title: 'Opciones y dotfiles', ready: selected.length > 0 },
+    { target: 'script-output', title: 'Generación de script', ready: compiled },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200 dark:from-stone-950 dark:via-stone-900 dark:to-stone-800">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-grid-stone-900/[0.04] dark:bg-grid-stone-100/[0.02]" />
-      
-      <div className="relative p-8 pt-20">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-stone-900 to-stone-700 dark:from-stone-100 dark:to-stone-300 rounded-xl mb-8 shadow-lg">
-            <span className="text-2xl">⚡</span>
+    <WorkspaceShell title="Scripts" mainId="generator-main" sectionHref="#script-output" sectionLabel="Vista previa">
+      <div className={styles.generator}>
+        <section className={`${styles.panel} ${styles.hero}`} aria-labelledby="generator-title">
+          <div className={styles.heroTop}><div><div className={styles.eyebrow}><span>Automatización personal</span><span><CheckCircle2 size={12} />{selected.length ? 'Configuración lista' : 'Selecciona tus paquetes'}</span></div><h1 id="generator-title">Generador de Scripts de Instalación &amp; Dotfiles</h1><p>Elige tu sistema, selecciona las aplicaciones y prepara tu entorno. Revisa el script antes de descargarlo para ejecutarlo en el equipo de destino.</p></div>
+            <div className={styles.heroActions}><button type="button" className={styles.secondaryButton} onClick={() => historyDialog.current?.showModal()}><History size={15} />Historial ({history.length})</button><button type="button" className={styles.primaryButton} disabled={!selected.length} onClick={generate}><Terminal size={16} />Compilar script</button></div></div>
+          <nav className={styles.steps} aria-label="Pasos de configuración">{steps.map((step, index) => <a href={`#${step.target}`} key={step.target} className={step.ready ? styles.stepReady : undefined}><span className={styles.stepNumber}>{index + 1}</span><span><small>Paso {index + 1}</small><strong>{step.title}</strong></span>{step.ready && <CheckCircle2 size={16} aria-hidden="true" />}</a>)}</nav>
+        </section>
+        {error && <p role="alert" className={styles.alert}>{error}</p>}
+        <div className={styles.workspaceGrid}>
+          <div className={styles.configuration}>
+            <section id="target-system" className={styles.panel} aria-labelledby="system-heading">
+              <div className={styles.sectionHeading}><span className={styles.sectionNumber}>01</span><div><h2 id="system-heading">Sistema operativo destino</h2><p>Selecciona el sistema y su gestor de paquetes.</p></div></div>
+              <div className={styles.osGrid} role="radiogroup" aria-label="Sistema operativo destino">{SYSTEMS.map(item => <label key={item.id} className={`${styles.osCard} ${os === item.id ? styles.osSelected : ''}`}><input type="radio" name="target-os" value={item.id} checked={os === item.id} onChange={() => changeOS(item.id)} aria-label={item.name} /><item.icon size={24} aria-hidden="true" /><strong>{item.name}</strong><code>{item.manager}</code><small>{item.detail}</small></label>)}</div>
+            </section>
+            <section id="package-picker" className={styles.panel} aria-labelledby="packages-heading">
+              <div className={styles.packageHeader}><div className={styles.sectionHeading}><span className={styles.sectionNumber}>02</span><div><h2 id="packages-heading">Selección de paquetes y software</h2><p aria-live="polite">{selected.length} seleccionados · {available.length} disponibles para {system.name}</p></div></div><div className={styles.bulkActions}><button type="button" onClick={() => setSelected(prev => [...new Set([...prev, ...filtered.map(app => app.id)])])} disabled={!filtered.length}>Marcar visibles</button><button type="button" disabled={!selected.length} onClick={() => setSelected([])}>Desmarcar todo</button></div></div>
+              <div className={styles.searchField}><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar paquetes" placeholder="Buscar paquetes, aplicaciones o comandos…" value={query} onChange={event => setQuery(event.target.value)} /></div>
+              <div className={styles.categories} role="group" aria-label="Categorías de paquetes"><button type="button" aria-pressed={category === 'all'} onClick={() => setCategory('all')}>Todos ({selected.length})</button>{CATEGORIES.map(item => <button type="button" aria-pressed={category === item.id} onClick={() => setCategory(item.id)} key={item.id}>{item.name}</button>)}</div>
+              <div className={styles.packageGrid} aria-label="Aplicaciones disponibles">{filtered.map(app => <AppSelector key={app.id} app={app} selectedOS={os} isSelected={selected.includes(app.id)} onToggle={toggleApp} />)}{!filtered.length && <div className={styles.emptyPackages}><Search size={24} aria-hidden="true" /><strong>No encontramos paquetes con ese filtro.</strong><button type="button" onClick={() => { setQuery(''); setCategory('all'); }}>Mostrar todos</button></div>}</div>
+            </section>
+            <section id="system-options" className={styles.panel} aria-labelledby="options-heading"><div className={styles.sectionHeading}><span className={styles.sectionNumber}>03</span><div><h2 id="options-heading">Opciones del sistema y automatización</h2><p>Elige qué instrucciones incluir en tu script.</p></div></div><div className={styles.optionList}>{OPTIONS.map(option => <label key={option.key} className={styles.optionCard}><input type="checkbox" checked={options[option.key]} onChange={event => setOptions(prev => ({ ...prev, [option.key]: event.target.checked }))} /><span><strong>{option.title}</strong><span>{option.description}</span></span></label>)}</div></section>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-6">
-            Generar Scripts de Instalación
-          </h1>
-          <p className="text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto leading-relaxed">
-            Crea scripts personalizados para instalar aplicaciones automáticamente en Mac y Linux
-          </p>
+          <aside id="script-output" className={`${styles.panel} ${styles.output}`} aria-labelledby="output-heading">
+            <div className={styles.sectionHeading}><span className={styles.sectionNumber}>04</span><div><h2 id="output-heading">Generación y salida de script</h2><p>Revisa, genera y descarga tu configuración.</p></div></div>
+            <div className={styles.summary}><div className={styles.summaryHeading}><span><CheckCircle2 size={15} />{compiled ? 'Script generado' : selected.length ? 'Vista previa actualizada' : 'Configura tu script'}</span><small>{system.name}</small></div><div className={styles.metrics}><div><small>Paquetes</small><strong>{selected.length}</strong></div><div><small>Líneas Bash</small><strong>{lineCount}</strong></div><div><small>Tamaño</small><strong>{formatFileSize(bytes)}</strong></div></div></div>
+            <div className={styles.quickRun}><span>Comando de ejecución local</span><div><code>{quickCommand}</code><button type="button" disabled={!compiled} onClick={() => void copy(quickCommand, 'command')} title="Copiar comando" aria-label="Copiar comando">{copied === 'command' ? <Check size={16} /> : <Clipboard size={16} />}</button></div></div>
+            <div className={styles.inspectorHeader}><div className={styles.tabs} role="tablist" aria-label="Archivo a inspeccionar" onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 'script' : event.key === 'End' ? 'readme' : tab === 'script' ? 'readme' : 'script'; setTab(next); document.getElementById(`${next}-tab`)?.focus(); } }}><button type="button" id="script-tab" role="tab" aria-selected={tab === 'script'} aria-controls="code-panel" tabIndex={tab === 'script' ? 0 : -1} onClick={() => setTab('script')}>install.sh</button><button type="button" id="readme-tab" role="tab" aria-selected={tab === 'readme'} aria-controls="code-panel" tabIndex={tab === 'readme' ? 0 : -1} onClick={() => setTab('readme')}>README.md</button></div><div className={styles.inspectorActions}><button type="button" disabled={!preview} onClick={() => void copy(code, 'code')} aria-label="Copiar código" title="Copiar código">{copied === 'code' ? <Check size={17} /> : <Clipboard size={17} />}</button><button type="button" disabled={!compiled} onClick={() => download(tab)} aria-label="Descargar archivo de la vista previa" title="Descargar archivo"><Download size={17} /></button></div></div>
+            <div className={styles.codeWindow}><div className={styles.codeTitle}><span className={styles.windowDots} aria-hidden="true"><i /><i /><i /></span><span>{tab === 'script' ? 'Bash' : 'Markdown'} · UTF-8</span><span>{compiled ? 'Generado' : 'Borrador'}</span></div><pre id="code-panel" role="tabpanel" aria-labelledby={`${tab}-tab`} tabIndex={0} className={styles.codePanel}><code>{code ? code.split('\n').map((line, i) => <span className={`${styles.codeLine} ${line.trim().startsWith('#') ? styles.commentLine : ''}`} key={i}><span className={styles.lineNumber} aria-hidden="true">{i + 1}</span><span>{line || ' '}</span></span>) : <span className={styles.previewPlaceholder}>Selecciona al menos una aplicación para ver el script y su documentación.</span>}</code></pre></div>
+            {artifact && !compiled && <p className={styles.staleNotice}>La configuración cambió. Genera de nuevo para actualizar las descargas.</p>}
+            <div className={styles.outputActions}><button type="button" className={styles.primaryButton} disabled={!selected.length} onClick={generate}><Terminal size={17} />Generar script y documentación</button><div><button type="button" className={styles.secondaryButton} disabled={!compiled} onClick={() => download('script')}><Download size={15} />install.sh</button><button type="button" className={styles.secondaryButton} disabled={!compiled || packing} onClick={() => void bundle()}><Archive size={15} />{packing ? 'Preparando…' : 'Paquete (.ZIP)'}</button></div><button type="button" className={styles.readmeDownload} disabled={!compiled} onClick={() => download('readme')}><FileText size={13} />Descargar README.md</button></div>
+            <p className={styles.outputHint} role="status">{copied ? 'Copiado al portapapeles.' : compiled ? 'Archivos listos. La generación no ejecuta comandos en tu equipo.' : 'La vista previa refleja tus opciones. Genera los archivos cuando estén listos.'}</p>
+          </aside>
         </div>
-
-        <div className="space-y-8">
-          {/* OS Selection */}
-          <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
-            <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
-              🖥️ Selecciona tu Sistema Operativo
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {OS_OPTIONS.map(os => (
-                <label
-                  key={os.id}
-                  className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
-                    selectedOS === os.id
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400'
-                      : 'bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="os"
-                    value={os.id}
-                    checked={selectedOS === os.id}
-                    onChange={() => handleOSChange(os.id)}
-                    className="mr-4 text-blue-600"
-                  />
-                  <span className="text-2xl mr-3">{os.icon}</span>
-                  <div>
-                    <div className="font-medium text-stone-900 dark:text-stone-100">{os.name}</div>
-                    <div className="text-sm text-stone-600 dark:text-stone-400">{os.desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* App Selection */}
-          {selectedOS && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-2">
-                  📦 Selecciona las Aplicaciones
-                </h2>
-                <p className="text-stone-600 dark:text-stone-400">
-                  {selectedApps.length} aplicación{selectedApps.length === 1 ? '' : 'es'} seleccionada{selectedApps.length === 1 ? '' : 's'} de {availableApps.length} disponible{availableApps.length === 1 ? '' : 's'}
-                </p>
-              </div>
-
-              {CATEGORIES.map(category => {
-                const categoryApps = appsByCategory[category.id] || [];
-                const availableCategoryApps = categoryApps.filter(app => {
-                  if (selectedOS === 'macos') return !app.linuxOnly;
-                  return !app.macosOnly;
-                });
-                
-                if (availableCategoryApps.length === 0) return null;
-
-                return (
-                  <CategorySection
-                    key={category.id}
-                    title={category.name}
-                    icon={category.icon}
-                    apps={availableCategoryApps}
-                    selectedOS={selectedOS}
-                    selectedApps={selectedApps}
-                    onToggleApp={handleToggleApp}
-                  />
-                );
-              })}
-            </div>
-          )}
-
-          {/* Script Options */}
-          {selectedOS && (
-            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-stone-200/60 dark:border-stone-800/60">
-              <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
-                ⚙️ Opciones del Script
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
-                  <input
-                    type="checkbox"
-                    checked={options.updateSystem}
-                    onChange={(e) => handleOptionChange('updateSystem', e.target.checked)}
-                    className="text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-stone-900 dark:text-stone-100 font-medium">Actualizar sistema</span>
-                    <p className="text-sm text-stone-600 dark:text-stone-400">Actualizar paquetes del sistema antes de instalar</p>
-                  </div>
-                </label>
-
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
-                  <input
-                    type="checkbox"
-                    checked={options.createBackup}
-                    onChange={(e) => handleOptionChange('createBackup', e.target.checked)}
-                    className="text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-stone-900 dark:text-stone-100 font-medium">Crear backup</span>
-                    <p className="text-sm text-stone-600 dark:text-stone-400">Respaldar archivos de configuración</p>
-                  </div>
-                </label>
-
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
-                  <input
-                    type="checkbox"
-                    checked={options.showProgress}
-                    onChange={(e) => handleOptionChange('showProgress', e.target.checked)}
-                    className="text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-stone-900 dark:text-stone-100 font-medium">Mostrar progreso</span>
-                    <p className="text-sm text-stone-600 dark:text-stone-400">Mostrar salida detallada durante la instalación</p>
-                  </div>
-                </label>
-
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200">
-                  <input
-                    type="checkbox"
-                    checked={options.configureDotfiles}
-                    onChange={(e) => handleOptionChange('configureDotfiles', e.target.checked)}
-                    className="text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-stone-900 dark:text-stone-100 font-medium">Configurar dotfiles</span>
-                    <p className="text-sm text-stone-600 dark:text-stone-400">Añadir aliases y configuraciones útiles</p>
-                  </div>
-                </label>
-
-                <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors duration-200 md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={options.installOhMyZsh}
-                    onChange={(e) => handleOptionChange('installOhMyZsh', e.target.checked)}
-                    className="text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-stone-900 dark:text-stone-100 font-medium">Instalar Oh My Zsh</span>
-                    <p className="text-sm text-stone-600 dark:text-stone-400">
-                      Instalar Oh My Zsh con tema Powerlevel10k y plugins útiles (zsh-autosuggestions, zsh-syntax-highlighting, etc.)
-                    </p>
-                  </div>
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* Generate Button */}
-          {selectedOS && selectedApps.length > 0 && (
-            <div className="text-center">
-              <button
-                onClick={handleGenerateScript}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
-              >
-                🎯 Generar Script de Instalación
-              </button>
-            </div>
-          )}
-
-          {/* Generated Script Output */}
-          {generatedScript && (
-            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl border border-stone-200/60 dark:border-stone-800/60">
-              <div className="p-6 border-b border-stone-200/60 dark:border-stone-800/60">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
-                    📄 Script Generado
-                  </h2>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setActiveTab('script')}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
-                        activeTab === 'script'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
-                      }`}
-                    >
-                      Script
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('readme')}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
-                        activeTab === 'readme'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
-                      }`}
-                    >
-                      README
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6">
-                <div className="bg-stone-900 dark:bg-stone-800 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-white">
-                      {activeTab === 'script' ? '📄 install-script.sh' : '📖 README.md'}
-                    </h3>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleCopyToClipboard(activeTab === 'script' ? generatedScript : generatedReadme)}
-                        className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors duration-200"
-                      >
-                        📋 Copiar
-                      </button>
-                      <button
-                        onClick={activeTab === 'script' ? handleDownloadScript : handleDownloadReadme}
-                        className="text-green-400 hover:text-green-300 text-sm font-medium transition-colors duration-200"
-                      >
-                        💾 Descargar
-                      </button>
-                    </div>
-                  </div>
-                  <pre className="text-sm text-green-400 font-mono overflow-x-auto max-h-96">
-                    {activeTab === 'script' ? generatedScript : generatedReadme}
-                  </pre>
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    📋 Instrucciones de uso
-                  </h4>
-                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                    <li>1. Descarga el script y hazlo ejecutable: <code className="bg-blue-200 dark:bg-blue-800 px-1 rounded">chmod +x install-script.sh</code></li>
-                    <li>2. Ejecuta el script: <code className="bg-blue-200 dark:bg-blue-800 px-1 rounded">./install-script.sh</code></li>
-                    <li>3. Sigue las instrucciones en pantalla</li>
-                    <li>4. Reinicia tu terminal cuando termine la instalación</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        </div>
+        <section className={styles.bento} aria-label="Acerca del generador">{[{ icon: Code2, title: 'Vista previa al instante', text: 'Comprueba los comandos reales del catálogo mientras ajustas tu selección.' }, { icon: Settings2, title: 'Configuración a tu medida', text: 'Elige aplicaciones, actualizaciones, backups, aliases y opciones de Oh My Zsh.' }, { icon: Layers3, title: 'Cuatro sistemas, un flujo', text: 'Conserva la misma forma de trabajo con Homebrew, APT, DNF y Pacman.' }].map(item => <div key={item.title}><item.icon size={20} aria-hidden="true" /><h3>{item.title}</h3><p>{item.text}</p></div>)}</section>
+        <dialog ref={historyDialog} className={styles.historyDialog} aria-labelledby="history-title" onClick={event => { if (event.target === event.currentTarget) historyDialog.current?.close(); }}><div className={styles.historyContent}><div className={styles.historyHeading}><h2 id="history-title">Configuraciones generadas</h2><button type="button" onClick={() => historyDialog.current?.close()} aria-label="Cerrar historial"><X size={20} /></button></div><p>Últimas cinco configuraciones guardadas en este navegador.</p>{history.length ? history.map(item => <button className={styles.historyItem} type="button" key={item.id} onClick={() => restore(item)}><Terminal size={18} aria-hidden="true" /><span><strong>{SYSTEMS.find(system => system.id === item.config.os)?.name} · {item.config.selectedApps.length} aplicaciones</strong><small>{new Date(item.createdAt).toLocaleString('es-MX')}</small></span><ArrowRight size={16} aria-hidden="true" /></button>) : <div className={styles.emptyHistory}><History size={27} aria-hidden="true" /><strong>Todavía no hay configuraciones guardadas.</strong><p>Genera tu primer script para añadirlo al historial.</p></div>}</div></dialog>
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }

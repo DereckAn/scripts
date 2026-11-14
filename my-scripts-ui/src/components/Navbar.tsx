@@ -10,6 +10,9 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
+  // The dashboard has its own navigation from the supplied workspace layout.
+  if (["/", "/convert-images", "/generate-scripts", "/svg-to-pdf"].includes(pathname)) return null;
+
   const navItems = [
     {
       name: "Convertir Imágenes",

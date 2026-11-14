@@ -50,11 +50,12 @@ export async function convertImage(
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
+    if (!ctx) { reject(new Error('No se pudo iniciar el procesador de imágenes.')); return; }
     
     img.onload = () => {
       try {
         // Calculate dimensions
-        let { width, height } = calculateDimensions(
+        const { width, height } = calculateDimensions(
           img.width, 
           img.height, 
           settings.width, 
@@ -66,7 +67,7 @@ export async function convertImage(
         canvas.height = height;
         
         // Set background color for formats that don't support transparency
-        if (!supportsTransparency(settings.format) && settings.backgroundColor) {
+        if ((settings.flattenTransparency || !supportsTransparency(settings.format)) && settings.backgroundColor) {
           ctx!.fillStyle = settings.backgroundColor;
           ctx!.fillRect(0, 0, width, height);
         }
@@ -77,10 +78,10 @@ export async function convertImage(
         // Convert to blob
         canvas.toBlob(
           (blob) => {
-            if (blob) {
+            if (blob && blob.type === getMimeType(settings.format)) {
               resolve(blob);
             } else {
-              reject(new Error('Failed to convert image'));
+              reject(new Error(`Este navegador no puede exportar ${settings.format.toUpperCase()}. Elige JPEG, PNG o WebP.`));
             }
           },
           getMimeType(settings.format),
@@ -92,7 +93,7 @@ export async function convertImage(
     };
     
     img.onerror = () => {
-      reject(new Error('Failed to load image'));
+      reject(new Error('No se pudo leer esta imagen. Prueba otro archivo o formato de entrada.'));
     };
     
     img.src = imageFile.preview;
@@ -159,7 +160,7 @@ function supportsTransparency(format: ImageFormat): boolean {
 }
 
 export function generateFileName(originalName: string, format: ImageFormat, customName?: string): string {
-  const baseName = customName || originalName.replace(/\.[^/.]+$/, '');
+  const baseName = (customName || originalName.replace(/\.[^/.]+$/, '')).replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').trim() || 'imagen';
   const extension = format === 'jpg' ? 'jpg' : format;
   return `${baseName}.${extension}`;
 }
@@ -178,7 +179,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 export async function downloadMultipleImages(images: ImageFile[], format: ImageFormat): Promise<void> {
   for (const image of images) {
     if (image.convertedBlob) {
-      const filename = generateFileName(image.name, format, image.customName);
+      const filename = generateFileName(image.name, image.convertedFormat ?? format, image.customName ?? image.convertedName);
       downloadBlob(image.convertedBlob, filename);
       // Add delay to prevent browser from blocking multiple downloads
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -188,10 +189,15 @@ export async function downloadMultipleImages(images: ImageFile[], format: ImageF
 
 export async function createZipArchive(images: ImageFile[], format: ImageFormat): Promise<Blob> {
   const zip = new JSZip();
+  const names = new Set<string>();
   
   images.forEach(image => {
     if (image.convertedBlob) {
-      const filename = generateFileName(image.name, format, image.customName);
+      let filename = generateFileName(image.name, image.convertedFormat ?? format, image.customName ?? image.convertedName);
+      const base = filename.replace(/\.[^.]+$/, ''), extension = filename.slice(base.length);
+      let suffix = 2;
+      while (names.has(filename)) filename = `${base}-${suffix++}${extension}`;
+      names.add(filename);
       zip.file(filename, image.convertedBlob);
     }
   });

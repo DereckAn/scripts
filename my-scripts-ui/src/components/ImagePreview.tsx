@@ -1,224 +1,46 @@
 'use client';
 
 import { useState } from 'react';
-import { ImageFile, ImageFormat } from '@/types/image-converter';
-import { formatFileSize, generateFileName } from '@/utils/image-converter';
+import { Check, CheckCircle2, Clock3, Download, Eye, ImageOff, LoaderCircle, Pencil, RotateCcw, Trash2, X } from 'lucide-react';
+import type { ImageFile } from '@/types/image-converter';
+import { formatFileSize } from '@/utils/image-converter';
+import styles from '@/app/convert-images/converter.module.css';
 
-interface ImagePreviewProps {
-  image: ImageFile;
-  outputFormat: ImageFormat;
-  onRemove: (id: string) => void;
-  onDownload?: (id: string) => void;
-  onRename?: (id: string, newName: string) => void;
-}
-
-export default function ImagePreview({ image, outputFormat, onRemove, onDownload, onRename }: ImagePreviewProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(image.customName || image.name.replace(/\.[^/.]+$/, ''));
-  const getStatusIcon = () => {
-    switch (image.status) {
-      case 'pending':
-        return '⏳';
-      case 'converting':
-        return '🔄';
-      case 'completed':
-        return '✅';
-      case 'error':
-        return '❌';
-      default:
-        return '📄';
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (image.status) {
-      case 'pending':
-        return 'text-yellow-600 dark:text-yellow-400';
-      case 'converting':
-        return 'text-blue-600 dark:text-blue-400';
-      case 'completed':
-        return 'text-green-600 dark:text-green-400';
-      case 'error':
-        return 'text-red-600 dark:text-red-400';
-      default:
-        return 'text-stone-600 dark:text-stone-400';
-    }
-  };
-
-  const getStatusText = () => {
-    switch (image.status) {
-      case 'pending':
-        return 'Pendiente';
-      case 'converting':
-        return 'Convirtiendo...';
-      case 'completed':
-        return 'Completado';
-      case 'error':
-        return 'Error';
-      default:
-        return 'Desconocido';
-    }
-  };
-
-  const handleSaveName = () => {
-    if (onRename && editName.trim()) {
-      onRename(image.id, editName.trim());
-      setIsEditing(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditName(image.customName || image.name.replace(/\.[^/.]+$/, ''));
-    setIsEditing(false);
-  };
-
-  const outputFileName = generateFileName(image.name, outputFormat, image.customName);
-  const outputSize = image.convertedBlob ? formatFileSize(image.convertedBlob.size) : '-';
-
+export default function ImagePreview({ image, filename, running, onRemove, onDownload, onRename, onPreview, onRetry }: {
+  image: ImageFile; filename: string; running: boolean;
+  onRemove: (id: string) => void; onDownload: (id: string) => void; onRename: (id: string, name: string) => void;
+  onPreview: (id: string) => void; onRetry: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false), [draft, setDraft] = useState('');
+  const [broken, setBroken] = useState(false);
+  const status = { pending: 'En cola', converting: 'Convirtiendo…', completed: 'Completado', error: 'Error' }[image.status];
+  const Status = { pending: Clock3, converting: LoaderCircle, completed: CheckCircle2, error: ImageOff }[image.status];
+  const save = () => { if (draft.trim()) { onRename(image.id, draft.trim()); setEditing(false); } };
+  const saving = image.convertedBlob && image.size ? Math.round((1 - image.convertedBlob.size / image.size) * 100) : null;
   return (
-    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-stone-200/60 dark:border-stone-800/60 overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-      {/* Image Preview */}
-      <div className="aspect-video bg-stone-100 dark:bg-stone-800 relative overflow-hidden">
-        <img
-          src={image.preview}
-          alt={image.name}
-          className="w-full h-full object-cover"
-        />
-        
-        {/* Status Overlay */}
-        <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-          <span className={getStatusColor()}>{getStatusIcon()}</span>
-        </div>
-
-        {/* Remove Button */}
-        <button
-          onClick={() => onRemove(image.id)}
-          className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200"
-          title="Eliminar imagen"
-        >
-          ✕
+    <article className={`${styles.queueItem} ${image.status === 'error' ? styles.errorItem : ''}`} data-state={image.status}>
+      <div className={styles.fileIdentity}>
+        <button type="button" className={styles.thumbnail} onClick={() => onPreview(image.id)} aria-label={`Vista previa de ${image.name}`}>
+          {broken ? <ImageOff size={22} aria-hidden="true" /> : <img src={image.preview} alt="" onError={() => setBroken(true)} />}
+          <span>{image.originalFormat.replace('+xml', '').toUpperCase()}</span>
         </button>
-
-        {/* Converting Animation */}
-        {image.status === 'converting' && (
-          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-            <div className="bg-white/90 dark:bg-stone-800/90 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center space-x-2">
-              <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-              <span className="text-sm font-medium text-stone-900 dark:text-stone-100">Convirtiendo...</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Image Info */}
-      <div className="p-4 space-y-3">
-        {/* File Name */}
-        <div>
-          <h3 className="font-medium text-stone-900 dark:text-stone-100 truncate" title={image.name}>
-            {image.name}
-          </h3>
-          <p className="text-sm text-stone-600 dark:text-stone-400">
-            {formatFileSize(image.size)} • {image.originalFormat.toUpperCase()}
-          </p>
-        </div>
-
-        {/* Conversion Arrow */}
-        <div className="flex items-center justify-center">
-          <div className="text-2xl text-stone-400 dark:text-stone-500">
-            ↓
-          </div>
-        </div>
-
-        {/* Output Info */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 mr-2">
-              {isEditing ? (
-                <div className="flex items-center space-x-1">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="text-sm font-medium bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded px-2 py-1 flex-1 text-stone-900 dark:text-stone-100"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveName();
-                      if (e.key === 'Escape') handleCancelEdit();
-                    }}
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    className="text-green-600 hover:text-green-700 p-1"
-                    title="Guardar"
-                  >
-                    ✓
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="text-red-600 hover:text-red-700 p-1"
-                    title="Cancelar"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-1">
-                  <span className="text-sm font-medium text-stone-700 dark:text-stone-300 truncate">
-                    {outputFileName}
-                  </span>
-                  {onRename && (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1"
-                      title="Renombrar"
-                    >
-                      ✏️
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            <span className={`text-sm font-medium ${getStatusColor()}`}>
-              {getStatusIcon()} {getStatusText()}
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400">
-            <span>{outputSize}</span>
-            <span>{outputFormat.toUpperCase()}</span>
-          </div>
-
-          {/* Error Message */}
-          {image.status === 'error' && image.error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-2">
-              <p className="text-sm text-red-800 dark:text-red-200">{image.error}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex space-x-2 pt-2">
-          {image.status === 'completed' && onDownload && (
-            <button
-              onClick={() => onDownload(image.id)}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1"
-            >
-              <span>💾</span>
-              <span>Descargar</span>
-            </button>
-          )}
-          
-          {image.status === 'completed' && image.convertedUrl && (
-            <button
-              onClick={() => window.open(image.convertedUrl, '_blank')}
-              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors duration-200"
-              title="Ver imagen convertida"
-            >
-              👁️
-            </button>
-          )}
+        <div className={styles.fileDetails}>
+          <h3 title={image.name}>{image.name}</h3>
+          <div className={styles.fileMeta}><span>{formatFileSize(image.size)}</span><span>→</span><span>{image.convertedBlob ? `${formatFileSize(image.convertedBlob.size)} ${image.convertedFormat?.toUpperCase()}` : filename}</span>{saving !== null && <small>{saving >= 0 ? `−${saving}%` : `+${-saving}%`}</small>}</div>
+          {editing ? <div className={styles.renameField}><input aria-label={`Nuevo nombre de ${image.name}`} value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }} autoFocus /><button type="button" onClick={save} title="Guardar nombre" aria-label="Guardar nombre"><Check size={15} /></button><button type="button" onClick={() => setEditing(false)} title="Cancelar nombre" aria-label="Cancelar nombre"><X size={15} /></button></div> : image.convertedBlob && <p className={styles.outputName} title={filename}>{filename}</p>}
+          {image.error && <p className={styles.fileError}>{image.error}</p>}
         </div>
       </div>
-    </div>
+      <div className={styles.fileActions}>
+        <span className={`${styles.status} ${image.status === 'completed' ? styles.completedStatus : ''}`}><Status size={13} className={image.status === 'converting' ? styles.spinning : undefined} aria-hidden="true" />{status}</span>
+        <div className={styles.rowButtons}>
+          {image.status === 'error' && <button type="button" className={styles.retry} disabled={running} onClick={() => onRetry(image.id)} aria-label={`Reintentar ${image.name}`}><RotateCcw size={14} />Reintentar</button>}
+          <button type="button" onClick={() => onPreview(image.id)} title="Ver previo" aria-label={`Ver previo de ${image.name}`}><Eye size={16} /></button>
+          <button type="button" disabled={running} onClick={() => { setDraft(filename.replace(/\.[^.]+$/, '')); setEditing(true); }} title="Renombrar" aria-label={`Renombrar ${image.name}`}><Pencil size={15} /></button>
+          {image.convertedBlob && <button type="button" onClick={() => onDownload(image.id)} title="Descargar" aria-label={`Descargar ${filename}`}><Download size={16} /></button>}
+          <button type="button" onClick={() => onRemove(image.id)} title={image.status === 'converting' ? 'Cancelar tarea' : 'Quitar de cola'} aria-label={`Quitar ${image.name}`}><Trash2 size={15} /></button>
+        </div>
+      </div>
+    </article>
   );
 }

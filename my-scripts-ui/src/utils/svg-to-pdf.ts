@@ -13,7 +13,7 @@ import {
 const PX_TO_PT = 72 / 96;
 
 export function validateSvgFile(file: File): { valid: boolean; error?: string } {
-  const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
+  const isSvg = file.type === 'image/svg+xml' || /\.svgz?$/i.test(file.name);
   if (!isSvg) {
     return { valid: false, error: 'El archivo no es un SVG' };
   }
@@ -97,7 +97,26 @@ function parseLength(value: string | null): number | null {
 }
 
 export async function createSvgFile(file: File): Promise<SvgFile> {
-  const content = await file.text();
+  let content: string;
+  if (/\.svgz$/i.test(file.name)) {
+    const reader = file.stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let size = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_SVG_SIZE) throw new Error('El SVG descomprimido supera los 25 MB');
+        chunks.push(new Uint8Array(value));
+      }
+    } finally { await reader.cancel(); }
+    content = await new Blob(chunks).text();
+  } else content = await file.text();
+  const doc = new DOMParser().parseFromString(content, 'image/svg+xml');
+  if (doc.querySelector('parsererror') || doc.documentElement.localName !== 'svg') {
+    throw new Error('El SVG no se pudo leer (formato inválido)');
+  }
   const { width, height } = parseSvgDimensions(content);
 
   return {
@@ -105,7 +124,7 @@ export async function createSvgFile(file: File): Promise<SvgFile> {
     file,
     name: file.name,
     size: file.size,
-    preview: URL.createObjectURL(file),
+    preview: URL.createObjectURL(new Blob([content], { type: 'image/svg+xml' })),
     content,
     width,
     height,
@@ -149,7 +168,8 @@ interface PageLayout {
 }
 
 function pageLayoutFor(svgFile: SvgFile, settings: PdfSettings): PageLayout {
-  const orientation = svgFile.width > svgFile.height ? 'landscape' : 'portrait';
+  const originalOrientation = svgFile.width > svgFile.height ? 'landscape' : 'portrait';
+  const orientation = settings.pageSize === 'auto' ? originalOrientation : settings.orientation ?? originalOrientation;
 
   if (settings.pageSize === 'auto') {
     return {
@@ -291,7 +311,7 @@ export async function createPdfZip(pdfs: Array<{ name: string; blob: Blob }>): P
 }
 
 export function toPdfName(name: string): string {
-  return `${name.replace(/\.svg$/i, '')}.pdf`;
+  return `${sanitizeFileName(name.replace(/\.svgz?$/i, ''))}.pdf`;
 }
 
 export function sanitizeFileName(name: string): string {

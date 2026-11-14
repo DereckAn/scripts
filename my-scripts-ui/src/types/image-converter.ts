@@ -12,6 +12,8 @@ export interface ImageFile {
   status: 'pending' | 'converting' | 'completed' | 'error';
   convertedBlob?: Blob;
   convertedUrl?: string;
+  convertedFormat?: ImageFormat;
+  convertedName?: string;
   error?: string;
 }
 
@@ -23,6 +25,7 @@ export interface ConversionSettings {
   maintainAspectRatio: boolean;
   removeMetadata: boolean;
   backgroundColor?: string; // For formats that don't support transparency
+  flattenTransparency?: boolean;
 }
 
 export interface ConversionProgress {

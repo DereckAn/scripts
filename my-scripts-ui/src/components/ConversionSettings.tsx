@@ -1,199 +1,61 @@
 'use client';
 
-import { ConversionSettings, ImageFormat, OUTPUT_FORMATS } from '@/types/image-converter';
+import { LockKeyhole, Settings2, ShieldCheck, Type } from 'lucide-react';
+import type { ConversionSettings, ImageFormat } from '@/types/image-converter';
+import { OUTPUT_FORMATS } from '@/types/image-converter';
+import styles from '@/app/convert-images/converter.module.css';
 
-interface ConversionSettingsProps {
-  settings: ConversionSettings;
-  onChange: (settings: ConversionSettings) => void;
-  totalImages: number;
-}
-
-export default function ConversionSettingsComponent({ 
-  settings, 
-  onChange, 
-  totalImages 
-}: ConversionSettingsProps) {
-  const handleFormatChange = (format: ImageFormat) => {
-    onChange({ ...settings, format });
-  };
-
-  const handleQualityChange = (quality: number) => {
-    onChange({ ...settings, quality });
-  };
-
-  const handleDimensionChange = (field: 'width' | 'height', value: string) => {
-    const numValue = value === '' ? undefined : parseInt(value);
-    onChange({ ...settings, [field]: numValue });
-  };
-
-  const handleCheckboxChange = (field: keyof ConversionSettings, value: boolean) => {
-    onChange({ ...settings, [field]: value });
-  };
-
-  const selectedFormat = OUTPUT_FORMATS.find(f => f.value === settings.format);
-  const supportsTransparency = selectedFormat?.supportsTransparency ?? false;
-
+export default function ConversionSettingsComponent({ settings, onChange, supported, disabled,
+  pattern, onPatternChange }: {
+  settings: ConversionSettings; onChange: (settings: ConversionSettings) => void;
+  supported: ImageFormat[]; disabled: boolean; pattern: string; onPatternChange: (pattern: string) => void;
+}) {
+  const formats = ['webp', 'jpg', 'png', 'avif', 'tiff', 'bmp', 'gif', 'ico'] as ImageFormat[];
+  const transparent = OUTPUT_FORMATS.find(item => item.value === settings.format)?.supportsTransparency ?? false;
+  const qualityEnabled = ['jpg', 'jpeg', 'webp', 'avif'].includes(settings.format);
+  const background = !transparent || !!settings.flattenTransparency;
   return (
-    <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-stone-200/60 dark:border-stone-800/60">
-      <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-6">
-        ⚙️ Configuración de Conversión
-      </h2>
-
-      <div className="space-y-6">
-        {/* Format Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-            Formato de salida
-          </label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {OUTPUT_FORMATS.map((format) => (
-              <button
-                key={format.value}
-                onClick={() => handleFormatChange(format.value)}
-                className={`p-3 border rounded-lg text-center transition-all duration-200 ${
-                  settings.format === format.value
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400'
-                    : 'bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-600 hover:bg-stone-50 dark:hover:bg-stone-700'
-                }`}
-              >
-                <div className="font-medium text-stone-900 dark:text-stone-100">
-                  {format.label}
-                </div>
-                <div className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                  {format.description}
-                </div>
-              </button>
-            ))}
-          </div>
+    <fieldset disabled={disabled} className={`${styles.panel} ${styles.settings}`}>
+      <legend className={styles.srOnly}>Configuración de salida</legend>
+      <div className={styles.panelHeading}><Settings2 size={19} aria-hidden="true" /><h2>Configuración de salida</h2><span>{settings.format.toUpperCase()}</span></div>
+      <div className={styles.settingGroup}>
+        <span className={styles.fieldTitle}>Formato destino</span>
+        <div className={styles.formats} role="group" aria-label="Formato destino">
+          {formats.map(format => <button key={format} type="button" aria-pressed={settings.format === format}
+            disabled={!supported.includes(format)} onClick={() => onChange({ ...settings, format })}
+            title={supported.includes(format) ? `Exportar ${format.toUpperCase()}` : `${format.toUpperCase()}: no disponible en este navegador`}
+            className={settings.format === format ? styles.selectedFormat : undefined}>{format === 'jpg' ? 'JPEG' : format.toUpperCase()}</button>)}
         </div>
-
-        {/* Quality Settings */}
-        <div>
-          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-            Calidad: {settings.quality}%
-          </label>
-          <div className="space-y-2">
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={settings.quality}
-              onChange={(e) => handleQualityChange(parseInt(e.target.value))}
-              className="w-full h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400">
-              <span>Menor tamaño</span>
-              <span>Mayor calidad</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Dimension Settings */}
-        <div>
-          <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-            Redimensionar (opcional)
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-stone-600 dark:text-stone-400 mb-1">
-                Ancho (px)
-              </label>
-              <input
-                type="number"
-                placeholder="Auto"
-                value={settings.width || ''}
-                onChange={(e) => handleDimensionChange('width', e.target.value)}
-                className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-stone-600 dark:text-stone-400 mb-1">
-                Alto (px)
-              </label>
-              <input
-                type="number"
-                placeholder="Auto"
-                value={settings.height || ''}
-                onChange={(e) => handleDimensionChange('height', e.target.value)}
-                className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          
-          <label className="flex items-center space-x-2 mt-3">
-            <input
-              type="checkbox"
-              checked={settings.maintainAspectRatio}
-              onChange={(e) => handleCheckboxChange('maintainAspectRatio', e.target.checked)}
-              className="text-blue-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-stone-700 dark:text-stone-300">
-              Mantener proporción de aspecto
-            </span>
-          </label>
-        </div>
-
-        {/* Background Color (for non-transparent formats) */}
-        {!supportsTransparency && (
-          <div>
-            <label className="block text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-              Color de fondo
-            </label>
-            <div className="flex items-center space-x-3">
-              <input
-                type="color"
-                value={settings.backgroundColor || '#ffffff'}
-                onChange={(e) => onChange({ ...settings, backgroundColor: e.target.value })}
-                className="w-12 h-10 border border-stone-300 dark:border-stone-600 rounded-lg cursor-pointer"
-              />
-              <input
-                type="text"
-                value={settings.backgroundColor || '#ffffff'}
-                onChange={(e) => onChange({ ...settings, backgroundColor: e.target.value })}
-                placeholder="#ffffff"
-                className="flex-1 px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-500 dark:placeholder-stone-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              El formato {selectedFormat?.label} no soporta transparencia
-            </p>
-          </div>
-        )}
-
-        {/* Other Settings */}
-        <div className="space-y-3">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={settings.removeMetadata}
-              onChange={(e) => handleCheckboxChange('removeMetadata', e.target.checked)}
-              className="text-blue-600 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-stone-700 dark:text-stone-300">
-              Eliminar metadatos (EXIF, ubicación, etc.)
-            </span>
-          </label>
-        </div>
-
-        {/* Summary */}
-        {totalImages > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              📋 Resumen
-            </h4>
-            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-              <li>• {totalImages} imagen{totalImages === 1 ? '' : 'es'} será{totalImages === 1 ? '' : 'n'} convertida{totalImages === 1 ? '' : 's'} a {selectedFormat?.label}</li>
-              <li>• Calidad: {settings.quality}%</li>
-              {(settings.width || settings.height) && (
-                <li>• Redimensionado: {settings.width || 'auto'} × {settings.height || 'auto'} px</li>
-              )}
-              {settings.removeMetadata && (
-                <li>• Se eliminarán los metadatos</li>
-              )}
-            </ul>
-          </div>
-        )}
+        <p className={styles.hint}>Los formatos disponibles dependen de la capacidad de exportación de tu navegador.</p>
       </div>
-    </div>
+      <div className={styles.qualityBox}>
+        <label htmlFor="image-quality">Calidad de compresión <strong>{qualityEnabled ? `${settings.quality}%` : 'Sin pérdida'}</strong></label>
+        <input id="image-quality" type="range" min="1" max="100" value={settings.quality} disabled={!qualityEnabled}
+          onChange={e => onChange({ ...settings, quality: Number(e.target.value) })} />
+        <div className={styles.rangeLabels}><span>Menor tamaño</span><span>Mayor calidad</span></div>
+      </div>
+      <div className={styles.settingGroup}>
+        <div className={styles.settingLabel}><span className={styles.fieldTitle}>Dimensiones de salida</span><LockKeyhole size={14} aria-hidden="true" /></div>
+        <div className={styles.dimensions}>
+          <label htmlFor="image-width">Ancho máx. (px)<input id="image-width" type="number" min="1" max="16384" placeholder="Original" value={settings.width ?? ''} onChange={e => onChange({ ...settings, width: e.target.value === '' ? undefined : Number(e.target.value) })} /></label>
+          <label htmlFor="image-height">Alto máx. (px)<input id="image-height" type="number" min="1" max="16384" placeholder="Original" value={settings.height ?? ''} onChange={e => onChange({ ...settings, height: e.target.value === '' ? undefined : Number(e.target.value) })} /></label>
+        </div>
+        <label className={styles.checkLabel}><input type="checkbox" checked={settings.maintainAspectRatio} onChange={e => onChange({ ...settings, maintainAspectRatio: e.target.checked })} /><span>Mantener relación de aspecto</span></label>
+      </div>
+      <div className={styles.settingGroup}>
+        <span className={styles.fieldTitle}>Optimización y privacidad</span>
+        <div className={styles.privacy}><ShieldCheck size={18} aria-hidden="true" /><div><strong>Sin metadatos EXIF / GPS</strong><p>La conversión vuelve a codificar la imagen y no transfiere los metadatos originales.</p></div></div>
+        <div className={styles.backgroundBox}>
+          <label className={styles.checkLabel}><input type="checkbox" checked={background} disabled={!transparent} onChange={e => onChange({ ...settings, flattenTransparency: e.target.checked })} /><span>Rellenar fondo transparente</span></label>
+          {background && <label className={styles.colorField}><input aria-label="Color de fondo" type="color" value={settings.backgroundColor || '#ffffff'} onChange={e => onChange({ ...settings, backgroundColor: e.target.value })} /><span>{settings.backgroundColor?.toUpperCase()}</span></label>}
+          {!transparent && <p className={styles.hint}>El formato seleccionado necesita un fondo sólido.</p>}
+        </div>
+      </div>
+      <div className={styles.settingGroup}>
+        <label htmlFor="filename-pattern" className={styles.fieldTitle}>Máscara de archivo</label>
+        <div className={styles.patternInput}><Type size={15} aria-hidden="true" /><input id="filename-pattern" value={pattern} maxLength={160} onChange={e => onPatternChange(e.target.value)} spellCheck={false} /></div>
+        <p className={styles.hint}>Tokens: {'{name}'} o {'{filename}'}, {'{ext}'}. También puedes renombrar cada archivo.</p>
+      </div>
+    </fieldset>
   );
 }

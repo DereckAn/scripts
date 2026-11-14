@@ -1,143 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
-import { ArrowDownAZ, ChevronDown, ChevronUp, GripVertical, Trash2 } from 'lucide-react';
-import { SvgFile } from '@/types/svg-to-pdf';
+import { ArrowDownAZ, ArrowDownUp, ChevronLeft, ChevronRight, CircleCheck, GripVertical, Trash2, X, ZoomIn } from 'lucide-react';
+import type { SvgFile } from '@/types/svg-to-pdf';
 import { formatFileSize } from '@/utils/svg-to-pdf';
+import styles from '@/app/svg-to-pdf/converter.module.css';
 
-interface SvgPageListProps {
-  files: SvgFile[];
-  onReorder: (from: number, to: number) => void;
-  onRemove: (id: string) => void;
-  onSortByName: () => void;
-  onClear: () => void;
-}
-
-export default function SvgPageList({
-  files,
-  onReorder,
-  onRemove,
-  onSortByName,
-  onClear,
-}: SvgPageListProps) {
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dropTarget, setDropTarget] = useState<number | null>(null);
-
-  const handleDrop = (index: number) => {
-    if (draggedIndex !== null) {
-      onReorder(draggedIndex, index);
-    }
-    setDraggedIndex(null);
-    setDropTarget(null);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-          Páginas del PDF{' '}
-          <span className="text-stone-500 dark:text-stone-400 font-normal">({files.length})</span>
-        </h3>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onSortByName}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-          >
-            <ArrowDownAZ className="w-4 h-4" />
-            Ordenar por nombre
-          </button>
-          <button
-            onClick={onClear}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Quitar todo
-          </button>
-        </div>
-      </div>
-
-      <p className="text-sm text-stone-500 dark:text-stone-400">
-        Arrastra las tarjetas o usa las flechas para cambiar el orden de las páginas.
-      </p>
-
-      <ul className="space-y-2">
-        {files.map((file, index) => (
-          <li
-            key={file.id}
-            draggable
-            onDragStart={() => setDraggedIndex(index)}
-            onDragEnd={() => {
-              setDraggedIndex(null);
-              setDropTarget(null);
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDropTarget(index);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              handleDrop(index);
-            }}
-            className={`flex items-center gap-4 p-3 rounded-xl border bg-white dark:bg-stone-900 transition-all duration-200 ${
-              draggedIndex === index
-                ? 'opacity-40 border-indigo-400'
-                : dropTarget === index
-                ? 'border-indigo-500 ring-2 ring-indigo-500/20'
-                : 'border-stone-200 dark:border-stone-800'
-            }`}
-          >
-            <GripVertical className="w-5 h-5 shrink-0 text-stone-400 cursor-grab active:cursor-grabbing" />
-
-            <span className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/40 text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-              {index + 1}
-            </span>
-
-            <div className="shrink-0 w-12 h-16 rounded-md border border-stone-200 dark:border-stone-700 bg-white overflow-hidden relative">
-              <Image
-                src={file.preview}
-                alt={file.name}
-                fill
-                unoptimized
-                className="object-contain"
-              />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-stone-900 dark:text-stone-100">{file.name}</p>
-              <p className="text-sm text-stone-500 dark:text-stone-400">
-                {formatFileSize(file.size)} · {Math.round(file.width)} × {Math.round(file.height)} px
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                onClick={() => onReorder(index, index - 1)}
-                disabled={index === 0}
-                aria-label={`Mover ${file.name} hacia arriba`}
-                className="p-2 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onReorder(index, index + 1)}
-                disabled={index === files.length - 1}
-                aria-label={`Mover ${file.name} hacia abajo`}
-                className="p-2 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onRemove(file.id)}
-                aria-label={`Quitar ${file.name}`}
-                className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+export default function SvgPageList({ files, onReorder, onRemove, onSortByName, onReverse, onClear, disabled = false, children }: {
+  files: SvgFile[]; onReorder: (from: number, to: number) => void; onRemove: (id: string) => void;
+  onSortByName: () => void; onReverse: () => void; onClear: () => void; disabled?: boolean; children?: ReactNode;
+}) {
+  const [dragged, setDragged] = useState<number | null>(null);
+  const [target, setTarget] = useState<number | null>(null);
+  const [preview, setPreview] = useState<SvgFile | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const total = files.reduce((sum, file) => sum + file.size, 0);
+  return <section className={styles.pageSection} aria-label="Páginas del documento">
+    <div className={styles.listToolbar}><div className={styles.fileStats}><span className={styles.dot} /><strong>{files.length} páginas cargadas</strong><code>Total: {formatFileSize(total)}</code>{!!files.length && <span className={styles.validBadge}><CircleCheck size={13} />SVG leídos correctamente</span>}</div>
+      <div className={styles.listActions}><button type="button" disabled={disabled || files.length < 2} onClick={onSortByName}><ArrowDownAZ size={15} />Ordenar por nombre</button><button type="button" disabled={disabled || files.length < 2} onClick={onReverse}><ArrowDownUp size={15} />Invertir orden</button><button type="button" disabled={disabled || !files.length} onClick={onClear}><Trash2 size={15} />Limpiar todo</button></div>
     </div>
-  );
+    <p className={styles.reorderHint}>Arrastra las tarjetas o usa las flechas para cambiar el orden de las páginas.</p>
+    <div className={styles.pageGrid}>{files.map((file, index) => <article key={file.id} aria-label={`Página ${index + 1}: ${file.name}`} draggable={!disabled}
+      className={`${styles.pageCard} ${dragged === index ? styles.dragged : ''} ${target === index ? styles.dropTarget : ''}`}
+      onDragStart={event => { if (disabled) { event.preventDefault(); return; } setDragged(index); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', file.id); }}
+      onDragEnd={() => { setDragged(null); setTarget(null); }} onDragOver={event => { if (!disabled && dragged !== null) { event.preventDefault(); setTarget(index); } }}
+      onDrop={event => { event.preventDefault(); if (!disabled && dragged !== null) onReorder(dragged, index); setDragged(null); setTarget(null); }}>
+      <div className={styles.cardHeader}><GripVertical size={17} aria-hidden="true" /><strong>Pág. {index + 1}</strong><span><CircleCheck size={12} />SVG válido</span></div>
+      <button type="button" className={styles.thumbnail} onClick={() => { setPreview(file); dialog.current?.showModal(); }} aria-label={`Previsualizar ${file.name}`}>
+        <Image src={file.preview} alt={`Vista previa de ${file.name}`} fill unoptimized draggable={false} sizes="(max-width: 600px) 90vw, 25vw" /><span className={styles.zoom}><ZoomIn size={23} /></span>
+      </button>
+      <div className={styles.fileName}><strong title={file.name}>{file.name}</strong><code>{formatFileSize(file.size)}</code></div>
+      <code className={styles.dimensions}>{Math.round(file.width)} × {Math.round(file.height)} px</code>
+      <div className={styles.cardActions}><div><button type="button" disabled={disabled || index === 0} onClick={() => onReorder(index, index - 1)} aria-label={`Mover ${file.name} a la izquierda`}><ChevronLeft size={17} /></button><button type="button" disabled={disabled || index === files.length - 1} onClick={() => onReorder(index, index + 1)} aria-label={`Mover ${file.name} a la derecha`}><ChevronRight size={17} /></button></div><button type="button" disabled={disabled} onClick={() => onRemove(file.id)} aria-label={`Quitar ${file.name}`}><Trash2 size={16} /></button></div>
+    </article>)}{children}</div>
+    <dialog ref={dialog} className={styles.previewDialog} aria-labelledby="svg-preview-title" onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
+      <div className={styles.previewHeader}><h2 id="svg-preview-title">{preview?.name}</h2><button type="button" aria-label="Cerrar vista previa" onClick={() => dialog.current?.close()}><X size={22} /></button></div>
+      {preview && <div className={styles.previewSheet}><Image src={preview.preview} alt={preview.name} width={preview.width} height={preview.height} unoptimized /></div>}
+    </dialog>
+  </section>;
 }

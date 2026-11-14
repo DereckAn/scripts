@@ -19,6 +19,8 @@ export interface PdfSettings {
   pageSize: PageSizeMode;
   /** Outer margin in millimeters, applied when pageSize is not 'auto'. */
   margin: number;
+  /** Fixed paper orientation; omitted keeps the source orientation. */
+  orientation?: 'portrait' | 'landscape';
   fileName: string;
 }
 

@@ -1,128 +1,25 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { ImageFile } from '@/types/image-converter';
-import { createImageFile, validateImageFile } from '@/utils/image-converter';
+import { useState } from 'react';
+import { CloudUpload, HardDrive, ShieldCheck } from 'lucide-react';
+import styles from '@/app/convert-images/converter.module.css';
 
-interface ImageUploaderProps {
-  onImagesAdded: (images: ImageFile[]) => void;
-  maxFiles?: number;
-}
-
-export default function ImageUploader({ onImagesAdded, maxFiles = 20 }: ImageUploaderProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
-
-  const handleFiles = useCallback((files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    const newImages: ImageFile[] = [];
-    const newErrors: string[] = [];
-
-    fileArray.forEach(file => {
-      const validation = validateImageFile(file);
-      if (validation.valid) {
-        newImages.push(createImageFile(file));
-      } else {
-        newErrors.push(`${file.name}: ${validation.error}`);
-      }
-    });
-
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
-      setTimeout(() => setErrors([]), 5000); // Clear errors after 5 seconds
-    }
-
-    if (newImages.length > 0) {
-      onImagesAdded(newImages);
-    }
-  }, [onImagesAdded]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFiles(files);
-    }
-  }, [handleFiles]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFiles(files);
-    }
-    // Reset input value to allow selecting the same file again
-    e.target.value = '';
-  }, [handleFiles]);
-
+export default function ImageUploader({ onFilesAdded, disabled = false, count = 0 }: {
+  onFilesAdded: (files: File[]) => void; disabled?: boolean; count?: number;
+}) {
+  const [dragging, setDragging] = useState(false);
   return (
-    <div className="space-y-4">
-      {/* Drop Zone */}
-      <div
-        className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 ${
-          isDragOver
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-stone-300 dark:border-stone-600 hover:border-stone-400 dark:hover:border-stone-500'
-        }`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-      >
-        <div className="space-y-4">
-          <div className="text-6xl">
-            {isDragOver ? '📤' : '📁'}
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold text-stone-900 dark:text-stone-100 mb-2">
-              {isDragOver ? '¡Suelta las imágenes aquí!' : 'Arrastra y suelta tus imágenes'}
-            </h3>
-            <p className="text-stone-600 dark:text-stone-400 mb-4">
-              O haz clic para seleccionar archivos
-            </p>
-            <p className="text-sm text-stone-500 dark:text-stone-500 mb-4">
-              Soporta: JPEG, PNG, WebP, AVIF, BMP, TIFF, GIF, SVG (máximo {maxFiles} archivos, 50MB cada uno)
-            </p>
-          </div>
-          
-          <label className="inline-block">
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileInput}
-              className="hidden"
-            />
-            <span className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 cursor-pointer inline-block">
-              Seleccionar Archivos
-            </span>
-          </label>
-        </div>
-      </div>
-
-      {/* Error Messages */}
-      {errors.length > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-red-900 dark:text-red-100 mb-2">
-            ⚠️ Errores en algunos archivos:
-          </h4>
-          <ul className="text-sm text-red-800 dark:text-red-200 space-y-1">
-            {errors.map((error, index) => (
-              <li key={index}>• {error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+    <label className={`${styles.dropzone} ${dragging ? styles.dragging : ''} ${disabled ? styles.dropDisabled : ''}`}
+      onDragOver={event => { event.preventDefault(); if (!disabled) setDragging(true); }}
+      onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }}
+      onDrop={event => { event.preventDefault(); setDragging(false); if (!disabled) onFilesAdded(Array.from(event.dataTransfer.files)); }}>
+      <input className={styles.srOnly} aria-label="Añadir imágenes" type="file" multiple disabled={disabled || count >= 50}
+        accept="image/jpeg,image/png,image/webp,image/avif,image/bmp,image/tiff,image/gif,image/svg+xml"
+        onChange={event => { onFilesAdded(Array.from(event.target.files || [])); event.target.value = ''; }} />
+      <span className={styles.uploadIcon}><CloudUpload size={27} aria-hidden="true" /></span>
+      <strong>{dragging ? 'Suelta las imágenes para añadirlas' : 'Arrastra tus archivos aquí o '} {!dragging && <span>haz clic para examinar</span>}</strong>
+      <p>PNG, JPEG, WebP, AVIF, TIFF, BMP, GIF, SVG · Hasta 50 archivos, 50 MB por archivo</p>
+      <div className={styles.dropBadges}><span><HardDrive size={13} aria-hidden="true" />{50 - count} espacios disponibles</span><span><ShieldCheck size={13} aria-hidden="true" />Conversión en tu navegador</span></div>
+    </label>
   );
 }
