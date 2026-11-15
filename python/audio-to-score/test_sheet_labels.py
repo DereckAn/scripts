@@ -351,6 +351,55 @@ class SheetLabelsTests(unittest.TestCase):
                     self.assertEqual(scores[0].name, 'reading-2.mxl', 'The reading without grace notes is kept')
                     self.assertIn('without grace notes', (folder / 'recognition.log').read_text())
 
+    def test_broken_readings_are_compared_with_a_plain_reading(self):
+        """If many bars of the grace-note reading are broken, a plain reading is made too and
+        kept only when it is clearly better after the app's fixes."""
+        from sheet_labels import CLEARLY_FEWER, broken_bars
+
+        def mxl(path, bad_bars, bars=4):
+            note = '<note><pitch><step>C</step><octave>5</octave></pitch><duration>{}</duration><voice>1</voice><type>whole</type></note>'
+            body = ''.join(f'<measure number="{i + 1}">' + ('<attributes><divisions>1</divisions><time><beats>4</beats>'
+                           '<beat-type>4</beat-type></time></attributes>' if i == 0 else '')
+                           + note.format(5 if 0 < i <= bad_bars else 4) + '</measure>' for i in range(bars))
+            with zipfile.ZipFile(path, 'w') as z:
+                z.writestr('META-INF/container.xml', '<container><rootfiles><rootfile full-path="score.xml"/></rootfiles></container>')
+                z.writestr('score.xml', f'<score-partwise><part id="P1">{body}</part></score-partwise>')
+            return path
+
+        small = 'org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true'
+        for second_ok in (True, False):
+            with tempfile.TemporaryDirectory() as folder:
+                folder = Path(folder)
+                calls = []
+
+                def run(args, **kwargs):
+                    calls.append(args)
+                    output = Path(args[args.index('-output') + 1])
+                    if small in args:
+                        mxl(output / 'grace.mxl', 2)  # 2 of 4 bars run past the bar line
+                    elif second_ok:
+                        mxl(output / 'plain.mxl', 0)
+                    else:
+                        return subprocess.CompletedProcess(args, 1, 'crashed', '')
+                    return subprocess.CompletedProcess(args, 0, '', '')
+
+                with patch('sheet_labels.audiveris_command', return_value='/fake/audiveris'), \
+                        patch('sheet_labels.subprocess.run', side_effect=run):
+                    scores = recognize(blank_pdf(folder / 'source.pdf'), folder)
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(scores[0].name, 'grace.mxl', 'The grace-note reading stays the main result')
+                self.assertEqual((folder / 'alternative.json').is_file(), second_ok)
+                if second_ok:
+                    self.assertEqual(broken_bars(scores[0]), (2, 4))
+                    picked = piano.pick_reading(folder / 'source.pdf', scores, folder)
+                    self.assertEqual(picked[0].name, 'plain.mxl', f'{CLEARLY_FEWER}+ fewer broken bars: plain is kept')
+
+        with tempfile.TemporaryDirectory() as folder:  # only 1 fewer: keep the grace notes
+            folder = Path(folder)
+            grace, plain = mxl(folder / 'grace.mxl', 1), mxl(folder / 'plain.mxl', 0)
+            (folder / 'alternative.json').write_text('["plain.mxl"]')
+            self.assertEqual(piano.pick_reading(blank_pdf(folder / 's.pdf'), [grace], folder)[0].name, 'grace.mxl')
+
     def test_chord_beams_kept_on_the_first_note_only(self):
         root = ET.fromstring('<score-partwise><part id="P1"><measure number="1">'
                              '<note><pitch><step>B</step><octave>4</octave></pitch><beam number="1">begin</beam></note>'
@@ -532,6 +581,42 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertEqual({n.findtext('time-modification/normal-notes') for _, _, g in events['5'] for n in g}, {'3'})
         self.assertEqual([(o, l) for o, l, _ in events['6']], [(0.0, 0.5)], 'Not lined up with anything: left alone')
         self.assertEqual([el.findtext('duration') for el in root.iter('backup')], ['54', '54'], 'Backups rewind to the bar line')
+
+    def test_unmarked_triplets_and_the_grid_after_them(self):
+        """4/4: the left hand's two triplet groups have no "3", so they read as plain eighths and
+        the right hand, which enters after the first group, is placed too late."""
+        def eighth(step, staff, voice, beam, octave=4):
+            return (f'<note><pitch><step>{step}</step><octave>{octave}</octave></pitch><duration>2</duration>'
+                    f'<voice>{voice}</voice><type>eighth</type><staff>{staff}</staff><beam number="1">{beam}</beam></note>')
+        def bar(time):
+            left = ''.join(eighth(n, 2, 5, b, 3) for n, b in zip('ACFEBG', ('begin', 'continue', 'end') * 2))
+            right = ('<forward><duration>6</duration></forward>'  # after the first group, timed as 3 plain eighths
+                     '<note><pitch><step>A</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice>'
+                     '<type>half</type><staff>1</staff></note>')
+            return ('<score-partwise><part id="P1"><measure number="1"><attributes><divisions>4</divisions>'
+                    f'{time}<staves>2</staves></attributes>{left}<backup><duration>12</duration></backup>{right}'
+                    '<backup><duration>14</duration></backup></measure></part></score-partwise>')
+        def staves(root):
+            m = root.find('part/measure')
+            return {k: [(o, l) for o, l, _ in piano.voice_events(m, staff, int(root.findtext('.//divisions')))[v]]
+                    for k, staff, v in (('left', 2, '5'), ('right', 1, '1'))}
+
+        root = ET.fromstring(bar('<time><beats>4</beats><beat-type>4</beat-type></time>'))
+        self.assertEqual(piano.unmarked_triplets(root), 0, 'Not past the bar line, no marked triplets: leave it')
+        root = ET.fromstring(bar('<time><beats>2</beats><beat-type>4</beat-type></time>'))  # now 3.0 > 2.0
+        self.assertEqual(piano.unmarked_triplets(root), 2)
+        third = 1 / 3
+        self.assertEqual([round(o, 6) for o, _ in staves(root)['left']], [round(k * third, 6) for k in range(6)])
+        self.assertEqual(staves(root)['right'][0][0], 1.0, 'Moved onto the corrected grid: enters after one beat')
+        for time in ('<time><beats>12</beats><beat-type>8</beat-type></time>', ''):  # compound time, unknown meter
+            self.assertEqual(piano.unmarked_triplets(ET.fromstring(bar(time))), 0)
+
+        marked = ('<note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration><voice>2</voice><type>eighth</type>'
+                  '<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>'
+                  '<staff>1</staff><notations><tuplet type="start"/></notations></note>')
+        root = ET.fromstring(bar('<time><beats>4</beats><beat-type>4</beat-type></time>').replace(
+            '<backup><duration>14</duration></backup>', '<backup><duration>14</duration></backup>' + marked * piano.SIMILE_MARKS))
+        self.assertEqual(piano.unmarked_triplets(root), 2, 'A sheet that marks triplets writes the rest the same way')
 
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():

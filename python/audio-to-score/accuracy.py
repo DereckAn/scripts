@@ -22,8 +22,9 @@ NAMES = "C C# D Eb E F F# G Ab A Bb B".split()
 EXACT = 1 / 8  # a note counts as placed right within a 32nd note of the reference position
 
 
-def reference_bars(midi_path):
-    """Reference MIDI -> [[(offset, pitch, length, staff)] per bar]; staff = track order."""
+def reference_bars(midi_path, pickup=0.0):
+    """Reference MIDI -> [[(offset, pitch, length, staff)] per bar]; staff = track order.
+    pickup: length in quarters of an upbeat bar before the first full bar (MIDI doesn't say)."""
     midi = mido.MidiFile(str(midi_path))
     q = lambda tick: tick / midi.ticks_per_beat
     meters, notes, staff = [], [], 0
@@ -40,7 +41,7 @@ def reference_bars(midi_path):
                 notes.append((q(start), msg.note, q(tick) - q(start), staff + 1))
         staff += has_notes
     meters = sorted(meters) or [(0, 4.0)]
-    starts, position, i = [], 0.0, 0
+    starts, position, i = ([0.0], pickup, 0) if pickup else ([], 0.0, 0)
     end = max((s + l for s, _, l, _ in notes), default=0)
     while position < end - 1e-6:  # bar lines from the time signatures
         while i + 1 < len(meters) and meters[i + 1][0] <= position + 1e-6:
@@ -96,7 +97,8 @@ def musicxml_bars(xml_path):
                 bars[index].append((offset, pitch, length, staff))
                 if "start" in ties:
                     open_ties[pitch] = (index, len(bars[index]) - 1)
-            if longest and abs(longest / divisions - meter) > 1e-6:
+            short_ends = index in (0, len(part.findall("measure")) - 1)  # upbeat bar / the bar completing it
+            if longest and (longest / divisions > meter + 1e-6 or (longest / divisions < meter - 1e-6 and not short_ends)):
                 wrong_length.add(index)
         staff_base += staves
     return bars, wrong_length
@@ -165,11 +167,40 @@ def compare(ref, ref_starts, got, wrong_length=()):
             "per bar": per_bar}
 
 
+def best_pickup(reference, got, wrong=()):
+    """The upbeat length (quarters) that lines the reference up best with a reading: MIDI files
+    don't mark pickups, and a wrong guess shifts every note. Tries 0 and every 16th of the
+    first bar. Returns (pickup, bars, bar starts, result)."""
+    meter = reference_bars(reference)[1]
+    first = meter[1] - meter[0] if len(meter) > 1 else 4.0
+    best = None
+    for k in range(int(round(first / 0.25))):
+        bars, starts = reference_bars(reference, k * 0.25)
+        result = compare(bars, starts, got, wrong)
+        if best is None or result["placed right"] > best[3]["placed right"]:
+            best = (k * 0.25, bars, starts, result)
+    return best
+
+
 def read_sheet(pdf, folder):
-    """The sheet through the app's own path: Audiveris (+ grace fallback), fixes, symbols."""
+    """The sheet through the app's own path: Audiveris (+ grace fallback), fixes, symbols.
+    Audiveris's reading is cached in `folder` per file contents and recognition settings,
+    so re-scoring after a change to the app's fixes takes seconds."""
+    import hashlib
+    import json
     import piano
-    from sheet_labels import tuplet_marks, music_symbols, place_symbols, recognize
-    scores = recognize(Path(pdf), folder, lambda detail: print("  …", detail))
+    from sheet_labels import RECOGNITION_VERSION, music_symbols, place_symbols, recognize, tuplet_marks
+    pdf, folder = Path(pdf), Path(folder)
+    key = f"{hashlib.sha256(pdf.read_bytes()).hexdigest()[:16]}-v{RECOGNITION_VERSION}"
+    cache = folder / key
+    marker = cache / "reading.json"
+    if marker.is_file():
+        scores = [cache / name for name in json.loads(marker.read_text())]
+    else:
+        cache.mkdir(parents=True, exist_ok=True)
+        scores = recognize(pdf, cache, lambda detail: print("  …", detail))
+        marker.write_text(json.dumps([str(s.relative_to(cache)) for s in scores]))
+    scores = piano.pick_reading(pdf, scores, cache)  # as the app does
     books = sorted(scores[0].parent.glob("*.omr"))
     placed = place_symbols(music_symbols(pdf) + tuplet_marks(pdf), books[0]) if books else []
     return piano.sheet_musicxml(scores[0], folder / "score.musicxml", placed)
@@ -195,9 +226,8 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         sys.exit(__doc__)
     sheet, reference = sys.argv[1], sys.argv[2]
-    ref, starts = reference_bars(reference)
     with tempfile.TemporaryDirectory() as folder:
         print(f"Reading {Path(sheet).name} (about a minute)…")
-        xml = read_sheet(sheet, Path(folder))
-        got, wrong = musicxml_bars(xml)
-    report(compare(ref, starts, got, wrong), f"{Path(sheet).name} vs {Path(reference).name}")
+        got, wrong = musicxml_bars(read_sheet(sheet, Path(folder)))
+    pickup, _, _, result = best_pickup(reference, got, wrong)
+    report(result, f"{Path(sheet).name} vs {Path(reference).name}" + (f" (upbeat {pickup:g} quarters)" if pickup else ""))

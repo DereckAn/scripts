@@ -37,7 +37,7 @@ from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
                           FONTS, FONT_CSS, rgb, contrast_color, recognition_copy, RECOGNITION_VERSION,
-                          music_symbols, place_symbols, tuplet_marks)
+                          music_symbols, place_symbols, tuplet_marks, broken_bars, CLEARLY_FEWER)
 
 # Recognized sheets often have odd chord/beam markup Verovio reports but engraves fine;
 # a real failure still raises in render().
@@ -818,10 +818,27 @@ def sheet_recognition(path, step):
     recognition.mkdir(exist_ok=True)
     marker = recognition / f"complete-v{RECOGNITION_VERSION}.json"  # read again when settings change
     if marker.is_file():
-        return recognition, [recognition / name for name in json.loads(marker.read_text())]
+        return recognition, pick_reading(path, [recognition / name for name in json.loads(marker.read_text())], recognition)
     scores = recognize(path, recognition, lambda detail: step(1, detail))
     marker.write_text(json.dumps([s.relative_to(recognition).as_posix() for s in scores]))
-    return recognition, scores
+    return recognition, pick_reading(path, scores, recognition)
+
+
+def pick_reading(pdf, scores, folder):
+    """Audiveris's main reading (with grace notes), or the plain one recognize() also made when
+    many bars looked broken, if that one has clearly fewer broken bars after the app's own fixes
+    (Bach's Prelude in C and Debussy's Arabesque read better without grace-note detection)."""
+    alternative = Path(folder) / "alternative.json"
+    if not alternative.is_file():
+        return scores
+    readings = [scores, [Path(folder) / name for name in json.loads(alternative.read_text())]]
+    broken = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for k, reading in enumerate(readings):
+            books = sorted(reading[0].parent.glob("*.omr"))
+            placed = place_symbols(music_symbols(pdf) + tuplet_marks(pdf), books[0]) if books else []
+            broken.append(broken_bars(sheet_musicxml(reading[0], Path(tmp) / f"{k}.musicxml", placed))[0])
+    return readings[1] if broken[1] <= broken[0] - CLEARLY_FEWER else readings[0]
 
 
 def sheet_musicxml(mxl, xml, placed=()):
@@ -833,6 +850,7 @@ def sheet_musicxml(mxl, xml, placed=()):
     fix_chord_beams(score)
     mark_symbols(score, placed)  # before duplets: symbols are placed at the recognized onsets
     apply_tuplets(score, placed)
+    unmarked_triplets(score)  # before re-timing: the voices it fixes become trusted anchors
     retime_voices(score)  # after tuplets: their voices now fill the bar and can be trusted
     tempo_from_words(score)
     ET.ElementTree(score).write(xml, encoding="UTF-8", xml_declaration=True)
@@ -1010,7 +1028,7 @@ def apply_tuplets(root, placed):
             return False
         missing[key] -= g
         used.update(id(n) for n in notes)
-        chosen.append((part, measure, events, count))
+        chosen.append((part, measure, events, count, count * 3 // 2))
         return True
 
     def voices(position, bar):
@@ -1051,49 +1069,7 @@ def apply_tuplets(root, placed):
                     if len(run) == 6:
                         take(key, run, part, measure, 6)
                     run = []
-    if not chosen:
-        return 0
-    for part in {c[0] for c in chosen}:  # enough time resolution for 1.5x lengths as whole numbers
-        divisions = [int(el.text) for el in part.iter("divisions")]
-        targets = [written_length(n) * 1.5 for c in chosen if c[0] is part for e in c[2] for n in e[2]]
-        k = next(k for k in (1, 2, 4, 8, 16) if all(abs(t * dv * k - round(t * dv * k)) < 1e-9 for t in targets for dv in divisions))
-        if k > 1:
-            for el in part.iter():
-                if el.tag in ("divisions", "duration"):
-                    el.text = str(int(el.text) * k)
-    for part, measure, events, count in chosen:
-        divisions = 1  # the time resolution in force at this bar
-        for m in part.findall("measure"):
-            divisions = int(m.findtext("attributes/divisions") or divisions)
-            if m is measure:
-                break
-        grown = 0
-        for e in events:
-            for note in e[2]:
-                duration = note.find("duration")
-                new = round(written_length(note) * 1.5 * divisions)
-                if note.find("chord") is None:
-                    grown += new - int(duration.text)
-                duration.text = str(new)
-                for old in note.findall("time-modification"):
-                    note.remove(old)
-                ratio = ET.Element("time-modification")
-                ET.SubElement(ratio, "actual-notes").text = str(count)
-                ET.SubElement(ratio, "normal-notes").text = str(count * 3 // 2)
-                after = [i for i, c in enumerate(note) if c.tag in ("type", "dot", "accidental")]
-                note.insert(after[-1] + 1 if after else len(note), ratio)
-                for old in note.findall("notations/tuplet"):
-                    note.find("notations").remove(old)
-        first, last = events[0][2][0], events[-1][2][0]
-        ET.SubElement(notations_of(first), "tuplet", type="start", bracket="yes")
-        ET.SubElement(notations_of(last), "tuplet", type="stop")
-        seen = False  # the voice now ends later: the next backup must rewind that much further
-        for el in measure:
-            if el is last:
-                seen = True
-            elif seen and el.tag == "backup":
-                el.find("duration").text = str(int(el.find("duration").text) + grown)
-                break
+    write_tuplets(chosen)
     return len(chosen)
 
 
@@ -1197,6 +1173,156 @@ def rebuild_voice(measure, events, times, lengths, divisions):
     backup = next((el for el in following if el.tag == "backup"), None)
     if backup is not None and following and following[0] is backup:
         backup.find("duration").text = str(cursor)
+
+
+def write_tuplets(groups):
+    """Rewrite tuplet groups [(part, measure, events, actual, normal)]: each note becomes
+    normal/actual of its written length with that tuplet ratio (Verovio plays durations from
+    the ratio), a bracket marks the group, and the next backup rewinds by the voice's change."""
+    if not groups:
+        return
+    for part in {g[0] for g in groups}:  # enough time resolution for the new lengths as whole numbers
+        divisions = [int(el.text) for el in part.iter("divisions")]
+        targets = [written_length(n) * g[4] / g[3] for g in groups if g[0] is part for e in g[2] for n in e[2]]
+        k = next(k for k in (1, 2, 3, 4, 6, 8, 12, 16, 24)
+                 if all(abs(t * dv * k - round(t * dv * k)) < 1e-9 for t in targets for dv in divisions))
+        if k > 1:
+            for el in part.iter():
+                if el.tag in ("divisions", "duration"):
+                    el.text = str(int(el.text) * k)
+    for part, measure, events, actual, normal in groups:
+        divisions = 1  # the time resolution in force at this bar
+        for m in part.findall("measure"):
+            divisions = int(m.findtext("attributes/divisions") or divisions)
+            if m is measure:
+                break
+        grown = 0
+        for e in events:
+            for note in e[2]:
+                duration = note.find("duration")
+                new = round(written_length(note) * normal / actual * divisions)
+                if note.find("chord") is None:
+                    grown += new - int(duration.text)
+                duration.text = str(new)
+                for old in note.findall("time-modification"):
+                    note.remove(old)
+                ratio = ET.Element("time-modification")
+                ET.SubElement(ratio, "actual-notes").text = str(actual)
+                ET.SubElement(ratio, "normal-notes").text = str(normal)
+                after = [i for i, c in enumerate(note) if c.tag in ("type", "dot", "accidental")]
+                note.insert(after[-1] + 1 if after else len(note), ratio)
+                for old in note.findall("notations/tuplet"):
+                    note.find("notations").remove(old)
+        first, last = events[0][2][0], events[-1][2][0]
+        ET.SubElement(notations_of(first), "tuplet", type="start", bracket="yes")
+        ET.SubElement(notations_of(last), "tuplet", type="stop")
+        seen = False  # the voice's length changed: the next backup must rewind that much more or less
+        for el in measure:
+            if el is last:
+                seen = True
+            elif seen and el.tag == "backup":
+                el.find("duration").text = str(int(el.find("duration").text) + grown)
+                break
+
+
+SIMILE_MARKS = 5  # marked triplet groups that make a sheet's unmarked threes triplets too
+
+
+def unmarked_triplets(root):
+    """Triplets printed without their "3" (engravers mark the first groups, then stop: simile).
+    In simple time plain eighths are beamed in twos or fours, so a beam group of exactly three
+    eighths or sixteenths is a triplet. Applied only to a voice that runs past the bar line, and
+    only if making all its three-note groups triplets ends it exactly at the bar line. Needs a
+    recognized simple time signature: in 6/8, 9/8, 12/8 (or an unknown meter) threes are normal."""
+    groups, before, touched = [], {}, {}
+    # A sheet that prints some "3"s writes the rest the same way (simile): then every three-eighth
+    # beam group in simple time is a triplet, even in a voice that doesn't run past the bar line.
+    marked = sum(1 for n in root.iter("note") if n.findtext("time-modification/actual-notes") == "3"
+                 and n.find("notations/tuplet[@type='start']") is not None)
+    simile = marked >= SIMILE_MARKS
+    for part in root.findall("part"):
+        divisions, meter, simple = 1, None, False
+        for measure in part.findall("measure"):
+            divisions = int(measure.findtext("attributes/divisions") or divisions)
+            if measure.find("attributes/time/beats") is not None:
+                beats, unit = int(measure.findtext("attributes/time/beats")), int(measure.findtext("attributes/time/beat-type"))
+                meter, simple = beats * 4 / unit, not (unit == 8 and beats % 3 == 0)
+            if meter is None or not simple:
+                continue  # unknown time signature (Audiveris can miss it) or compound time: threes are normal
+            staves = {int(n.findtext("staff") or 1) for n in measure.iter("note")}
+            for staff in staves:
+                for voice, events in voice_events(measure, staff, divisions).items():
+                    end = max(o + l for o, l, _ in events)
+                    if end <= meter + 1e-6 and not simile:
+                        continue
+                    found, run = [], []
+                    for e in events + [None]:
+                        lead = e and e[2][0]
+                        beam = lead.findtext("beam[@number='1']") if lead is not None else None
+                        plain = lead is not None and lead.find("time-modification") is None and lead.find("rest") is None \
+                            and lead.findtext("type") in ("eighth", "16th")
+                        if plain and beam in ("begin", "continue", "end"):
+                            run = [e] if beam == "begin" else run + [e]
+                            if beam == "end":
+                                if len(run) == 3 and len({r[2][0].findtext("type") for r in run}) == 1:
+                                    found.append(run)
+                                run = []
+                        else:
+                            run = []
+                    shrink = sum(sum(e[1] for e in g) / 3 for g in found)
+                    if found and (simile or end - shrink <= meter + 1e-6):  # no longer runs past the bar line
+                        groups += [(part, measure, g, 3, 2) for g in found]
+                        before[(id(measure), staff, voice)] = [o for o, _, _ in events] + [end]
+                        touched[id(measure)] = (measure, divisions)
+    write_tuplets(groups)
+    for part in root.findall("part"):  # write_tuplets may have raised the time resolution
+        divisions = 1
+        for measure in part.findall("measure"):
+            divisions = int(measure.findtext("attributes/divisions") or divisions)
+            if id(measure) in touched:
+                regrid(measure, divisions, before)
+    return len(groups)
+
+
+def regrid(measure, divisions, before):
+    """After triplets were fixed in some voices of a bar, move the start of the bar's other voices
+    to match. Audiveris times every voice on one shared grid built from note lengths, so a triplet
+    read as plain eighths pushes later-starting voices too late. Voices that start at the bar line
+    and were corrected give old grid time -> corrected time; a voice that starts later (after a
+    forward) is moved through that map, and the backup after it rewinds the same amount less."""
+    staves = {int(n.findtext("staff") or 1) for n in measure.iter("note")}
+    points = {0.0: 0.0}
+    for staff in staves:
+        for voice, events in voice_events(measure, staff, divisions).items():
+            old = before.get((id(measure), staff, voice))
+            if old and abs(old[0]) < 1e-6 and len(old) == len(events) + 1:
+                new = [o for o, _, _ in events] + [events[-1][0] + events[-1][1]]
+                for t_old, t_new in zip(old, new):
+                    if abs(points.get(round(t_old, 6), t_new) - t_new) > 1e-6:
+                        return  # the corrected voices disagree about the grid: leave the bar
+                    points[round(t_old, 6)] = t_new
+    if len(points) < 2:
+        return
+    xs = sorted(points)
+
+    def moved(t):
+        if t >= xs[-1]:
+            return t + points[xs[-1]] - xs[-1]
+        i = next(i for i in range(1, len(xs)) if xs[i] >= t)
+        a, b = xs[i - 1], xs[i]
+        return points[a] + (t - a) * (points[b] - points[a]) / (b - a)
+
+    children = list(measure)
+    for i, el in enumerate(children):
+        if el.tag != "forward" or i == 0 or children[i - 1].tag != "backup":
+            continue  # only a voice's lead-in right after a rewind to the bar line
+        start = int(el.findtext("duration")) / divisions  # the backup rewinds to the bar line
+        shift = round((moved(start) - start) * divisions)
+        if shift and int(el.findtext("duration")) + shift >= 0:
+            el.find("duration").text = str(int(el.findtext("duration")) + shift)
+            later = next((c for c in children[i + 1:] if c.tag == "backup"), None)
+            if later is not None:
+                later.find("duration").text = str(int(later.findtext("duration")) + shift)
 
 
 def fix_chord_beams(root):

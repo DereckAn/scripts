@@ -61,6 +61,9 @@ What playback picks up from the sheet:
   on, so they are recognized and played quickly before their main note. On some sheets
   (Clair de Lune) the switch makes Audiveris take normal chords for small ones and lose those
   bars ("StackRhythm error … SmallChord" in the log); the sheet is then read again without it.
+  It can also quietly break dense textures: when more than 5% of bars come out broken, a second
+  reading without it is made and kept only if, after the app's own fixes, it has at least 2 fewer
+  broken bars (Bach's Prelude in C, Debussy's Arabesque).
 - **Tempo words**, once Audiveris can read text: tempo terms set the speed (Moderato ≈ 108,
   Allegretto ≈ 112, Presto ≈ 180, …, see `TEMPO_TERMS` in `piano.py`), rit./rall. slow down
   over the next three bars, accel. speeds up, and "a tempo" / "Tempo I" go back. The
@@ -69,6 +72,10 @@ What playback picks up from the sheet:
   the printed "2"/"6" is read from the PDF's text layer and matched to the notes it is
   centered on, only where that voice is short by exactly the missing time; Audiveris's own
   6:4 readings of such groups are corrected too.
+- **Unmarked triplets**: engravers print "3" on the first groups only. In a recognized simple
+  meter, a beam group of exactly three eighths is a triplet when its voice runs past the bar
+  line (or in any sheet that marks at least 5 triplet groups); voices that enter later in that
+  bar are moved onto the corrected timing.
 - **Mistimed voices**: notes stacked vertically are played together. In a bar where some
   voices fill the bar exactly, a voice whose notes all line up under/over theirs but whose
   timing disagrees is re-timed from those positions (standard tuplet ratios only).
@@ -195,6 +202,7 @@ vector artwork; external fonts/images must be embedded or converted to paths.
 .venv/bin/python test_piano.py
 .venv/bin/python -m unittest test_sheet_labels test_svg_import test_note_styles test_accuracy test_recording_sync
 .venv/bin/python accuracy.py SHEET.pdf REFERENCE.mid   # sheet reading vs an exact MIDI
+.venv/bin/python benchmark.py   # all pieces in ~/Downloads/benchmark (PDF + MIDI pairs)
 ```
 
 The PDF tests cover upload validation, the short-staff retry, note position and clef

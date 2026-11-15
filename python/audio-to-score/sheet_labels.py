@@ -1,4 +1,5 @@
 """Recognize note positions and overlay names on the original PDF pages."""
+import json
 import os
 from pathlib import Path
 import shutil
@@ -290,7 +291,7 @@ def pdf_info(path):
 # cached readings made without them are redone.
 SMALL_NOTES = ("-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true",
                "-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallBeams=true")
-RECOGNITION_VERSION = 3
+RECOGNITION_VERSION = 4
 AUDIVERIS_MAX_AREA = 20_000_000 * (72 / 300) ** 2  # its 20-megapixel page limit at 300 dpi, in pt²
 
 
@@ -313,6 +314,47 @@ def recognition_copy(path, folder):
     return folder / "recognition-source.pdf"
 
 
+TRY_PLAIN_ABOVE = 0.05  # share of broken bars that triggers a second reading without grace notes
+CLEARLY_FEWER = 2  # broken bars (after the app's fixes) the plain reading must save to be kept
+
+
+def broken_bars(mxl):
+    """(bars whose notes don't fill them as the time signature says, total bars) in MusicXML (an
+    Audiveris .mxl, a .musicxml file or a parsed root): a voice running past the bar line, or a bar too short that isn't the first or last
+    (upbeat). Bars before any recognized time signature are not judged (Audiveris can miss it:
+    the Nocturne's 12/8). An unreadable file gives (0, 0): no evidence either way."""
+    try:
+        if isinstance(mxl, ET.Element):
+            root = mxl
+        elif str(mxl).endswith(".mxl"):
+            with zipfile.ZipFile(mxl) as archive:
+                root = ET.fromstring(archive.read(re.search(r'full-path="([^"]+)"', archive.read("META-INF/container.xml").decode())[1]))
+        else:
+            root = ET.parse(mxl).getroot()
+    except (zipfile.BadZipFile, KeyError, TypeError, ET.ParseError, OSError):
+        return 0, 0
+    broken = total = 0
+    for part in root.findall("part"):
+        measures, divisions, meter = part.findall("measure"), 1, None
+        for index, measure in enumerate(measures):
+            divisions = int(measure.findtext("attributes/divisions") or divisions)
+            if measure.find("attributes/time/beats") is not None:
+                meter = int(measure.findtext("attributes/time/beats")) * 4 / int(measure.findtext("attributes/time/beat-type"))
+            if meter is None:
+                continue
+            cursor = longest = 0
+            for el in measure:
+                if el.tag in ("backup", "forward"):
+                    cursor += int(el.findtext("duration") or 0) * (-1 if el.tag == "backup" else 1)
+                elif el.tag == "note" and el.find("chord") is None and el.find("grace") is None:
+                    cursor += int(el.findtext("duration") or 0)
+                longest = max(longest, cursor)
+            length = longest / divisions
+            total += 1
+            broken += bool(longest) and (length > meter + 1e-6 or (length < meter - 1e-6 and 0 < index < len(measures) - 1))
+    return broken, total
+
+
 def recognize(path, folder, progress=lambda detail: None):
     command = audiveris_command()
     if not command:
@@ -322,7 +364,7 @@ def recognize(path, folder, progress=lambda detail: None):
         progress("Pages are oversized; reading an A4-sized copy")
     path = readable
     logs = []
-    short_staves, high_resolution, small_notes = False, False, True
+    short_staves, high_resolution, small_notes, compared = False, False, True, None
     for _ in range(4):
         label = "Standard recognition"
         if short_staves:
@@ -357,6 +399,16 @@ def recognize(path, folder, progress=lambda detail: None):
             if small_notes and re.search(r"StackRhythm error.*SmallChord", log):
                 small_notes = False
                 continue
+            if compared:  # piano.pick_reading compares both after the app's own fixes
+                (folder / "alternative.json").write_text(json.dumps([str(s.relative_to(folder)) for s in scores]))
+                return compared[0]
+            broken, total = broken_bars(scores[0])
+            if small_notes and broken > TRY_PLAIN_ABOVE * total:
+                # Grace-note reading can also quietly break the rhythm of dense textures (Bach's
+                # Prelude in C, Debussy's Arabesque). Read once more without it and compare.
+                compared, small_notes = (scores, broken), False
+                progress("Some bars look broken; comparing a reading without grace notes")
+                continue
             return scores
         # A short ending staff can fall below Audiveris's default minimum width
         # (30 staff spaces). Retry the whole PDF; never omit the failed page.
@@ -366,6 +418,8 @@ def recognize(path, folder, progress=lambda detail: None):
             high_resolution = True
         elif small_notes:  # the grace-note switch can also make Audiveris fail outright
             small_notes = False
+        elif compared:  # the comparison reading failed: keep the first one
+            return compared[0]
         else:
             break
     if "No system found" in log:

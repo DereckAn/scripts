@@ -24,6 +24,49 @@ Baseline, Clair de Lune vs Mutopia's MIDI (1,468 notes, 72 bars), 2026-11-15:
 Labeled sheets read badly: letters inside noteheads stop them looking like noteheads.
 Read the clean sheet, then label it.
 
+### Benchmark (9 pieces, 8,121 notes): `.venv/bin/python benchmark.py`
+
+Sheets + exact MIDIs from the Mutopia Project in `~/Downloads/benchmark` (readings cached,
+each run saved and compared with the previous). Baseline 2026-11-15:
+
+| Piece | Notes | Placed right | Pitches right | Missed ties | Bad bars |
+|---|---|---|---|---|---|
+| Bach, Prelude in C | 549 | 66% | 88% | 14 | 13 |
+| Beethoven, Für Elise | 905 | 89% | 93% | 0 | 7 |
+| Chopin, Nocturne Op. 9 No. 2 | 1,242 | 87% | 91% | 7 | 38 |
+| Chopin, Prelude Op. 28 No. 4 | 600 | 98% | 100% | 7 | 2 |
+| Debussy, Arabesque No. 1 | 1,448 | 54% | 79% | 171 | 50 |
+| Debussy, Clair de lune | 1,468 | 79% | 88% | 78 | 23 |
+| Mozart, K. 545 mvt 1 | 1,288 | 91% | 93% | 0 | 2 |
+| Satie, Gymnopédie No. 1 | 282 | 87% | 90% | 5 | 1 |
+| Schumann, Träumerei | 339 | 78% | 93% | 38 | 6 |
+| **Total** | **8,121** | **79%** | **89%** | | |
+
+Most notes lost: Arabesque (665), Clair de lune (308), Bach Prelude (189: overlapping voices,
+a held bass + tied second voice + 16ths, split into 5 voices with notes dropped), Nocturne (163).
+Rule for changes: the total goes up and no piece drops noticeably.
+
+**Unmarked triplets (2026-11-15):** Arabesque 54% → 64% (missed ties 171 → 74), total 79% → 81%,
+no other piece changed. Engravers print "3" on the first triplet groups only (simile); a beam
+group of exactly three eighths in simple time is a triplet when its voice runs past the bar line,
+or anywhere in a sheet that marks at least 5 triplet groups; later voices in that bar move onto the
+corrected grid. Inside the Arabesque: 33 bars better (+100 notes), 12 slightly worse (−30; bar 49
+8 → 0) where Debussy does beam plain eighths in threes. Caught by the benchmark on the way: with
+no recognized time signature (the Nocturne's 12/8 is missed by Audiveris) the rule had assumed 4/4
+and made 114 false triplets (Nocturne 87% → 36%); it now needs a known simple meter.
+
+**Grace-note detection vs plain reading (2026-11-15):** total 81% → 83%. Bach 66% → 71%,
+Arabesque 64% → 70% (pitches 79% → 87%), nothing else changed. Audiveris's grace-note switch
+quietly breaks the rhythm of some dense textures, yet the Nocturne needs it (−4.8% without).
+Now: if more than 5% of bars come out broken, a second reading without it is made, and
+`pick_reading` keeps it only if it has ≥2 fewer broken bars after the app's own fixes (raw
+counts were too close: Arabesque 47 vs 46 raw, 24 vs 22 after fixes). 4 of 9 sheets are read
+twice (about a minute more each). A bar with no recognized time signature isn't judged.
+- [ ] **Bach Prelude's texture is still at 71%**: Audiveris sees every notehead (18 of 18 in
+      bar 2) but its rhythm analysis of a held bass + tied inner voice + 16ths builds a broken
+      time grid and silently drops notes. Fixing it means rebuilding bar rhythm from the
+      noteheads ourselves (stems, beams, flags, voices): a big project.
+
 ## 1. Trustworthy results (biggest impact)
 
 - [x] **Duplets ("2" in 6/8, 9/8, 12/8).** Audiveris ignores them; the "2" is read from the
