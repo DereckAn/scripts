@@ -56,6 +56,27 @@ work. Differences: the score is re-engraved from what was recognized (check it a
 original), there is no "Original audio", and tempo marks are rarely recognized, so playback
 starts at ♩ = 120 (use Speed). The key comes from the key signature.
 
+What playback picks up from the sheet:
+- **Grace notes** (small notes before a main note): Audiveris's small-notehead switches are
+  on, so they are recognized and played quickly before their main note.
+- **Tempo words**, once Audiveris can read text: tempo terms set the speed (Moderato ≈ 108,
+  Allegretto ≈ 112, Presto ≈ 180, …, see `TEMPO_TERMS` in `piano.py`), rit./rall. slow down
+  over the next three bars, accel. speeds up, and "a tempo" / "Tempo I" go back. The
+  metronome, count-in and ♩ display follow these changes bar by bar.
+- **Chords with beams**: Audiveris repeats a chord's beam on each note, which made Verovio
+  drop those notes and shorten bars; the beam is kept on the chord's first note only.
+- Not yet: arpeggios, trills and fermatas (Audiveris rarely detects them), and metronome
+  marks like "♩ = 50" (the note symbol can't be read as text).
+
+Text reading needs Tesseract's English data in Audiveris's folder (one time, 23 MB):
+
+```sh
+curl -L -o ~/Library/Application\ Support/AudiverisLtd/audiveris/tessdata/eng.traineddata \
+  https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
+```
+
+Sheets read before these settings are read again once (the cache is versioned).
+
 ## Clean PDF (scans and photos)
 
 Upload a PDF or an image (PNG, JPG, WEBP, TIFF; images become a one-page, A4-wide PDF,

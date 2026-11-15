@@ -284,6 +284,12 @@ def pdf_info(path):
         raise SheetError("That PDF could not be read. Try exporting it again.") from exc
 
 
+# Off by default in Audiveris: small noteheads and beams, i.e. grace notes (playable
+# ornament notes). Bump RECOGNITION_VERSION when recognition settings change, so
+# cached readings made without them are redone.
+SMALL_NOTES = ("-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true",
+               "-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallBeams=true")
+RECOGNITION_VERSION = 2
 AUDIVERIS_MAX_AREA = 20_000_000 * (72 / 300) ** 2  # its 20-megapixel page limit at 300 dpi, in pt²
 
 
@@ -327,8 +333,8 @@ def recognize(path, folder, progress=lambda detail: None):
         # Each attempt has a fresh output directory: failed/partial exports from a
         # previous run must never be mistaken for a complete score.
         attempt = Path(tempfile.mkdtemp(prefix="retry-" if logs else "standard-", dir=folder))
-        options = (["-constant", "org.audiveris.omr.sheet.grid.LinesRetriever.minStaffLength=12"]
-                   if short_staves else [])
+        options = list(SMALL_NOTES) + (["-constant", "org.audiveris.omr.sheet.grid.LinesRetriever.minStaffLength=12"]
+                                       if short_staves else [])
         if high_resolution:
             options += ["-constant", "org.audiveris.omr.image.ImageLoading.pdfResolution=600"]
         try:

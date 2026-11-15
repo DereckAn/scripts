@@ -304,6 +304,52 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertTrue(r['score'].startswith('piano-'), 'Note names and colors can restyle it')
         self.assertEqual(client.post('/api/scores/style', json={'score': r['score'], 'show_names': True}).status_code, 200)
 
+    def test_tempo_words_become_playback_speed(self):
+        words = {1: 'Moderato e molto rubato', 3: 'rit.', 6: 'a tempo', 8: '138 Presto', 9: 'marcato'}
+        bars = ''.join(f'<measure number="{i}">'
+                       + (f'<direction><direction-type><words>{words[i]}</words></direction-type></direction>' if i in words else '')
+                       + ('<sound tempo="70"/>' if i == 10 else '')
+                       + '<note><rest/><duration>4</duration></note></measure>' for i in range(1, 11))
+        with tempfile.TemporaryDirectory() as folder:
+            xml = Path(folder) / 'score.musicxml'
+            xml.write_text(f'<score-partwise><part id="P1">{bars}</part><part id="P2">{bars}</part></score-partwise>')
+            tree = ET.parse(xml)
+            steps = piano.tempo_from_words(tree.getroot())
+            tree.write(xml)
+            # Moderato; rit. slows over 3 bars and holds; a tempo restores; "138" is a bar number, not a tempo.
+            self.assertEqual([(i + 1, bpm) for i, bpm in steps], [(1, 108), (3, 99), (4, 92), (5, 84), (6, 108), (8, 180)])
+            root = ET.parse(xml).getroot()
+            first = root.find('part').findall('measure')
+            self.assertEqual(first[2][0].tag, 'sound', 'Tempo goes before the bar\'s notes')
+            self.assertEqual(len(root.findall('part')[1].findall('.//sound')), 1, 'Only the first part gets new tempos')
+            self.assertEqual(first[9].find('sound').get('tempo'), '70', 'A tempo already in the file is kept')
+
+    def test_chord_beams_kept_on_the_first_note_only(self):
+        root = ET.fromstring('<score-partwise><part id="P1"><measure number="1">'
+                             '<note><pitch><step>B</step><octave>4</octave></pitch><beam number="1">begin</beam></note>'
+                             '<note><chord/><pitch><step>D</step><octave>5</octave></pitch><beam number="1">begin</beam></note>'
+                             '</measure></part></score-partwise>')
+        piano.fix_chord_beams(root)
+        first, second = root.iter('note')
+        self.assertIsNotNone(first.find('beam'))
+        self.assertIsNone(second.find('beam'), 'Verovio drops beamed chords that repeat the beam')
+
+    def test_recognition_asks_for_grace_notes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            calls = []
+
+            def run(args, **kwargs):
+                calls.append(args)
+                (Path(args[args.index('-output') + 1]) / 'done.mxl').write_bytes(b'x')
+                return subprocess.CompletedProcess(args, 0, '', '')
+
+            with patch('sheet_labels.audiveris_command', return_value='/fake/audiveris'), \
+                    patch('sheet_labels.subprocess.run', side_effect=run):
+                recognize(blank_pdf(folder / 'source.pdf'), folder)
+            self.assertIn('org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true', calls[0])
+            self.assertIn('org.audiveris.omr.sheet.ProcessingSwitches.smallBeams=true', calls[0])
+
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():
             self.skipTest('potrace is not installed')

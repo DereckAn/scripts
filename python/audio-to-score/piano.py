@@ -14,6 +14,7 @@ import traceback
 import urllib.parse
 import uuid
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import librosa
@@ -35,7 +36,7 @@ import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
-                          FONTS, FONT_CSS, rgb, contrast_color, recognition_copy)
+                          FONTS, FONT_CSS, rgb, contrast_color, recognition_copy, RECOGNITION_VERSION)
 
 # Recognized sheets often have odd chord/beam markup Verovio reports but engraves fine;
 # a real failure still raises in render().
@@ -718,7 +719,7 @@ def sheet_recognition(path, step):
     playing the sheet in the Studio reuse one recognition. Reports progress on stage 1."""
     recognition = path.parent / "recognized"
     recognition.mkdir(exist_ok=True)
-    marker = recognition / "complete.json"
+    marker = recognition / f"complete-v{RECOGNITION_VERSION}.json"  # older readings lack grace notes
     if marker.is_file():
         return recognition, [recognition / name for name in json.loads(marker.read_text())]
     scores = recognize(path, recognition, lambda detail: step(1, detail))
@@ -727,12 +728,74 @@ def sheet_recognition(path, step):
 
 
 def sheet_musicxml(mxl, xml):
-    """Unpack Audiveris's compressed .mxl. Verovio reads it as is; rewriting it through
-    music21 fails on recognized scores whose voices don't line up exactly."""
+    """Unpack Audiveris's compressed .mxl, repair what Verovio can't read and add tempo steps.
+    (Rewriting it through music21 fails on recognized scores whose voices don't line up.)"""
     with zipfile.ZipFile(mxl) as archive:
         root = re.search(r'full-path="([^"]+)"', archive.read("META-INF/container.xml").decode())[1]
-        xml.write_bytes(archive.read(root))
+        score = ET.fromstring(archive.read(root))
+    fix_chord_beams(score)
+    tempo_from_words(score)
+    ET.ElementTree(score).write(xml, encoding="UTF-8", xml_declaration=True)
     return xml
+
+
+# Tempo words -> playback speed (♩ per minute; common metronome values, adjust to taste).
+TEMPO_TERMS = {"prestissimo": 200, "presto": 180, "vivace": 160, "allegro": 132, "allegretto": 112,
+               "moderato": 108, "andantino": 96, "andante": 84, "adagietto": 74, "adagio": 66,
+               "larghetto": 60, "lento": 56, "largo": 50, "grave": 40}
+SLOWER, FASTER = r"\b(rit|riten|ritard|rall|rallent)", r"\baccel"
+BACK = r"\ba tempo\b|\btempo (i|1|primo)\b"
+RAMP = (0.92, 0.85, 0.78)  # rit./accel.: tempo factor over the next bars, until a new tempo word
+
+
+def tempo_from_words(root):
+    """Add invisible <sound tempo> steps for recognized tempo words, so playback follows
+    "Allegretto", "rit.", "accel." and "a tempo" (Verovio plays only numeric tempos).
+    Returns [(bar index, ♩ per minute)] that were set."""
+    parts = root.findall("part")
+    if not parts:
+        return []
+    bars = [list(part.findall("measure")) for part in parts]
+    current = base = 120.0  # Verovio's default until a tempo is known
+    ramp, changes = None, []
+    for i, measure in enumerate(bars[0]):
+        here = [m[i] for m in bars if i < len(m)]
+        text = " ".join(w.text or "" for m in here for w in m.iter("words")).lower()
+        given = [float(t.get("tempo")) for m in here for t in m.iter("sound") if t.get("tempo")]
+        terms = [t for t in TEMPO_TERMS if re.search(rf"\b{t}\b", text)]
+        if given:  # a real tempo number in the file wins
+            current = base = given[0]; ramp = None
+            continue
+        target = None
+        if terms:
+            current = base = target = TEMPO_TERMS[max(terms, key=len)]; ramp = None
+        elif re.search(BACK, text):
+            current = target = base; ramp = None
+        elif re.search(SLOWER, text) or re.search(FASTER, text):
+            ramp = [f if re.search(SLOWER, text) else 2 - f for f in RAMP]
+        if ramp:
+            target = round(base * ramp.pop(0))
+            current = target
+            if not ramp:
+                ramp = None
+        if target is not None:
+            sound = ET.Element("sound", tempo=str(round(target)))
+            lead = 0  # after the bar's layout/clef/key/time settings, before its notes
+            while lead < len(measure) and measure[lead].tag in ("print", "attributes", "barline"):
+                lead += 1
+            measure.insert(lead, sound)
+            changes.append((i, round(target)))
+    return changes
+
+
+def fix_chord_beams(root):
+    """Audiveris repeats a chord's beam on every note of the chord; Verovio expects it on the
+    first note only and otherwise drops the whole beamed group (bars play short, notes go
+    missing). Keep beams on the chord's first note."""
+    for note in root.iter("note"):
+        if note.find("chord") is not None:
+            for beam in note.findall("beam"):
+                note.remove(beam)
 
 
 def sheet_facts(xml, midi):
