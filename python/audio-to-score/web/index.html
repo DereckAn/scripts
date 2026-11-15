@@ -390,6 +390,12 @@ tailwind.config = { theme: { extend: {
         <button type="button" data-hand="r" aria-pressed="true" class="hand px-2.5 py-1 rounded font-label-md text-label-md uppercase tracking-wide flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#7cc4f5"></span><span>Right hand</span></button>
         <button type="button" data-hand="l" aria-pressed="true" class="hand px-2.5 py-1 rounded font-label-md text-label-md uppercase tracking-wide flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#d4b896"></span><span>Left hand</span></button>
       </div>
+      <div id="score-style" class="flex flex-wrap items-center gap-space-xs" title="Names and colors on the falling notes, keyboard and sheet music" role="group" aria-label="Note names and colors">
+        <label class="flex items-center gap-1.5 px-space-sm py-1 rounded-lg bg-surface-container-low cursor-pointer font-label-lg text-label-lg text-primary"><input id="sc-names" type="checkbox" class="accent-primary w-4 h-4"/>Note names</label>
+        <label class="flex items-center gap-1.5 px-space-sm py-1 rounded-lg bg-surface-container-low cursor-pointer font-label-lg text-label-lg text-primary"><input id="sc-colors" type="checkbox" class="accent-primary w-4 h-4"/>Note colors</label>
+        <select id="sc-naming" aria-label="Note name style" class="bg-surface-container-low rounded-lg px-space-sm py-1 font-body-md text-body-md"><option value="letters">C D E</option><option value="solfege">Do Re Mi</option></select>
+        <span id="sc-status" role="status" class="font-label-mono text-label-mono text-on-surface-variant"></span>
+      </div>
     </div>
     <div class="flex items-center gap-space-sm">
       <div class="flex items-center bg-surface-container rounded-lg p-0.5 font-label-md text-label-md" role="group" aria-label="Sound">
@@ -420,13 +426,7 @@ tailwind.config = { theme: { extend: {
   </div>
 
   <div id="s-sheet" class="w-full max-w-5xl mx-auto px-gutter md:px-gutter-desktop py-space-lg" hidden>
-    <div id="score-style" class="flex flex-wrap items-center gap-space-sm mb-space-sm" role="group" aria-label="Note names and colors">
-      <label class="flex items-center gap-1.5 px-space-sm py-1 rounded-lg bg-surface-container-low cursor-pointer font-label-lg text-label-lg text-primary"><input id="sc-names" type="checkbox" class="accent-primary w-4 h-4"/>Note names</label>
-      <label class="flex items-center gap-1.5 px-space-sm py-1 rounded-lg bg-surface-container-low cursor-pointer font-label-lg text-label-lg text-primary"><input id="sc-colors" type="checkbox" class="accent-primary w-4 h-4"/>Note colors</label>
-      <select id="sc-naming" aria-label="Note name style" class="bg-surface-container-low rounded-lg px-space-sm py-1 font-body-md text-body-md"><option value="letters">C D E</option><option value="solfege">Do Re Mi</option></select>
-      <span id="sc-status" role="status" class="font-label-mono text-label-mono text-on-surface-variant"></span>
-    </div>
-    <p class="font-label-mono text-label-mono text-on-surface-variant mb-space-sm">Click any note to jump there. Font, pitch colors and label color follow your Label sheet settings; the PDF export matches.</p>
+    <p class="font-label-mono text-label-mono text-on-surface-variant mb-space-sm">Click any note to jump there. Note names and colors use your Label sheet font and palette; the PDF export matches.</p>
     <div id="sheet"></div>
   </div>
 
@@ -895,11 +895,12 @@ tailwind.config = { theme: { extend: {
     const luminance = linear.reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
     return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? '#000000' : '#ffffff';
   };
+  const FONT_FAMILY = { sans: 'Arial, sans-serif', serif: 'Times New Roman, serif', mono: 'Courier New, monospace',
+    garamond: 'Label EB Garamond, serif', spartan: 'Label League Spartan, sans-serif',
+    newsreader: 'Label Newsreader, serif', bodoni: 'Label Bodoni Moda, serif' };
   const stylePreview = () => {
     const style = sheetStyle(), solfege = document.querySelector('input[name=naming]:checked').value === 'solfege';
-    const family = { sans: 'Arial, sans-serif', serif: 'Times New Roman, serif', mono: 'Courier New, monospace',
-      garamond: 'Label EB Garamond, serif', spartan: 'Label League Spartan, sans-serif',
-      newsreader: 'Label Newsreader, serif', bodoni: 'Label Bodoni Moda, serif' }[style.font];
+    const family = FONT_FAMILY[style.font];
     ['c', 'd', 'g'].forEach(step => {
       const color = style.color_notes ? style.note_colors[step] : '#000000', hollow = step === 'd';
       const head = document.querySelector(`[data-preview-head="${step}"]`);
@@ -1130,6 +1131,43 @@ tailwind.config = { theme: { extend: {
     $('ctx-label').textContent = `Score · bar ${bar + 1}`;
   }
 
+  // Note names for MIDI pitches (the waterfall has no written spelling): black keys take
+  // sharps or flats from the piece's key, so B-flat major shows B♭, not A♯.
+  const NAMES = { letters: { c: 'C', d: 'D', e: 'E', f: 'F', g: 'G', a: 'A', b: 'B' },
+                  solfege: { c: 'Do', d: 'Re', e: 'Mi', f: 'Fa', g: 'Sol', a: 'La', b: 'Si' } };
+  const usesFlats = key => {
+    const [tonic, mode] = (key || '').split(' ');
+    return tonic?.includes('♭') || (mode === 'major' ? tonic === 'F' : ['D', 'G', 'C', 'F'].includes(tonic));
+  };
+  function pitchName(p) {
+    const pc = p % 12, white = { 0: 'c', 2: 'd', 4: 'e', 5: 'f', 7: 'g', 9: 'a', 11: 'b' };
+    if (white[pc]) return { step: white[pc], acc: '' };
+    return usesFlats(current?.key) ? { step: white[pc + 1], acc: '♭' } : { step: white[pc - 1], acc: '♯' };
+  }
+  function noteLook() {  // null when names and colors are both off
+    const names = $('sc-names').checked, colors = $('sc-colors').checked;
+    if (!names && !colors) return null;
+    const look = sheetStyle();
+    return { names, colors, naming: $('sc-naming').value, family: FONT_FAMILY[look.font], palette: look.note_colors,
+             ink: look.label_color === 'auto' ? null : look.label_color };
+  }
+  function fitText(g, text, cx, y, room, size, family) {  // centered, shrunk to fit; skipped when unreadable
+    g.font = `700 ${size}px ${family}`;
+    const w = g.measureText(text).width;
+    if (w > room) { size *= room / w; if (size < 7) return; g.font = `700 ${size}px ${family}`; }
+    g.textAlign = 'center'; g.fillText(text, cx, y); g.textAlign = 'left';
+  }
+  // The waterfall fills the space between the studio toolbar and the playback bar; the
+  // toolbar wraps to more rows on narrow windows, so measure instead of assuming its height.
+  function fitWaterfall() {
+    const wf = $('s-waterfall'), bar = $('view-studio').querySelector('.sticky.bottom-0');
+    if (wf.hidden || !bar || !wf.offsetParent) return;
+    const top = wf.getBoundingClientRect().top + scrollY;
+    wf.style.height = Math.max(420, innerHeight - top - bar.offsetHeight) + 'px';
+    if (S.d) frame();
+  }
+  new ResizeObserver(fitWaterfall).observe($('view-studio').firstElementChild);
+  addEventListener('resize', fitWaterfall);
   function keyLayout(lo, hi) {
     const black = p => [1, 3, 6, 8, 10].includes(p % 12);
     const whites = []; for (let p = lo; p <= hi; p++) if (!black(p)) whites.push(p);
@@ -1163,28 +1201,39 @@ tailwind.config = { theme: { extend: {
       g.fillStyle = 'rgba(254,248,244,0.30)'; g.fillText('Bar ' + (i + 1), 14, y - 6);
     });
     // falling notes
-    const active = {};
+    const active = {}, look = noteLook();
+    const nameOf = p => { const n = pitchName(p); return { ...n, text: NAMES[look.naming][n.step] + n.acc }; };
+    const fillOf = (p, h) => look?.colors ? look.palette[pitchName(p).step] : COLORS[h];
+    const inkOn = fill => look.ink || contrastText(fill);
     for (const [s, e, p, h] of S.d.notes) {
       if (e < t || s > t + LOOK || p < lo || p > hi) continue;
       const [x, w] = keyX(p), top = y0 - (e - t) * pps, bot = Math.min(y0, y0 - (s - t) * pps);
       const on = s <= t && t < e, muted = !S.on[h] && S.src === 'synth';
       if (on) active[p] = h;
       g.globalAlpha = muted ? 0.25 : on ? 1 : 0.85;
-      g.shadowColor = COLORS[h]; g.shadowBlur = on && !muted ? 16 : 0;
-      g.fillStyle = COLORS[h];
+      const fill = fillOf(p, h);
+      g.shadowColor = fill; g.shadowBlur = on && !muted ? 16 : 0;
+      g.fillStyle = fill;
       const r = Math.min(4, w / 2); g.beginPath(); g.roundRect(x + 1, top, w - 2, Math.max(3, bot - top), r); g.fill();
+      if (look?.names && bot - top >= 14) {  // name where the note meets the keyboard
+        g.shadowBlur = 0; g.fillStyle = inkOn(fill);
+        fitText(g, nameOf(p).text, x + w / 2, bot - 4, w - 4, Math.min(13, w - 2), look.family);
+      }
     }
     g.globalAlpha = 1; g.shadowBlur = 0;
     // strike line + keyboard
     g.fillStyle = 'rgba(186,222,253,0.8)'; g.fillRect(0, y0 - 2, W, 2);
     whites.forEach((p, i) => {
-      g.fillStyle = active[p] ? COLORS[active[p]] : '#fef8f4'; g.fillRect(i * ww, y0, ww, KH);
+      const key = active[p] ? fillOf(p, active[p]) : '#fef8f4';
+      g.fillStyle = key; g.fillRect(i * ww, y0, ww, KH);
       g.fillStyle = 'rgba(115,120,125,0.35)'; g.fillRect(i * ww + ww - 1, y0, 1, KH);
+      if (look?.names) { g.fillStyle = active[p] ? inkOn(key) : '#42474d'; fitText(g, nameOf(p).text, i * ww + ww / 2, H - 20, ww - 3, 11, look.family); }
       if (p % 12 === 0) { g.fillStyle = '#42474d'; g.font = '500 10px JetBrains Mono, monospace'; g.textAlign = 'center'; g.fillText('C' + (p / 12 - 1), i * ww + ww / 2, H - 6); g.textAlign = 'left'; }
     });
     for (let p = lo; p <= hi; p++) if (black(p)) {
-      const [x, w] = keyX(p); g.fillStyle = active[p] ? COLORS[active[p]] : '#32302e';
-      g.beginPath(); g.roundRect(x, y0, w, KH * 0.6, [0, 0, 3, 3]); g.fill();
+      const [x, w] = keyX(p), key = active[p] ? fillOf(p, active[p]) : '#32302e';
+      g.fillStyle = key; g.beginPath(); g.roundRect(x, y0, w, KH * 0.6, [0, 0, 3, 3]); g.fill();
+      if (look?.names) { g.fillStyle = active[p] ? inkOn(key) : '#fef8f4'; fitText(g, nameOf(p).text, x + w / 2, y0 + KH * 0.6 - 7, w - 2, 9, look.family); }
     }
   }
 
@@ -1233,15 +1282,18 @@ tailwind.config = { theme: { extend: {
   // ---------- note names/colors on the converted score (re-rendered on the server, seconds)
   let current = null, styling = 0;
   function scoreStyleControls() {
-    const ok = !!current?.score;
-    ['sc-names', 'sc-colors', 'sc-naming'].forEach(id => $(id).disabled = !ok);
-    $('sc-naming').disabled = !ok || !$('sc-names').checked;
-    $('score-style').title = ok ? '' : 'Convert this recording again to add note names or colors';
+    $('sc-naming').disabled = !$('sc-names').checked;
+    $('score-style').title = current?.score ? 'Names and colors on the falling notes, keyboard and sheet music'
+      : 'Names and colors on the falling notes and keyboard. Convert this recording again to add them to the sheet music too';
   }
   async function styleScore() {
+    scoreStyleControls();
+    const look = sheetStyle();
+    document.fonts.load(`700 12px ${FONT_FAMILY[look.font]}`).then(() => S.d && frame());  // canvas needs the font loaded
+    if (S.d) frame();  // the waterfall restyles instantly; the sheet is re-rendered on the server
     if (!current?.score) return;
-    const run = ++styling, look = sheetStyle();  // latest click wins if several are in flight
-    scoreStyleControls(); $('sc-status').textContent = 'Updating score…';
+    const run = ++styling;  // latest change wins if several are in flight
+    $('sc-status').textContent = 'Updating score…';
     try {
       const response = await fetch('/api/scores/style', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ score: current.score, naming: $('sc-naming').value, show_names: $('sc-names').checked,
@@ -1275,7 +1327,7 @@ tailwind.config = { theme: { extend: {
     $('rate-text').textContent = `${Math.round(S.rate * 100)}% (♩ = ${Math.round(S.d.bpm * S.rate)})`;
     $('ctx-tempo').textContent = `♩ = ${Math.round(S.d.bpm * S.rate)} (${Math.round(S.rate * 100)}%)`;
     $('ctx-hands').textContent = S.src === 'orig' ? 'Original audio' : S.on.r && S.on.l ? 'Hands together' : S.on.r ? 'Right hand only' : S.on.l ? 'Left hand only' : 'Both hands muted';
-    $('s-waterfall').hidden = S.view !== 'waterfall'; $('s-sheet').hidden = S.view !== 'sheet';
+    $('s-waterfall').hidden = S.view !== 'waterfall'; $('s-sheet').hidden = S.view !== 'sheet'; fitWaterfall();
     $('ctx-card').hidden = !S.ctx; $('ctx-open').hidden = S.ctx;
     frame();
   }
