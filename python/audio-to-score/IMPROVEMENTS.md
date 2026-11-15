@@ -42,8 +42,23 @@ Read the clean sheet, then label it.
       perfect, 21 and 19 close. Conservative: a voice with a note between trusted notes is
       left alone.
 - [ ] **Voices that run past the bar line** (23 bars still). Re-timing needs a trusted voice
-      in the bar; bars where every voice is broken (e.g. 49, 50, 71) need another anchor,
-      such as Audiveris's slot grid or the audio.
+      in the bar; bars where every voice is broken (e.g. 49, 50, 71) need another anchor.
+      In those bars Audiveris also misreads staves, voices and octaves (bar 49: a flowing
+      arpeggio crossing between the hands): 80% of pitches right but only 54% placed right.
+- [ ] **Using a recording to fix broken bars: tried 2026-11-15, not adopted.** Method and results:
+      - Transcribe the recording (ByteDance: 1,472 notes vs 1,468 in the score, 70 s).
+      - Align it to the sheet: chroma DTW (20 fps, pretty_midi chroma of both + 1e-3, cosine),
+        then pin each bar start to the moment most of the bar's first-chord pitches are struck
+        within 80 ms (search ±1.2 s around the DTW guess). Works well: bar starts within
+        0.05 s of the answer key's (median), 90% within 0.17 s. Plain DTW bar mapping (0.09 s
+        median but 18 bars > 0.3 s off) and note pins from clean bars were worse.
+      - Re-time broken voices: match voice events to the recording's chords by note names
+        (Needleman-Wunsch), map times into the bar linearly, snap to 1.5/0.75/0.5/0.25 grids,
+        rebuild with standard tuplet ratios. Result: 79% -> 78% placed right; only bars
+        where a voice runs past the bar line can be touched (others got broken), and there
+        the staff/voice/octave errors dominate.
+      - Reused for **Add recording** in the Studio (done): the pianist's recording plays in step
+        with a sheet's score (`recording_sync.py`).
 - [ ] **Warn when a sheet already has note names inside the heads** (it reads far worse).
 
 Recognition is the weak point: a misread bar just sounds wrong and you have to notice it.

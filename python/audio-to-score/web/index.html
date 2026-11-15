@@ -402,6 +402,11 @@ tailwind.config = { theme: { extend: {
         <button type="button" data-src="synth" class="ssrc px-2.5 py-1 rounded">Score</button>
         <button type="button" data-src="orig" class="ssrc px-2.5 py-1 rounded">Original audio</button>
       </div>
+      <button type="button" id="s-add-rec" hidden title="Play a real recording of this piece in step with the score"
+        class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-lg text-label-lg flex items-center gap-1">
+        <span class="material-symbols-outlined text-[16px]">graphic_eq</span>Add recording</button>
+      <input id="s-rec-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.aiff,.aif,.ogg" class="sr-only" aria-label="Recording of this piece"/>
+      <span id="s-rec-status" role="status" class="font-label-mono text-label-mono text-on-surface-variant"></span>
       <div class="relative">
         <button type="button" id="s-export" aria-expanded="false" class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-lg text-label-lg flex items-center gap-1">
           <span class="material-symbols-outlined text-[16px]">file_download</span><span class="hidden sm:inline">Export</span></button>
@@ -1291,10 +1296,12 @@ tailwind.config = { theme: { extend: {
     S.range = { lo, hi };
     A.r.src = d.rh; A.l.src = d.lh; if (d.original) A.o.src = d.original; else A.o.removeAttribute('src'); setVolumes();
     $('s-title').textContent = r.title;
-    const fromSheet = !d.original;  // played from an uploaded sheet: no recording to compare or re-convert
+    const fromSheet = r.engine === 'Sheet';  // played from an uploaded sheet: nothing to re-convert
     $('s-chips').innerHTML = chip(esc(r.key), true) + chip(esc(r.meter)) + chip('♩ = ' + r.bpm) + chip(r.notes + ' notes') + chip(fromSheet ? 'From sheet' : 'Engine ' + esc(engineName(r.engine)));
-    document.querySelector('.ssrc[data-src="orig"]').hidden = fromSheet;
+    document.querySelector('.ssrc[data-src="orig"]').hidden = !d.original;
     $('other-engine').hidden = fromSheet;
+    $('s-add-rec').hidden = !fromSheet || !!d.original || !r.score;
+    $('s-rec-status').textContent = '';
     $('s-export-menu').innerHTML = r.downloads.map(f =>
       `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-2 rounded-lg hover:bg-surface-container-low text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
     $('sheet').innerHTML = r.player; $('ctx').innerHTML = r.player;
@@ -1337,6 +1344,36 @@ tailwind.config = { theme: { extend: {
     } catch (e) { if (run === styling) $('sc-status').textContent = e.message; }
   }
   ['sc-names', 'sc-colors', 'sc-naming'].forEach(id => $(id).addEventListener('change', styleScore));
+
+  // ---------- a real recording for a score read from a sheet ("Original audio", kept in step)
+  $('s-add-rec').onclick = () => $('s-rec-input').click();
+  $('s-rec-input').onchange = async e => {
+    const file = e.target.files[0], score = current?.score, say = text => $('s-rec-status').textContent = text;
+    if (!file || !score) return;
+    $('s-add-rec').disabled = true; say('Uploading the recording…');
+    try {
+      const body = new FormData(); body.append('file', file);
+      let response = await fetch('/api/source', { method: 'POST', body });
+      let d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not load that recording.');
+      response = await fetch('/api/scores/recording', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score, source: d.id }) });
+      d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not start.');
+      let job;
+      do {
+        await new Promise(r => setTimeout(r, 1000));
+        job = await (await fetch('/api/jobs/' + d.job)).json();
+        say(job.state === 'queued' ? 'Waiting for the previous job…' : `${job.stages[job.stage]?.name || 'Finishing'}… ${Math.round(job.progress * 100)}%`);
+      } while (job.state === 'queued' || job.state === 'running');
+      if (job.state !== 'done') throw new Error(job.error || 'Cancelled.');
+      if (current?.score !== score) return;  // another piece was opened meanwhile
+      const result = job.result;
+      S.d.original = result.original; S.d.timing = result.timing; A.o.src = result.original; setVolumes();
+      document.querySelector('.ssrc[data-src="orig"]').hidden = false; $('s-add-rec').hidden = true;
+      $('s-chips').insertAdjacentHTML('beforeend', chip('With recording'));
+      say(`Following the recording: ${result.matched} of ${result.bars} bars matched. Choose Original audio to hear it.`);
+    } catch (err) { say(err.message || 'Could not add the recording.'); }
+    finally { $('s-add-rec').disabled = false; e.target.value = ''; }
+  };
   function seg(sel, on, cls = ['bg-primary', 'text-on-primary', 'shadow-sm'], off = ['text-on-surface-variant']) {
     document.querySelectorAll(sel).forEach(b => { const a = on(b); cls.forEach(c => b.classList.toggle(c, a)); off.forEach(c => b.classList.toggle(c, !a)); b.setAttribute('aria-pressed', a); });
   }

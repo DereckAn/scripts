@@ -1334,6 +1334,46 @@ def style_score(req: ScoreStyleRequest):
             "pdf": {"label": "PDF", "url": files_url(pdf), "name": "score-labeled.pdf" if style else "score.pdf"}}
 
 
+class RecordingRequest(BaseModel):
+    score: str
+    source: str  # a recording uploaded through /api/source
+
+
+@app.post("/api/scores/recording")
+def score_recording(req: RecordingRequest):
+    """Follow a real recording with a score read from a sheet: the Studio's "Original audio"
+    then plays it, with the waterfall and score highlighting kept in step (recording_sync)."""
+    from recording_sync import bar_pins, recording_notes, timing_map
+    folder = WORK / req.score
+    xml = folder / "score.musicxml"
+    if not re.fullmatch(r"piano-[\w-]+", req.score) or not xml.is_file():
+        return JSONResponse({"error": "That score is no longer available. Open the sheet again."}, status_code=400)
+    if req.source not in SOURCES:
+        return JSONResponse({"error": "Upload the recording first."}, status_code=400)
+    audio, _ = SOURCES[req.source]
+
+    def work(step):
+        step(0)
+        notes = recording_notes(audio, cache=audio.parent / "recording_notes.json")
+        if not notes:
+            raise UserError("No piano notes were found in this recording.")
+        step(0, f"{len(notes)} notes heard")
+        step(1)
+        with tempfile.TemporaryDirectory() as tmp:
+            pages, timed, bars = render(xml, Path(tmp) / "score.pdf", Path(tmp) / "score.mid")
+            pins = bar_pins(Path(tmp) / "score.mid", [b / 1000 for b in bars], notes)
+        matched = sum(1 for p in pins if p[2])
+        if matched < 0.3 * len(bars):  # most bars should find their first chord in the recording
+            raise UserError(f"The recording doesn't seem to match this score (only {matched} of {len(bars)} bars "
+                            "found). Is it the same piece and arrangement?")
+        timing = timing_map(pins, max(e for _, e in timed.values()) / 1000, max(b for _, b, _ in notes))
+        step(1, f"{matched} of {len(bars)} bars matched")
+        return {"original": files_url(audio), "timing": timing, "matched": matched, "bars": len(bars)}
+
+    return start_job(work, ["Listening to the recording", "Following the score"], [0.85, 0.15],
+                     "Could not follow this recording with the score.")
+
+
 @app.post("/api/convert")
 def convert(req: ConvertRequest):
     if req.source not in SOURCES:

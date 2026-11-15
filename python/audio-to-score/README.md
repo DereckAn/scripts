@@ -95,6 +95,19 @@ curl -L -o ~/Library/Application\ Support/AudiverisLtd/audiveris/tessdata/eng.tr
 
 Sheets read before these settings are read again once (the cache is versioned).
 
+### Add a recording to a sheet
+
+In the Studio, a score opened from a sheet shows **Add recording**: upload a recording of
+the same piece and arrangement, and **Original audio** plays it with the waterfall, score
+highlighting, bar jumps and loops following the pianist (`recording_sync.py`). The
+recording is transcribed (about 70 s for 5 minutes), roughly aligned to the score
+(chroma + dynamic time warping), then each bar's first chord is pinned to the moment its
+notes are struck together. Bars with no chord found keep the rough guess unless it is far
+from their neighbours; the Studio interpolates between the rest. Clair de Lune (Mutopia
+sheet + a Wikimedia Commons recording): 67 of 72 bars matched, bar starts within 0.06 s
+of a reference alignment (median), 90% within 0.44 s. Too few matched bars means the
+recording is probably a different piece or arrangement, and is refused.
+
 ## Clean PDF (scans and photos)
 
 Upload a PDF or an image (PNG, JPG, WEBP, TIFF; images become a one-page, A4-wide PDF,
@@ -180,7 +193,7 @@ vector artwork; external fonts/images must be embedded or converted to paths.
 
 ```sh
 .venv/bin/python test_piano.py
-.venv/bin/python -m unittest test_sheet_labels test_svg_import test_note_styles test_accuracy
+.venv/bin/python -m unittest test_sheet_labels test_svg_import test_note_styles test_accuracy test_recording_sync
 .venv/bin/python accuracy.py SHEET.pdf REFERENCE.mid   # sheet reading vs an exact MIDI
 ```
 
