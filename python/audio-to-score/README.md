@@ -58,7 +58,9 @@ starts at ♩ = 120 (use Speed). The key comes from the key signature.
 
 What playback picks up from the sheet:
 - **Grace notes** (small notes before a main note): Audiveris's small-notehead switches are
-  on, so they are recognized and played quickly before their main note.
+  on, so they are recognized and played quickly before their main note. On some sheets
+  (Clair de Lune) the switch makes Audiveris take normal chords for small ones and lose those
+  bars ("StackRhythm error … SmallChord" in the log); the sheet is then read again without it.
 - **Tempo words**, once Audiveris can read text: tempo terms set the speed (Moderato ≈ 108,
   Allegretto ≈ 112, Presto ≈ 180, …, see `TEMPO_TERMS` in `piano.py`), rit./rall. slow down
   over the next three bars, accel. speeds up, and "a tempo" / "Tempo I" go back. The

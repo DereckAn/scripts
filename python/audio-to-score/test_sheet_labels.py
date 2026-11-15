@@ -324,6 +324,31 @@ class SheetLabelsTests(unittest.TestCase):
             self.assertEqual(len(root.findall('part')[1].findall('.//sound')), 1, 'Only the first part gets new tempos')
             self.assertEqual(first[9].find('sound').get('tempo'), '70', 'A tempo already in the file is kept')
 
+    def test_grace_note_reading_falls_back_when_it_breaks_rhythm(self):
+        """On some sheets Audiveris takes normal chords for grace (small) chords and loses bars."""
+        small = 'org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true'
+        for log, expected_calls in [('WARN StackRhythm error processing MeasureStack#1 java.lang.IllegalStateException: '
+                                     'Attempt to setVoice() on SmallChordInter#7960', 2), ('all good', 1)]:
+            with tempfile.TemporaryDirectory() as folder:
+                folder = Path(folder)
+                calls = []
+
+                def run(args, **kwargs):
+                    calls.append(args)
+                    output = Path(args[args.index('-output') + 1])
+                    (output / f'reading-{len(calls)}.mxl').write_bytes(b'x')
+                    return subprocess.CompletedProcess(args, 0, log if small in args else 'fine', '')
+
+                with patch('sheet_labels.audiveris_command', return_value='/fake/audiveris'), \
+                        patch('sheet_labels.subprocess.run', side_effect=run):
+                    scores = recognize(blank_pdf(folder / 'source.pdf'), folder)
+                self.assertEqual(len(calls), expected_calls)
+                self.assertIn(small, calls[0], 'Grace notes are tried first')
+                if expected_calls == 2:
+                    self.assertNotIn(small, calls[1])
+                    self.assertEqual(scores[0].name, 'reading-2.mxl', 'The reading without grace notes is kept')
+                    self.assertIn('without grace notes', (folder / 'recognition.log').read_text())
+
     def test_chord_beams_kept_on_the_first_note_only(self):
         root = ET.fromstring('<score-partwise><part id="P1"><measure number="1">'
                              '<note><pitch><step>B</step><octave>4</octave></pitch><beam number="1">begin</beam></note>'

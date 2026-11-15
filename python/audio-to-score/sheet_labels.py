@@ -290,7 +290,7 @@ def pdf_info(path):
 # cached readings made without them are redone.
 SMALL_NOTES = ("-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true",
                "-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallBeams=true")
-RECOGNITION_VERSION = 2
+RECOGNITION_VERSION = 3
 AUDIVERIS_MAX_AREA = 20_000_000 * (72 / 300) ** 2  # its 20-megapixel page limit at 300 dpi, in pt²
 
 
@@ -322,20 +322,22 @@ def recognize(path, folder, progress=lambda detail: None):
         progress("Pages are oversized; reading an A4-sized copy")
     path = readable
     logs = []
-    short_staves, high_resolution = False, False
-    for _ in range(3):
+    short_staves, high_resolution, small_notes = False, False, True
+    for _ in range(4):
         label = "Standard recognition"
         if short_staves:
             label = "Short-staff retry"
         if high_resolution:
             label += " at higher resolution"
-        if logs:
-            progress(label + "; keeping every page")
+        if not small_notes:
+            label += " without grace notes"
+        if logs:  # retries re-read the whole PDF; grace notes are dropped only when they broke the rhythm
+            progress(label + ("; keeping every page" if short_staves or high_resolution else ""))
         # Each attempt has a fresh output directory: failed/partial exports from a
         # previous run must never be mistaken for a complete score.
         attempt = Path(tempfile.mkdtemp(prefix="retry-" if logs else "standard-", dir=folder))
-        options = list(SMALL_NOTES) + (["-constant", "org.audiveris.omr.sheet.grid.LinesRetriever.minStaffLength=12"]
-                                       if short_staves else [])
+        options = (list(SMALL_NOTES) if small_notes else []) + (
+            ["-constant", "org.audiveris.omr.sheet.grid.LinesRetriever.minStaffLength=12"] if short_staves else [])
         if high_resolution:
             options += ["-constant", "org.audiveris.omr.image.ImageLoading.pdfResolution=600"]
         try:
@@ -350,6 +352,11 @@ def recognize(path, folder, progress=lambda detail: None):
         (folder / "recognition.log").write_text("\n\n".join(logs))
         scores = sorted(attempt.rglob("*.mxl"))
         if not done.returncode and scores:
+            # Grace-note reading can mistake normal chords for small ones; those bars then fail
+            # rhythm analysis and lose notes and ties. Read once more without it and keep that.
+            if small_notes and re.search(r"StackRhythm error.*SmallChord", log):
+                small_notes = False
+                continue
             return scores
         # A short ending staff can fall below Audiveris's default minimum width
         # (30 staff spaces). Retry the whole PDF; never omit the failed page.

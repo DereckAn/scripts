@@ -816,7 +816,7 @@ def sheet_recognition(path, step):
     playing the sheet in the Studio reuse one recognition. Reports progress on stage 1."""
     recognition = path.parent / "recognized"
     recognition.mkdir(exist_ok=True)
-    marker = recognition / f"complete-v{RECOGNITION_VERSION}.json"  # older readings lack grace notes
+    marker = recognition / f"complete-v{RECOGNITION_VERSION}.json"  # read again when settings change
     if marker.is_file():
         return recognition, [recognition / name for name in json.loads(marker.read_text())]
     scores = recognize(path, recognition, lambda detail: step(1, detail))
