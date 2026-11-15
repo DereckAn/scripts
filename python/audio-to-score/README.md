@@ -65,8 +65,17 @@ What playback picks up from the sheet:
   metronome, count-in and ♩ display follow these changes bar by bar.
 - **Chords with beams**: Audiveris repeats a chord's beam on each note, which made Verovio
   drop those notes and shorten bars; the beam is kept on the chord's first note only.
-- Not yet: arpeggios, trills and fermatas (Audiveris rarely detects them), and metronome
-  marks like "♩ = 50" (the note symbol can't be read as text).
+- **Fermatas, trills and arpeggios** (Audiveris doesn't detect them): read from the PDF's
+  music font when the sheet was exported from notation software (Finale's Maestro font, or
+  SMuFL fonts from MuseScore, Dorico and newer Finale). The trill's "tr" and the arpeggio
+  use the same wavy glyph, horizontal vs vertical. Each symbol is placed on its bar, beat
+  and staff with Audiveris's measure grid, written into the MusicXML (so the score shows it)
+  and played: arpeggios roll (Verovio), trills alternate with the next note up in the key at
+  8 notes/s, fermatas hold their note about twice as long (up to 2 s extra). Holds are added
+  to the MIDI tempo and the score's note/bar times are shifted to match, so highlighting,
+  waterfall and audio stay in step. Scans and PDFs drawn only as shapes have no font
+  glyphs, so these symbols aren't found there.
+- Not yet: metronome marks like "♩ = 50" (the note symbol can't be read as text).
 
 Text reading needs Tesseract's English data in Audiveris's folder (one time, 23 MB):
 

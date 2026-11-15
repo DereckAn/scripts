@@ -36,7 +36,8 @@ import uvicorn
 from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
-                          FONTS, FONT_CSS, rgb, contrast_color, recognition_copy, RECOGNITION_VERSION)
+                          FONTS, FONT_CSS, rgb, contrast_color, recognition_copy, RECOGNITION_VERSION,
+                          music_symbols, place_symbols)
 
 # Recognized sheets often have odd chord/beam markup Verovio reports but engraves fine;
 # a real failure still raises in render().
@@ -318,6 +319,99 @@ STYLE_NOTES_JS = """async ({notes, font, faces}) => {
 }"""
 
 
+TRILL_SPEED = 8  # notes per second
+FERMATA_MAX_EXTRA_MS = 2000  # a fermata roughly doubles its note, up to this much extra
+
+
+def perform_symbols(tk, midi_path, xml_path):
+    """Play what Verovio's MIDI leaves flat: trills (fast alternation with the next note up in
+    the key) and fermatas (the note held about twice as long). Holds slow the MIDI tempo during
+    the note, so note positions stay put; returns the matching time warp (ms -> ms) for the
+    score's note and bar times."""
+    mei = tk.getMEI()
+    trills = re.findall(r'<trill\b[^>]*startid="#([^"]+)"', mei)
+    fermatas = re.findall(r'<fermata\b[^>]*startid="#([^"]+)"', mei)
+    if not trills and not fermatas:
+        return lambda t: t
+    midi = mido.MidiFile(str(midi_path))
+    tracks = []
+    for track in midi.tracks:
+        tick, events = 0, []
+        for msg in track:
+            tick += msg.time
+            events.append([tick, 0, msg])
+        tracks.append(events)
+    tempos = sorted((t, m.tempo) for events in tracks for t, _, m in events if m.type == "set_tempo") or [(0, 500000)]
+
+    def tempo_at(tick):
+        return [tempo for t, tempo in tempos if t <= tick][-1] if tempos[0][0] <= tick else tempos[0][1]
+
+    def tick_at(ms):
+        tick, clock = 0, 0.0
+        for i, (t, tempo) in enumerate(tempos):
+            end = tempos[i + 1][0] if i + 1 < len(tempos) else float("inf")
+            span = (end - max(t, tick)) * tempo / midi.ticks_per_beat / 1000
+            if clock + span >= ms:
+                return round(max(t, tick) + (ms - clock) * 1000 * midi.ticks_per_beat / tempo)
+            clock, tick = clock + span, end
+        return tick
+
+    def timing(eid):  # symbols often point at a chord; Verovio times only its notes
+        v = tk.getMIDIValuesForElement(eid)
+        chord = None if v else re.search(rf'<chord xml:id="{re.escape(eid)}"[^>]*>(.*?)</chord>', mei, re.S)
+        first = chord and re.search(r'<note xml:id="([^"]+)"', chord[1])
+        return tk.getMIDIValuesForElement(first[1]) if first else v
+
+    holds = {}  # start ms -> (duration ms, slow-down factor); one hold per moment, even across staves
+    for nid in fermatas:
+        v = timing(nid)
+        if v.get("duration", 0) > 0:
+            d = max(v["duration"], holds.get(v["time"], (0, 1))[0])
+            holds[v["time"]] = (d, (d + min(d, FERMATA_MAX_EXTRA_MS)) / d)
+    kept, end = {}, -1  # overlapping holds (fermatas on different beats of one long note) keep the first
+    for start in sorted(holds):
+        if start >= end:
+            kept[start], end = holds[start], start + holds[start][0]
+    holds = kept
+    fifths = int((re.search(r"<fifths>(-?\d+)</fifths>", Path(xml_path).read_text()) or [0, 0])[1])
+    scale = {(7 * fifths + step) % 12 for step in (0, 2, 4, 5, 7, 9, 11)}
+    for nid in trills:
+        v = timing(nid)
+        if not v.get("duration"):
+            continue
+        start, end = tick_at(v["time"]), tick_at(v["time"] + v["duration"])
+        for events in tracks:
+            on = next((e for e in events if e[2].type == "note_on" and e[2].velocity and e[2].note == v["pitch"]
+                       and abs(e[0] - start) <= 2), None)
+            if on is None:
+                continue
+            ends = lambda e: (e is not on and e[0] >= on[0] and getattr(e[2], "note", None) == v["pitch"]
+                              and (e[2].type == "note_off" or (e[2].type == "note_on" and not e[2].velocity)))
+            off = next((e for e in events if ends(e)), None)
+            upper = next(p for p in range(v["pitch"] + 1, v["pitch"] + 3) if p % 12 in scale or p == v["pitch"] + 2)
+            seconds = v["duration"] / 1000 * holds.get(v["time"], (0, 1))[1]
+            count = max(2, round(seconds * TRILL_SPEED))
+            step = (end - on[0]) / count
+            events[:] = [e for e in events if e is not on and e is not off]
+            for k in range(count):
+                pitch, a, b = (v["pitch"], upper)[k % 2], round(on[0] + k * step), round(on[0] + (k + 1) * step)
+                events += [[a, 1, on[2].copy(note=pitch, time=0)], [b, 0, mido.Message("note_off", channel=on[2].channel, note=pitch, velocity=0)]]
+            break
+    for start_ms, (duration, factor) in holds.items():
+        a, b = tick_at(start_ms), tick_at(start_ms + duration)
+        tracks[0] += [[a, 2, mido.MetaMessage("set_tempo", tempo=round(tempo_at(a) * factor), time=0)],
+                      [b, 0, mido.MetaMessage("set_tempo", tempo=tempo_at(b), time=0)]]
+    for i, events in enumerate(tracks):
+        events.sort(key=lambda e: (e[0], e[1]))  # same tick: note-offs/restores, then holds, then notes
+        track, last = mido.MidiTrack(), 0
+        for tick, _, msg in events:
+            track.append(msg.copy(time=tick - last))
+            last = tick
+        midi.tracks[i] = track
+    midi.save(str(midi_path))
+    return lambda t: t + sum(min(max(t - s, 0), d) * (f - 1) for s, (d, f) in holds.items())
+
+
 def note_styles(tk, pages, naming, style):
     """[id, filled, head color, name, name color] for every note Verovio drew. Pitch letter
     comes from the score itself (written spelling, like the sheet labels)."""
@@ -359,6 +453,9 @@ def render(xml_path, out_pdf, out_midi, naming="letters", style=None):
         for i in ev.get("off", []):
             if i in notes:
                 notes[i][1] = ev["tstamp"]
+    warp = perform_symbols(tk, out_midi, xml_path)
+    notes = {i: [warp(a), warp(b)] for i, (a, b) in notes.items()}
+    bars = [warp(b) for b in bars]
     printable = "".join(f'<div class="score-page">{s}</div>' for s in pages)
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -727,7 +824,7 @@ def sheet_recognition(path, step):
     return recognition, scores
 
 
-def sheet_musicxml(mxl, xml):
+def sheet_musicxml(mxl, xml, placed=()):
     """Unpack Audiveris's compressed .mxl, repair what Verovio can't read and add tempo steps.
     (Rewriting it through music21 fails on recognized scores whose voices don't line up.)"""
     with zipfile.ZipFile(mxl) as archive:
@@ -735,6 +832,7 @@ def sheet_musicxml(mxl, xml):
         score = ET.fromstring(archive.read(root))
     fix_chord_beams(score)
     tempo_from_words(score)
+    mark_symbols(score, placed)
     ET.ElementTree(score).write(xml, encoding="UTF-8", xml_declaration=True)
     return xml
 
@@ -788,6 +886,63 @@ def tempo_from_words(root):
     return changes
 
 
+STEP_SEMITONES = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+
+
+def notes_at(measure, staff, onset):
+    """Pitched, non-grace notes of one staff that start `onset` divisions into the bar."""
+    cursor, start, found = 0, 0, []
+    for el in measure:
+        if el.tag in ("backup", "forward"):
+            cursor += int(el.findtext("duration") or 0) * (-1 if el.tag == "backup" else 1)
+        elif el.tag == "note" and el.find("grace") is None:
+            if el.find("chord") is None:
+                start = cursor
+                cursor += int(el.findtext("duration") or 0)
+            if el.find("rest") is None and int(el.findtext("staff") or 1) == staff and abs(start - onset) < 0.5:
+                found.append(el)
+    return found
+
+
+def notations_of(note):
+    return note.find("notations") if note.find("notations") is not None else ET.SubElement(note, "notations")
+
+
+def mark_symbols(root, placed):
+    """Write detected fermatas, trills and arpeggios (sheet_labels.place_symbols) onto their notes.
+    Staff positions count top to bottom across parts (a part may hold two staves)."""
+    staves, marked = [], 0
+    for part in root.findall("part"):
+        bars, divisions, count = [], 1, None
+        for measure in part.findall("measure"):
+            divisions = int(measure.findtext("attributes/divisions") or divisions)
+            count = count or int(measure.findtext("attributes/staves") or 1)
+            bars.append((measure, divisions))
+        staves += [(bars, k) for k in range(1, (count or 1) + 1)]
+    for item in placed:
+        for position in item["staves"]:
+            if position >= len(staves) or item["bar"] >= len(staves[position][0]):
+                continue
+            bars, staff = staves[position]
+            measure, divisions = bars[item["bar"]]
+            notes = notes_at(measure, staff, item["quarter"] * divisions)
+            if not notes:
+                continue
+            if item["kind"] == "fermata" and notes[0].find("notations/fermata") is None:
+                ET.SubElement(notations_of(notes[0]), "fermata")
+            elif item["kind"] == "trill":  # on the chord's top note
+                pitch = lambda n: (int(n.findtext("pitch/octave") or 0) * 12 + STEP_SEMITONES.get(n.findtext("pitch/step"), 0)
+                                   + float(n.findtext("pitch/alter") or 0))
+                top = max(notes, key=pitch)
+                ornaments = notations_of(top).find("ornaments")
+                ET.SubElement(ornaments if ornaments is not None else ET.SubElement(notations_of(top), "ornaments"), "trill-mark")
+            elif item["kind"] == "arpeggio":
+                for note in notes:
+                    ET.SubElement(notations_of(note), "arpeggiate")
+            marked += 1
+    return marked
+
+
 def fix_chord_beams(root):
     """Audiveris repeats a chord's beam on every note of the chord; Verovio expects it on the
     first note only and otherwise drops the whole beamed group (bars play short, notes go
@@ -835,7 +990,9 @@ def play_sheet(req: SheetRequest):
         if len(scores) != 1:  # ponytail: multi-movement books; join them if such sheets turn up
             raise SheetError("This sheet was recognized as several separate pieces. Upload one piece at a time.")
         out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))  # piano-: note names/colors can restyle it
-        xml = sheet_musicxml(scores[0], out / "score.musicxml")
+        books = sorted(scores[0].parent.glob("*.omr"))
+        placed = place_symbols(music_symbols(path), books[0]) if books else []
+        xml = sheet_musicxml(scores[0], out / "score.musicxml", placed)
         played = engrave_and_voice(xml, out, step, 2)
         key_text, meter_text, bpm = sheet_facts(xml, out / "score_two_hands.mid")
         return {"engine": "Sheet", "notes": len(played["studio"]["notes"]), "bpm": bpm, "meter": meter_text,

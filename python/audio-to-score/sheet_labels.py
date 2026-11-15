@@ -7,6 +7,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 import re
+from fractions import Fraction
 import contextlib
 import importlib.util
 import io
@@ -441,6 +442,96 @@ def note_positions(book, page_count, skipped=None):
     if not any(pages.values()):
         raise SheetError("No pitched notes were recognized in this sheet.")
     return [pages[i] for i in range(page_count)]
+
+
+# Performance symbols drawn with a music font: Finale's Maestro (legacy codes + 0xF000) and
+# SMuFL fonts (MuseScore, Dorico, newer Finale). Wavy lines are the same glyph for trills
+# and arpeggios; only their direction differs (horizontal trill line, vertical arpeggio).
+NOTEHEADS = {0xF0CF, 0xE0A4}  # a font that draws black noteheads is a music font
+SYMBOL_GLYPHS = {0xF055: "fermata", 0xF075: "fermata", 0xF0D9: "trill", 0xE566: "trill",
+                 **{c: "fermata" for c in range(0xE4C0, 0xE4CE)}}
+WIGGLES = {0xF07E, 0xF067, 0xE63C, *range(0xEAA0, 0xEABA)}
+
+
+def music_symbols(pdf_path):
+    """[(page, kind, x, top, bottom)] in page fractions: fermatas, trills and arpeggios.
+    Exact for PDFs exported from notation software; scans and path-only PDFs give none."""
+    found = []
+    with pymupdf.open(pdf_path) as pdf:
+        for page in pdf:
+            W, H = page.rect.width, page.rect.height
+            spans = [(line["dir"], span) for block in page.get_text("rawdict")["blocks"]
+                     for line in block.get("lines", []) for span in line["spans"]]
+            music = {span["font"] for _, span in spans if any(ord(c["c"]) in NOTEHEADS for c in span["chars"])}
+            arpeggio = []
+            for direction, span in spans:
+                if span["font"] not in music:
+                    continue
+                for c in span["chars"]:
+                    code, (x0, y0, x1, y1) = ord(c["c"]), c["bbox"]
+                    if code in SYMBOL_GLYPHS:
+                        found.append((page.number, SYMBOL_GLYPHS[code], (x0 + x1) / 2 / W, y0 / H, y1 / H))
+                    elif code in WIGGLES and abs(direction[1]) > 0.9:  # vertical wiggle: arpeggio piece
+                        arpeggio.append(((x0 + x1) / 2, y0, y1))
+            # Stacked wiggle pieces at one x form one arpeggio line.
+            for x, y0, y1 in sorted(arpeggio):
+                last = found[-1] if found and found[-1][1] == "arpeggio" and found[-1][0] == page.number else None
+                if last and abs(last[2] * W - x) < 3 and y0 <= last[4] * H + 3:
+                    found[-1] = (page.number, "arpeggio", last[2], last[3], max(last[4], y1 / H))
+                else:
+                    found.append((page.number, "arpeggio", x / W, y0 / H, y1 / H))
+    return found
+
+
+def place_symbols(symbols, book):
+    """Map page positions to music: [{"kind", "bar", "quarter", "staves"}], using Audiveris's
+    measure stacks (page x-range per bar) and their time slots. bar is the 0-based index across
+    the whole book; staves are 0-based positions within the line (0 = top staff)."""
+    placed, bar_base = [], 0
+    with zipfile.ZipFile(book) as archive:
+        sheets = sorted((int(m[1]), m[0]) for m in map(lambda n: re.fullmatch(r"sheet#(\d+)/sheet#\1.xml", n),
+                                                      archive.namelist()) if m)
+        for number, name in sheets:
+            root = ET.fromstring(archive.read(name))
+            picture = root.find("picture")
+            W, H = float(picture.get("width")), float(picture.get("height"))
+            systems = []
+            for system in root.iter("system"):
+                staves = []
+                for staff in system.iter("staff"):
+                    ys = [float(pt.get("y")) for line in staff.iter("line") for pt in line.iter("point")]
+                    if ys:
+                        staves.append((min(ys), max(ys)))
+                stacks = [(float(st.get("left")), float(st.get("right")),
+                           [(float(sl.get("x-offset")), float(Fraction(sl.get("time-offset"))) * 4)
+                            for sl in st.iter("slot")]) for st in system.iter("stack")]
+                systems.append((staves, stacks, bar_base))
+                bar_base += len(stacks)
+            for page, kind, x, top, bottom in symbols:
+                if page != number - 1:
+                    continue
+                x, top, bottom = x * W, top * H, bottom * H
+                middle = (top + bottom) / 2
+                in_system = [s for s in systems if s[0] and s[1]]
+                if not in_system:
+                    continue
+                gap = lambda s: max(s[0][0][0] - bottom, top - s[0][-1][1], 0)  # vertical distance to the system
+                staves, stacks, base = min(in_system, key=gap)
+                index = min(range(len(stacks)), key=lambda i: 0 if stacks[i][0] <= x <= stacks[i][1]
+                            else min(abs(x - stacks[i][0]), abs(x - stacks[i][1])))
+                left, _, slots = stacks[index]
+                if not slots:
+                    continue
+                if kind == "arpeggio":  # drawn left of its chord: the first slot to its right
+                    later = [sl for sl in slots if left + sl[0] >= x - 4] or slots[-1:]
+                    quarter = min(later, key=lambda sl: sl[0])[1]
+                    covered = [i for i, (t, b) in enumerate(staves) if t <= bottom + 4 and b >= top - 4]
+                    chosen = covered or [min(range(len(staves)), key=lambda i: abs((staves[i][0] + staves[i][1]) / 2 - middle))]
+                else:  # above/below the note it belongs to: nearest slot, nearest staff
+                    quarter = min(slots, key=lambda sl: abs(left + sl[0] - x))[1]
+                    chosen = [min(range(len(staves)), key=lambda i: max(staves[i][0] - middle, middle - staves[i][1], 0))]
+                placed.append({"kind": kind, "bar": base + index, "quarter": quarter, "staves": chosen})
+    return placed
 
 
 def annotate_pdf(source, output, positions, naming, *, show_names=True, color_notes=False,

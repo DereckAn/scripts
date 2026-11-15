@@ -350,6 +350,85 @@ class SheetLabelsTests(unittest.TestCase):
             self.assertIn('org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true', calls[0])
             self.assertIn('org.audiveris.omr.sheet.ProcessingSwitches.smallBeams=true', calls[0])
 
+    def test_music_font_symbols_are_found(self):
+        """A fake music font: noteheads, a fermata, "tr" + horizontal wiggles, vertical wiggles."""
+        from fontTools.ttLib import TTFont
+        from sheet_labels import music_symbols
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            font = TTFont('web/fonts/league-spartan-bold.ttf')
+            for table in font['cmap'].tables:
+                if table.isUnicode():  # distinct shapes, so each code survives in the PDF's text layer
+                    table.cmap.update({0xF0CF: 'o', 0xF055: 'u', 0xF0D9: 't', 0xF07E: 's'})
+            font.save(folder / 'music.ttf')
+            with pymupdf.open() as pdf:
+                page, f = pdf.new_page(width=400, height=300), str(folder / 'music.ttf')
+                for x in (60, 80, 100):
+                    page.insert_text((x, 200), '\uf0cf', fontfile=f, fontname='M', fontsize=20)
+                page.insert_text((100, 150), '\uf055', fontfile=f, fontname='M', fontsize=20)
+                page.insert_text((200, 150), '\uf0d9\uf07e\uf07e', fontfile=f, fontname='M', fontsize=20)
+                for y in (180, 186, 192):
+                    page.insert_text((300, y), '\uf07e', fontfile=f, fontname='M', fontsize=20, rotate=90)
+                page.insert_text((20, 40), 'U in a text font', fontsize=12)
+                pdf.save(folder / 'sheet.pdf')
+            found = music_symbols(folder / 'sheet.pdf')
+            self.assertEqual([k for _, k, *_ in found], ['fermata', 'trill', 'arpeggio'],
+                             'Trill wiggles are not an arpeggio; stacked pieces make one arpeggio')
+            arpeggio = found[2]
+            self.assertLess(arpeggio[3] * 300, 180)
+            self.assertGreater(arpeggio[4] * 300, 190)
+
+    def test_symbols_are_placed_marked_and_played(self):
+        """Page positions -> bar/beat/staff (Audiveris grid) -> MusicXML -> what you hear."""
+        from sheet_labels import place_symbols
+        import mido
+        staff = lambda i, y: (f'<staff id="{i}"><lines>' + ''.join(
+            f'<line><point x="0" y="{y + k * 10}"/><point x="1000" y="{y + k * 10}"/></line>' for k in range(5)) + '</lines></staff>')
+        sheet = ('<sheet><picture width="1000" height="1000"/><page><system><part>' + staff(1, 100) + staff(2, 300)
+                 + '</part><stack id="1" left="100" right="900"><slot x-offset="100" time-offset="0"/>'
+                 '<slot x-offset="300" time-offset="1/4"/><slot x-offset="500" time-offset="1/2"/></stack></system></page></sheet>')
+        folder = Path(tempfile.mkdtemp(dir=piano.WORK))
+        with zipfile.ZipFile(folder / 'book.omr', 'w') as archive:
+            archive.writestr('sheet#1/sheet#1.xml', sheet)
+        symbols = [(0, 'fermata', 0.40, 0.07, 0.09), (0, 'trill', 0.60, 0.07, 0.09), (0, 'arpeggio', 0.18, 0.29, 0.35)]
+        placed = place_symbols(symbols, folder / 'book.omr')
+        self.assertEqual([(p['kind'], p['bar'], p['quarter'], p['staves']) for p in placed],
+                         [('fermata', 0, 1.0, [0]), ('trill', 0, 2.0, [0]), ('arpeggio', 0, 0.0, [1])])
+        note = lambda step, octave, chord=False, staff=1, duration=1, voice=1: (
+            f'<note>{"<chord/>" if chord else ""}<pitch><step>{step}</step><octave>{octave}</octave></pitch>'
+            f'<duration>{duration}</duration><voice>{voice}</voice><type>{"quarter" if duration == 1 else "half"}</type>'
+            + ('<dot/>' if duration == 3 else '') + f'<staff>{staff}</staff></note>')
+        bar = (note('C', 5) + note('D', 5) + note('E', 5) + '<backup><duration>3</duration></backup>'
+               + note('C', 3, staff=2, duration=3, voice=2) + note('E', 3, True, 2, 3, 2) + note('G', 3, True, 2, 3, 2))
+        xml = ('<score-partwise version="3.1"><part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list>'
+               '<part id="P1"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key>'
+               '<time><beats>3</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef>'
+               f'<clef number="2"><sign>F</sign><line>4</line></clef></attributes>{bar}</measure></part></score-partwise>')
+        root = ET.fromstring(xml)
+        self.assertEqual(piano.mark_symbols(root, placed), 3)
+        notes = list(root.iter('note'))
+        self.assertIsNotNone(notes[1].find('notations/fermata'), 'Fermata on D (beat 2)')
+        self.assertIsNotNone(notes[2].find('notations/ornaments/trill-mark'), 'Trill on E (beat 3)')
+        self.assertEqual(sum(n.find('notations/arpeggiate') is not None for n in notes), 3, 'Whole left-hand chord rolls')
+        path = folder / 'score.musicxml'
+        ET.ElementTree(root).write(path)
+        pages, timed, bars = piano.render(path, folder / 'score.pdf', folder / 'two.mid')
+        midi = mido.MidiFile(str(folder / 'two.mid'))
+        t, tempo, starts = 0, 500000, []
+        for msg in mido.merge_tracks(midi.tracks):
+            t += mido.tick2second(msg.time, midi.ticks_per_beat, tempo)
+            if msg.type == 'set_tempo':
+                tempo = msg.tempo
+            if msg.type == 'note_on' and msg.velocity:
+                starts.append((round(t, 2), msg.note))
+        # D (beat 2) is held twice as long, so E starts at 1.5 s instead of 1.0 s, then trills with F.
+        self.assertEqual([n for s, n in starts if s >= 1.49], [76, 77, 76, 77])
+        self.assertEqual(min(s for s, n in starts if n == 76), 1.5)
+        rolled = sorted(s for s, n in starts if n in (48, 52, 55))
+        self.assertTrue(rolled[0] < rolled[1] < rolled[2] < 0.2, f'Left-hand chord rolls: {rolled}')
+        self.assertAlmostEqual(max(e for _, e in timed.values()) / 1000, midi.length, delta=0.02,
+                               msg='Score highlighting stays in step with the held note')
+
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():
             self.skipTest('potrace is not installed')
