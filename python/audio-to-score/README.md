@@ -173,7 +173,8 @@ vector artwork; external fonts/images must be embedded or converted to paths.
 
 ```sh
 .venv/bin/python test_piano.py
-.venv/bin/python -m unittest test_sheet_labels test_svg_import test_note_styles
+.venv/bin/python -m unittest test_sheet_labels test_svg_import test_note_styles test_accuracy
+.venv/bin/python accuracy.py SHEET.pdf REFERENCE.mid   # sheet reading vs an exact MIDI
 ```
 
 The PDF tests cover upload validation, the short-staff retry, note position and clef

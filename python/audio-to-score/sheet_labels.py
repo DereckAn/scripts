@@ -364,6 +364,8 @@ def recognize(path, folder, progress=lambda detail: None):
             short_staves = True
         elif "too low interline value" in log and not high_resolution:
             high_resolution = True
+        elif small_notes:  # the grace-note switch can also make Audiveris fail outright
+            small_notes = False
         else:
             break
     if "No system found" in log:
@@ -490,6 +492,24 @@ def music_symbols(pdf_path):
     return found
 
 
+def duplet_marks(pdf_path):
+    """Lone "2" digits in text fonts: duplet marks (two notes in the time of three, common in
+    6/8, 9/8, 12/8), which Audiveris doesn't read. [(page, "duplet", x, top, bottom)] in
+    page fractions. Bar numbers sit at the start of a line; place_symbols drops those."""
+    found = []
+    with pymupdf.open(pdf_path) as pdf:
+        for page in pdf:
+            W, H = page.rect.width, page.rect.height
+            for block in page.get_text("rawdict")["blocks"]:
+                for line in block.get("lines", []):
+                    for span in line["spans"]:
+                        text = "".join(c["c"] for c in span["chars"]).strip()
+                        if text == "2" and span["size"] <= 12 and not any(ord(c["c"]) >= 0xE000 for c in span["chars"]):
+                            x0, y0, x1, y1 = span["bbox"]
+                            found.append((page.number, "duplet", (x0 + x1) / 2 / W, y0 / H, y1 / H))
+    return found
+
+
 def place_symbols(symbols, book):
     """Map page positions to music: [{"kind", "bar", "quarter", "staves"}], using Audiveris's
     measure stacks (page x-range per bar) and their time slots. bar is the 0-based index across
@@ -528,6 +548,12 @@ def place_symbols(symbols, book):
                             else min(abs(x - stacks[i][0]), abs(x - stacks[i][1])))
                 left, _, slots = stacks[index]
                 if not slots:
+                    continue
+                if kind == "duplet":  # centered over its two notes; matched to them in piano.apply_duplets
+                    if x < left + slots[0][0] - 4:  # left of the bar's first note: a bar number
+                        continue
+                    nearest = min(range(len(staves)), key=lambda i: max(staves[i][0] - middle, middle - staves[i][1], 0))
+                    placed.append({"kind": kind, "bar": base + index, "x": x - left, "slots": slots, "staves": [nearest]})
                     continue
                 if kind == "arpeggio":  # drawn left of its chord: the first slot to its right
                     later = [sl for sl in slots if left + sl[0] >= x - 4] or slots[-1:]

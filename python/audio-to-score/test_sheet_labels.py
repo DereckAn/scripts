@@ -86,7 +86,9 @@ class SheetLabelsTests(unittest.TestCase):
                     patch('sheet_labels.subprocess.run', return_value=subprocess.CompletedProcess([], 1, 'Export failed', '')) as run:
                 with self.assertRaisesRegex(SheetError, 'could not complete'):
                     recognize(blank_pdf(folder / 'source.pdf'), folder)
-            self.assertEqual(run.call_count, 1)
+            # One retry without the grace-note switch (it can make Audiveris fail), then give up.
+            self.assertEqual(run.call_count, 2)
+            self.assertNotIn('org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true', run.call_args_list[1][0][0])
 
     def test_small_svg_pages_retry_at_higher_recognition_resolution(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -453,6 +455,42 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertTrue(rolled[0] < rolled[1] < rolled[2] < 0.2, f'Left-hand chord rolls: {rolled}')
         self.assertAlmostEqual(max(e for _, e in timed.values()) / 1000, midi.length, delta=0.02,
                                msg='Score highlighting stays in step with the held note')
+
+    def test_duplets_are_found_and_fix_the_bar(self):
+        """9/8: a "2" over two eighths (two in the time of three) that Audiveris read as plain eighths."""
+        from sheet_labels import duplet_marks
+        with tempfile.TemporaryDirectory() as folder:
+            with pymupdf.open() as pdf:
+                page = pdf.new_page(width=400, height=300)
+                page.insert_text((10, 60), '2', fontsize=9)    # bar number at the line start
+                page.insert_text((150, 90), '2', fontsize=8)   # duplet mark
+                page.insert_text((200, 90), '12', fontsize=8)  # not a lone 2
+                pdf.save(Path(folder) / 'sheet.pdf')
+            marks = duplet_marks(Path(folder) / 'sheet.pdf')
+            self.assertEqual(len(marks), 2, 'Both lone 2s are candidates; placement drops the bar number')
+        # Two eighths read plainly, then six eighths: 8 eighths = 4.0 quarters in a 4.5-quarter bar.
+        eighth = lambda step, chord=False: (f'<note>{"<chord/>" if chord else ""}<pitch><step>{step}</step><octave>5</octave></pitch>'
+                                            '<duration>1</duration><voice>1</voice><type>eighth</type><staff>1</staff></note>')
+        rest = '<note><rest/><duration>1</duration><voice>1</voice><type>eighth</type><staff>1</staff></note>'
+        bass = '<note><pitch><step>D</step><octave>3</octave></pitch><duration>9</duration><voice>5</voice><type>half</type><dot/><dot/><staff>2</staff></note>'
+        bar = rest + eighth('F') + eighth('A', True) + ''.join(eighth(n) for n in 'GFEFED') + '<backup><duration>8</duration></backup>' + bass
+        root = ET.fromstring('<score-partwise><part id="P1"><measure number="1"><attributes><divisions>2</divisions>'
+                             '<time><beats>9</beats><beat-type>8</beat-type></time><staves>2</staves></attributes>'
+                             f'{bar}</measure></part></score-partwise>')
+        slots = [(100 + 50 * i, i / 2) for i in range(8)]  # x of each recognized eighth
+        bar_number = {'kind': 'duplet', 'bar': 0, 'x': 400, 'slots': slots, 'staves': [0]}  # far from any pair
+        mark = {'kind': 'duplet', 'bar': 0, 'x': 125, 'slots': slots, 'staves': [0]}  # over the rest + chord
+        self.assertEqual(piano.apply_duplets(root, [mark, bar_number]), 1)
+        notes = list(root.iter('note'))
+        self.assertEqual([n.findtext('duration') for n in notes[:3]], ['3', '3', '3'], 'Stretched 3/2 (divisions doubled)')
+        self.assertEqual(root.findtext('.//divisions'), '4')
+        self.assertEqual([n.findtext('time-modification/actual-notes') for n in notes[:3]], ['2', '2', '2'])
+        self.assertEqual(notes[0].find('notations/tuplet').get('type'), 'start')
+        self.assertEqual(notes[1].find('notations/tuplet').get('type'), 'stop')
+        self.assertEqual(root.findtext('.//backup/duration'), '18', 'The left hand still starts at the bar line')
+        voice = sum(int(n.findtext('duration')) for n in notes if n.findtext('voice') == '1' and n.find('chord') is None)
+        self.assertEqual(voice, 18, 'The right hand now fills 9/8 exactly')
+        self.assertEqual(piano.apply_duplets(root, [mark]), 0, 'Applied once: the bar is no longer short')
 
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():

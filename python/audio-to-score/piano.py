@@ -37,7 +37,7 @@ from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
                           FONTS, FONT_CSS, rgb, contrast_color, recognition_copy, RECOGNITION_VERSION,
-                          music_symbols, place_symbols)
+                          music_symbols, place_symbols, duplet_marks)
 
 # Recognized sheets often have odd chord/beam markup Verovio reports but engraves fine;
 # a real failure still raises in render().
@@ -831,8 +831,9 @@ def sheet_musicxml(mxl, xml, placed=()):
         root = re.search(r'full-path="([^"]+)"', archive.read("META-INF/container.xml").decode())[1]
         score = ET.fromstring(archive.read(root))
     fix_chord_beams(score)
+    mark_symbols(score, placed)  # before duplets: symbols are placed at the recognized onsets
+    apply_duplets(score, placed)
     tempo_from_words(score)
-    mark_symbols(score, placed)
     ET.ElementTree(score).write(xml, encoding="UTF-8", xml_declaration=True)
     return xml
 
@@ -920,6 +921,8 @@ def mark_symbols(root, placed):
             bars.append((measure, divisions))
         staves += [(bars, k) for k in range(1, (count or 1) + 1)]
     for item in placed:
+        if item["kind"] == "duplet":  # a rhythm fix, done by apply_duplets
+            continue
         for position in item["staves"]:
             if position >= len(staves) or item["bar"] >= len(staves[position][0]):
                 continue
@@ -941,6 +944,104 @@ def mark_symbols(root, placed):
                     ET.SubElement(notations_of(note), "arpeggiate")
             marked += 1
     return marked
+
+
+def voice_events(measure, staff, divisions):
+    """{voice: [(onset quarters, duration quarters, [note elements incl. chord mates])]} for one staff."""
+    voices, cursor = {}, 0
+    for el in measure:
+        if el.tag in ("backup", "forward"):
+            cursor += int(el.findtext("duration") or 0) * (-1 if el.tag == "backup" else 1)
+        elif el.tag == "note" and el.find("grace") is None and int(el.findtext("staff") or 1) == staff:
+            events = voices.setdefault(el.findtext("voice") or "1", [])
+            if el.find("chord") is not None and events:
+                events[-1][2].append(el)
+            else:
+                duration = int(el.findtext("duration") or 0)
+                events.append((cursor / divisions, duration / divisions, [el]))
+                cursor += duration
+        elif el.tag == "note" and el.find("chord") is None and el.find("grace") is None:
+            cursor += int(el.findtext("duration") or 0)
+    return voices
+
+
+DUPLET_REACH = 40  # page pixels between a "2" and the middle of its two notes
+
+
+def apply_duplets(root, placed):
+    """Duplets ("2" over two notes in 6/8, 9/8, 12/8: two in the time of three). Audiveris reads
+    them as plain notes, so the bar comes out short. A mark is matched to the two consecutive
+    notes of a voice it sits centered over, on the staff whose bar is short by exactly the
+    missing time; those notes are stretched by 3/2 and marked as a 2:3 tuplet (Verovio plays
+    durations from that). Returns the number of duplets applied."""
+    duplets = [d for d in placed if d["kind"] == "duplet"]
+    if not duplets:
+        return 0
+    staves = []
+    for part in root.findall("part"):
+        bars, divisions, count, meter = [], 1, None, 4.0
+        for measure in part.findall("measure"):
+            divisions = int(measure.findtext("attributes/divisions") or divisions)
+            count = count or int(measure.findtext("attributes/staves") or 1)
+            if measure.find("attributes/time/beats") is not None:
+                meter = int(measure.findtext("attributes/time/beats")) * 4 / int(measure.findtext("attributes/time/beat-type"))
+            bars.append((measure, divisions, meter))
+        staves += [(part, bars, k) for k in range(1, (count or 1) + 1)]
+    chosen, missing = [], {}  # missing: time a voice still lacks before reaching the bar line
+    for d in duplets:
+        x_of = {quarter: x for x, quarter in d["slots"]}
+        candidates = []
+        for position in {d["staves"][0], d["staves"][0] - 1, d["staves"][0] + 1}:
+            if not 0 <= position < len(staves) or d["bar"] >= len(staves[position][1]):
+                continue
+            part, bars, staff = staves[position]
+            measure, divisions, meter = bars[d["bar"]]
+            for voice, events in voice_events(measure, staff, divisions).items():
+                key = (id(measure), staff, voice)
+                missing.setdefault(key, meter - max(o + l for o, l, _ in events))
+                for a, b in zip(events, events[1:]):
+                    if a[0] in x_of and b[0] in x_of and abs(a[1] - b[1]) < 1e-6:
+                        distance = abs((x_of[a[0]] + x_of[b[0]]) / 2 - d["x"])
+                        candidates.append((distance, key, (a[1] + b[1]) / 2, part, measure, a[2] + b[2]))
+        used = {id(n) for c in chosen for n in c[2]}
+        for distance, key, gain, part, measure, notes in sorted(candidates, key=lambda c: c[0]):
+            # Centered over its pair (within ~2 staff spaces at Audiveris's 300 dpi); the voice must
+            # still lack at least the time this duplet adds, and the notes be free.
+            if distance <= DUPLET_REACH and missing[key] >= gain - 1e-6 and not used & {id(n) for n in notes}:
+                missing[key] -= gain
+                chosen.append((part, measure, notes))
+                break
+    if not chosen:
+        return 0
+    for part in {c[0] for c in chosen}:  # double the time resolution so 3/2 stretches stay whole numbers
+        for el in part.iter():
+            if el.tag in ("divisions", "duration"):
+                el.text = str(int(el.text) * 2)
+    for part, measure, notes in chosen:
+        grown, lead = 0, set()
+        for note in notes:
+            duration = note.find("duration")
+            extra = int(duration.text) // 2
+            duration.text = str(int(duration.text) + extra)
+            if note.find("chord") is None:
+                grown += extra
+            ratio = ET.Element("time-modification")
+            ET.SubElement(ratio, "actual-notes").text = "2"
+            ET.SubElement(ratio, "normal-notes").text = "3"
+            after = [i for i, c in enumerate(note) if c.tag in ("type", "dot", "accidental")]
+            note.insert(after[-1] + 1 if after else len(note), ratio)
+        ends = [n for n in notes if n.find("chord") is None]
+        ET.SubElement(notations_of(ends[0]), "tuplet", type="start", bracket="yes")
+        ET.SubElement(notations_of(ends[-1]), "tuplet", type="stop")
+        # The voice now ends later: the next backup must rewind that much further.
+        seen = False
+        for el in measure:
+            if el is ends[-1]:
+                seen = True
+            elif seen and el.tag == "backup":
+                el.find("duration").text = str(int(el.find("duration").text) + grown)
+                break
+    return len(chosen)
 
 
 def fix_chord_beams(root):
@@ -991,7 +1092,7 @@ def play_sheet(req: SheetRequest):
             raise SheetError("This sheet was recognized as several separate pieces. Upload one piece at a time.")
         out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))  # piano-: note names/colors can restyle it
         books = sorted(scores[0].parent.glob("*.omr"))
-        placed = place_symbols(music_symbols(path), books[0]) if books else []
+        placed = place_symbols(music_symbols(path) + duplet_marks(path), books[0]) if books else []
         xml = sheet_musicxml(scores[0], out / "score.musicxml", placed)
         played = engrave_and_voice(xml, out, step, 2)
         key_text, meter_text, bpm = sheet_facts(xml, out / "score_two_hands.mid")

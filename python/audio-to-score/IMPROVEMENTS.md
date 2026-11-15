@@ -2,7 +2,37 @@
 
 Backlog for Piano to Score, roughly in order of value for effort. Pick one, build it, tick it off.
 
+## Measuring progress
+
+`accuracy.py` scores a sheet reading against an exact reference MIDI (same path as
+"Play in Practice Studio"; tied notes joined; bars lined up by content):
+
+```sh
+.venv/bin/python accuracy.py SHEET.pdf REFERENCE.mid
+```
+
+Baseline, Clair de Lune vs Mutopia's MIDI (1,468 notes, 72 bars), 2026-11-15:
+
+| Sheet | Notes placed right | Pitches right | Missed ties | Bars wrong length |
+|---|---|---|---|---|
+| Mutopia PDF (LilyPond, same edition) | 72% | 88% | 97 | 28 |
+| `clarodelunaletras.pdf` (note names printed inside the heads) | 23% | 54% | 159 | 66 |
+| Mutopia PDF, after duplet repair | 75% | 88% | 90 | 26 |
+
+Labeled sheets read badly: letters inside noteheads stop them looking like noteheads.
+Read the clean sheet, then label it.
+
 ## 1. Trustworthy results (biggest impact)
+
+- [x] **Duplets ("2" in 6/8, 9/8, 12/8).** Audiveris ignores them; the "2" is read from the
+      PDF's text layer and the pair it sits over is stretched 3/2 (`apply_duplets`). Clair de
+      Lune: 13 duplets fixed, 72% → 75% placed right. Only printed "2"s are found.
+- [ ] **Sextuplets and other "6" groups** (Clair de Lune bars 19–26, 49–50, 71: the weakest bars).
+- [ ] **Mid-bar clef changes** (bar 17: left hand switches to treble clef; Audiveris drops the
+      small clef, so those chords come out a sixth too low). Readable from Finale/SMuFL fonts;
+      LilyPond's Emmentaler glyphs have no usable codes.
+- [ ] **Voices split wrongly** (a hand's notes spread over voices that overrun the bar).
+- [ ] **Warn when a sheet already has note names inside the heads** (it reads far worse).
 
 Recognition is the weak point: a misread bar just sounds wrong and you have to notice it.
 
