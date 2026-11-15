@@ -456,18 +456,20 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertAlmostEqual(max(e for _, e in timed.values()) / 1000, midi.length, delta=0.02,
                                msg='Score highlighting stays in step with the held note')
 
-    def test_duplets_are_found_and_fix_the_bar(self):
+    def test_tuplet_marks_fix_duplets_and_sixes(self):
         """9/8: a "2" over two eighths (two in the time of three) that Audiveris read as plain eighths."""
-        from sheet_labels import duplet_marks
+        from sheet_labels import tuplet_marks
         with tempfile.TemporaryDirectory() as folder:
             with pymupdf.open() as pdf:
                 page = pdf.new_page(width=400, height=300)
                 page.insert_text((10, 60), '2', fontsize=9)    # bar number at the line start
                 page.insert_text((150, 90), '2', fontsize=8)   # duplet mark
                 page.insert_text((200, 90), '12', fontsize=8)  # not a lone 2
+                page.insert_text((250, 90), '6', fontsize=8)   # a six group
                 pdf.save(Path(folder) / 'sheet.pdf')
-            marks = duplet_marks(Path(folder) / 'sheet.pdf')
-            self.assertEqual(len(marks), 2, 'Both lone 2s are candidates; placement drops the bar number')
+            marks = tuplet_marks(Path(folder) / 'sheet.pdf')
+            self.assertEqual([k for _, k, *_ in marks], ['tuplet2', 'tuplet2', 'tuplet6'],
+                             'Lone 2s and 6s are candidates; placement drops the bar number')
         # Two eighths read plainly, then six eighths: 8 eighths = 4.0 quarters in a 4.5-quarter bar.
         eighth = lambda step, chord=False: (f'<note>{"<chord/>" if chord else ""}<pitch><step>{step}</step><octave>5</octave></pitch>'
                                             '<duration>1</duration><voice>1</voice><type>eighth</type><staff>1</staff></note>')
@@ -478,9 +480,9 @@ class SheetLabelsTests(unittest.TestCase):
                              '<time><beats>9</beats><beat-type>8</beat-type></time><staves>2</staves></attributes>'
                              f'{bar}</measure></part></score-partwise>')
         slots = [(100 + 50 * i, i / 2) for i in range(8)]  # x of each recognized eighth
-        bar_number = {'kind': 'duplet', 'bar': 0, 'x': 400, 'slots': slots, 'staves': [0]}  # far from any pair
-        mark = {'kind': 'duplet', 'bar': 0, 'x': 125, 'slots': slots, 'staves': [0]}  # over the rest + chord
-        self.assertEqual(piano.apply_duplets(root, [mark, bar_number]), 1)
+        bar_number = {'kind': 'tuplet', 'count': 2, 'bar': 0, 'x': 400, 'slots': slots, 'staves': [0]}  # far from any pair
+        mark = {'kind': 'tuplet', 'count': 2, 'bar': 0, 'x': 125, 'slots': slots, 'staves': [0]}  # over the rest + chord
+        self.assertEqual(piano.apply_tuplets(root, [mark, bar_number]), 1)
         notes = list(root.iter('note'))
         self.assertEqual([n.findtext('duration') for n in notes[:3]], ['3', '3', '3'], 'Stretched 3/2 (divisions doubled)')
         self.assertEqual(root.findtext('.//divisions'), '4')
@@ -490,7 +492,23 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertEqual(root.findtext('.//backup/duration'), '18', 'The left hand still starts at the bar line')
         voice = sum(int(n.findtext('duration')) for n in notes if n.findtext('voice') == '1' and n.find('chord') is None)
         self.assertEqual(voice, 18, 'The right hand now fills 9/8 exactly')
-        self.assertEqual(piano.apply_duplets(root, [mark]), 0, 'Applied once: the bar is no longer short')
+        self.assertEqual(piano.apply_tuplets(root, [mark]), 0, 'Applied once: the bar is no longer short')
+
+    def test_six_groups_read_as_6_4_become_6_9_in_compound_meter(self):
+        """Audiveris reads a "6" in 9/8 as six in the time of four; here it is six in the time of nine."""
+        six = lambda step: (f'<note><pitch><step>{step}</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice>'
+                            '<type>eighth</type><time-modification><actual-notes>6</actual-notes><normal-notes>4</normal-notes>'
+                            '</time-modification><staff>1</staff></note>')
+        for beats, unit, fixed in [(9, 8, 1), (3, 4, 0)]:  # only compound meters mean 6:9
+            root = ET.fromstring(f'<score-partwise><part id="P1"><measure number="1"><attributes><divisions>12</divisions>'
+                                 f'<time><beats>{beats}</beats><beat-type>{unit}</beat-type></time></attributes>'
+                                 + ''.join(six(n) for n in 'GABAGF') + '</measure></part></score-partwise>')
+            self.assertEqual(piano.apply_tuplets(root, []), fixed, 'No printed mark needed (scans)')
+            if fixed:
+                notes = list(root.iter('note'))
+                self.assertEqual({n.findtext('duration') for n in notes}, {'9'}, 'Each eighth lasts 0.75 quarter')
+                self.assertEqual({n.findtext('time-modification/normal-notes') for n in notes}, {'9'})
+                self.assertEqual(sum(int(n.findtext('duration')) for n in notes), 54, 'Fills the 9/8 bar')
 
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():

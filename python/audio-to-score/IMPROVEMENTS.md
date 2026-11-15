@@ -18,6 +18,7 @@ Baseline, Clair de Lune vs Mutopia's MIDI (1,468 notes, 72 bars), 2026-11-15:
 | Mutopia PDF (LilyPond, same edition) | 72% | 88% | 97 | 28 |
 | `clarodelunaletras.pdf` (note names printed inside the heads) | 23% | 54% | 159 | 66 |
 | Mutopia PDF, after duplet repair | 75% | 88% | 90 | 26 |
+| Mutopia PDF, after "2" and "6" repair | 77% | 88% | 87 | 23 |
 
 Labeled sheets read badly: letters inside noteheads stop them looking like noteheads.
 Read the clean sheet, then label it.
@@ -27,7 +28,10 @@ Read the clean sheet, then label it.
 - [x] **Duplets ("2" in 6/8, 9/8, 12/8).** Audiveris ignores them; the "2" is read from the
       PDF's text layer and the pair it sits over is stretched 3/2 (`apply_duplets`). Clair de
       Lune: 13 duplets fixed, 72% → 75% placed right. Only printed "2"s are found.
-- [ ] **Sextuplets and other "6" groups** (Clair de Lune bars 19–26, 49–50, 71: the weakest bars).
+- [x] **"6" groups in compound meters** (six in the time of nine). Audiveris misses them or
+      reads 6:4; printed "6"s and Audiveris's short 6:4 eighth groups are fixed by
+      `apply_tuplets` (bars 19, 21, 23 improved a lot). The rest (left hand of 19–26, 49–50, 71)
+      sit in wrongly split voices, see below.
 - [ ] **Mid-bar clef changes** (bar 17: left hand switches to treble clef; Audiveris drops the
       small clef, so those chords come out a sixth too low). Readable from Finale/SMuFL fonts;
       LilyPond's Emmentaler glyphs have no usable codes.

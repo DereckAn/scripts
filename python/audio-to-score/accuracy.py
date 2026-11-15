@@ -168,10 +168,10 @@ def compare(ref, ref_starts, got, wrong_length=()):
 def read_sheet(pdf, folder):
     """The sheet through the app's own path: Audiveris (+ grace fallback), fixes, symbols."""
     import piano
-    from sheet_labels import duplet_marks, music_symbols, place_symbols, recognize
+    from sheet_labels import tuplet_marks, music_symbols, place_symbols, recognize
     scores = recognize(Path(pdf), folder, lambda detail: print("  …", detail))
     books = sorted(scores[0].parent.glob("*.omr"))
-    placed = place_symbols(music_symbols(pdf) + duplet_marks(pdf), books[0]) if books else []
+    placed = place_symbols(music_symbols(pdf) + tuplet_marks(pdf), books[0]) if books else []
     return piano.sheet_musicxml(scores[0], folder / "score.musicxml", placed)
 
 

@@ -65,6 +65,10 @@ What playback picks up from the sheet:
   Allegretto ≈ 112, Presto ≈ 180, …, see `TEMPO_TERMS` in `piano.py`), rit./rall. slow down
   over the next three bars, accel. speeds up, and "a tempo" / "Tempo I" go back. The
   metronome, count-in and ♩ display follow these changes bar by bar.
+- **Duplets and "6" groups** in 6/8, 9/8, 12/8 (notes played 1.5x their written length):
+  the printed "2"/"6" is read from the PDF's text layer and matched to the notes it is
+  centered on, only where that voice is short by exactly the missing time; Audiveris's own
+  6:4 readings of such groups are corrected too.
 - **Chords with beams**: Audiveris repeats a chord's beam on each note, which made Verovio
   drop those notes and shorten bars; the beam is kept on the chord's first note only.
 - **Fermatas, trills and arpeggios** (Audiveris doesn't detect them): read from the PDF's
