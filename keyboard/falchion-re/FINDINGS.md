@@ -4082,8 +4082,9 @@ AC's `.GMAC` files by key, action and delay, including Macro04's left click.
 
 `12 00` reply byte 5 (0x09 once, 0x00 since); the animated-lighting bytes of
 `51 2c`; `51 18 01` (precedes every macro upload); keyboard-originated
-`03 61`/`03 70` reports; and, on the static side, the full `51 54` handler and
-the user-visible role of `51 59`. The regenerated `notes/vendor-command-map.md`
+`03 61`/`03 70` reports. Log 138 below now reconciles `51 54` and the static
+dead-zone role of `51 59`; its UI availability and physical effects remain
+open. The regenerated `notes/vendor-command-map.md`
 now includes logs 135–137, corrects the `51 58` dead-zone label and grades
 captured behavior separately from instruction-derived conclusions.
 
@@ -4110,6 +4111,81 @@ Request 106237 at 04:23:50.345 contains profile `01`, but its associated reply
 disagreement. Its cause and the applied profile remain unconfirmed; firmware
 reply construction is the next place to investigate. The follow-up brings the
 relevant regression suite to 190 tests.
+
+### Ghidra continuation: rapid trigger and dead zone (2026-10-08, log 138)
+
+The full `51 54` handler matches the captures. LE16 bytes 2–3 choose combined,
+press or release sensitivity. Byte 6 writes the low seven bits of record
+`+0x0a`: press at bits 7–13, release at bits 0–6. Byte 8 zero clears the mode;
+otherwise mode bits 14–15 become `(byte 7 + 1) & 3`. Disabled writes still store
+sensitivity. Mode is written before selector validation, so an invalid selector
+can partially change state. All 346 captured writes fit this model; all use
+base layer and mode-control byte 7 = 0.
+
+The consumer at installed `0x180055ee..0x18005762` additionally requires the
+appropriate record type and global bit 5, scales each sensitivity by five, and
+uses directional extrema with strict delta comparisons. Near rest (travel <40),
+the effective delta threshold has a floor of 8. Uncaptured modes, Fn-layer
+physical effects stay open. Log 139 below resolves the global-enable bit's
+relationship to the physical rapid-trigger switch.
+
+`51 59` is the static per-key counterpart of dead zone: it feeds overrides
+through the same cache builder and raw-sample threshold tables as `51 58`.
+The exact argument order corrects another old assumption: `51 58` byte 4
+(UI top) maps to global bits 17–19, and byte 5 (UI bottom) to bits 20–22.
+The corresponding `51 59` bytes 6/7 map to record +7/+6. No `51 59` UI action
+was captured. UI labels look opposite to the numerical travel edges in the
+sample consumer; the physical interpretation remains unresolved.
+
+The old profile-format map's claimed exact rapid-trigger matches were equal
+default values on dead-zone fields. Its generator now labels those fields as
+dead zone and places rapid-trigger sensitivity at record +0x0a. Both owning
+generators and their JSON/Markdown reports were updated.
+
+Profile-switch reply construction also explains why pairing cannot rely on
+an unconditional echo: storage completion reads the current device-header
+profile, normalises 0 to wire 6, and sends that state. A new profile request
+does not replace one already pending with opcode 2. These paths support an
+asynchronous explanation for capture 03's `01`/`02` disagreement; they do not
+prove its exact runtime cause.
+
+Read-only Ghidra exports and original-byte checks compare both releases: the
+rapid-trigger handler and dead-zone helper bodies match; their addresses are
+kept separate. The scan function differs internally across releases. The
+expanded relevant suite passes 252 tests, with all four captures and original
+snapshot hashes checked. The following continuation traces global bit 5.
+
+### Physical rapid-trigger switch and enable bit (2026-10-08, log 139)
+
+Installed `FUN_180068aa` reads GPIO identifier `0x47` (group 4, bit 7) and
+reconciles its inverted binary value with current-profile global word bit 5.
+The entry caller `FUN_00000516`, through veneer `0x409e`, supplies threshold 9
+once per eight service ticks, guarded by `*(0x1801e810)==1`. The tenth
+consecutive mismatch is accepted; a matching sample clears the counter.
+Acceptance resamples GPIO, sets bit 5 on zero or clears it on one, preserves
+other bits and refreshes runtime settings. A bounce on the second read can
+report an unchanged state. Absolute milliseconds and PCB pin mapping are not
+established.
+
+The same function queues `FUN_18004498(0x76,0,0,bit5)`; the sender adds report
+ID 3, producing `03 76 00 00 <01 on / 00 off>` on endpoint `0x8c`. All 14
+preserved reports have the expected 21-byte layout. The `25 00` handler reads
+this same bit into response byte 4; all nine captured readbacks match.
+
+Whole-block storage restoration and factory resets can also replace the bit.
+A profile switch selects another word, which the periodic poll reconciles
+with the physical switch. This explains how another report can follow a
+profile switch without new motion; it is not an unconditional resend rule.
+The poll itself calls runtime refresh, without a direct save/dirty operation.
+Lever-only persistence across power loss remains unresolved. The inspected
+GPIO/reset/restore paths support the lifecycle; indirect writers have not
+been exhaustively excluded.
+
+The vendor poll at `0x1800687e` has equivalent control flow with separately
+identified RAM addresses. Its 106-byte body differs from installed code only
+in one byte of the independently verified call to `0x18004498`. Both owning
+generators and reports are updated; 262 relevant offline tests pass. The next
+static target is all five `51 52` reset paths and the third reset field.
 
 ## Uncertain or superseded assumptions
 

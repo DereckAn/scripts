@@ -56,6 +56,26 @@
       "ok": true
     },
     {
+      "detail": "79a1 == 79a1",
+      "label": "the instruction at 0x18001552 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2106 == 2106",
+      "label": "the instruction at 0x18001556 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f843 0021 == f843 0021",
+      "label": "the instruction at 0x18001d8e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f843 2021 == f843 2021",
+      "label": "the instruction at 0x18001e24 is the one this model cites",
+      "ok": true
+    },
+    {
       "detail": "4c6c == 4c6c",
       "label": "the instruction at 0x18001fc2 is the one this model cites",
       "ok": true
@@ -103,6 +123,16 @@
     {
       "detail": "f000 000f == f000 000f",
       "label": "the instruction at 0x1800225c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f3c0 1040 == f3c0 1040",
+      "label": "the instruction at 0x180022d6 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7118 == 7118",
+      "label": "the instruction at 0x180022da is the one this model cites",
       "ok": true
     },
     {
@@ -158,6 +188,11 @@
     {
       "detail": "f8a2 30d4 == f8a2 30d4",
       "label": "the instruction at 0x180026d2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "e3fe == e3fe",
+      "label": "the instruction at 0x180026e4 is the one this model cites",
       "ok": true
     },
     {
@@ -226,6 +261,41 @@
       "ok": true
     },
     {
+      "detail": "e07e == e07e",
+      "label": "the instruction at 0x18002ee4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7960 == 7960",
+      "label": "the instruction at 0x18002fe4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7921 == 7921",
+      "label": "the instruction at 0x18002fee is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "5c89 == 5c89",
+      "label": "the instruction at 0x18003008 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "7a1a == 7a1a",
+      "label": "the instruction at 0x1800300c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "79df == 79df",
+      "label": "the instruction at 0x18003020 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "1c7f == 1c7f",
+      "label": "the instruction at 0x18003026 is the one this model cites",
+      "ok": true
+    },
+    {
       "detail": "f367 3c8f == f367 3c8f",
       "label": "the instruction at 0x18003028 is the one this model cites",
       "ok": true
@@ -233,6 +303,56 @@
     {
       "detail": "f8a2 c00a == f8a2 c00a",
       "label": "the instruction at 0x1800302c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "885a == 885a",
+      "label": "the instruction at 0x18003030 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f427 4740 == f427 4740",
+      "label": "the instruction at 0x18003050 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "799f == 799f",
+      "label": "the instruction at 0x18003068 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f367 0106 == f367 0106",
+      "label": "the instruction at 0x1800306e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f367 11cd == f367 11cd",
+      "label": "the instruction at 0x18003072 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "799f == 799f",
+      "label": "the instruction at 0x1800308c is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f367 1ccd == f367 1ccd",
+      "label": "the instruction at 0x18003092 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f893 c006 == f893 c006",
+      "label": "the instruction at 0x180030ac is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f36c 0706 == f36c 0706",
+      "label": "the instruction at 0x180030b2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "540e == 540e",
+      "label": "the instruction at 0x180030bc is the one this model cites",
       "ok": true
     },
     {
@@ -311,6 +431,11 @@
       "ok": true
     },
     {
+      "detail": "7962 == 7962",
+      "label": "the instruction at 0x1800333a is the one this model cites",
+      "ok": true
+    },
+    {
       "detail": "f00c fafc == f00c fafc",
       "label": "the instruction at 0x1800334c is the one this model cites",
       "ok": true
@@ -318,6 +443,16 @@
     {
       "detail": "7960 == 7960",
       "label": "the instruction at 0x18003364 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "79a3 == 79a3",
+      "label": "the instruction at 0x1800336e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "79e2 == 79e2",
+      "label": "the instruction at 0x18003376 is the one this model cites",
       "ok": true
     },
     {
@@ -356,6 +491,11 @@
       "ok": true
     },
     {
+      "detail": "7047 7086 70c5 7104 == 7047 7086 70c5 7104",
+      "label": "the instruction at 0x180044b2 is the one this model cites",
+      "ok": true
+    },
+    {
       "detail": "8c13 == 8c13",
       "label": "the instruction at 0x180054c4 is the one this model cites",
       "ok": true
@@ -373,6 +513,51 @@
     {
       "detail": "1c49 == 1c49",
       "label": "the instruction at 0x180054de is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f8be 200a == f8be 200a",
+      "label": "the instruction at 0x180055ee is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "0b91 == 0b91",
+      "label": "the instruction at 0x180055f2 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "0689 == 0689",
+      "label": "the instruction at 0x18005600 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f002 007f == f002 007f",
+      "label": "the instruction at 0x1800563e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f3c2 12c6 == f3c2 12c6",
+      "label": "the instruction at 0x1800564a is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "eb00 0080 == eb00 0080",
+      "label": "the instruction at 0x1800564e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "eb02 0282 == eb02 0282",
+      "label": "the instruction at 0x18005652 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2008 == 2008",
+      "label": "the instruction at 0x180056ea is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "da0c == da0c",
+      "label": "the instruction at 0x180056f8 is the one this model cites",
       "ok": true
     },
     {
@@ -408,6 +593,81 @@
     {
       "detail": "42a8 == 42a8",
       "label": "the instruction at 0x180060a4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2047 == 2047",
+      "label": "the instruction at 0x180068ae is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f3c0 1340 == f3c0 1340",
+      "label": "the instruction at 0x180068c4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "1c52 == 1c52",
+      "label": "the instruction at 0x180068d0 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "42b2 == 42b2",
+      "label": "the instruction at 0x180068d4 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "d91c == d91c",
+      "label": "the instruction at 0x180068d6 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f020 0020 == f020 0020",
+      "label": "the instruction at 0x180068ea is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f845 0021 == f845 0021",
+      "label": "the instruction at 0x180068f6 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "2076 == 2076",
+      "label": "the instruction at 0x180068fc is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f040 0020 == f040 0020",
+      "label": "the instruction at 0x1800690a is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "1e6d == 1e6d",
+      "label": "the instruction at 0x1800f83e is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f882 55b4 == f882 55b4",
+      "label": "the instruction at 0x1800f840 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "1e52 == 1e52",
+      "label": "the instruction at 0x1800f850 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f880 264a == f880 264a",
+      "label": "the instruction at 0x1800f852 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f88c 764a == f88c 764a",
+      "label": "the instruction at 0x1800f8de is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f887 45b4 == f887 45b4",
+      "label": "the instruction at 0x1800f916 is the one this model cites",
       "ok": true
     },
     {
@@ -463,6 +723,16 @@
     {
       "detail": "71e2 == 71e2",
       "label": "the instruction at 0x1800fa26 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "f363 4253 == f363 4253",
+      "label": "the instruction at 0x1800fa60 is the one this model cites",
+      "ok": true
+    },
+    {
+      "detail": "e6c3 == e6c3",
+      "label": "the instruction at 0x1800fa74 is the one this model cites",
       "ok": true
     },
     {
@@ -776,7 +1046,7 @@
       "ok": true
     },
     {
-      "detail": "10 with no carrier found",
+      "detail": "9 with no carrier found",
       "label": "and a name with no plausible carrier is recorded as a finding, not hidden",
       "ok": true
     },
@@ -786,13 +1056,38 @@
       "ok": true
     },
     {
-      "detail": "15 named",
+      "detail": "16 named",
       "label": "every candidate carrier cites evidence",
       "ok": true
     },
     {
       "detail": "",
       "label": "all four feature captures reproduce the hashes in logs 135-137",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "both trigger analysis slices round-trip against their hash-verified full sources",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "rapid-trigger handler and dead-zone helpers have matching bodies in both releases",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the shared dead-zone consumer bytes match both releases and cited instructions",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "the cross-image lever caller and threshold round-trip against the installed source",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "label": "both lever poll bodies agree except for their verified report-call relocation",
       "ok": true
     }
   ],
@@ -829,6 +1124,13 @@
     }
   ],
   "feature_wire_observations": [
+    {
+      "command": "25 00",
+      "confidence": "wire-observed",
+      "logs": "135-137, 139",
+      "meaning": "Read current-profile rapid-trigger enable; response byte 4 is global word bit 5 (nine matched readbacks across 03-03d)",
+      "static_agreement": "log 139 traces 0x180022ce..0x180022e4 to the same bit that the physical GPIO poll writes and 03 76 reports"
+    },
     {
       "command": "51 00",
       "confidence": "wire-observed",
@@ -867,16 +1169,16 @@
     {
       "command": "51 54",
       "confidence": "wire-observed",
-      "logs": "136",
-      "meaning": "Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 release, byte 4 key, byte 6 mm x 10, byte 8 on/off. The static mode-bit stores alone do not explain all captured fields.",
-      "static_agreement": "partial; full handler reconciliation remains open"
+      "logs": "136, 138",
+      "meaning": "Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 release, byte 4 key, byte 6 mm x 10, byte 8 on/off. All captured writes use layer 00 and mode-control byte 7 = 00.",
+      "static_agreement": "reconciled with full handler and consumer in log 138; uncaptured modes remain open"
     },
     {
       "command": "51 58",
       "confidence": "wire-observed",
-      "logs": "136",
+      "logs": "136, 138",
       "meaning": "Global dead zone; byte 4 top, byte 5 bottom, mm x 10. This corrects the earlier all-key rapid-trigger label.",
-      "static_agreement": "instruction-derived stores retained; semantic label corrected"
+      "static_agreement": "log 138 resolves argument order: top bits 17..19, bottom bits 20..22"
     },
     {
       "command": "51 55",
@@ -936,7 +1238,7 @@
     {
       "candidate_carrier": "51 54",
       "confidence": "strongly-inferred",
-      "evidence": "log 136: byte 2 selects combined/press/release, byte 4 the key, byte 6 the sensitivity in 0.1 mm and byte 8 on/off. The static mode-bit stores at 0x18003028/0x1800302c do not yet explain every captured field",
+      "evidence": "log 136: byte 2 selects combined/press/release, byte 4 the key, byte 6 the sensitivity in 0.1 mm and byte 8 on/off. Log 138 traces all fields to record +0x0a and its rapid-trigger delta consumer",
       "hal_name": "SetRapidTrigger_PreKey"
     },
     {
@@ -966,13 +1268,13 @@
     {
       "candidate_carrier": "51 58",
       "confidence": "strongly-inferred",
-      "evidence": "log 136: independent top/bottom 0.2 -> 0.3 mm changes alter request bytes 4/5 respectively. Static stores are global bits 20..22/17..19 at 0x1800f9d0/0x1800f9fc, previously mislabelled rapid trigger",
+      "evidence": "log 136: independent top/bottom 0.2 -> 0.3 mm changes alter request bytes 4/5 respectively. Log 138 resolves the static argument order: top bits 17..19 at 0x1800fa60, bottom bits 20..22 at 0x1800f9d0, previously mislabelled rapid trigger",
       "hal_name": "SetDeadZone_AllKey"
     },
     {
-      "candidate_carrier": null,
-      "confidence": "no plausible carrier found",
-      "evidence": "51 59 shares 51 58's helper in per-key mode, but no capture exercises it and a per-key dead-zone UI or effect has not been observed",
+      "candidate_carrier": "51 59",
+      "confidence": "strongly-inferred",
+      "evidence": "log 138: per-key overrides feed the same cache arrays and raw-sample threshold tables as 51 58. No capture exercises it; per-key UI availability, physical effect and exact HAL symbol attribution remain unverified",
       "hal_name": "SetDeadZone_PreKey"
     },
     {
@@ -1282,6 +1584,7 @@
   "profile_switch": {
     "answer": "THERE IS A USB COMMAND, AND IT IS INDIRECT. The selection byte has exactly two writers, both in the storage state machine FUN_18000d56; the vendor-HID dispatcher NEVER writes it, in any of its 13 accesses. `51 00` posts opcode 2 and the requested profile into the storage request struct at +0x84/+0x85, and FUN_18000d56 reads that byte at 0x180011b8 and stores it to the selection byte at 0x180011bc. So the answer is neither 'a command writes it' nor 'Fn-key only' \u2014 it is a queued request consumed by the state machine.",
     "byte": "0x1801e6d6",
+    "completion_reply": "51 00 is emitted by the storage state machine, not as an immediate dispatcher echo. At 0x18001552 it reads current device-header +6, normalises 0 to 6, and sends one payload byte at 0x18001566 when request flag bit 1 is set. A request arriving while opcode 2 is already pending does not replace the pending profile (0x18002528..0x18002534). This supports state reporting/asynchronous explanations for capture 03 frames 106237/106277, but does not prove which runtime path caused their 01/02 disagreement.",
     "dispatcher_writes": 0,
     "not_established": "which branch of FUN_18000d56 a switch takes, and therefore whether one switch invocation reaches 0x1800153a specifically. Only that both the write and the reload live in that one function.",
     "reader_count": 97,
@@ -1417,6 +1720,95 @@
     ],
     "why_it_matters": "the burst is not a batched apply of several settings, so it cannot be read as evidence that other subcommands accompany a rate change.",
     "window": "t = 314.2555 .. 318.198"
+  },
+  "rapid_trigger_lever": {
+    "confidence": "static path proven, physical ON/OFF labels corroborated by log 137",
+    "debounce": {
+      "absolute_ms": null,
+      "accepted_mismatch_polls": 10,
+      "caller": "entry FUN_00000516, 0x536..0x538 -> veneer 0x409e -> app 0x180068aa, only if *(0x1801e810)==1",
+      "counter_scope": "one shared counter; profile reload does not explicitly reset it in the inspected paths",
+      "rule": "equal inverted GPIO/bit resets count; mismatch increments uint32 count; accept only when count >9, reset count, resample GPIO, replace bit 5 preserving other bits, queue state and refresh runtime settings. A resample that bounced back can report the old state",
+      "service_tick_divider": 8,
+      "threshold": 9
+    },
+    "entry_instruction_checks": [
+      {
+        "address": "0x43a",
+        "ok": true
+      },
+      {
+        "address": "0x442",
+        "ok": true
+      },
+      {
+        "address": "0x536",
+        "ok": true
+      },
+      {
+        "address": "0x538",
+        "ok": true
+      },
+      {
+        "address": "0x409e",
+        "ok": true
+      },
+      {
+        "address": "0x5b4",
+        "ok": true
+      }
+    ],
+    "entry_source_roundtrip": true,
+    "gpio": {
+      "basis": "FUN_18010850 splits identifier into high-nibble group and low-nibble bit; FUN_18010a18 returns a binary MMIO read. The PCB pad and port letter are not identified",
+      "bit": 7,
+      "group": 4,
+      "identifier": 71,
+      "polarity": "sample zero sets enable bit 5; sample one clears it"
+    },
+    "installed": {
+      "counter": "0x1801e778",
+      "global_words": "0x18024f0c",
+      "gpio_reader": "0x18010a18",
+      "poll": "0x180068aa",
+      "runtime_refresh": "0x180089a8",
+      "selection": "0x1801e6d6"
+    },
+    "lifecycle": "global storage read FUN_1800e64e can restore the block; whole-word single/all-profile resets at 0x18001d8e/0x18001e24 start with bit 5 clear. A selection change selects another word, then the periodic physical poll reconciles it with GPIO. This explains how a report can follow a profile switch without a new lever motion; it is not an unconditional resend rule",
+    "persistence": "the poll stores RAM and calls FUN_180089a8 (runtime refresh), without a direct storage-dirty or persist call. Other whole-block save paths can include this bit; persistence solely from moving the lever is not established",
+    "readback": "25 00 reads current-profile global bit 5 into reply byte 4 at 0x180022ce..0x180022e4. Nine matched readbacks in captures 03-03d corroborate binary states (five on, four off); this analysis sent no live query",
+    "release_comparison": {
+      "differing_offsets": [
+        86
+      ],
+      "length": 106,
+      "only_report_call_relocated": true
+    },
+    "report": {
+      "delivery": "queued input status, not a request/reply acknowledgement; delivery depends on the queue and sender's runtime gates",
+      "endpoint": "0x8c",
+      "off": 0,
+      "on": 1,
+      "prefix": "03 76 00 00",
+      "queue": "FUN_18004498(0x76,0,0,bit5) queues a 21-byte record; FUN_1800417e adds report ID 3 and sends via FUN_18004164(2,...)",
+      "size": 21,
+      "state_byte": 4
+    },
+    "unresolved": [
+      "absolute debounce duration; IRQ38 period remains unresolved",
+      "PCB pin mapping and physical timing/scan-phase measurement",
+      "lever-only persistence across power loss; no direct save in poll",
+      "uncaptured per-key modes and Fn-layer physical behavior"
+    ],
+    "vendor": {
+      "counter": "0x1801e74c",
+      "global_words": "0x18024ee0",
+      "gpio_reader": "0x180109ec",
+      "poll": "0x1800687e",
+      "runtime_refresh": "0x1800897c",
+      "selection": "0x1801e6aa"
+    },
+    "writer_scope": "GPIO mutation, full-block restore and factory reset paths inspected; not a proof against every indirect writer or memory fault"
   },
   "storage_map": [
     {
@@ -1762,19 +2154,19 @@
     },
     {
       "confidence": "static-handler-proven",
-      "evidence": "0x18002fe8 cmp #0x9f; 0x18002ff2 cmp #0xbc; 0x18003028 bfi #14,#2; 0x1800302c strh rec+0x0a",
+      "evidence": "0x180026e4 -> 0x18002ee4 -> 0x18002fe4; 0x18003028 bfi #14,#2; 0x18003030 ldrh selector; 0x1800306e/72 bfi #0/#7; 0x18003092 press; 0x180030b2 release; 0x180055ee..0x18005762 consumer",
       "handler": "0x180026e4",
       "kind": "write",
-      "meaning": "byte 5 is the layer, byte 4 the key (<= 0xbc), byte 8 a gate; the handler writes bits 14..15 of the per-key record's halfword at +0x0a from request byte 7 plus one. Those are exactly the two bits the shared writer tail clears with bic #0xc000 at 0x18002d08, so +0x0a carries a 2-bit mode above its 7-bit fields. What the mode selects is NOT established.",
+      "meaning": "PER-KEY RAPID TRIGGER. Byte 5 selects layer 00/9f; byte 4 <= bc is translated to a record index. At record +0x0a, LE16 bytes 2-3 select 00 both sensitivities, 01 press bits 7..13, or 02 release bits 0..6. Byte 6 supplies the low seven bits without a handler range clamp. Byte 8 zero clears mode bits 14..15; otherwise the mode is (byte 7 + 1) & 3. Sensitivities are written even when disabled. The mode store precedes selector validation, so an invalid selector can change mode before a short rejection reply. Valid writes mark the layer dirty and echo 60 payload bytes. The consumer additionally requires global bit 5 and scales both sensitivity fields by five (log 138).",
       "owner_approval_required": true,
-      "storage": "keymap record +0x0a bits 14..15",
+      "storage": "keymap record +0x0a: release bits 0..6, press bits 7..13, mode bits 14..15",
       "subcommand": "0x54",
       "wire_observation": {
         "command": "51 54",
         "confidence": "wire-observed",
-        "logs": "136",
-        "meaning": "Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 release, byte 4 key, byte 6 mm x 10, byte 8 on/off. The static mode-bit stores alone do not explain all captured fields.",
-        "static_agreement": "partial; full handler reconciliation remains open"
+        "logs": "136, 138",
+        "meaning": "Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 release, byte 4 key, byte 6 mm x 10, byte 8 on/off. All captured writes use layer 00 and mode-control byte 7 = 00.",
+        "static_agreement": "reconciled with full handler and consumer in log 138; uncaptured modes remain open"
       },
       "writes_device_state": true
     },
@@ -1831,16 +2223,16 @@
       "evidence": "0x18003334/0x18003336 the 0-folds-to-6 and > 5 refusal; 0x1800334c bl 0x1800f948; 0x1800f976 cmp #6; 0x1800f97c movs #2; 0x1800f9d0 bfi #20,#3; 0x1800f9fc ubfx #17,#3",
       "handler": "0x18002dc8",
       "kind": "write",
-      "meaning": "GLOBAL DEAD ZONE (logs 136-137 correct the earlier rapid-trigger label). Bytes 4 and 5 are the top and bottom values in 0.1 mm, each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; the handler calls 0x1800f948 with mode 0, which range-checks each value to 1..6 (substituting the default 2) and inserts them into the profile's global word at BITS 20..22 and BITS 17..19. Log 125 called these rapid-trigger fields; the captured single-step dead-zone changes correct that semantic label while retaining the instruction-derived stores.",
+      "meaning": "GLOBAL DEAD ZONE (logs 136-137 correct the earlier rapid-trigger label). Bytes 4 and 5 are the top and bottom values in 0.1 mm, each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; the handler calls 0x1800f948 with mode 0, which range-checks each value to 1..6 (substituting the default 2) and inserts them into the profile's global word: byte 4 (UI top) -> BITS 17..19; byte 5 (UI bottom) -> BITS 20..22. The r3/r2 argument order matters (log 138). Log 125 called these rapid-trigger fields; the captured single-step dead-zone changes correct that semantic label while retaining the instruction-derived stores.",
       "owner_approval_required": true,
-      "storage": "global block, bits 20..22 and 17..19 of the profile's word",
+      "storage": "global block: UI top bits 17..19, UI bottom bits 20..22",
       "subcommand": "0x58",
       "wire_observation": {
         "command": "51 58",
         "confidence": "wire-observed",
-        "logs": "136",
+        "logs": "136, 138",
         "meaning": "Global dead zone; byte 4 top, byte 5 bottom, mm x 10. This corrects the earlier all-key rapid-trigger label.",
-        "static_agreement": "instruction-derived stores retained; semantic label corrected"
+        "static_agreement": "log 138 resolves argument order: top bits 17..19, bottom bits 20..22"
       },
       "writes_device_state": true
     },
@@ -1849,7 +2241,7 @@
       "evidence": "0x18003368 cmp #0x9f; 0x18003380 cmp #0xbc; 0x1800338c bl 0x1800f948; 0x1800f9a8 bic #0x80; 0x1800f9b0 strb rec+0x06; 0x1800fa26 strb rec+0x07",
       "handler": "0x18002dcc",
       "kind": "write",
-      "meaning": "PER-KEY TWO-VALUE SETTER, the static counterpart of 0x58. Byte 5 is the layer (0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 two values under the same 1..6 rule; it calls 0x1800f948 with mode 1, which writes bits 0..2 of the per-key record at +0x06 and +0x07 and sets the 0x80 override bit when the value differs from the profile's all-key value, clearing it when they match \u2014 the same override discipline 0x4f uses for actuation. No 51 59 was sent in captures 03-03d; its user-visible role is NOT established. The earlier per-key rapid-trigger label is withdrawn: Armoury Crate uses 51 54 for that feature.",
+      "meaning": "PER-KEY DEAD-ZONE OVERRIDES, the static counterpart of 0x58. Byte 5 is the layer (0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 wire values 0..5 (0 folds to internal 6; 6 and greater are rejected); it calls 0x1800f948 with mode 1, which writes byte 7 (UI bottom counterpart) into record +0x06 and byte 6 (UI top counterpart) into +0x07, bits 0..2, and sets the 0x80 override bit when the value differs from the profile's all-key value, clearing it when they match \u2014 the same override discipline 0x4f uses for actuation. Both setters tail-call the same cache builder and feed the same raw-sample edge thresholds in the second context. No 51 59 was sent in captures 03-03d: per-key UI availability and physical top/bottom interpretation remain unverified. The earlier per-key rapid-trigger label is withdrawn: that uses record +0x0a and 51 54.",
       "owner_approval_required": true,
       "storage": "keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override",
       "subcommand": "0x59",
@@ -1870,7 +2262,7 @@
     }
   ],
   "summary": {
-    "checks": 150,
+    "checks": 209,
     "failed": 0,
     "ok": true
   },
@@ -1881,5 +2273,163 @@
     "request_buffer": "0x180233a8",
     "responder": "0x18000a70"
   },
-  "verdict": "the dispatcher accepts seventeen top-level opcodes, twenty-four 0x51 subcommands and ten reachable 0x12 queries; thirty-three family entries have instruction-derived semantics. Logs 135-137 add independent feature observations; the full 51 54 handler remains to be reconciled"
+  "trigger_configuration": {
+    "application_slices_roundtrip": true,
+    "dead_zone": {
+      "cache": "0x1800f948 tail-calls 0x1800f7fe: +6/bits20..22 -> shared+0x5b4, +7/bits17..19 -> shared+0x64a, value minus one. Global refresh resolves inheritance for both layers; per-key refresh targets the selected record",
+      "confidence": "static command/consumer relationship proven; UI labels for 51 58 from capture log 136; 51 59 UI and physical behavior unobserved",
+      "consumer": "second-context FUN_1803a6c4: +5b4 chooses the reference-minus-threshold branch that writes travel 0; +64a chooses the other-reference-plus-threshold branch that saturates the curve index to 0x4ff (travel 200). Tables are raw-sample units, not mm",
+      "encoding": "wire 1..5 accepted; 0 maps to internal 6; wire 6 and greater rejected. Helper accepts internal 1..6 and defaults other values to 2",
+      "global_51_58": [
+        {
+          "request_byte": 4,
+          "shift": 17,
+          "ui_label": "top"
+        },
+        {
+          "request_byte": 5,
+          "shift": 20,
+          "ui_label": "bottom"
+        }
+      ],
+      "override": "bits 0..2 value, bit 7 override; other bits preserved. Clear override if equal to current-profile global value",
+      "per_key_51_59": [
+        {
+          "record_offset": 7,
+          "request_byte": 6,
+          "ui_counterpart": "top"
+        },
+        {
+          "record_offset": 6,
+          "request_byte": 7,
+          "ui_counterpart": "bottom"
+        }
+      ],
+      "tables": [
+        {
+          "array": "shared +5b4",
+          "table": "0x1803c386",
+          "values": [
+            15,
+            45,
+            55,
+            85,
+            110,
+            0
+          ]
+        },
+        {
+          "array": "shared +64a",
+          "table": "0x1803c392",
+          "values": [
+            250,
+            650,
+            1000,
+            1350,
+            1700,
+            0
+          ]
+        }
+      ]
+    },
+    "rapid_trigger": {
+      "consumer": "0x180055ee..0x18005762 in installed FUN_18004a7e: requires record type +4 == 0, alternate-path byte +0xc == 0, nonzero mode and current-profile global bit 5. Press/release sensitivities are each multiplied by five in the 0..200 travel-byte scale. Directional delta comparisons are strict. When travel <40, each relevant delta threshold is floored at 8. Mode 1 uses actuation-2 (floored at 0) for the initial release threshold; other nonzero modes keep the earlier actuation-derived lower threshold. The active/released states maintain directional extrema.",
+      "entry_chain": [
+        "0x180026e4",
+        "0x18002ee4",
+        "0x18002fe4"
+      ],
+      "fields": [
+        {
+          "name": "release",
+          "shift": 0,
+          "width": 7
+        },
+        {
+          "name": "press",
+          "shift": 7,
+          "width": 7
+        },
+        {
+          "name": "mode",
+          "shift": 14,
+          "width": 2
+        }
+      ],
+      "handler_bounds": "layer 00/9f and wire key <= bc; no sensitivity range clamp; low seven bits stored",
+      "mode": "enable byte 8 == 0 -> 0; otherwise (byte 7 + 1) & 3; captured byte 7 is always 0, hence active mode 1",
+      "offset": 10,
+      "ordering": "mode is stored before selector validation; disabled writes still update sensitivities; invalid selectors can mutate mode without setting the layer dirty flag",
+      "selectors": {
+        "0": "both",
+        "1": "press",
+        "2": "release"
+      },
+      "vendor_consumer": "FUN_18004a7e also contains the consumer in vendor 1.00.58; addresses inside its body differ. The full scan function differs between releases; no blanket 0x2c shift is assumed."
+    },
+    "record": "0x180202d8 + layer*0xd84 + translated_key*0x20",
+    "release_comparisons": [
+      {
+        "identical": true,
+        "installed": "0x18002fe4",
+        "installed_sha256": "af2f4368f33908420225ad5221e1b6fc351123aef599b03aa1edba18a3968cce",
+        "length": 228,
+        "scope": "51 54 full handler and shared reply tail",
+        "vendor": "0x18002fe4"
+      },
+      {
+        "identical": true,
+        "installed": "0x1800f948",
+        "installed_sha256": "856c395ce1e871183a3504f39adb6d1c05d6980df25aefec265d31d8ae6f73c9",
+        "length": 228,
+        "scope": "dead-zone setter body, first range",
+        "vendor": "0x1800f91c"
+      },
+      {
+        "identical": true,
+        "installed": "0x1800fa5c",
+        "installed_sha256": "1751364aa30bdf3022096d34f85a78a8125ea3238acee7276f2d4a961d560852",
+        "length": 26,
+        "scope": "dead-zone setter body, second range",
+        "vendor": "0x1800fa30"
+      },
+      {
+        "identical": true,
+        "installed": "0x1800f7fe",
+        "installed_sha256": "fc0b5833dc1f7e4e6ef4aeba75a2181beebf7e306daf8bfbade35a8a5571a11d",
+        "length": 330,
+        "scope": "dead-zone cache builder",
+        "vendor": "0x1800f7d2"
+      }
+    ],
+    "secondary_code_identical": true,
+    "secondary_instruction_checks": [
+      {
+        "address": "0x1803a7b2",
+        "ok": true
+      },
+      {
+        "address": "0x1803a7b8",
+        "ok": true
+      },
+      {
+        "address": "0x1803a804",
+        "ok": true
+      },
+      {
+        "address": "0x1803a808",
+        "ok": true
+      }
+    ],
+    "source_hashes_verified": true,
+    "translation": "0x1801c3a8 + KBID*0x86 + wire_key (both installed paths)",
+    "unresolved": [
+      "51 59 UI availability and physical per-key effect; no captured use",
+      "UI top/bottom labels map to the opposite-looking numeric travel edges (+64a/200 versus +5b4/0); physical interpretation needs a focused action or further UI/curve analysis, not relabelling on intuition",
+      "51 54 mode-control byte 7 nonzero and Fn-layer behavior uncaptured",
+      "Global bit 5's physical-lever path is traced in log 139; absolute timing and lever-only persistence remain unresolved",
+      "Profile 01/02 mismatch: state-snapshot reply is proven, exact runtime cause is not"
+    ]
+  },
+  "verdict": "the dispatcher accepts seventeen top-level opcodes, twenty-four 0x51 subcommands and ten reachable 0x12 queries; thirty-three family entries have instruction-derived semantics. Logs 135-137 add independent feature observations; log 138 reconciles the complete 51 54 handler and identifies 51 59 as per-key dead-zone overrides; log 139 traces the physical rapid-trigger switch to global bit 5 and 03 76"
 }

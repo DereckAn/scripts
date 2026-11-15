@@ -83,10 +83,10 @@ Slots and their offsets:
 | offset | detail |
 |---|---|
 | `+0x04` | 0x00 on layer 0, 0xff on layer 1 |
-| `+0x06` | bit 7 override, bits 0..2 rapid trigger press, 1..6, default 2 |
-| `+0x07` | bit 7 override, bits 0..2 rapid trigger release, 1..6, default 2 |
+| `+0x06` | bit 7 override, bits 0..2 UI bottom dead-zone counterpart, internal 1..6, default 2 |
+| `+0x07` | bit 7 override, bits 0..2 UI top dead-zone counterpart, internal 1..6, default 2 |
 | `+0x08` | uint16, bit 15 override, bits 0..6 actuation, 1..40, default 10 |
-| `+0x0a` | uint16 remap target; the 0x51/0x21 handler writes it |
+| `+0x0a` | context-dependent uint16: remap paths reuse it; for rapid trigger, bits 0..6 release, 7..13 press, 14..15 mode (51 54, log 138) |
 
 ## The global block
 
@@ -94,10 +94,11 @@ Slots and their offsets:
 
 | bits | field | range | default | evidence |
 |---|---|---|---|---|
+| 5..5 | rapid_trigger_enable | 0..1 | 0 | log 139: physical GPIO 0x47 poll at installed FUN_180068aa sets/clears bit 5 after ten mismatches; 03 76 byte 4 reports it; factory reset clears it |
 | 6..8 | function_index | 0..4 | 0 | cycled 0..4 by FUN_18007030, which then persists the whole block |
 | 9..15 | actuation | 1..40 | 10 | FUN_18006d3c raises while <0x28 and lowers while >1; the boot repair writes +0x1400, i.e. 10 |
-| 17..19 | rapid_trigger_release | 1..6 | 2 | FUN_1800f7fe resets the field to 2 when (v)-1 > 5 |
-| 20..22 | rapid_trigger_press | 1..6 | 2 | FUN_1800f7fe resets the field to 2 when (v)-1 > 5 |
+| 17..19 | dead_zone_top | 1..6 | 2 | log 138: 51 58 byte 4 (UI top) reaches r3 then bits 17..19; FUN_1800f7fe repairs invalid internal values to 2; internal 6 encodes wire 0 |
+| 20..22 | dead_zone_bottom | 1..6 | 2 | log 138: 51 58 byte 5 (UI bottom) reaches r2 then bits 20..22; FUN_1800f7fe repairs invalid internal values to 2; internal 6 encodes wire 0 |
 
 ## The wear-levelled store
 
@@ -148,8 +149,10 @@ The snapshot is profile 3, which is what makes it usable as a Rosetta stone: two
 | `lighting.customPattern` | 7 entries | lighting slot record | slot 7, +0x05..+0x16 | **unmatched** | slot 7's default-setter writes six RGB triples; the decode has seven entries. six is not seven, so no correspondence is claimed |
 | `performance.pollingRate` | 3 | - | - | **unmatched** | no field in any block recovered here carries it, and log 124 searched from the other end and found no consumer either: no index-to-Hz table in any of the four images, a prescaler ladder built entirely from immediates, no rate in the mailbox and a static descriptor bInterval. the two negatives are independent — this one is about the stored blocks, log 124's is about the consumers |
 | `button.analogTrigger.actuation` | 10 | global block word | bits 9..15 | **exact** | the boot repair writes +0x1400, i.e. 10; FUN_18006d3c bounds the field to 1..40. |
-| `button.analogTrigger.rapidTriggerPress` | 2 | global block word / per-key record | bits 20..22 / record +0x06 | **exact** | FUN_1800f7fe resets both to 2 when the value minus one exceeds 5, so the default is 2 and the range 1..6. |
-| `button.analogTrigger.rapidTriggerRelease` | 2 | global block word / per-key record | bits 17..19 / record +0x07 | **exact** | the same reset, on the neighbouring field. |
+| `button.analogTrigger.rapidTriggerPress` | 2 | per-key record | +0x0a bits 7..13 | **structural** | logs 136/138: captured selector 1 writes byte 6 to the upper seven-bit sensitivity field; the consumer scales it by five. the UI's all-key change writes each assigned key; the old bits20..22/+6 exact match was an equal-default coincidence |
+| `button.analogTrigger.rapidTriggerRelease` | 2 | per-key record | +0x0a bits 0..6 | **structural** | logs 136/138: captured selector 2 writes byte 6 to the lower seven-bit sensitivity field; the consumer scales it by five. the old bits17..19/+7 field was dead zone |
+| `button.deadZone.deadZoneTop` | 2 | global block word / per-key counterpart | bits 17..19 / record +0x07 | **structural** | log 136 isolates UI top via 51 58 byte 4; log 138 follows r3 through the setter and cache builder. per-key counterpart is static; no captured 51 59 UI action |
+| `button.deadZone.deadZoneBottom` | 2 | global block word / per-key counterpart | bits 20..22 / record +0x06 | **structural** | log 136 isolates UI bottom via 51 58 byte 5; log 138 follows r2 through the setter and cache builder. physical top/bottom edge interpretation remains open |
 | `lever.currentFunctionId` | 0 | global block word | bits 6..8 | **structural** | the ROM per-profile default is 0; FUN_18007030 cycles the field 0..4. the values agree, but both are zero, which is weak evidence; and the same field could equally be a lighting-effect index. Both readings are recorded and neither is chosen |
 | `lever.functionStatusList` | 5 entries | profile block | +0x4b2 | **structural** | 5 rows of 14 bytes, each gated on a non-zero first byte; the counts and the 0..4 index agree. row contents are not decoded, so the correspondence is on count and index range only |
 | `button.keyboardButton` | 136 entries = 68 keys x 2 layers | profile block key tables / keymap banks | +0x0d4 and +0x2c2 | **structural** | the firmware keeps 2 layers, 247 uint16 per layer, and 75 per-key records per bank; none of 68, 136 or 189 equals any of those. the layer count matches and the entry counts do not, so no per-key mapping is claimed |

@@ -278,16 +278,15 @@ class LogOneThirtyEvidence(unittest.TestCase):
                 if r["confidence"] == "static-located-only"]
         self.assertEqual(left, ["0x52"])
 
-    def test_the_four_actuation_and_rapid_trigger_carriers(self):
-        """All-key and per-key, actuation and rapid trigger — the four HAL
-        names that had no opcode before this step."""
+    def test_the_four_actuation_and_dead_zone_carriers(self):
+        """Correct log 130's mislabelled two-value fields (logs 136/138)."""
         for sub, needle in (("0x50", "bits 9..15"), ("0x4f", "+0x08"),
                             ("0x58", "20..22"), ("0x59", "+0x06")):
             self.assertIn(needle, self.subs[sub]["meaning"], sub)
             self.assertEqual(self.subs[sub]["confidence"],
                              "static-handler-proven", sub)
 
-    def test_the_shared_rapid_trigger_helper_bytes(self):
+    def test_the_shared_dead_zone_helper_bytes(self):
         """0x58 and 0x59 differ only in the mode they pass to 0x1800f948."""
         self.assertEqual(m.halfwords(0x1800334C, 2), "f00c fafc")
         self.assertEqual(m.halfwords(0x1800338C, 2), "f00c fadc")
@@ -374,7 +373,12 @@ class LogOneThirtyEvidence(unittest.TestCase):
     def test_a_hal_name_with_no_carrier_is_a_finding(self):
         none_found = [d for d in self.doc["hal_disposition"]
                       if d["candidate_carrier"] is None]
-        self.assertGreaterEqual(len(none_found), 10)
+        # Log 138 gives SetDeadZone_PreKey a supported carrier. Keep the
+        # remaining unresolved names explicit instead of freezing an old count.
+        self.assertEqual({d["hal_name"] for d in none_found},
+                         {"IsDefaultProfile", "ResetSpeedTap", "WriteMacroFlash_SupportFn",
+                          "SetLeverMode", "SetLeverSwitch", "SetLeverChange", "GetLeverMode",
+                          "SetKeyLog", "GetKeyStats"})
         for d in none_found:
             self.assertEqual(d["confidence"], "no plausible carrier found")
             self.assertTrue(d["evidence"])
@@ -400,11 +404,66 @@ class LogOneThirtyEvidence(unittest.TestCase):
             self.assertEqual(by[name]["confidence"], "strongly-inferred", name)
             self.assertIsNotNone(by[name]["candidate_carrier"], name)
 
-    def test_global_dead_zone_has_a_carrier_and_per_key_remains_open(self):
+    def test_both_dead_zone_carriers_keep_hal_attribution_inferred(self):
         by = {d["hal_name"]: d for d in self.doc["hal_disposition"]}
         self.assertEqual(by["SetDeadZone_AllKey"]["candidate_carrier"], "51 58")
         self.assertEqual(by["SetDeadZone_AllKey"]["confidence"], "strongly-inferred")
-        self.assertIsNone(by["SetDeadZone_PreKey"]["candidate_carrier"])
+        self.assertEqual(by["SetDeadZone_PreKey"]["candidate_carrier"], "51 59")
+        self.assertEqual(by["SetDeadZone_PreKey"]["confidence"], "strongly-inferred")
+        self.assertIn("unverified", by["SetDeadZone_PreKey"]["evidence"])
+
+
+class PhysicalRapidTriggerSwitch(unittest.TestCase):
+    def test_first_nine_mismatches_do_not_change_state(self):
+        for count in range(9):
+            self.assertEqual(m.rapid_trigger_lever_poll(0, count, 0, 0),
+                             {"word": 0, "count": count + 1, "report_state": None,
+                              "runtime_refresh": False})
+
+    def test_tenth_mismatch_sets_only_enable_bit(self):
+        word = 0xabcdefdf
+        result = m.rapid_trigger_lever_poll(word, 9, 0, 0)
+        self.assertEqual(result, {"word": word | 0x20, "count": 0,
+                                  "report_state": 1, "runtime_refresh": True})
+
+    def test_matching_sample_clears_pending_count(self):
+        self.assertEqual(m.rapid_trigger_lever_poll(0x20, 9, 0, 0),
+                         {"word": 0x20, "count": 0, "report_state": None,
+                          "runtime_refresh": False})
+
+    def test_resample_can_report_the_unchanged_state(self):
+        result = m.rapid_trigger_lever_poll(0, 9, 0, 1)
+        self.assertEqual(result["word"], 0)
+        self.assertEqual(result["report_state"], 0)
+        self.assertTrue(result["runtime_refresh"])
+
+    def test_disable_preserves_other_word_fields(self):
+        result = m.rapid_trigger_lever_poll(0xffffffff, 9, 1, 1)
+        self.assertEqual(result["word"], 0xffffffdf)
+        self.assertEqual(result["report_state"], 0)
+
+    def test_counter_uses_uint32_wrap(self):
+        result = m.rapid_trigger_lever_poll(0, 0xffffffff, 0, 0)
+        self.assertEqual(result["count"], 0)
+        self.assertIsNone(result["report_state"])
+
+    def test_out_of_width_inputs_are_refused(self):
+        for args in ((-1, 0, 0, 0), (0, 1 << 32, 0, 0), (0, 0, 2, 0),
+                     (0, 0, 0, 2), (0, 0, 0, 0, -1)):
+            with self.subTest(args=args), self.assertRaises(m.CommandError):
+                m.rapid_trigger_lever_poll(*args)
+
+    def test_cross_image_caller_and_relocated_report_call_are_checked(self):
+        doc = m.rapid_trigger_lever()
+        self.assertTrue(doc["entry_source_roundtrip"])
+        self.assertTrue(all(r["ok"] for r in doc["entry_instruction_checks"]))
+        self.assertTrue(doc["release_comparison"]["only_report_call_relocated"])
+        self.assertEqual(doc["release_comparison"]["differing_offsets"], [0x56])
+        self.assertEqual(doc["debounce"]["accepted_mismatch_polls"], 10)
+        self.assertEqual(doc["debounce"]["service_tick_divider"], 8)
+        self.assertIsNone(doc["debounce"]["absolute_ms"])
+        self.assertIn("not an unconditional resend", doc["lifecycle"])
+        self.assertIn("not a proof", doc["writer_scope"])
 
 
 class FeatureWireEvidence(unittest.TestCase):
@@ -412,7 +471,8 @@ class FeatureWireEvidence(unittest.TestCase):
         rows = {r["command"]: r for r in m.to_dict()["feature_wire_observations"]}
         self.assertIn("dead zone", rows["51 58"]["meaning"])
         self.assertIn("rapid trigger", rows["51 54"]["meaning"])
-        self.assertIn("remains open", rows["51 54"]["static_agreement"])
+        self.assertIn("reconciled", rows["51 54"]["static_agreement"])
+        self.assertIn("remain open", rows["51 54"]["static_agreement"])
         self.assertIn("untraced", rows["54"]["static_agreement"])
         self.assertTrue(all(r["confidence"] == "wire-observed" for r in rows.values()))
 
@@ -424,6 +484,79 @@ class FeatureWireEvidence(unittest.TestCase):
         by = {r["hal_name"]: r for r in doc["hal_disposition"]}
         self.assertEqual(by["SetRapidTrigger_PreKey"]["candidate_carrier"], "51 54")
         self.assertEqual(by["WriteMacroFlash"]["candidate_carrier"], "54")
+
+
+class TriggerReconciliation(unittest.TestCase):
+    def test_combined_sensitivity_writes_both_fields(self):
+        result = m.rapid_trigger_update(0xffff, 0, 2, 0, 1)
+        self.assertEqual(result["halfword"], 0x4102)
+        self.assertTrue(result["selector_accepted"])
+        self.assertTrue(result["layer_marked_dirty"])
+
+    def test_press_preserves_release(self):
+        self.assertEqual(m.rapid_trigger_update(0x4104, 1, 1, 0, 1)["halfword"], 0x4084)
+
+    def test_release_preserves_press(self):
+        self.assertEqual(m.rapid_trigger_update(0x4082, 2, 4, 0, 1)["halfword"], 0x4084)
+
+    def test_disabled_write_still_changes_sensitivity(self):
+        self.assertEqual(m.rapid_trigger_update(0x4104, 1, 1, 0, 0)["halfword"], 0x0084)
+
+    def test_mode_control_wraps_and_enable_is_nonzero(self):
+        for control, mode in ((0, 1), (1, 2), (2, 3), (3, 0), (255, 0)):
+            self.assertEqual(m.rapid_trigger_update(0, 1, 0, control, 2)["halfword"], mode << 14)
+
+    def test_invalid_u16_selector_can_mutate_mode_before_rejection(self):
+        result = m.rapid_trigger_update(0x0084, 0x0100, 9, 0, 1)
+        self.assertEqual(result["halfword"], 0x4084)
+        self.assertFalse(result["selector_accepted"])
+        self.assertFalse(result["layer_marked_dirty"])
+
+    def test_sensitivity_is_truncated_without_range_clamp(self):
+        self.assertEqual(m.rapid_trigger_update(0, 0, 255, 0, 1)["halfword"], 0x7fff)
+        self.assertEqual(m.rapid_trigger_update(0, 0, 128, 0, 1)["halfword"], 0x4000)
+
+    def test_scalar_model_rejects_out_of_width_operands(self):
+        for args in ((-1, 0, 2, 0, 1), (0, 65536, 2, 0, 1),
+                     (0, 0, 256, 0, 1), (0, 0, 2, 256, 1), (0, 0, 2, 0, 256)):
+            with self.assertRaises(m.CommandError):
+                m.rapid_trigger_update(*args)
+
+    def test_dead_zone_override_preserves_other_bits(self):
+        self.assertEqual(m.dead_zone_override(0xff, 2, 2), 0x7a)
+        self.assertEqual(m.dead_zone_override(0x7a, 3, 2), 0x7b | 0x80)
+        self.assertEqual(m.dead_zone_override(0xff, 0, 2), 0x7a)
+
+    def test_release_scopes_and_source_roundtrips(self):
+        doc = m.trigger_configuration()
+        self.assertTrue(doc["source_hashes_verified"])
+        self.assertTrue(doc["application_slices_roundtrip"])
+        self.assertTrue(all(r["identical"] for r in doc["release_comparisons"]))
+        self.assertEqual(doc["release_comparisons"][1]["vendor"], "0x1800f91c")
+        self.assertEqual(doc["release_comparisons"][1]["installed"], "0x1800f948")
+        self.assertTrue(doc["secondary_code_identical"])
+        self.assertTrue(all(r["ok"] for r in doc["secondary_instruction_checks"]))
+
+    def test_dead_zone_argument_order_and_threshold_tables(self):
+        doc = m.trigger_configuration()["dead_zone"]
+        self.assertEqual([(f["ui_label"], f["request_byte"], f["shift"])
+                          for f in doc["global_51_58"]], [("top", 4, 17), ("bottom", 5, 20)])
+        self.assertEqual([(f["request_byte"], f["record_offset"])
+                          for f in doc["per_key_51_59"]], [(6, 7), (7, 6)])
+        self.assertEqual([f["values"] for f in doc["tables"]],
+                         [[15, 45, 55, 85, 110, 0], [250, 650, 1000, 1350, 1700, 0]])
+
+    def test_ui_and_physical_limits_are_retained(self):
+        text = " ".join(m.trigger_configuration()["unresolved"])
+        self.assertIn("physical per-key effect", text)
+        self.assertIn("opposite-looking", text)
+        self.assertIn("nonzero", text)
+
+    def test_profile_completion_reads_current_state(self):
+        text = m.profile_switch()["completion_reply"]
+        self.assertIn("0x18001552", text)
+        self.assertIn("current", text)
+        self.assertIn("does not prove", text)
 
     def test_feature_evidence_is_hashed_and_missing_capture_is_refused(self):
         self.assertTrue(all(r["hash_verified"] for r in m.feature_capture_evidence()))

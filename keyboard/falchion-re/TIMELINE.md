@@ -1,6 +1,6 @@
 # ASUS ROG Falchion Ace HFX reverse-engineering timeline
 
-Last updated: 2026-09-03 (America/Mexico_City)
+Last updated: 2026-10-08 (America/Mexico_City)
 
 This document is the chronological record of the investigation. It explains
 what was done, why it was done, what changed, and where the supporting evidence
@@ -3458,6 +3458,45 @@ cause and applied state remain unknown. Pending-group closure and profile echo
 matching are explicitly documented as correlation heuristics. Seven new unit
 tests and updated capture regressions bring the relevant passing suite to 190;
 the handoff records these corrections and their remaining limits.
+
+## 2026-10-08 — Ghidra rapid-trigger/dead-zone reconciliation (log 138)
+
+Read-only Ghidra analysis of installed 1.59 and vendor 1.00.58 reconciled the
+complete `51 54` handler with all 346 captured writes. Record +0x0a packs
+release/press sensitivities in bits 0–6/7–13 and mode in bits 14–15. The
+consumer uses directional extrema and strict delta comparisons under a global
+bit-5 gate. Disabled writes retain sensitivity; invalid selectors can mutate
+mode before rejection. Uncaptured modes and Fn-layer behavior remain open.
+
+Tracing `0x1800f948` through its cache builder to the second context identifies
+`51 59` as per-key dead-zone overrides. The argument order puts UI top in
+global bits 17–19 and record +7, bottom in bits 20–22 and record +6. The
+physical interpretation of their numerical travel edges remains unresolved.
+The profile-format generator's old rapid-trigger labels and equal-default
+matches were corrected alongside the command map.
+
+The profile completion reply reads current state, and the dispatcher does
+not replace a pending profile request. This supports, without proving the
+exact cause of, capture 03's profile mismatch. Relevant checks pass 252 tests;
+both regenerated report sets are current. The handoff now points to the next
+offline task: global bit 5 and its relation to the rapid-trigger lever.
+
+## 2026-10-08 — Physical rapid-trigger switch (log 139)
+
+Read-only Ghidra analysis connected GPIO identifier `0x47` to current-profile
+global bit 5 and the captured `03 76` input. The entry-image veneer reveals
+the caller that application-only analysis missed: threshold 9, one poll per
+eight service ticks, acceptance on the tenth consecutive mismatch followed
+by GPIO resampling. No absolute debounce duration is claimed.
+
+All 14 input reports and nine `25 00` query readbacks fit the static bit/layout
+model. Profile selection, whole-block restore and factory reset explain the
+bit's lifecycle; the poll can produce status without new mechanical motion.
+There is no direct persistence call in the poll, so lever-only power-loss
+behavior remains open. Both firmware releases have equivalent poll bodies,
+with one relocated call byte differing. Generators, reports and handoff were
+updated; 262 relevant tests pass. Next offline task: complete `51 52` reset
+selectors and identify their third field. No live device operation occurred.
 
 ## Corrections retained for auditability
 

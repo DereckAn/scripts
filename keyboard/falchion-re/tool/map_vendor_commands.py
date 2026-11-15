@@ -53,6 +53,7 @@ APP = ("installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin",
        0x18000000)
 VENDOR_APP = ("vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin",
               0x18000000)
+ENTRY = ("installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin", 0)
 
 DISPATCHER = 0x18001FBE          # VendorHID_CommandDispatcher (FINDINGS)
 REQ_BUF = 0x180233A8             # log 107
@@ -132,6 +133,21 @@ QUERY_SITES = (
 
 # Instruction bytes this model cites. Anchors every claim below to the image.
 CITED = {
+    # Log 139: physical rapid-trigger switch, shared bit and input report.
+    0x180068AE: "2047",            # GPIO identifier 0x47
+    0x180068C4: "f3c0 1340",       # extract current-profile bit 5
+    0x180068D0: "1c52",            # consecutive mismatch count +1
+    0x180068D4: "42b2",            # compare count with caller threshold
+    0x180068D6: "d91c",            # return while count <= threshold
+    0x180068EA: "f020 0020",       # clear bit 5 on nonzero GPIO resample
+    0x180068F6: "f845 0021",       # store current-profile global word
+    0x180068FC: "2076",            # queue report opcode 0x76
+    0x1800690A: "f040 0020",       # set bit 5 on zero GPIO resample
+    0x180022D6: "f3c0 1040",       # 25 00 reads the same bit
+    0x180022DA: "7118",            # reply byte 4
+    0x180044B2: "7047 7086 70c5 7104", # queue bytes 1..4 = r7,r6,r5,r4
+    0x18001D8E: "f843 0021",       # single-profile reset replaces whole word
+    0x18001E24: "f843 2021",       # all-profile reset replaces whole word
     # dispatcher entry: r4 = the request buffer, r7 = the device header
     0x18001FC2: "4c6c",              # ldr r4,[pc] -> 0x180233a8
     0x18001FEE: "f109 071c",         # add.w r7,r9,#0x1c  -> 0x1801e6d0
@@ -192,11 +208,11 @@ CITED = {
     0x1800F97C: "2202",          # f948   movs r2,#0x2        else the default
     0x1800F9A8: "f022 0280",     # f948   bic  r2,r2,#0x80    clear the override
     0x1800F9AC: "f368 0202",     # f948   bfi  r2,r8,#0,#3
-    0x1800F9B0: "f88c 2006",     # f948   strb r2,[r12,#0x6]  record +0x06, press
+    0x1800F9B0: "f88c 2006",     # f948   record +0x06, UI bottom dead zone
     0x1800F9CC: "f854 c025",     # f948   ldr  r12,[r4,r5,lsl #2]  the global word
     0x1800F9D0: "f362 5c16",     # f948   bfi  r12,r2,#20,#3  global bits 20..22
     0x1800F9FC: "f3c4 4442",     # f948   ubfx r4,r4,#17,#3   global bits 17..19
-    0x1800FA0A: "79da",          # f948   ldrb r2,[r3,#0x7]   record +0x07, release
+    0x1800FA0A: "79da",          # f948   record +0x07, UI top dead zone
     0x1800FA26: "71e2",          # f948   strb r2,[r4,#0x7]
     0x180031BC: "4843",          # 51 56  ldr  r0,[pc] -> block D
     0x180031D0: "7006",          # 51 56  strb r6,[r0]
@@ -230,6 +246,47 @@ CITED = {
     0x18006094: "eb09 00c0",     # the consumer's add.w r0,r9,r0,lsl #3
     0x1800609C: "f830 0012",     # ldrh.w r0,[r0,r2,lsl #1]
     0x180060A4: "42a8",          # cmp    r0,r5   current vs previous bank
+    # --- log 138: complete rapid-trigger fields and dead-zone argument order ---
+    0x180026E4: "e3fe",          # table stub -> 0x18002ee4
+    0x18002EE4: "e07e",          # second stub -> 0x18002fe4
+    0x18002FE4: "7960",          # layer byte 5
+    0x18002FEE: "7921",          # wire key byte 4
+    0x18003008: "5c89",          # wire key -> record index
+    0x1800300C: "7a1a",          # enable byte 8
+    0x18003020: "79df",          # mode-control byte 7
+    0x18003026: "1c7f",          # mode = byte 7 + 1, truncated to two bits
+    0x18003030: "885a",          # selector is LE16 bytes 2-3
+    0x18003050: "f427 4740",     # disabled: clear mode, still write sensitivity
+    0x18003068: "799f",          # sensitivity byte 6
+    0x1800306E: "f367 0106",     # combined: release bits 0..6
+    0x18003072: "f367 11cd",     # combined: press bits 7..13
+    0x1800308C: "799f",          # press sensitivity byte 6
+    0x18003092: "f367 1ccd",     # selector 1: press bits 7..13
+    0x180030AC: "f893 c006",     # release sensitivity byte 6
+    0x180030B2: "f36c 0706",     # selector 2: release bits 0..6
+    0x180030BC: "540e",          # mark keymap layer dirty at 0x1801e6b9
+    0x1800333A: "7962",          # 51 58 byte 5 -> r2 -> bits 20..22
+    0x1800336E: "79a3",          # 51 59 byte 6 -> r3 -> record +7
+    0x18003376: "79e2",          # 51 59 byte 7 -> r2 -> record +6
+    0x1800FA60: "f363 4253",     # r3 -> global bits 17..19
+    0x1800FA74: "e6c3",          # tail -> cache builder 0x1800f7fe
+    0x1800F83E: "1e6d",          # record +6 value minus 1
+    0x1800F840: "f882 55b4",     # bottom-labelled value -> shared +0x5b4
+    0x1800F850: "1e52",          # record +7 value minus 1
+    0x1800F852: "f880 264a",     # top-labelled value -> shared +0x64a
+    0x1800F8DE: "f88c 764a",     # all-key resolved top cache
+    0x1800F916: "f887 45b4",     # all-key resolved bottom cache
+    0x180055EE: "f8be 200a",     # rapid-trigger consumer reads record +0x0a
+    0x180055F2: "0b91",          # test mode bits 14..15
+    0x18005600: "0689",          # additionally test global bit 5
+    0x1800563E: "f002 007f",     # release sensitivity
+    0x1800564A: "f3c2 12c6",     # press sensitivity
+    0x1800564E: "eb00 0080",     # release scale x5
+    0x18005652: "eb02 0282",     # press scale x5
+    0x180056EA: "2008",          # near-rest effective release floor
+    0x180056F8: "da0c",          # strict delta comparison
+    0x18001552: "79a1",          # profile completion reply reads CURRENT profile
+    0x18001556: "2106",          # internal profile 0 reported as 6
 }
 
 ACCESS_RE = re.compile(
@@ -476,14 +533,20 @@ SUBCOMMANDS = (
      "0x18002efa ldrb [r4,#7]; 0x18002f1a movw #0x361; 0x18002f36 bfi #14,#2",
      "keymap record +0x0a"),
     (0x54, "static-handler-proven", W,
-     "byte 5 is the layer, byte 4 the key (<= 0xbc), byte 8 a gate; the handler "
-     "writes bits 14..15 of the per-key record's halfword at +0x0a from request "
-     "byte 7 plus one. Those are exactly the two bits the shared writer tail "
-     "clears with bic #0xc000 at 0x18002d08, so +0x0a carries a 2-bit mode "
-     "above its 7-bit fields. What the mode selects is NOT established.",
-     "0x18002fe8 cmp #0x9f; 0x18002ff2 cmp #0xbc; 0x18003028 bfi #14,#2; "
-     "0x1800302c strh rec+0x0a",
-     "keymap record +0x0a bits 14..15"),
+     "PER-KEY RAPID TRIGGER. Byte 5 selects layer 00/9f; byte 4 <= bc is "
+     "translated to a record index. At record +0x0a, LE16 bytes 2-3 select "
+     "00 both sensitivities, 01 press bits 7..13, or 02 release bits 0..6. "
+     "Byte 6 supplies the low seven bits without a handler range clamp. "
+     "Byte 8 zero clears mode bits 14..15; otherwise the mode is "
+     "(byte 7 + 1) & 3. Sensitivities are written even when disabled. The mode "
+     "store precedes selector validation, so an invalid selector can change "
+     "mode before a short rejection reply. Valid writes mark the layer dirty "
+     "and echo 60 payload bytes. The consumer additionally requires global "
+     "bit 5 and scales both sensitivity fields by five (log 138).",
+     "0x180026e4 -> 0x18002ee4 -> 0x18002fe4; 0x18003028 bfi #14,#2; "
+     "0x18003030 ldrh selector; 0x1800306e/72 bfi #0/#7; "
+     "0x18003092 press; 0x180030b2 release; 0x180055ee..0x18005762 consumer",
+     "keymap record +0x0a: release bits 0..6, press bits 7..13, mode bits 14..15"),
     (0x55, "static-handler-proven", W,
      "the firmware names its two halves =TEMP1_S_KC and =TEMP2_S_KC. Bytes 4-5 "
      "and bytes 6-7 are TWO 16-bit key codes, each bounded at 0xbc and passed "
@@ -515,23 +578,28 @@ SUBCOMMANDS = (
      "each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; "
      "the handler calls 0x1800f948 with mode 0, which range-checks each value "
      "to 1..6 (substituting the default 2) and inserts them into the profile's "
-     "global word at BITS 20..22 and BITS 17..19. Log 125 called these "
+     "global word: byte 4 (UI top) -> BITS 17..19; byte 5 (UI bottom) -> "
+     "BITS 20..22. The r3/r2 argument order matters (log 138). Log 125 called these "
      "rapid-trigger fields; the captured single-step dead-zone changes correct "
      "that semantic label while retaining the instruction-derived stores.",
      "0x18003334/0x18003336 the 0-folds-to-6 and > 5 refusal; 0x1800334c bl "
      "0x1800f948; 0x1800f976 cmp #6; 0x1800f97c movs #2; 0x1800f9d0 bfi #20,#3; "
      "0x1800f9fc ubfx #17,#3",
-     "global block, bits 20..22 and 17..19 of the profile's word"),
+     "global block: UI top bits 17..19, UI bottom bits 20..22"),
     (0x59, "static-handler-proven", W,
-     "PER-KEY TWO-VALUE SETTER, the static counterpart of 0x58. Byte 5 is the layer "
-     "(0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 two values "
-     "under the same 1..6 rule; it calls 0x1800f948 with mode 1, "
-     "which writes bits 0..2 of the per-key record at +0x06 and +0x07 and sets "
+     "PER-KEY DEAD-ZONE OVERRIDES, the static counterpart of 0x58. Byte 5 is the layer "
+     "(0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 wire values "
+     "0..5 (0 folds to internal 6; 6 and greater are rejected); "
+     "it calls 0x1800f948 with mode 1, "
+     "which writes byte 7 (UI bottom counterpart) into record +0x06 and "
+     "byte 6 (UI top counterpart) into +0x07, bits 0..2, and sets "
      "the 0x80 override bit when the value differs from the profile's all-key "
      "value, clearing it when they match — the same override discipline 0x4f "
-     "uses for actuation. No 51 59 was sent in captures 03-03d; its user-visible "
-     "role is NOT established. The earlier per-key rapid-trigger label is "
-     "withdrawn: Armoury Crate uses 51 54 for that feature.",
+     "uses for actuation. Both setters tail-call the same cache builder and "
+     "feed the same raw-sample edge thresholds in the second context. No "
+     "51 59 was sent in captures 03-03d: per-key UI availability and physical "
+     "top/bottom interpretation remain unverified. The earlier per-key "
+     "rapid-trigger label is withdrawn: that uses record +0x0a and 51 54.",
      "0x18003368 cmp #0x9f; 0x18003380 cmp #0xbc; 0x1800338c bl 0x1800f948; "
      "0x1800f9a8 bic #0x80; 0x1800f9b0 strb rec+0x06; 0x1800fa26 strb rec+0x07",
      "keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override"),
@@ -629,8 +697,8 @@ HAL_DISPOSITION = (
      "strongly-inferred"),
     ("SetRapidTrigger_PreKey", "51 54",
      "log 136: byte 2 selects combined/press/release, byte 4 the key, byte 6 "
-     "the sensitivity in 0.1 mm and byte 8 on/off. The static mode-bit stores "
-     "at 0x18003028/0x1800302c do not yet explain every captured field",
+     "the sensitivity in 0.1 mm and byte 8 on/off. Log 138 traces all fields "
+     "to record +0x0a and its rapid-trigger delta consumer",
      "strongly-inferred"),
     ("Reset_Actuation_RapidTrigger", "51 52",
      "logs 136-137: byte 2 = 03 resets actuation and rapid trigger; byte 2 = "
@@ -648,13 +716,15 @@ HAL_DISPOSITION = (
      "is shown to mean this", "no plausible carrier found"),
     ("SetDeadZone_AllKey", "51 58",
      "log 136: independent top/bottom 0.2 -> 0.3 mm changes alter request "
-     "bytes 4/5 respectively. Static stores are global bits 20..22/17..19 "
-     "at 0x1800f9d0/0x1800f9fc, previously mislabelled rapid trigger",
+     "bytes 4/5 respectively. Log 138 resolves the static argument order: "
+     "top bits 17..19 at 0x1800fa60, bottom bits 20..22 at 0x1800f9d0, "
+     "previously mislabelled rapid trigger",
      "strongly-inferred"),
-    ("SetDeadZone_PreKey", None,
-     "51 59 shares 51 58's helper in per-key mode, but no capture exercises "
-     "it and a per-key dead-zone UI or effect has not been observed",
-     "no plausible carrier found"),
+    ("SetDeadZone_PreKey", "51 59",
+     "log 138: per-key overrides feed the same cache arrays and raw-sample "
+     "threshold tables as 51 58. No capture exercises it; per-key UI "
+     "availability, physical effect and exact HAL symbol attribution remain unverified",
+     "strongly-inferred"),
     ("SetSpeedTap", "51 55",
      "log 136: request bytes 4-5/6-7 carry A/D, matching the profile's speedTap "
      "binding. The static handler translates the pair and validates HID "
@@ -734,6 +804,10 @@ FEATURE_CAPTURES = (
      "137-finish-capture-per-key-actuation-and-lever.txt"),
 )
 FEATURE_WIRE = {
+    "25 00": ("Read current-profile rapid-trigger enable; response byte 4 is "
+              "global word bit 5 (nine matched readbacks across 03-03d)",
+              "log 139 traces 0x180022ce..0x180022e4 to the same bit that "
+              "the physical GPIO poll writes and 03 76 reports", "135-137, 139"),
     "51 00": ("Profile switch; byte 4 is the requested profile.",
               "agrees", "135"),
     "51 50": ("Global actuation; byte 4 is mm x 10.", "agrees", "135"),
@@ -747,12 +821,14 @@ FEATURE_WIRE = {
               "rapid trigger. Selectors 00/02/04 and the third reset field "
               "were not established.", "static selector agrees; stores untraced", "136-137"),
     "51 54": ("Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 "
-              "release, byte 4 key, byte 6 mm x 10, byte 8 on/off. The static "
-              "mode-bit stores alone do not explain all captured fields.",
-              "partial; full handler reconciliation remains open", "136"),
+              "release, byte 4 key, byte 6 mm x 10, byte 8 on/off. All captured "
+              "writes use layer 00 and mode-control byte 7 = 00.",
+              "reconciled with full handler and consumer in log 138; uncaptured modes remain open",
+              "136, 138"),
     "51 58": ("Global dead zone; byte 4 top, byte 5 bottom, mm x 10. "
               "This corrects the earlier all-key rapid-trigger label.",
-              "instruction-derived stores retained; semantic label corrected", "136"),
+              "log 138 resolves argument order: top bits 17..19, bottom bits 20..22",
+              "136, 138"),
     "51 55": ("Speed Tap pair A/D at bytes 4-5/6-7, matching the AC profile; "
               "byte 8 changed 00 -> 01. AC re-sent this without an owner "
               "Speed Tap action.", "pair agrees; switch semantics need a UI test", "136"),
@@ -892,6 +968,275 @@ def profile_switch():
                            "and the reload live in that one function.",
         "wire_readback": "12 00 reply byte 6 returns the same byte, with an "
                          "internal 0 reported as 6.",
+        "completion_reply": "51 00 is emitted by the storage state machine, "
+                            "not as an immediate dispatcher echo. At "
+                            "0x18001552 it reads current device-header +6, "
+                            "normalises 0 to 6, and sends one payload byte at "
+                            "0x18001566 when request flag bit 1 is set. "
+                            "A request arriving while opcode 2 is already "
+                            "pending does not replace the pending profile "
+                            "(0x18002528..0x18002534). This supports state "
+                            "reporting/asynchronous explanations for capture "
+                            "03 frames 106237/106277, but does not prove which "
+                            "runtime path caused their 01/02 disagreement.",
+    }
+
+
+def rapid_trigger_update(halfword, selector, value, mode_control, enabled):
+    """Offline arithmetic model of 51 54 after the key/layer guards.
+
+    Scalar inputs only; constructs no USB report. Preserve the handler's
+    ordering, truncation and partial mutation on an invalid LE16 selector.
+    """
+    for name, number, limit in (("halfword", halfword, 0xffff),
+                                ("selector", selector, 0xffff),
+                                ("value", value, 0xff),
+                                ("mode_control", mode_control, 0xff),
+                                ("enabled", enabled, 0xff)):
+        if not isinstance(number, int) or not 0 <= number <= limit:
+            raise CommandError(f"{name} is outside its instruction operand width")
+    mode = ((mode_control + 1) & 3) if enabled else 0
+    halfword = (halfword & 0x3fff) | (mode << 14)
+    if selector in (0, 2):
+        halfword = (halfword & ~0x7f) | (value & 0x7f)
+    if selector in (0, 1):
+        halfword = (halfword & ~0x3f80) | ((value & 0x7f) << 7)
+    return {"halfword": halfword, "selector_accepted": selector in (0, 1, 2),
+            "layer_marked_dirty": selector in (0, 1, 2)}
+
+
+def dead_zone_override(previous, value, global_value):
+    """Scalar model of one +6/+7 override byte in helper 0x1800f948."""
+    if not all(isinstance(x, int) and 0 <= x <= 255
+               for x in (previous, value, global_value)):
+        raise CommandError("dead-zone model expects byte operands")
+    value = value if 1 <= value <= 6 else 2
+    return (previous & 0x78) | value | (0x80 if value != global_value else 0)
+
+
+def rapid_trigger_lever_poll(word, count, gpio, resampled_gpio, threshold=9):
+    """Scalar offline model of FUN_180068aa; no report is constructed.
+
+    The caller's mode guard and profile selection have already been applied.
+    Both GPIO reads are binary. The second read is used only at acceptance.
+    """
+    for name, value in (("word", word), ("count", count), ("threshold", threshold)):
+        if not isinstance(value, int) or not 0 <= value <= 0xffffffff:
+            raise CommandError(f"{name} is outside its instruction operand width")
+    if gpio not in (0, 1) or resampled_gpio not in (0, 1):
+        raise CommandError("GPIO samples must be binary")
+    state = None
+    if (gpio ^ 1) == ((word >> 5) & 1):
+        count = 0
+    else:
+        count = (count + 1) & 0xffffffff
+        if count > threshold:
+            count = 0
+            word = (word & ~0x20) | ((resampled_gpio ^ 1) << 5)
+            state = (word >> 5) & 1
+    return {"word": word, "count": count, "report_state": state,
+            "runtime_refresh": state is not None}
+
+
+def _thumb_bl_target(address, slice_):
+    """Decode only the immediate BL form used by the two cited switch calls."""
+    first, last = (int(x, 16) for x in halfwords(address, 2, slice_).split())
+    if first & 0xf800 != 0xf000 or last & 0xd000 != 0xd000:
+        raise CommandError(f"{address:#x} is not a Thumb immediate BL")
+    sign = (first >> 10) & 1
+    i1, i2 = 1 ^ ((last >> 13) & 1) ^ sign, 1 ^ ((last >> 11) & 1) ^ sign
+    displacement = ((sign << 24) | (i1 << 23) | (i2 << 22)
+                    | ((first & 0x3ff) << 12) | ((last & 0x7ff) << 1))
+    if sign:
+        displacement -= 1 << 25
+    return address + 4 + displacement
+
+
+@functools.lru_cache(maxsize=None)
+def rapid_trigger_lever():
+    """Log 139: physical GPIO -> current-profile bit 5 -> 03 76 report."""
+    import map_second_context as second
+    sources = second.sources()
+    entry = image(ENTRY[0])
+    left = image(APP[0])[0x68aa:0x6914]
+    right = image(VENDOR_APP[0])[0x687e:0x68e8]
+    differences = [i for i, (a, b) in enumerate(zip(left, right)) if a != b]
+    entry_sites = {0x43a: "2808", 0x442: "f000 f868", 0x536: "2009",
+                   0x538: "f003 fdb1", 0x409e: "f646 0cab f6c1 0c00 4760",
+                   0x5b4: "e810 1801"}
+    return {
+        "confidence": "static path proven, physical ON/OFF labels corroborated by log 137",
+        "installed": {"poll": "0x180068aa", "gpio_reader": "0x18010a18",
+                      "global_words": "0x18024f0c", "selection": "0x1801e6d6",
+                      "counter": "0x1801e778", "runtime_refresh": "0x180089a8"},
+        "vendor": {"poll": "0x1800687e", "gpio_reader": "0x180109ec",
+                   "global_words": "0x18024ee0", "selection": "0x1801e6aa",
+                   "counter": "0x1801e74c", "runtime_refresh": "0x1800897c"},
+        "gpio": {"identifier": 0x47, "group": 4, "bit": 7,
+                 "polarity": "sample zero sets enable bit 5; sample one clears it",
+                 "basis": "FUN_18010850 splits identifier into high-nibble group "
+                          "and low-nibble bit; FUN_18010a18 returns a binary MMIO read. "
+                          "The PCB pad and port letter are not identified"},
+        "debounce": {"threshold": 9, "accepted_mismatch_polls": 10,
+                     "service_tick_divider": 8, "absolute_ms": None,
+                     "caller": "entry FUN_00000516, 0x536..0x538 -> veneer "
+                               "0x409e -> app 0x180068aa, only if *(0x1801e810)==1",
+                     "rule": "equal inverted GPIO/bit resets count; mismatch "
+                             "increments uint32 count; accept only when count >9, "
+                             "reset count, resample GPIO, replace bit 5 preserving "
+                             "other bits, queue state and refresh runtime settings. "
+                             "A resample that bounced back can report the old state",
+                     "counter_scope": "one shared counter; profile reload does not "
+                                      "explicitly reset it in the inspected paths"},
+        "report": {"endpoint": "0x8c", "size": 21, "prefix": "03 76 00 00",
+                   "state_byte": 4, "on": 1, "off": 0,
+                   "queue": "FUN_18004498(0x76,0,0,bit5) queues a 21-byte record; "
+                            "FUN_1800417e adds report ID 3 and sends via FUN_18004164(2,...)",
+                   "delivery": "queued input status, not a request/reply acknowledgement; "
+                               "delivery depends on the queue and sender's runtime gates"},
+        "readback": "25 00 reads current-profile global bit 5 into reply byte 4 "
+                    "at 0x180022ce..0x180022e4. Nine matched readbacks in captures "
+                    "03-03d corroborate binary states (five on, four off); "
+                    "this analysis sent no live query",
+        "lifecycle": "global storage read FUN_1800e64e can restore the block; "
+                     "whole-word single/all-profile resets at 0x18001d8e/0x18001e24 "
+                     "start with bit 5 clear. A selection change selects another "
+                     "word, then the periodic physical poll reconciles it with GPIO. "
+                     "This explains how a report can follow a profile switch without "
+                     "a new lever motion; it is not an unconditional resend rule",
+        "persistence": "the poll stores RAM and calls FUN_180089a8 (runtime refresh), "
+                       "without a direct storage-dirty or persist call. Other whole-block "
+                       "save paths can include this bit; persistence solely from moving "
+                       "the lever is not established",
+        "writer_scope": "GPIO mutation, full-block restore and factory reset paths "
+                        "inspected; not a proof against every indirect writer or memory fault",
+        "entry_instruction_checks": [{"address": hex(a),
+                                      "ok": halfwords(a, len(enc.split()), ENTRY) == enc}
+                                     for a, enc in entry_sites.items()],
+        "entry_source_roundtrip": entry == sources["installed"][0x1000:0x1000 + len(entry)],
+        "release_comparison": {"length": 106, "differing_offsets": differences,
+                               "only_report_call_relocated": len(left) == len(right) == 106
+                                   and differences == [0x56]
+                                   and _thumb_bl_target(0x180068fe, APP) == 0x18004498
+                                   and _thumb_bl_target(0x180068d2, VENDOR_APP) == 0x18004498},
+        "unresolved": ["absolute debounce duration; IRQ38 period remains unresolved",
+                       "PCB pin mapping and physical timing/scan-phase measurement",
+                       "lever-only persistence across power loss; no direct save in poll",
+                       "uncaptured per-key modes and Fn-layer physical behavior"],
+    }
+
+
+def trigger_configuration():
+    """Log 138: exact stores, consumers, release comparison and limits."""
+    # Import lazily to retain the command map's original offline dependencies.
+    import map_second_context as second
+    sources = second.sources()  # verify original full-source hashes
+    slices = second.slices()
+    ram = slices["installed"]
+    def span(data, base, lo, hi):
+        if not base <= lo < hi <= base + len(data):
+            raise CommandError(f"trigger evidence span {lo:#x}..{hi:#x} is outside its image")
+        return data[lo - base:hi - base]
+    app, vendor = image(APP[0]), image(VENDOR_APP[0])
+    comparisons = []
+    for label, installed_lo, vendor_lo, length in (
+            ("51 54 full handler and shared reply tail", 0x18002fe4, 0x18002fe4, 0xe4),
+            ("dead-zone setter body, first range", 0x1800f948, 0x1800f91c, 0xe4),
+            ("dead-zone setter body, second range", 0x1800fa5c, 0x1800fa30, 0x1a),
+            ("dead-zone cache builder", 0x1800f7fe, 0x1800f7d2, 0x14a)):
+        left = span(app, APP[1], installed_lo, installed_lo + length)
+        right = span(vendor, VENDOR_APP[1], vendor_lo, vendor_lo + length)
+        comparisons.append({"scope": label, "installed": hex(installed_lo),
+                            "vendor": hex(vendor_lo), "length": length,
+                            "identical": left == right,
+                            "installed_sha256": hashlib.sha256(left).hexdigest()})
+    secondary_sites = {
+        0x1803a7b2: "93 f8 b4 c5",  # shared +5b4 index
+        0x1803a7b8: "33 f8 1c 30",  # indexed halfword threshold
+        0x1803a804: "91 f8 4a c6",  # shared +64a index
+        0x1803a808: "3b f8 1c c0",  # indexed halfword threshold
+    }
+    secondary_checks = [{"address": hex(addr),
+                         "ok": span(ram, second.RUNTIME_BASE, addr,
+                                     addr + len(bytes.fromhex(enc))) == bytes.fromhex(enc)}
+                        for addr, enc in secondary_sites.items()]
+    roundtrips = [app == sources["installed"][0x11000:0x11000 + len(app)],
+                  vendor == sources["vendor"][0x21000:0x21000 + len(vendor)]]
+    tables = []
+    for name, address in (("shared +5b4", 0x1803c386), ("shared +64a", 0x1803c392)):
+        values = list(struct.unpack_from("<6H", ram, address - second.RUNTIME_BASE))
+        tables.append({"array": name, "table": hex(address), "values": values})
+    return {
+        "source_hashes_verified": True, "application_slices_roundtrip": all(roundtrips),
+        "release_comparisons": comparisons,
+        "secondary_code_identical": slices["installed"][:-4] == slices["vendor"][:-4],
+        "secondary_instruction_checks": secondary_checks,
+        "record": "0x180202d8 + layer*0xd84 + translated_key*0x20",
+        "translation": "0x1801c3a8 + KBID*0x86 + wire_key (both installed paths)",
+        "rapid_trigger": {
+            "entry_chain": ["0x180026e4", "0x18002ee4", "0x18002fe4"],
+            "offset": 10,
+            "fields": [{"name": "release", "shift": 0, "width": 7},
+                       {"name": "press", "shift": 7, "width": 7},
+                       {"name": "mode", "shift": 14, "width": 2}],
+            "selectors": {"0": "both", "1": "press", "2": "release"},
+            "handler_bounds": "layer 00/9f and wire key <= bc; no sensitivity "
+                              "range clamp; low seven bits stored",
+            "mode": "enable byte 8 == 0 -> 0; otherwise (byte 7 + 1) & 3; "
+                    "captured byte 7 is always 0, hence active mode 1",
+            "ordering": "mode is stored before selector validation; disabled "
+                        "writes still update sensitivities; invalid selectors "
+                        "can mutate mode without setting the layer dirty flag",
+            "consumer": "0x180055ee..0x18005762 in installed FUN_18004a7e: "
+                        "requires record type +4 == 0, alternate-path byte "
+                        "+0xc == 0, nonzero mode and current-profile global "
+                        "bit 5. Press/release sensitivities are each multiplied "
+                        "by five in the 0..200 travel-byte scale. Directional "
+                        "delta comparisons are strict. When travel <40, each "
+                        "relevant delta threshold is floored at 8. Mode 1 "
+                        "uses actuation-2 (floored at 0) for the initial release "
+                        "threshold; other nonzero modes keep the earlier "
+                        "actuation-derived lower threshold. The active/released "
+                        "states maintain directional extrema.",
+            "vendor_consumer": "FUN_18004a7e also contains the consumer in "
+                               "vendor 1.00.58; addresses inside its body "
+                               "differ. The full scan function differs between "
+                               "releases; no blanket 0x2c shift is assumed.",
+        },
+        "dead_zone": {
+            "global_51_58": [{"ui_label": "top", "request_byte": 4, "shift": 17},
+                             {"ui_label": "bottom", "request_byte": 5, "shift": 20}],
+            "per_key_51_59": [{"ui_counterpart": "top", "request_byte": 6, "record_offset": 7},
+                              {"ui_counterpart": "bottom", "request_byte": 7, "record_offset": 6}],
+            "encoding": "wire 1..5 accepted; 0 maps to internal 6; wire 6 "
+                        "and greater rejected. Helper accepts internal 1..6 "
+                        "and defaults other values to 2",
+            "override": "bits 0..2 value, bit 7 override; other bits preserved. "
+                        "Clear override if equal to current-profile global value",
+            "cache": "0x1800f948 tail-calls 0x1800f7fe: +6/bits20..22 -> "
+                     "shared+0x5b4, +7/bits17..19 -> shared+0x64a, value minus "
+                     "one. Global refresh resolves inheritance for both layers; "
+                     "per-key refresh targets the selected record",
+            "consumer": "second-context FUN_1803a6c4: +5b4 chooses the "
+                        "reference-minus-threshold branch that writes travel 0; "
+                        "+64a chooses the other-reference-plus-threshold "
+                        "branch that saturates the curve index to 0x4ff "
+                        "(travel 200). Tables are raw-sample units, not mm",
+            "tables": tables,
+            "confidence": "static command/consumer relationship proven; "
+                          "UI labels for 51 58 from capture log 136; 51 59 "
+                          "UI and physical behavior unobserved",
+        },
+        "unresolved": [
+            "51 59 UI availability and physical per-key effect; no captured use",
+            "UI top/bottom labels map to the opposite-looking numeric travel "
+            "edges (+64a/200 versus +5b4/0); physical interpretation needs a "
+            "focused action or further UI/curve analysis, not relabelling on intuition",
+            "51 54 mode-control byte 7 nonzero and Fn-layer behavior uncaptured",
+            "Global bit 5's physical-lever path is traced in log 139; absolute "
+            "timing and lever-only persistence remain unresolved",
+            "Profile 01/02 mismatch: state-snapshot reply is proven, exact runtime cause is not",
+        ],
     }
 
 
@@ -1293,6 +1638,20 @@ def verify():
           "every candidate carrier cites evidence", f"{len(named)} named")
     check(len(feature_capture_evidence()) == 4,
           "all four feature captures reproduce the hashes in logs 135-137")
+    trigger = trigger_configuration()
+    check(trigger["application_slices_roundtrip"],
+          "both trigger analysis slices round-trip against their hash-verified full sources")
+    check(all(r["identical"] for r in trigger["release_comparisons"]),
+          "rapid-trigger handler and dead-zone helpers have matching bodies in both releases")
+    check(trigger["secondary_code_identical"]
+          and all(r["ok"] for r in trigger["secondary_instruction_checks"]),
+          "the shared dead-zone consumer bytes match both releases and cited instructions")
+    lever = rapid_trigger_lever()
+    check(lever["entry_source_roundtrip"]
+          and all(r["ok"] for r in lever["entry_instruction_checks"]),
+          "the cross-image lever caller and threshold round-trip against the installed source")
+    check(lever["release_comparison"]["only_report_call_relocated"],
+          "both lever poll bodies agree except for their verified report-call relocation")
     return checks
 
 
@@ -1307,7 +1666,9 @@ def to_dict():
                    "twenty-four 0x51 subcommands and ten reachable 0x12 queries; "
                    "thirty-three family entries have instruction-derived "
                    "semantics. Logs 135-137 add independent feature observations; "
-                   "the full 51 54 handler remains to be reconciled",
+                   "log 138 reconciles the complete 51 54 handler and "
+                   "identifies 51 59 as per-key dead-zone overrides; log 139 traces "
+                   "the physical rapid-trigger switch to global bit 5 and 03 76",
         "transport": {"dispatcher": f"{DISPATCHER:#x}",
                       "request_buffer": f"{REQ_BUF:#x}",
                       "responder": f"{SEND_RESPONSE_64:#x}",
@@ -1320,6 +1681,8 @@ def to_dict():
         "feature_captures": feature_capture_evidence(),
         "feature_wire_observations": feature_wire_observations(),
         "profile_switch": profile_switch(),
+        "trigger_configuration": trigger_configuration(),
+        "rapid_trigger_lever": rapid_trigger_lever(),
         "macro_block": macro_block(),
         "block_d": block_d(),
         "hold_timer": hold_timer(),
@@ -1459,7 +1822,70 @@ def markdown():
               f"{ps['dispatcher_writes']} dispatcher writes.", "",
             f"**Not established:** {ps['not_established']}", "",
             f"**Read-back:** {ps['wire_readback']}", "",
-            "## The macro block", ""]
+            f"**Completion reply:** {ps['completion_reply']}", "",
+            "## Rapid trigger and dead-zone reconciliation (log 138)", ""]
+    trigger = d["trigger_configuration"]
+    rt, dz = trigger["rapid_trigger"], trigger["dead_zone"]
+    out += [f"**Record:** `{trigger['record']}`; {trigger['translation']}.", "",
+            "### Rapid trigger (`51 54`)", "",
+            "| field at record +0x0a | bits |", "|---|---|"]
+    for field in rt["fields"]:
+        out.append(f"| {field['name']} | {field['shift']}.."
+                   f"{field['shift'] + field['width'] - 1} |")
+    out += ["", f"**Selectors (LE16 bytes 2–3):** {rt['selectors']}.", "",
+            f"**Mode:** {rt['mode']}.", "",
+            f"**Bounds:** {rt['handler_bounds']}.", "",
+            f"**Ordering:** {rt['ordering']}.", "",
+            f"**Consumer:** {rt['consumer']}", "", rt['vendor_consumer'], "",
+            "### Dead zone (`51 58` / `51 59`)", "",
+            "| UI label or counterpart | global request byte | global word bits | per-key request byte | record offset |",
+            "|---|---:|---|---:|---|"]
+    for global_field, per_key in zip(dz["global_51_58"], dz["per_key_51_59"]):
+        out.append(f"| {global_field['ui_label']} | {global_field['request_byte']} | "
+                   f"{global_field['shift']}..{global_field['shift'] + 2} | "
+                   f"{per_key['request_byte']} | +0x{per_key['record_offset']:02x} |")
+    out += ["", f"**Encoding:** {dz['encoding']}.", "",
+            f"**Override:** {dz['override']}.", "",
+            f"**Cache builder:** {dz['cache']}.", "",
+            f"**Consumer:** {dz['consumer']}.", "",
+            f"**Evidence:** {dz['confidence']}.", "",
+            "| shared cache | raw-sample lookup table | six values |", "|---|---|---|"]
+    for table in dz['tables']:
+        out.append(f"| `{table['array']}` | `{table['table']}` | {table['values']} |")
+    out += ["", "### Release comparison", "",
+            "| scope | installed address | vendor address | bytes | identical |",
+            "|---|---|---|---:|---|"]
+    for row in trigger['release_comparisons']:
+        out.append(f"| {row['scope']} | `{row['installed']}` | `{row['vendor']}` | "
+                   f"{row['length']} | {row['identical']} |")
+    out += ["", "Both source hashes and import round trips are checked. The "
+            "secondary image is byte-identical except for its final checksum word.", "",
+            "**Remaining questions:**", ""]
+    out += [f"- {question}." for question in trigger['unresolved']]
+    lever = d['rapid_trigger_lever']
+    out += ["", "## Physical rapid-trigger switch (log 139)", "",
+            lever['confidence'], "", "| component | installed 1.59 | vendor 1.00.58 |",
+            "|---|---|---|"]
+    for key, value in lever['installed'].items():
+        out.append(f"| {key} | `{value}` | `{lever['vendor'][key]}` |")
+    out += ["", f"**GPIO:** `{lever['gpio']['identifier']:#x}`, group 4 bit 7. "
+            + lever['gpio']['polarity'] + ". " + lever['gpio']['basis'] + ".", "",
+            f"**Caller:** {lever['debounce']['caller']}.", "",
+            "**Debounce:** tenth consecutive mismatch at one poll per eight service "
+            "ticks; milliseconds remain unresolved. " + lever['debounce']['rule'] + ".", "",
+            lever['debounce']['counter_scope'] + ".", "",
+            "**Input status:** `03 76 00 00 <state>` (21 bytes, EP `0x8c`), "
+            "byte 4 = 1 on / 0 off. " + lever['report']['queue'] + ". "
+            + lever['report']['delivery'] + ".", "",
+            "**Readback:** " + lever['readback'] + ".", "",
+            "**Lifecycle:** " + lever['lifecycle'] + ".", "",
+            "**Persistence:** " + lever['persistence'] + ".", "",
+            "**Writer scope:** " + lever['writer_scope'] + ".", "",
+            "The 106-byte poll bodies differ only in one byte of the verified "
+            "call to report builder `0x18004498`; they are not byte-identical.", "",
+            "**Remaining boundaries:**", ""]
+    out += [f"- {question}." for question in lever['unresolved']]
+    out += ["", "## The macro block", ""]
     mb = d["macro_block"]
     out += [f"`{mb['base']}`, `{mb['size']}` bytes, "
             f"{mb['resolved_accesses']} resolved accesses.", "",

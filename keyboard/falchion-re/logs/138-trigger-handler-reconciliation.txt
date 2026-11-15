@@ -1,0 +1,271 @@
+LOG 138 — RAPID-TRIGGER HANDLER AND DEAD-ZONE CONSUMERS
+Date: 2026-10-08
+Scope: offline Ghidra continuation requested by the owner. No device access.
+
+Starting HEAD: bdf3a76, main. Working tree was clean at the start; the owner's
+commit includes the earlier evidence review and profile-pairing corrections.
+This continuation has not staged, committed or pushed anything. Preserved
+firmware, captures, snapshots, historical logs and manifests were not edited.
+
+1. SOURCES AND PROVENANCE
+
+Installed application-region dump, firmware 1.59:
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+Official vendor image, firmware 1.00.58:
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+  dumps/vendor/M605_V01_00_58.bin
+
+Application imports, both based at runtime 0x18000000:
+  ghidra/imports/installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  ghidra/imports/vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
+Both round-trip against their respective hash-verified sources. The installed
+source starts at logical flash 0x10000, so logical flash 0x21000 is file offset
+0x11000. The vendor image uses file offset 0x21000 directly.
+
+Second-context image: logical flash 0x74000..0x7bfff, runtime 0x18038000.
+Installed and vendor bytes differ only at the final four-byte checksum word.
+Code, lookup tables and all relevant literals are identical. Its existing
+Ghidra program is ghidra/project/falchion-hfx, ram_image_18038000.bin.
+
+2. GHIDRA WORKFLOW
+
+Read-only headless runs, with JAVA_HOME=/usr/lib/jvm/java-21-openjdk and
+XDG_CONFIG_HOME/XDG_CACHE_HOME/XDG_DATA_HOME directed to /tmp/falchion-ghidra-*.
+Use -readOnly -noanalysis and -scriptPath ghidra/scripts throughout.
+
+In ghidra/project-step6, project step6, use FalchionDecompileTargets.java:
+  installed application targets:
+    18001fbe 1800f948 1800f7fe 1800f474 18004a7e
+  vendor application targets:
+    18001fbe 1800f91c 1800f7d2
+  separate vendor consumer target:
+    18004a7e
+  separate installed profile-state-machine target:
+    18000d56
+In ghidra/project, project falchion-hfx, secondary target:
+    1803a6c4
+
+Command pattern, from the investigation directory:
+  ghidra-analyzeHeadless ghidra/project-step6 step6 \
+    -process <application import name> -readOnly -noanalysis \
+    -scriptPath ghidra/scripts -postScript FalchionDecompileTargets.java <targets>
+
+The first vendor invocation also included 18004a52, based on an overly broad
+relocation assumption. Ghidra correctly reported that it belongs to preceding
+FUN_18004a1c, not the scan function. The corrected consumer invocation uses
+18004a7e. The scan function starts at that SAME address in both releases but
+its INTERNAL instruction locations differ; no blanket 0x2c shift is valid.
+
+Temporary full outputs: /tmp/falchion-ghidra-138-{installed,vendor,
+vendor-consumer,profile,secondary}.txt. These are convenience exports, not
+required durable inputs. The committed generator pins cited instruction bytes,
+compares scoped regions and reads lookup tables from original-source slices.
+Existing ghidra/decompiles/dispatcher.txt, settings_consumers.txt,
+settings_load.txt, app_keymap.txt and second_context_ptr2.txt corroborate them.
+
+3. COMPLETE 51 54 HANDLER
+
+The five-entry TBB at 180024ec/table180024f0 maps subcommand 54 to 180026e4.
+Two branch stubs resolve its actual handler:
+  180026e4 e3fe       b 18002ee4
+  18002ee4 e07e       b 18002fe4
+
+Request buffer r4 = 180233a8. Keymap base r10 = 180202d8. Byte 5 accepts
+00 -> layer 0 or 9f -> layer 1, rejects other values before changing the
+record. Byte 4 <= bc is translated by:
+  *(uint8 *)(1801c3a8 + KBID*0x86 + wire_key)
+The resulting record address is:
+  180202d8 + layer*0xd84 + translated_key*0x20
+Do not substitute the wire key directly for the translated record index.
+
+At record +0x0a, the packed uint16 fields are:
+  bits  0..6   release sensitivity
+  bits  7..13  press sensitivity
+  bits 14..15  mode
+
+Exact installed instructions:
+  1800300c 7a1a       ldrb r2,[r3,#8]          enable byte
+  18003020 79df       ldrb r7,[r3,#7]          mode-control byte
+  18003026 1c7f       adds r7,#1
+  18003028 f367 3c8f  bfi r12,r7,#14,#2
+  1800302c f8a2 c00a  strh.w r12,[r2,#10]
+  18003050 f427 4740  bic r7,r7,#0xc000        disabled path
+  18003030 885a       ldrh r2,[r3,#2]          LE16 selector, not just byte 2
+  1800306e f367 0106  bfi r1,r7,#0,#7          combined, release
+  18003072 f367 11cd  bfi r1,r7,#7,#7          combined, press
+  18003092 f367 1ccd  bfi r12,r7,#7,#7         selector 1, press
+  180030b2 f36c 0706  bfi r7,r12,#0,#7         selector 2, release
+  180030bc 540e       strb r6,[r1,r0]          mark layer dirty
+
+Mode is zero if byte 8 is zero, otherwise (byte 7 + 1) & 3. Byte 6 is
+stored with seven-bit truncation and NO handler range clamp. Selector 0
+updates both sensitivities, 1 press only, 2 release only. Disabled writes
+still store sensitivity. The mode store occurs BEFORE selector validation:
+an invalid selector can mutate mode and then branch to the short rejection
+response without marking the layer dirty. Do not model rejection as rollback.
+Valid writes mark 1801e6b9+layer dirty and return an echo of 60 payload bytes
+via the shared responder. Persistence remains a separate existing pathway.
+
+4. RAPID-TRIGGER CONSUMER
+
+Installed FUN_18004a7e, relevant branch 180055ee..18005762, reads +0x0a
+after checking record type +4 == 0 and alternate-path byte +0xc == 0.
+It additionally requires a nonzero mode AND bit 5 of the current profile's
+global word. This second gate is independent of a key's mode.
+
+  180055ee f8be 200a  ldrh.w r2,[lr,#10]
+  180055f2 0b91       lsrs r1,r2,#14
+  18005600 0689       lsls r1,#26              test global bit 5
+  1800563e f002 007f  and r0,r2,#0x7f         release
+  1800564a f3c2 12c6  ubfx r2,r2,#7,#7        press
+  1800564e eb00 0080  add.w r0,r0,r0,lsl#2    release * 5
+  18005652 eb02 0282  add.w r2,r2,r2,lsl#2    press * 5
+
+The routine maintains extrema in the active and released states. Falling
+travel must exceed the release delta in magnitude to release; rising travel
+must exceed the press delta to re-press. Equality does not trigger those
+transitions. When travel <40, the relevant directional threshold is raised
+to 8 if smaller. These are numeric travel-byte units; do not turn them into
+an unmeasured physical-distance guarantee.
+
+Mode 1 replaces the initial release threshold with max(actuation-2,0),
+whereas other nonzero modes retain the preceding actuation-derived lower
+threshold (0 below 2, actuation-2 for 2..4, 3 at 5+). The initialization
+branch treats travel 200 specially. This is an instruction-level account,
+not a tested name for modes 2/3 or a complete hardware timing model.
+
+Vendor consumer remains in FUN_18004a7e, with corresponding instructions:
+  180055c8 ldrh.w r0,[lr,#10]
+  180055cc lsrs r1,r0,#14
+  180055da lsls r1,#26
+  1800561a and r2,r0,#0x7f
+  18005628 ubfx r0,r0,#7,#7
+The consumer relationship agrees, but the complete scan function has different
+instructions and body ranges across releases; no claim of whole-function
+identity is made.
+
+All four preserved captures were decoded by tshark and checked:
+  03-features   74 writes
+  03b-features  30 writes
+  03c-deep     242 writes
+  03d-finish     0 writes
+  TOTAL        346 writes: 18 combined, 164 press, 164 release.
+  Enabled 330; disabled 16. Every write uses layer00 and byte7=00.
+The owner-correlated log 136 observations identify physical UI sensitivities
+in 0.1 mm; this agrees with the handler's field selection. Uncaptured modes,
+Fn-layer physical behavior and global-bit-5 writers are remaining questions.
+
+5. DEAD-ZONE ARGUMENT ORDER AND 51 59 ROLE
+
+The earlier static label called global bits 20..22/17..19 and record+6/+7
+rapid-trigger press/release. Log 136 disproved that label; this trace also
+resolves the exact argument order. Caller 51 58 loads:
+  request byte4 (UI top)    -> r3
+  request byte5 (UI bottom) -> r2
+Helper 1800f948 processes r2 FIRST into global bits20..22 or record+6,
+then r3 into global bits17..19 or record+7. Therefore:
+
+  UI label/counterpart   51 58 byte/global bits     51 59 byte/record offset
+  top                   4 / 17..19                6 / +7
+  bottom                5 / 20..22                7 / +6
+
+51 59 selects layer00/9f and translates wire key <=bc through the same KBID
+table. Both callers accept wire1..5 and map wire0 to internal6; wire6 and
+greater are rejected. The helper accepts internal1..6, defaulting invalid
+values to2. The per-key byte preserves bits3..6, stores value in bits0..2,
+sets bit7 when different from the corresponding current-profile global value,
+and clears bit7 when equal. This is inheritance, not rapid-trigger enable.
+
+After either setter, 1800f948 marks the layer dirty and tail-calls 1800f7fe.
+Global refresh resolves inheritance for BOTH layers; per-key refresh targets
+the selected record. It writes value-minus-one indices into shared arrays:
+  record+6/globalbits20..22 -> shared+0x5b4
+  record+7/globalbits17..19 -> shared+0x64a
+
+Second-context FUN_1803a6c4 consumes exactly these arrays:
+  1803a7b2 93f8 b4c5  ldrb.w r12,[r3,#0x5b4]
+  1803a7b8 33f8 1c30  ldrh.w r3,[r3,r12,lsl#1]
+  1803a804 91f8 4ac6  ldrb.w r12,[r1,#0x64a]
+  1803a808 3bf8 1cc0  ldrh.w r12,[r11,r12,lsl#1]
+
+The first selects a raw reference-minus-threshold comparison that produces
+travel0. The second selects an other-reference-plus-threshold comparison
+that saturates the curve index to0x4ff, whose travel output is200.
+The corresponding six-halfword raw-sample tables, read from preserved bytes:
+  1803c386  [15,45,55,85,110,0]       shared+5b4 index
+  1803c392  [250,650,1000,1350,1700,0] shared+64a index
+Their final zero corresponds to internal6, encoded as wire0. The threshold
+numbers are raw-sample units, not millimetres.
+
+This establishes 51 59's static per-key DEAD-ZONE relationship by complete
+data flow, not just a similar helper shape. No 51 59 occurs in captures03-03d.
+UI availability, exact HAL symbol attribution and physical per-key effects
+remain unverified. Moreover, UI-labelled top feeds the travel200 edge and
+UI-labelled bottom feeds the travel0 edge. This looks opposite to intuitive
+physical naming. Keep the actual UI labels and numeric stores separately
+documented; do not silently swap them or assert physical polarity.
+
+6. RELEASE COMPARISON
+
+Identical 51 54 handler+reply-tail bytes:
+  installed/vendor 18002fe4..180030c7, 228 bytes
+  af2f4368f33908420225ad5221e1b6fc351123aef599b03aa1edba18a3968cce
+Identical dead-zone setter function body, NONCONTIGUOUS ranges:
+  installed 1800f948..1800fa2b and 1800fa5c..1800fa75
+  vendor    1800f91c..1800f9ff and 1800fa30..1800fa49
+  concatenated body SHA256 (254 bytes):
+  4923660b41266047721e32172e10d1bbcccc16045cbf034e1dfaed4839ef2e93
+Identical cache-builder function body (330 bytes):
+  installed 1800f7fe..1800f947
+  vendor    1800f7d2..1800f91b
+  fc0b5833dc1f7e4e6ef4aeba75a2181beebf7e306daf8bfbade35a8a5571a11d
+These comparisons use each release's actual code/body ranges. The literal
+pools are separate data; imported-source round trips preserve their provenance.
+
+7. PROFILE MISMATCH FOLLOW-UP
+
+Capture03 frames106237/106277 are still a request01/reply02 raw disagreement.
+The dispatcher posts profile requests into a one-deep asynchronous slot. At
+18002528..18002534, an already-pending opcode2 prevents replacement of the
+pending profile, while setting the response-needed flag.
+
+The storage completion path at18001552 reads CURRENT device-header+6,
+maps internal0 to wire6 at18001556, and passes that byte to the responder
+at18001566 when request flag bit1 is set. It does not copy the last USB request's
+profile byte. This provides a code-supported state-reporting/asynchronous
+explanation; it does not prove which runtime event caused the captured mismatch.
+The decoder's profile-echo disambiguation remains explicitly a heuristic.
+
+8. CHANGES AND VALIDATION
+
+Owning generators updated, then reports regenerated:
+  tool/map_vendor_commands.py -> notes/vendor-command-map.{json,md}
+  tool/map_profile_format.py  -> notes/profile-format.{json,md}
+New scalar arithmetic models construct no USB reports and touch no device.
+The profile-format map's old exact rapid-trigger matches were equal defaults
+on dead-zone fields; they are replaced by correctly scoped structural matches.
+All original research logs remain unchanged.
+
+Regression additions: 13 command-map tests, 1 all-capture rapid-trigger test,
+2 profile-format tests. An old test's fixed lower bound of10 unresolved HAL
+carriers failed because 51 59 now has a supported carrier. It now lists the
+nine still-unresolved names explicitly; their confidence remains unchanged.
+
+From tool/:
+  python3 -B -m unittest test_decode_capture test_decode_feature_capture \
+    test_feature_evidence test_map_vendor_commands test_profile_diff \
+    test_map_profile_format
+  252 tests PASS; no skips. Counts41+28+7+75+53+48.
+Both report generators --check report reports_current=True stale=0.
+All four capture hashes and all68 original snapshot-manifest entries pass
+their evidence regressions. The immutable firmware source hashes are checked
+by the command-map generator before release comparison. git diff --check passes.
+
+9. NEXT OFFLINE TASK
+
+Trace every writer of the current-profile global word's bit5 and correlate
+its changes with physical rapid-trigger lever reports03 76. Keep unknown UI,
+physical edge and uncaptured-mode questions explicit. Windows is useful when
+that trace leaves a concrete experiment requiring Armoury Crate or a physical
+action. The old Windows finish plan has already been completed.

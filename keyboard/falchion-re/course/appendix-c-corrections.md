@@ -172,3 +172,5 @@ Nearly every correction below teaches one of these ten habits:
 | The Phase 8 check "20 bytes differ" | 19 differ and 1 coincides (`F`). The invariant is containment, not a count. | log 117 | M7 |
 | `51 58` is all-key rapid trigger (static map, then log 135) | On the wire it is the **dead zone**: byte 4 top, byte 5 bottom | log 136 | M4 |
 | `51 54` is a 2-bit per-key mode; per-key rapid trigger is `51 59` | Armoury Crate uses `51 54` for per-key rapid trigger; no `51 59` was sent in captures 03–03d | log 136 | M4 |
+| Global bits 20–22/17–19 and record +6/+7 are rapid-trigger press/release | They are dead zone: UI bottom/top respectively. Rapid trigger occupies record +0x0a; `51 59` provides static per-key dead-zone overrides | log 138 | M4 |
+| Matching default values prove an AC field matches a firmware field | Both rapid trigger and dead zone defaulted to 2. The old profile-format matches were on the wrong fields; following setter arguments and consumers corrected them | log 138 | M4 |

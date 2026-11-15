@@ -144,15 +144,20 @@ PRIMITIVE_SCAN = 0x18
 
 # The per-profile packed word in the global block, as its readers mask it.
 GLOBAL_FIELDS = (
+    ("rapid_trigger_enable", 5, 1, 0, 1, 0,
+     "log 139: physical GPIO 0x47 poll at installed FUN_180068aa sets/clears "
+     "bit 5 after ten mismatches; 03 76 byte 4 reports it; factory reset clears it"),
     ("function_index", 6, 3, 0, 4, 0,
      "cycled 0..4 by FUN_18007030, which then persists the whole block"),
     ("actuation", 9, 7, 1, 40, 10,
      "FUN_18006d3c raises while <0x28 and lowers while >1; the boot repair "
      "writes +0x1400, i.e. 10"),
-    ("rapid_trigger_release", 17, 3, 1, 6, 2,
-     "FUN_1800f7fe resets the field to 2 when (v)-1 > 5"),
-    ("rapid_trigger_press", 20, 3, 1, 6, 2,
-     "FUN_1800f7fe resets the field to 2 when (v)-1 > 5"),
+    ("dead_zone_top", 17, 3, 1, 6, 2,
+     "log 138: 51 58 byte 4 (UI top) reaches r3 then bits 17..19; "
+     "FUN_1800f7fe repairs invalid internal values to 2; internal 6 encodes wire 0"),
+    ("dead_zone_bottom", 20, 3, 1, 6, 2,
+     "log 138: 51 58 byte 5 (UI bottom) reaches r2 then bits 20..22; "
+     "FUN_1800f7fe repairs invalid internal values to 2; internal 6 encodes wire 0"),
 )
 GLOBAL_RESET_WORD = 0x241400 + 0x10        # the factory-reset value, |0x10
 GLOBAL_MARKER_OFFSET = 0x18
@@ -520,17 +525,27 @@ def matches():
               "exact" if trig["actuation"] == 10 else "unmatched"),
         Match("button.analogTrigger.rapidTriggerPress",
               str(trig["rapidTriggerPress"]),
-              "global block word / per-key record",
-              "bits 20..22 / record +0x06",
-              "FUN_1800f7fe resets both to 2 when the value minus one exceeds "
-              "5, so the default is 2 and the range 1..6",
-              "exact" if trig["rapidTriggerPress"] == 2 else "unmatched"),
+              "per-key record", "+0x0a bits 7..13",
+              "logs 136/138: captured selector 1 writes byte 6 to the "
+              "upper seven-bit sensitivity field; the consumer scales it by five",
+              "structural", "the UI's all-key change writes each assigned key; "
+              "the old bits20..22/+6 exact match was an equal-default coincidence"),
         Match("button.analogTrigger.rapidTriggerRelease",
               str(trig["rapidTriggerRelease"]),
-              "global block word / per-key record",
-              "bits 17..19 / record +0x07",
-              "the same reset, on the neighbouring field",
-              "exact" if trig["rapidTriggerRelease"] == 2 else "unmatched"),
+              "per-key record", "+0x0a bits 0..6",
+              "logs 136/138: captured selector 2 writes byte 6 to the "
+              "lower seven-bit sensitivity field; the consumer scales it by five",
+              "structural", "the old bits17..19/+7 field was dead zone"),
+        Match("button.deadZone.deadZoneTop", str(ac["button"]["deadZone"]["deadZoneTop"]),
+              "global block word / per-key counterpart", "bits 17..19 / record +0x07",
+              "log 136 isolates UI top via 51 58 byte 4; log 138 follows r3 "
+              "through the setter and cache builder", "structural",
+              "per-key counterpart is static; no captured 51 59 UI action"),
+        Match("button.deadZone.deadZoneBottom", str(ac["button"]["deadZone"]["deadZoneBottom"]),
+              "global block word / per-key counterpart", "bits 20..22 / record +0x06",
+              "log 136 isolates UI bottom via 51 58 byte 5; log 138 follows r2 "
+              "through the setter and cache builder", "structural",
+              "physical top/bottom edge interpretation remains open"),
         Match("lever.currentFunctionId", ac["lever"]["currentFunctionId"],
               "global block word", "bits 6..8",
               f"the ROM per-profile default is "
@@ -897,14 +912,15 @@ def to_dict():
             "fallback_index": RECORD_FALLBACK_INDEX,
             "record_fields": [
                 {"offset": 0x04, "detail": "0x00 on layer 0, 0xff on layer 1"},
-                {"offset": 0x06, "detail": "bit 7 override, bits 0..2 rapid "
-                                           "trigger press, 1..6, default 2"},
-                {"offset": 0x07, "detail": "bit 7 override, bits 0..2 rapid "
-                                           "trigger release, 1..6, default 2"},
+                {"offset": 0x06, "detail": "bit 7 override, bits 0..2 UI bottom "
+                                           "dead-zone counterpart, internal 1..6, default 2"},
+                {"offset": 0x07, "detail": "bit 7 override, bits 0..2 UI top "
+                                           "dead-zone counterpart, internal 1..6, default 2"},
                 {"offset": 0x08, "detail": "uint16, bit 15 override, bits 0..6 "
                                            "actuation, 1..40, default 10"},
-                {"offset": 0x0A, "detail": "uint16 remap target; the 0x51/0x21 "
-                                           "handler writes it"},
+                {"offset": 0x0A, "detail": "context-dependent uint16: remap paths "
+                                           "reuse it; for rapid trigger, bits 0..6 release, "
+                                           "7..13 press, 14..15 mode (51 54, log 138)"},
             ],
         },
         "load_chain": [{"stage": k, "detail": d, "confidence": c}

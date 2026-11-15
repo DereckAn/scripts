@@ -1,0 +1,232 @@
+LOG 139 — PHYSICAL RAPID-TRIGGER SWITCH, GLOBAL BIT 5 AND STATUS REPORT
+Date: 2026-10-08
+Scope: owner's offline Ghidra continuation. No keyboard access or live reports.
+Baseline HEAD remains bdf3a76. Log 138's working-tree changes were preserved.
+Nothing staged, committed or pushed. Original evidence and manifests unchanged.
+
+1. SOURCES
+
+Installed application-region dump, firmware 1.59:
+  fc6128ab089e4fd712b172c54cd88b7f28476b55bdac688134e052281ded637b
+  dumps/device/ROG_Falchion_Ace_HFX_installed_bcdDevice_1.59_app_0x10000_0x7bfff.bin
+Official vendor firmware 1.00.58:
+  6d410ee0a54f640b4ab016cdb973f08e3d3d0ab7a716c7368167e562e0e19f1d
+  dumps/vendor/M605_V01_00_58.bin
+The hashes are checked through map_second_context.sources(), also used by the
+command-map generator. Application import round trips are retained from log
+138; the installed entry import additionally round-trips against source file
+offset 0x1000, length 0x58ac. This is an application-region backup, not full U5.
+
+Ghidra imports:
+  installed_app_a_slot0_flash11000_dst00000000_len058ac_f093979a.bin
+  installed_app_b_slot1_flash21000_dst18000000_len1e380_be463863.bin
+  vendor_app_b_slot1_flash21000_dst18000000_len1e354_aafcf2fd.bin
+Entry-image addresses below are based at zero; application addresses at
+0x18000000. Keep installed and vendor RAM addresses separate.
+
+2. REPRODUCIBLE GHIDRA WORKFLOW
+
+Use JAVA_HOME=/usr/lib/jvm/java-21-openjdk and XDG_CONFIG_HOME,
+XDG_CACHE_HOME, XDG_DATA_HOME=/tmp/falchion-ghidra-{config,cache,data}.
+From keyboard/falchion-re:
+  ghidra-analyzeHeadless ghidra/project-step6 step6 \
+    -process <import-name> -readOnly -noanalysis -scriptPath ghidra/scripts \
+    -postScript FalchionDecompileTargets.java <addresses>
+For value references, replace the final script with:
+  -postScript FalchionValueXrefs.java <values>
+Every invocation used -readOnly; no project database was saved.
+
+Key installed application decompilation targets:
+  18004498 180068aa 18010a18 18010850 180089a8 18000d56
+  1800417e 1800e64e 1800e7ee
+Global-word literal/reference survey: FalchionValueXrefs.java 18024f0c.
+Additional consumers inspected:
+  180046a0 180057fe 18006050 18007bcc 18007cb0 18008874
+  1800aadc 1800ce4a 1801a8ba 18006fe0
+Installed entry targets:
+  0000409e 000004ba 00000516 0000057a 0000057e 00000580
+Installed entry reference survey: 180068ab 180068aa 1801e778.
+Vendor application targets: 1800687e 180109ec 1800897c.
+
+Temporary exports:
+  /tmp/falchion-ghidra-139-{xrefs,producers,lever,global,caller,cadence,
+                          report-storage,vendor}.txt
+Corresponding *-clean.txt files strip logger wrappers for convenient reading.
+The installed profile function is also extracted to
+  /tmp/falchion-ghidra-139-profile.txt
+These are convenience files. Pinned source bytes, this log and the scripts
+provide the reproducible evidence if /tmp is lost.
+
+An exploratory target 18000412 had no containing function. The relevant
+nearby default helper was correctly inspected at 18000420. It changes byte 1
+of its supplied object, not this global word's bit 5; its #0x20 clear must not
+be mistaken for the rapid-trigger enable bit.
+
+3. THE COMPLETE PHYSICAL-SWITCH PATH
+
+Installed FUN_180068aa reads GPIO identifier 0x47 through FUN_18010a18.
+FUN_18010850 splits that identifier into group 4 and bit 7 and resolves the
+group's MMIO base through a RAM table. FUN_18010a18 returns a binary MMIO
+sample. This identifies a firmware GPIO code, not a PCB pad or port letter.
+
+Current profile = *(byte*)0x1801e6d6 (device header +6).
+Current global word = *(uint32*)(0x18024f0c + profile*4).
+Shared mismatch counter = *(uint32*)0x1801e778 (key-state struct +0x44).
+
+Instruction-derived flow:
+  180068ae  2047             GPIO identifier 0x47
+  180068c4  f3c0 1340        extract current-profile bit 5
+  180068b6                  invert first sample with XOR 1
+  180068ca..180068cc         compare inverted sample with bit 5
+  18006910                  equal -> reset counter and return
+  180068ce..180068d2         mismatch -> increment uint32 counter
+  180068d4  42b2             compare count with caller threshold
+  180068d6  d91c             return while count <= threshold (unsigned)
+  180068d8..180068dc         reset counter and read GPIO again
+  180068ea  f020 0020        nonzero resample -> clear bit 5
+  1800690a  f040 0020        zero resample -> set bit 5
+  180068f6  f845 0021        write selected profile word, preserve other bits
+  180068f0                  extract resulting bit into report argument r3
+  180068fc  2076             report opcode 0x76
+  180068fe                  FUN_18004498(0x76,0,0,bit5)
+  18006906                  tail-call runtime refresh FUN_180089a8
+
+Thus GPIO zero means enabled, GPIO one disabled. The captured owner's ON/OFF
+actions in log 137 establish the physical label corresponding to those bits.
+The extra sample matters: if it bounces back at acceptance, the function can
+queue the unchanged state. A status report alone is not proof of a new motion.
+
+4. CALLER AND DEBOUNCE
+
+The application-only function reports CALLERS none. This was a cross-image
+boundary, not evidence that the routine is unused. Entry FalchionValueXrefs
+finds a computed jump from veneer 0000409e to 180068aa.
+
+Entry FUN_00000516:
+  00000528..0000052e          run the switch polls only if *(0x1801e810)==1
+  00000536  2009             threshold argument r0 = 9
+  00000538  f003 fdb1        BL veneer 0000409e
+  0000409e  f646 0cab        movw r12,#0x68ab
+  000040a2  f6c1 0c00        movt r12,#0x1800
+  000040a6  4760             bx r12, Thumb target 0x180068aa
+
+Entry FUN_0000042c increments the first prescaler counter every service tick,
+compares against 8 at 0000043a, resets and calls FUN_00000516 at 00000442.
+The caller's threshold 9 means acceptance on mismatch count 10, not count 9.
+It is one poll per eight service ticks. Ten sustained mismatches span nine
+intervals between the first and tenth samples, with an unknown phase from the
+actual mechanical transition to the first sample. Do not call this an exact
+80-tick physical latency. The IRQ38 period is still unresolved; no duration in
+milliseconds is claimed. There is one counter, not one counter per profile.
+
+5. INPUT STATUS AND QUERY READBACK
+
+FUN_18004498 clears a 21-byte scratch record, then stores arguments at bytes
+1..4 (180044b2: 7047 7086 70c5 7104) and copies it to a three-slot queue.
+FUN_1800417e's queue path adds report ID 3 and calls FUN_18004164(2,...,0x15,0).
+This produces the observed interface-2 input on endpoint 0x8c:
+  03 76 00 00 <01 enabled / 00 disabled> + sixteen zero bytes
+Delivery remains subject to sender gates and queue behavior. This input is
+not an acknowledgement paired with an OUT setting request.
+
+25 00 reads precisely the same current-profile bit:
+  180022ce..180022d2         selected profile's global low byte
+  180022d6  f3c0 1040        extract bit 5
+  180022da  7118             store reply byte 4
+  180022dc..180022e4         reply opcode 25, subcommand 00, one-byte payload
+The analysis sent no query. Armoury Crate already sent nine in the preserved
+four captures, all uniquely matched by the decoder (five on, four off):
+  capture       OUT frames                 reply states in order
+  03            138915,499787               0,1
+  03b           36043,457437,544477         1,1,1
+  03c           31571,995489                1,0
+  03d           40177,380841                0,0
+
+All 14 endpoint-0x8c reports were re-extracted with subject-device scoping.
+Local clocks are UTC-6; decode_feature_capture.clock truncates milliseconds:
+  03   04:28:14.348 1; 04:31:24.737 1
+  03b  04:55:55.365 0; 04:55:56.737 1; 04:55:58.566 0;
+       04:56:00.243 1; 04:56:01.768 0; 04:56:03.331 1;
+       05:01:51.265 1
+  03c  05:42:11.593 0; 05:42:12.464 1; 05:47:49.157 0
+  03d  06:17:40.525 1; 06:18:02.648 0
+Counts: 2/7/3/2 reports, eight ON and six OFF. Every report has the exact
+21-byte layout. Owner-action correlations are preserved in log 137.
+
+Two reports follow an existing 51 00 request without a new recorded motion:
+  03: frame 489362 selects profile 3; report follows by 0.012480 s.
+  03b: frame 462661 selects profile 4; report follows by 0.012463 s.
+These observed separations include processing/USB scheduling and do not reveal
+the switch's debounce duration or prove its precise runtime counter history.
+
+6. INITIALIZATION, RELOAD, WRITERS AND PERSISTENCE BOUNDARY
+
+The enable bit lives in a six-profile global-word table. A profile selection
+changes which word the poll and key-scan consumer read. FUN_1800e64e restores
+the global block through the storage descriptor at 0x1801e96c in inspected
+initialization paths (18000df4/18000e38). This can replace the bit along with
+other whole-block contents. Actuation repair masks bits 9..15 and preserves 5.
+
+Factory resets replace entire words with bit 5 clear:
+  single-profile store 18001d8e, initialized from 0x10 + function bits +0x1400;
+  all-profile store 18001e24, also initialized with top/bottom defaults.
+The inspected storage completion paths refresh runtime settings but do not
+directly queue 0x76. The periodic GPIO poll subsequently reconciles whichever
+word is now selected. If its bit already agrees, the poll resets the counter
+and produces no status; if it disagrees, it can queue a report after debounce.
+This explains the capability to report after profile switching without new
+motion. It does NOT establish an unconditional resend after every switch.
+
+FUN_180089a8 packs enable into runtime byte bit 2, alongside global bits 2/3
+in runtime bits 1/0, then calls FUN_1800aba4 and FUN_1800cf98. The switch poll
+does not directly mark storage dirty or invoke the persistence helper
+FUN_1800e7ee. Other whole-global-block save paths can include the RAM bit.
+Therefore lever-only persistence across power loss remains unproven.
+
+Writer scope: GPIO mutation, full-block restoration and factory reset were
+inspected, along with direct references and several global-word consumers.
+This is a supported lifecycle explanation, not proof against every possible
+indirect writer. GPIO values in a real boot were not measured by this session.
+The alternate multifunction side-control HAL names remain unmapped; do not
+attach HALSetLeverMode/SetLeverSwitch/SetLeverChange to this report on naming
+similarity alone.
+
+7. RELEASE COMPARISON
+
+Installed poll 180068aa..18006913; vendor poll 1800687e..180068e7: 106 bytes
+each. They differ only at offset 0x56, in the immediate BL to FUN_18004498.
+Both branch targets are independently decoded and checked. The bodies are
+structurally equivalent but are NOT byte-identical.
+Installed SHA256 c80c0887b3c77d9bf7311ab0df0652965506d1655d4a807876252fc4061a0f2f
+Vendor SHA256    5554c7a81f1bc4fad000291712980d3a99ae3ad9daaf2a555846bdee859f8442
+
+Installed RAM: globals 18024f0c, selection 1801e6d6, counter 1801e778.
+Vendor RAM:    globals 18024ee0, selection 1801e6aa, counter 1801e74c.
+Installed reader/refresh: 18010a18/180089a8.
+Vendor reader/refresh:    180109ec/1800897c.
+Do not apply these deltas blindly to unrelated functions or entry veneers.
+
+8. MODEL, VALIDATION AND NEXT TASK
+
+map_vendor_commands.py now records rapid_trigger_lever, pins the cross-image
+caller, checks the installed entry round trip, compares both poll bodies and
+provides a scalar offline poll model including counter wrap and resampling.
+map_profile_format.py adds rapid_trigger_enable at bit 5, distinct from the
+dead-zone and packed per-key sensitivity fields. Both report sets regenerated.
+Regressions cover nine-vs-ten mismatches, match reset, preservation of other
+bits, bounce during resampling, uint32 wrap, invalid operands and all 14
+reports plus nine query readbacks. The relevant suite passes 262 tests:
+  41 decode_capture + 28 decode_feature_capture + 8 feature_evidence
+  +83 map_vendor_commands +53 profile_diff +49 map_profile_format.
+Capture tests executed with tshark; no skips. Generator --check and
+git diff --check are required final validation alongside source hashes.
+
+Still unresolved: absolute timing, PCB mapping, lever-only persistence and
+uncaptured per-key modes/Fn physical behavior. Windows is unnecessary for the
+proven lever/bit/report relationship. Timing and power-loss behavior would
+need a separately defined physical experiment if the owner requests them.
+
+Next useful offline target: 51 52 reset selector paths 0..4, helper 1800f474,
+their third reset field, mutation order and correspondence across releases.
+Captured selectors 01/03 must constrain the static model; do not guess the
+uncaptured paths' UI labels. Update CODEX-HANDOFF.md rather than repeat 138/139.

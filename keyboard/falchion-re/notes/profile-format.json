@@ -85,20 +85,38 @@
     {
       "ac_field": "button.analogTrigger.rapidTriggerPress",
       "ac_value": "2",
-      "blob": "global block word / per-key record",
-      "confidence": "exact",
-      "evidence": "FUN_1800f7fe resets both to 2 when the value minus one exceeds 5, so the default is 2 and the range 1..6",
-      "note": "",
-      "offset": "bits 20..22 / record +0x06"
+      "blob": "per-key record",
+      "confidence": "structural",
+      "evidence": "logs 136/138: captured selector 1 writes byte 6 to the upper seven-bit sensitivity field; the consumer scales it by five",
+      "note": "the UI's all-key change writes each assigned key; the old bits20..22/+6 exact match was an equal-default coincidence",
+      "offset": "+0x0a bits 7..13"
     },
     {
       "ac_field": "button.analogTrigger.rapidTriggerRelease",
       "ac_value": "2",
-      "blob": "global block word / per-key record",
-      "confidence": "exact",
-      "evidence": "the same reset, on the neighbouring field",
-      "note": "",
+      "blob": "per-key record",
+      "confidence": "structural",
+      "evidence": "logs 136/138: captured selector 2 writes byte 6 to the lower seven-bit sensitivity field; the consumer scales it by five",
+      "note": "the old bits17..19/+7 field was dead zone",
+      "offset": "+0x0a bits 0..6"
+    },
+    {
+      "ac_field": "button.deadZone.deadZoneTop",
+      "ac_value": "2",
+      "blob": "global block word / per-key counterpart",
+      "confidence": "structural",
+      "evidence": "log 136 isolates UI top via 51 58 byte 4; log 138 follows r3 through the setter and cache builder",
+      "note": "per-key counterpart is static; no captured 51 59 UI action",
       "offset": "bits 17..19 / record +0x07"
+    },
+    {
+      "ac_field": "button.deadZone.deadZoneBottom",
+      "ac_value": "2",
+      "blob": "global block word / per-key counterpart",
+      "confidence": "structural",
+      "evidence": "log 136 isolates UI bottom via 51 58 byte 5; log 138 follows r2 through the setter and cache builder",
+      "note": "physical top/bottom edge interpretation remains open",
+      "offset": "bits 20..22 / record +0x06"
     },
     {
       "ac_field": "lever.currentFunctionId",
@@ -345,6 +363,17 @@
     "fields": [
       {
         "default": 0,
+        "mask": 32,
+        "max": 1,
+        "min": 0,
+        "name": "rapid_trigger_enable",
+        "note": "log 139: physical GPIO 0x47 poll at installed FUN_180068aa sets/clears bit 5 after ten mismatches; 03 76 byte 4 reports it; factory reset clears it",
+        "reset_value": 0,
+        "shift": 5,
+        "width": 1
+      },
+      {
+        "default": 0,
         "mask": 448,
         "max": 4,
         "min": 0,
@@ -370,8 +399,8 @@
         "mask": 917504,
         "max": 6,
         "min": 1,
-        "name": "rapid_trigger_release",
-        "note": "FUN_1800f7fe resets the field to 2 when (v)-1 > 5",
+        "name": "dead_zone_top",
+        "note": "log 138: 51 58 byte 4 (UI top) reaches r3 then bits 17..19; FUN_1800f7fe repairs invalid internal values to 2; internal 6 encodes wire 0",
         "reset_value": 2,
         "shift": 17,
         "width": 3
@@ -381,8 +410,8 @@
         "mask": 7340032,
         "max": 6,
         "min": 1,
-        "name": "rapid_trigger_press",
-        "note": "FUN_1800f7fe resets the field to 2 when (v)-1 > 5",
+        "name": "dead_zone_bottom",
+        "note": "log 138: 51 58 byte 5 (UI bottom) reaches r2 then bits 20..22; FUN_1800f7fe repairs invalid internal values to 2; internal 6 encodes wire 0",
         "reset_value": 2,
         "shift": 20,
         "width": 3
@@ -406,11 +435,11 @@
         "offset": 4
       },
       {
-        "detail": "bit 7 override, bits 0..2 rapid trigger press, 1..6, default 2",
+        "detail": "bit 7 override, bits 0..2 UI bottom dead-zone counterpart, internal 1..6, default 2",
         "offset": 6
       },
       {
-        "detail": "bit 7 override, bits 0..2 rapid trigger release, 1..6, default 2",
+        "detail": "bit 7 override, bits 0..2 UI top dead-zone counterpart, internal 1..6, default 2",
         "offset": 7
       },
       {
@@ -418,7 +447,7 @@
         "offset": 8
       },
       {
-        "detail": "uint16 remap target; the 0x51/0x21 handler writes it",
+        "detail": "context-dependent uint16: remap paths reuse it; for rapid trigger, bits 0..6 release, 7..13 press, 14..15 mode (51 54, log 138)",
         "offset": 10
       }
     ],

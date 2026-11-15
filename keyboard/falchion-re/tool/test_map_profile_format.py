@@ -235,6 +235,26 @@ class TheRosettaMatchesComeFromBytes(unittest.TestCase):
 @unittest.skipUnless(READY, "evidence slices absent")
 class ModelHonesty(unittest.TestCase):
 
+    def test_dead_zone_fields_do_not_retain_rapid_trigger_labels(self):
+        fields = {f["name"]: f for f in pf.global_word_fields()}
+        self.assertEqual(fields["dead_zone_top"]["shift"], 17)
+        self.assertEqual(fields["dead_zone_bottom"]["shift"], 20)
+        self.assertFalse(any(name.startswith("rapid_trigger") and f["shift"] in (17, 20)
+                             for name, f in fields.items()))
+
+    def test_global_rapid_trigger_enable_is_distinct_from_sensitivity(self):
+        field = next(f for f in pf.global_word_fields() if f["name"] == "rapid_trigger_enable")
+        self.assertEqual((field["shift"], field["width"], field["reset_value"]), (5, 1, 0))
+        self.assertIn("03 76", field["note"])
+
+    def test_rapid_trigger_match_uses_record_halfword(self):
+        rows = {r.ac_field: r for r in pf.matches()}
+        for name, bits in (("rapidTriggerPress", "7..13"), ("rapidTriggerRelease", "0..6")):
+            row = rows["button.analogTrigger." + name]
+            self.assertEqual(row.offset, "+0x0a bits " + bits)
+            self.assertEqual(row.confidence, "structural")
+        self.assertEqual(rows["button.deadZone.deadZoneTop"].offset, "bits 17..19 / record +0x07")
+
     def test_the_storage_medium_is_still_unresolved(self):
         keys = {u["key"] for u in pf.unresolved()}
         self.assertIn("storage_medium", keys)

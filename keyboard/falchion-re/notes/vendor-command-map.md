@@ -6,7 +6,7 @@
 
 ## Verdict
 
-**The dispatcher accepts seventeen top-level opcodes, twenty-four 0x51 subcommands and ten reachable 0x12 queries; thirty-three family entries have instruction-derived semantics. Logs 135-137 add independent feature observations; the full 51 54 handler remains to be reconciled.**
+**The dispatcher accepts seventeen top-level opcodes, twenty-four 0x51 subcommands and ten reachable 0x12 queries; thirty-three family entries have instruction-derived semantics. Logs 135-137 add independent feature observations; log 138 reconciles the complete 51 54 handler and identifies 51 59 as per-key dead-zone overrides; log 139 traces the physical rapid-trigger switch to global bit 5 and 03 76.**
 
 ## Confidence scheme
 
@@ -31,13 +31,14 @@ Key numbers follow AT-101 positions for the observed keys. Fn, ROG and the physi
 
 | command | captured behavior | static reconciliation | logs |
 |---|---|---|---|
+| `25 00` | Read current-profile rapid-trigger enable; response byte 4 is global word bit 5 (nine matched readbacks across 03-03d) | log 139 traces 0x180022ce..0x180022e4 to the same bit that the physical GPIO poll writes and 03 76 reports | 135-137, 139 |
 | `51 00` | Profile switch; byte 4 is the requested profile. | agrees | 135 |
 | `51 50` | Global actuation; byte 4 is mm x 10. | agrees | 135 |
 | `51 4f` | Per-key actuation; byte 4 is the key, byte 6 is mm x 10. Two key writes can share one 50 55 commit. | agrees | 137 |
 | `51 21` | Base-layer remap; byte 2 source, byte 3 = 00, bytes 4-5 target, 00ff restores default, byte 6 current actuation. Fn-layer 9f remaps have historical evidence, not a new 03-03d observation. | agrees for captured base-layer writes | 135-136 |
 | `51 52` | Trigger-page Reset; byte 2 = 01 actuation, 03 actuation and rapid trigger. Selectors 00/02/04 and the third reset field were not established. | static selector agrees; stores untraced | 136-137 |
-| `51 54` | Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 release, byte 4 key, byte 6 mm x 10, byte 8 on/off. The static mode-bit stores alone do not explain all captured fields. | partial; full handler reconciliation remains open | 136 |
-| `51 58` | Global dead zone; byte 4 top, byte 5 bottom, mm x 10. This corrects the earlier all-key rapid-trigger label. | instruction-derived stores retained; semantic label corrected | 136 |
+| `51 54` | Per-key rapid trigger; byte 2 = 00 combined / 01 press / 02 release, byte 4 key, byte 6 mm x 10, byte 8 on/off. All captured writes use layer 00 and mode-control byte 7 = 00. | reconciled with full handler and consumer in log 138; uncaptured modes remain open | 136, 138 |
+| `51 58` | Global dead zone; byte 4 top, byte 5 bottom, mm x 10. This corrects the earlier all-key rapid-trigger label. | log 138 resolves argument order: top bits 17..19, bottom bits 20..22 | 136, 138 |
 | `51 55` | Speed Tap pair A/D at bytes 4-5/6-7, matching the AC profile; byte 8 changed 00 -> 01. AC re-sent this without an owner Speed Tap action. | pair agrees; switch semantics need a UI test | 136 |
 | `51 56` | Observed once before the Speed Tap pair. A Speed Tap-table reset is a hypothesis; a general settings reset was not observed. | ordering only; user-visible scope remains open | 136 |
 | `51 2c` | Lighting; byte 5 brightness %, static bytes 9-11 RGB, animated byte 4 speed. Other animated fields remain open. | partial | 135-136 |
@@ -91,12 +92,12 @@ The dispatcher at `0x18001fbe` accepts **17** top-level opcodes. Only `0x12` and
 | `0x51` | `0x180026ea` | `static-handler-proven` | stores the constant 0x3c into the word at 0x1801e7b8 and replies. The cell's consumer is NOT identified. | 0x1801e7b8 (RAM, consumer unknown) |
 | `0x52` | `0x180026e8` | `static-located-only` | byte 2 selects one of five paths through a byte table at 0x18002c24 (targets 0x18002c2a, 0x18002c38, 0x18002c3e, 0x18002c4a and 0x18002c60), each loading a different set of small constants into r0 and the stack frame; the paths converge at 0x18002c6c, which reads request byte (4 + r0) and switches on 0, 1 and 2, calling the short responder on any other value. The constants are opaque and the store target is NOT established — this is the one subcommand this step could not decode. | unestablished |
 | `0x53` | `0x180026e6` | `static-handler-proven` | byte 7 selects a layer (0 or 1, anything else rejected) and byte 6 gates a per-key record update at keymap + layer*0xd84 + key*0x20 + 0x0a. | keymap record +0x0a |
-| `0x54` | `0x180026e4` | `static-handler-proven` | byte 5 is the layer, byte 4 the key (<= 0xbc), byte 8 a gate; the handler writes bits 14..15 of the per-key record's halfword at +0x0a from request byte 7 plus one. Those are exactly the two bits the shared writer tail clears with bic #0xc000 at 0x18002d08, so +0x0a carries a 2-bit mode above its 7-bit fields. What the mode selects is NOT established. | keymap record +0x0a bits 14..15 |
+| `0x54` | `0x180026e4` | `static-handler-proven` | PER-KEY RAPID TRIGGER. Byte 5 selects layer 00/9f; byte 4 <= bc is translated to a record index. At record +0x0a, LE16 bytes 2-3 select 00 both sensitivities, 01 press bits 7..13, or 02 release bits 0..6. Byte 6 supplies the low seven bits without a handler range clamp. Byte 8 zero clears mode bits 14..15; otherwise the mode is (byte 7 + 1) & 3. Sensitivities are written even when disabled. The mode store precedes selector validation, so an invalid selector can change mode before a short rejection reply. Valid writes mark the layer dirty and echo 60 payload bytes. The consumer additionally requires global bit 5 and scales both sensitivity fields by five (log 138). | keymap record +0x0a: release bits 0..6, press bits 7..13, mode bits 14..15 |
 | `0x55` | `0x18002dc6` | `static-handler-proven` | the firmware names its two halves =TEMP1_S_KC and =TEMP2_S_KC. Bytes 4-5 and bytes 6-7 are TWO 16-bit key codes, each bounded at 0xbc and passed through the translation table, and each result is then range-checked to HID usage 0x04..0x91 or 0xe0..0xe7 — the printable block and the eight modifiers — with byte 8 gating the write. So it configures a PAIR of key codes. Which feature consumes the pair is NOT established. | unestablished (a validated key-code pair) |
 | `0x56` | `0x18002dca` | `static-handler-proven` | SETTINGS FACTORY DEFAULT, and the firmware says so: the handler passes BLOCK D to 0x180005c6 and then to 0x1800aadc with r1 = 1, sets the byte at 0x1801e737 to 1, replies 51 56 with a 60-byte payload and logs S_ST_DEF. It is the only located command that reinitialises block D, which otherwise has no USB writer at all. | block D (0x1801fef8) via its initialisers |
 | `0x57` | `0x18002cda` | `static-handler-proven` | enters the shared per-key writer tail at 0x18002cdc, which updates keymap record +0x08 (bits 0..6, clearing bit 15) and +0x0a (two 7-bit fields, clearing bits 14-15) for BOTH layers under flag control. | keymap records +0x06/+0x07/+0x08/+0x0a, both layers |
-| `0x58` | `0x18002dc8` | `static-handler-proven` | GLOBAL DEAD ZONE (logs 136-137 correct the earlier rapid-trigger label). Bytes 4 and 5 are the top and bottom values in 0.1 mm, each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; the handler calls 0x1800f948 with mode 0, which range-checks each value to 1..6 (substituting the default 2) and inserts them into the profile's global word at BITS 20..22 and BITS 17..19. Log 125 called these rapid-trigger fields; the captured single-step dead-zone changes correct that semantic label while retaining the instruction-derived stores. | global block, bits 20..22 and 17..19 of the profile's word |
-| `0x59` | `0x18002dcc` | `static-handler-proven` | PER-KEY TWO-VALUE SETTER, the static counterpart of 0x58. Byte 5 is the layer (0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 two values under the same 1..6 rule; it calls 0x1800f948 with mode 1, which writes bits 0..2 of the per-key record at +0x06 and +0x07 and sets the 0x80 override bit when the value differs from the profile's all-key value, clearing it when they match — the same override discipline 0x4f uses for actuation. No 51 59 was sent in captures 03-03d; its user-visible role is NOT established. The earlier per-key rapid-trigger label is withdrawn: Armoury Crate uses 51 54 for that feature. | keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override |
+| `0x58` | `0x18002dc8` | `static-handler-proven` | GLOBAL DEAD ZONE (logs 136-137 correct the earlier rapid-trigger label). Bytes 4 and 5 are the top and bottom values in 0.1 mm, each accepted as 1..5 with 0 folded to 6 and anything above 5 refused; the handler calls 0x1800f948 with mode 0, which range-checks each value to 1..6 (substituting the default 2) and inserts them into the profile's global word: byte 4 (UI top) -> BITS 17..19; byte 5 (UI bottom) -> BITS 20..22. The r3/r2 argument order matters (log 138). Log 125 called these rapid-trigger fields; the captured single-step dead-zone changes correct that semantic label while retaining the instruction-derived stores. | global block: UI top bits 17..19, UI bottom bits 20..22 |
+| `0x59` | `0x18002dcc` | `static-handler-proven` | PER-KEY DEAD-ZONE OVERRIDES, the static counterpart of 0x58. Byte 5 is the layer (0x00 or 0x9f), byte 4 the key (<= 0xbc), bytes 6 and 7 wire values 0..5 (0 folds to internal 6; 6 and greater are rejected); it calls 0x1800f948 with mode 1, which writes byte 7 (UI bottom counterpart) into record +0x06 and byte 6 (UI top counterpart) into +0x07, bits 0..2, and sets the 0x80 override bit when the value differs from the profile's all-key value, clearing it when they match — the same override discipline 0x4f uses for actuation. Both setters tail-call the same cache builder and feed the same raw-sample edge thresholds in the second context. No 51 59 was sent in captures 03-03d: per-key UI availability and physical top/bottom interpretation remain unverified. The earlier per-key rapid-trigger label is withdrawn: that uses record +0x0a and 51 54. | keymap records +0x06 and +0x07, bits 0..2 plus the 0x80 override |
 | `0x90` | `0x18002d0e` | `static-handler-proven` | the firmware names it SC_S_A. Gated on bit 1 of the byte at 0x1801e6b7 — if clear the handler does nothing but reply — it passes request byte 4 to 0x1800c184 and request byte 5 to 0x1800c1a0, then replies 51 90 with a 60-byte payload and logs both bytes. The two callees are NOT traced, so what SC_S_A sets is NOT established. | unestablished (two untraced setters) |
 
 ### Evidence for each row
@@ -120,7 +121,7 @@ The dispatcher at `0x18001fbe` accepts **17** top-level opcodes. Only `0x12` and
 | `0x51` | `0x18002c0a ldr r1,[pc] -> 0x1801e7b8; 0x18002c10 str r0,[r1]` |
 | `0x52` | `0x18002c1c cmp #0x5; 0x18002c20 tbb; the five targets above` |
 | `0x53` | `0x18002efa ldrb [r4,#7]; 0x18002f1a movw #0x361; 0x18002f36 bfi #14,#2` |
-| `0x54` | `0x18002fe8 cmp #0x9f; 0x18002ff2 cmp #0xbc; 0x18003028 bfi #14,#2; 0x1800302c strh rec+0x0a` |
+| `0x54` | `0x180026e4 -> 0x18002ee4 -> 0x18002fe4; 0x18003028 bfi #14,#2; 0x18003030 ldrh selector; 0x1800306e/72 bfi #0/#7; 0x18003092 press; 0x180030b2 release; 0x180055ee..0x18005762 consumer` |
 | `0x55` | `0x180030e2/0x18003104 cmp #0xbc; 0x1800311c cmp #0x8d; 0x18003122 cmp #0x7; 0x180030f0 adr '=TEMP1_S_KC'; 0x18003112 adr '=TEMP2_S_KC'` |
 | `0x56` | `0x180031bc ldr -> 0x1801fef8; bl 0x180005c6; bl 0x1800aadc; 0x180031d0 strb 1 -> 0x1801e737; 0x180031e2 adr 'S_ST_DEF'` |
 | `0x57` | `0x18002500 cmp #0x57 -> 0x180031e6; the tail at 0x18002cdc..0x18002dc0` |
@@ -161,6 +162,113 @@ THERE IS A USB COMMAND, AND IT IS INDIRECT. The selection byte has exactly two w
 **Not established:** which branch of FUN_18000d56 a switch takes, and therefore whether one switch invocation reaches 0x1800153a specifically. Only that both the write and the reload live in that one function.
 
 **Read-back:** 12 00 reply byte 6 returns the same byte, with an internal 0 reported as 6.
+
+**Completion reply:** 51 00 is emitted by the storage state machine, not as an immediate dispatcher echo. At 0x18001552 it reads current device-header +6, normalises 0 to 6, and sends one payload byte at 0x18001566 when request flag bit 1 is set. A request arriving while opcode 2 is already pending does not replace the pending profile (0x18002528..0x18002534). This supports state reporting/asynchronous explanations for capture 03 frames 106237/106277, but does not prove which runtime path caused their 01/02 disagreement.
+
+## Rapid trigger and dead-zone reconciliation (log 138)
+
+**Record:** `0x180202d8 + layer*0xd84 + translated_key*0x20`; 0x1801c3a8 + KBID*0x86 + wire_key (both installed paths).
+
+### Rapid trigger (`51 54`)
+
+| field at record +0x0a | bits |
+|---|---|
+| release | 0..6 |
+| press | 7..13 |
+| mode | 14..15 |
+
+**Selectors (LE16 bytes 2–3):** {'0': 'both', '1': 'press', '2': 'release'}.
+
+**Mode:** enable byte 8 == 0 -> 0; otherwise (byte 7 + 1) & 3; captured byte 7 is always 0, hence active mode 1.
+
+**Bounds:** layer 00/9f and wire key <= bc; no sensitivity range clamp; low seven bits stored.
+
+**Ordering:** mode is stored before selector validation; disabled writes still update sensitivities; invalid selectors can mutate mode without setting the layer dirty flag.
+
+**Consumer:** 0x180055ee..0x18005762 in installed FUN_18004a7e: requires record type +4 == 0, alternate-path byte +0xc == 0, nonzero mode and current-profile global bit 5. Press/release sensitivities are each multiplied by five in the 0..200 travel-byte scale. Directional delta comparisons are strict. When travel <40, each relevant delta threshold is floored at 8. Mode 1 uses actuation-2 (floored at 0) for the initial release threshold; other nonzero modes keep the earlier actuation-derived lower threshold. The active/released states maintain directional extrema.
+
+FUN_18004a7e also contains the consumer in vendor 1.00.58; addresses inside its body differ. The full scan function differs between releases; no blanket 0x2c shift is assumed.
+
+### Dead zone (`51 58` / `51 59`)
+
+| UI label or counterpart | global request byte | global word bits | per-key request byte | record offset |
+|---|---:|---|---:|---|
+| top | 4 | 17..19 | 6 | +0x07 |
+| bottom | 5 | 20..22 | 7 | +0x06 |
+
+**Encoding:** wire 1..5 accepted; 0 maps to internal 6; wire 6 and greater rejected. Helper accepts internal 1..6 and defaults other values to 2.
+
+**Override:** bits 0..2 value, bit 7 override; other bits preserved. Clear override if equal to current-profile global value.
+
+**Cache builder:** 0x1800f948 tail-calls 0x1800f7fe: +6/bits20..22 -> shared+0x5b4, +7/bits17..19 -> shared+0x64a, value minus one. Global refresh resolves inheritance for both layers; per-key refresh targets the selected record.
+
+**Consumer:** second-context FUN_1803a6c4: +5b4 chooses the reference-minus-threshold branch that writes travel 0; +64a chooses the other-reference-plus-threshold branch that saturates the curve index to 0x4ff (travel 200). Tables are raw-sample units, not mm.
+
+**Evidence:** static command/consumer relationship proven; UI labels for 51 58 from capture log 136; 51 59 UI and physical behavior unobserved.
+
+| shared cache | raw-sample lookup table | six values |
+|---|---|---|
+| `shared +5b4` | `0x1803c386` | [15, 45, 55, 85, 110, 0] |
+| `shared +64a` | `0x1803c392` | [250, 650, 1000, 1350, 1700, 0] |
+
+### Release comparison
+
+| scope | installed address | vendor address | bytes | identical |
+|---|---|---|---:|---|
+| 51 54 full handler and shared reply tail | `0x18002fe4` | `0x18002fe4` | 228 | True |
+| dead-zone setter body, first range | `0x1800f948` | `0x1800f91c` | 228 | True |
+| dead-zone setter body, second range | `0x1800fa5c` | `0x1800fa30` | 26 | True |
+| dead-zone cache builder | `0x1800f7fe` | `0x1800f7d2` | 330 | True |
+
+Both source hashes and import round trips are checked. The secondary image is byte-identical except for its final checksum word.
+
+**Remaining questions:**
+
+- 51 59 UI availability and physical per-key effect; no captured use.
+- UI top/bottom labels map to the opposite-looking numeric travel edges (+64a/200 versus +5b4/0); physical interpretation needs a focused action or further UI/curve analysis, not relabelling on intuition.
+- 51 54 mode-control byte 7 nonzero and Fn-layer behavior uncaptured.
+- Global bit 5's physical-lever path is traced in log 139; absolute timing and lever-only persistence remain unresolved.
+- Profile 01/02 mismatch: state-snapshot reply is proven, exact runtime cause is not.
+
+## Physical rapid-trigger switch (log 139)
+
+static path proven, physical ON/OFF labels corroborated by log 137
+
+| component | installed 1.59 | vendor 1.00.58 |
+|---|---|---|
+| poll | `0x180068aa` | `0x1800687e` |
+| gpio_reader | `0x18010a18` | `0x180109ec` |
+| global_words | `0x18024f0c` | `0x18024ee0` |
+| selection | `0x1801e6d6` | `0x1801e6aa` |
+| counter | `0x1801e778` | `0x1801e74c` |
+| runtime_refresh | `0x180089a8` | `0x1800897c` |
+
+**GPIO:** `0x47`, group 4 bit 7. sample zero sets enable bit 5; sample one clears it. FUN_18010850 splits identifier into high-nibble group and low-nibble bit; FUN_18010a18 returns a binary MMIO read. The PCB pad and port letter are not identified.
+
+**Caller:** entry FUN_00000516, 0x536..0x538 -> veneer 0x409e -> app 0x180068aa, only if *(0x1801e810)==1.
+
+**Debounce:** tenth consecutive mismatch at one poll per eight service ticks; milliseconds remain unresolved. equal inverted GPIO/bit resets count; mismatch increments uint32 count; accept only when count >9, reset count, resample GPIO, replace bit 5 preserving other bits, queue state and refresh runtime settings. A resample that bounced back can report the old state.
+
+one shared counter; profile reload does not explicitly reset it in the inspected paths.
+
+**Input status:** `03 76 00 00 <state>` (21 bytes, EP `0x8c`), byte 4 = 1 on / 0 off. FUN_18004498(0x76,0,0,bit5) queues a 21-byte record; FUN_1800417e adds report ID 3 and sends via FUN_18004164(2,...). queued input status, not a request/reply acknowledgement; delivery depends on the queue and sender's runtime gates.
+
+**Readback:** 25 00 reads current-profile global bit 5 into reply byte 4 at 0x180022ce..0x180022e4. Nine matched readbacks in captures 03-03d corroborate binary states (five on, four off); this analysis sent no live query.
+
+**Lifecycle:** global storage read FUN_1800e64e can restore the block; whole-word single/all-profile resets at 0x18001d8e/0x18001e24 start with bit 5 clear. A selection change selects another word, then the periodic physical poll reconciles it with GPIO. This explains how a report can follow a profile switch without a new lever motion; it is not an unconditional resend rule.
+
+**Persistence:** the poll stores RAM and calls FUN_180089a8 (runtime refresh), without a direct storage-dirty or persist call. Other whole-block save paths can include this bit; persistence solely from moving the lever is not established.
+
+**Writer scope:** GPIO mutation, full-block restore and factory reset paths inspected; not a proof against every indirect writer or memory fault.
+
+The 106-byte poll bodies differ only in one byte of the verified call to report builder `0x18004498`; they are not byte-identical.
+
+**Remaining boundaries:**
+
+- absolute debounce duration; IRQ38 period remains unresolved.
+- PCB pin mapping and physical timing/scan-phase measurement.
+- lever-only persistence across power loss; no direct save in poll.
+- uncaptured per-key modes and Fn-layer physical behavior.
 
 ## The macro block
 
@@ -262,13 +370,13 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | `SetActuation_AllKey` | `51 50` | global bits 9..15 written from request byte 4 at 0x18002bee, with log 125's clamp at 0x18006d3c | `strongly-inferred` |
 | `SetActuation_PreKey` | `51 4f` | per-key record +0x08 bits 0..6 at 0x18002ba6 with the bit-15 override resolved against global bits 9..15 at 0x18002bba | `strongly-inferred` |
 | `SetRapidTrigger_AllKey` | `51 54 (one frame per assigned key)` | log 136: AC sends press/release changes as 51 54 for each assigned key; there is no observed single global command. The former 51 58 match was dead zone. Exact HAL symbol attribution is unproven | `strongly-inferred` |
-| `SetRapidTrigger_PreKey` | `51 54` | log 136: byte 2 selects combined/press/release, byte 4 the key, byte 6 the sensitivity in 0.1 mm and byte 8 on/off. The static mode-bit stores at 0x18003028/0x1800302c do not yet explain every captured field | `strongly-inferred` |
+| `SetRapidTrigger_PreKey` | `51 54` | log 136: byte 2 selects combined/press/release, byte 4 the key, byte 6 the sensitivity in 0.1 mm and byte 8 on/off. Log 138 traces all fields to record +0x0a and its rapid-trigger delta consumer | `strongly-inferred` |
 | `Reset_Actuation_RapidTrigger` | `51 52` | logs 136-137: byte 2 = 03 resets actuation and rapid trigger; byte 2 = 01 resets actuation only. The selector table is at 0x18002c24 | `strongly-inferred` |
 | `Reset` | `51 52` | AC's Trigger-page Reset; a general factory reset is not established (logs 136-137) | `hypothesis` |
 | `SetProfile` | `51 00` | posts storage opcode 2 with the profile at REQSTRUCT+0x85 at 0x18002530; the state machine stores it to the device header at 0x180011bc | `strongly-inferred` |
 | `IsDefaultProfile` | **none** | no located handler reads a default-profile flag. 12 16 returns a device header byte compared against 0xb5 and 12 08 a bit of 0x1801e6b7; neither is shown to mean this | `no plausible carrier found` |
-| `SetDeadZone_AllKey` | `51 58` | log 136: independent top/bottom 0.2 -> 0.3 mm changes alter request bytes 4/5 respectively. Static stores are global bits 20..22/17..19 at 0x1800f9d0/0x1800f9fc, previously mislabelled rapid trigger | `strongly-inferred` |
-| `SetDeadZone_PreKey` | **none** | 51 59 shares 51 58's helper in per-key mode, but no capture exercises it and a per-key dead-zone UI or effect has not been observed | `no plausible carrier found` |
+| `SetDeadZone_AllKey` | `51 58` | log 136: independent top/bottom 0.2 -> 0.3 mm changes alter request bytes 4/5 respectively. Log 138 resolves the static argument order: top bits 17..19 at 0x1800fa60, bottom bits 20..22 at 0x1800f9d0, previously mislabelled rapid trigger | `strongly-inferred` |
+| `SetDeadZone_PreKey` | `51 59` | log 138: per-key overrides feed the same cache arrays and raw-sample threshold tables as 51 58. No capture exercises it; per-key UI availability, physical effect and exact HAL symbol attribution remain unverified | `strongly-inferred` |
 | `SetSpeedTap` | `51 55` | log 136: request bytes 4-5/6-7 carry A/D, matching the profile's speedTap binding. The static handler translates the pair and validates HID usages at 0x1800311c/0x18003122 | `strongly-inferred` |
 | `SwitchSpeedTap` | `51 55 (byte 8)` | log 136 captures byte 8 changing 00 -> 01 with the same A/D pair; static analysis identifies a write gate. An owner-driven on/off test and the exact HAL attribution are still missing | `hypothesis` |
 | `ResetSpeedTap` | **none** | no located handler clears such a pair | `no plausible carrier found` |
@@ -308,6 +416,10 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 |---|---|---|
 | PASS | the instruction at 0x180011b8 is the one this model cites | f898 0001 == f898 0001 |
 | PASS | the instruction at 0x180011bc is the one this model cites | 71a0 == 71a0 |
+| PASS | the instruction at 0x18001552 is the one this model cites | 79a1 == 79a1 |
+| PASS | the instruction at 0x18001556 is the one this model cites | 2106 == 2106 |
+| PASS | the instruction at 0x18001d8e is the one this model cites | f843 0021 == f843 0021 |
+| PASS | the instruction at 0x18001e24 is the one this model cites | f843 2021 == f843 2021 |
 | PASS | the instruction at 0x18001fc2 is the one this model cites | 4c6c == 4c6c |
 | PASS | the instruction at 0x18001fee is the one this model cites | f109 071c == f109 071c |
 | PASS | the instruction at 0x180020a2 is the one this model cites | e9d9 6007 == e9d9 6007 |
@@ -318,6 +430,8 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x18002250 is the one this model cites | 2012 == 2012 |
 | PASS | the instruction at 0x18002258 is the one this model cites | f890 04f8 == f890 04f8 |
 | PASS | the instruction at 0x1800225c is the one this model cites | f000 000f == f000 000f |
+| PASS | the instruction at 0x180022d6 is the one this model cites | f3c0 1040 == f3c0 1040 |
+| PASS | the instruction at 0x180022da is the one this model cites | 7118 == 7118 |
 | PASS | the instruction at 0x18002514 is the one this model cites | 7921 == 7921 |
 | PASS | the instruction at 0x18002516 is the one this model cites | 2906 == 2906 |
 | PASS | the instruction at 0x1800251e is the one this model cites | 2906 == 2906 |
@@ -329,6 +443,7 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x1800266c is the one this model cites | 289f == 289f |
 | PASS | the instruction at 0x18002686 is the one this model cites | 2bbc == 2bbc |
 | PASS | the instruction at 0x180026d2 is the one this model cites | f8a2 30d4 == f8a2 30d4 |
+| PASS | the instruction at 0x180026e4 is the one this model cites | e3fe == e3fe |
 | PASS | the instruction at 0x180027d2 is the one this model cites | a07e == a07e |
 | PASS | the instruction at 0x18002814 is the one this model cites | f886 9004 == f886 9004 |
 | PASS | the instruction at 0x1800281a is the one this model cites | 73b7 == 73b7 |
@@ -342,8 +457,25 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x18002be8 is the one this model cites | 7923 == 7923 |
 | PASS | the instruction at 0x18002bee is the one this model cites | f363 224f == f363 224f |
 | PASS | the instruction at 0x18002bfa is the one this model cites | f004 f89f == f004 f89f |
+| PASS | the instruction at 0x18002ee4 is the one this model cites | e07e == e07e |
+| PASS | the instruction at 0x18002fe4 is the one this model cites | 7960 == 7960 |
+| PASS | the instruction at 0x18002fee is the one this model cites | 7921 == 7921 |
+| PASS | the instruction at 0x18003008 is the one this model cites | 5c89 == 5c89 |
+| PASS | the instruction at 0x1800300c is the one this model cites | 7a1a == 7a1a |
+| PASS | the instruction at 0x18003020 is the one this model cites | 79df == 79df |
+| PASS | the instruction at 0x18003026 is the one this model cites | 1c7f == 1c7f |
 | PASS | the instruction at 0x18003028 is the one this model cites | f367 3c8f == f367 3c8f |
 | PASS | the instruction at 0x1800302c is the one this model cites | f8a2 c00a == f8a2 c00a |
+| PASS | the instruction at 0x18003030 is the one this model cites | 885a == 885a |
+| PASS | the instruction at 0x18003050 is the one this model cites | f427 4740 == f427 4740 |
+| PASS | the instruction at 0x18003068 is the one this model cites | 799f == 799f |
+| PASS | the instruction at 0x1800306e is the one this model cites | f367 0106 == f367 0106 |
+| PASS | the instruction at 0x18003072 is the one this model cites | f367 11cd == f367 11cd |
+| PASS | the instruction at 0x1800308c is the one this model cites | 799f == 799f |
+| PASS | the instruction at 0x18003092 is the one this model cites | f367 1ccd == f367 1ccd |
+| PASS | the instruction at 0x180030ac is the one this model cites | f893 c006 == f893 c006 |
+| PASS | the instruction at 0x180030b2 is the one this model cites | f36c 0706 == f36c 0706 |
+| PASS | the instruction at 0x180030bc is the one this model cites | 540e == 540e |
 | PASS | the instruction at 0x180030c4 is the one this model cites | 2051 == 2051 |
 | PASS | the instruction at 0x180030f0 is the one this model cites | a070 == a070 |
 | PASS | the instruction at 0x18003112 is the one this model cites | a06b == a06b |
@@ -359,8 +491,11 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x18003316 is the one this model cites | 8308 == 8308 |
 | PASS | the instruction at 0x18003332 is the one this model cites | 7923 == 7923 |
 | PASS | the instruction at 0x18003336 is the one this model cites | 2b05 == 2b05 |
+| PASS | the instruction at 0x1800333a is the one this model cites | 7962 == 7962 |
 | PASS | the instruction at 0x1800334c is the one this model cites | f00c fafc == f00c fafc |
 | PASS | the instruction at 0x18003364 is the one this model cites | 7960 == 7960 |
+| PASS | the instruction at 0x1800336e is the one this model cites | 79a3 == 79a3 |
+| PASS | the instruction at 0x18003376 is the one this model cites | 79e2 == 79e2 |
 | PASS | the instruction at 0x1800338c is the one this model cites | f00c fadc == f00c fadc |
 | PASS | the instruction at 0x180033a4 is the one this model cites | f7fd fb64 == f7fd fb64 |
 | PASS | the instruction at 0x180033b2 is the one this model cites | 8862 == 8862 |
@@ -368,10 +503,20 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x180035dc is the one this model cites | 7008 == 7008 |
 | PASS | the instruction at 0x180035e0 is the one this model cites | 71cd == 71cd |
 | PASS | the instruction at 0x180035e2 is the one this model cites | f44f 71c8 == f44f 71c8 |
+| PASS | the instruction at 0x180044b2 is the one this model cites | 7047 7086 70c5 7104 == 7047 7086 70c5 7104 |
 | PASS | the instruction at 0x180054c4 is the one this model cites | 8c13 == 8c13 |
 | PASS | the instruction at 0x180054d0 is the one this model cites | 4974 == 4974 |
 | PASS | the instruction at 0x180054da is the one this model cites | f82c 3011 == f82c 3011 |
 | PASS | the instruction at 0x180054de is the one this model cites | 1c49 == 1c49 |
+| PASS | the instruction at 0x180055ee is the one this model cites | f8be 200a == f8be 200a |
+| PASS | the instruction at 0x180055f2 is the one this model cites | 0b91 == 0b91 |
+| PASS | the instruction at 0x18005600 is the one this model cites | 0689 == 0689 |
+| PASS | the instruction at 0x1800563e is the one this model cites | f002 007f == f002 007f |
+| PASS | the instruction at 0x1800564a is the one this model cites | f3c2 12c6 == f3c2 12c6 |
+| PASS | the instruction at 0x1800564e is the one this model cites | eb00 0080 == eb00 0080 |
+| PASS | the instruction at 0x18005652 is the one this model cites | eb02 0282 == eb02 0282 |
+| PASS | the instruction at 0x180056ea is the one this model cites | 2008 == 2008 |
+| PASS | the instruction at 0x180056f8 is the one this model cites | da0c == da0c |
 | PASS | the instruction at 0x18005830 is the one this model cites | eb0a 0741 == eb0a 0741 |
 | PASS | the instruction at 0x18005834 is the one this model cites | 797a == 797a |
 | PASS | the instruction at 0x18005840 is the one this model cites | f897 c004 == f897 c004 |
@@ -379,6 +524,21 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x18006094 is the one this model cites | eb09 00c0 == eb09 00c0 |
 | PASS | the instruction at 0x1800609c is the one this model cites | f830 0012 == f830 0012 |
 | PASS | the instruction at 0x180060a4 is the one this model cites | 42a8 == 42a8 |
+| PASS | the instruction at 0x180068ae is the one this model cites | 2047 == 2047 |
+| PASS | the instruction at 0x180068c4 is the one this model cites | f3c0 1340 == f3c0 1340 |
+| PASS | the instruction at 0x180068d0 is the one this model cites | 1c52 == 1c52 |
+| PASS | the instruction at 0x180068d4 is the one this model cites | 42b2 == 42b2 |
+| PASS | the instruction at 0x180068d6 is the one this model cites | d91c == d91c |
+| PASS | the instruction at 0x180068ea is the one this model cites | f020 0020 == f020 0020 |
+| PASS | the instruction at 0x180068f6 is the one this model cites | f845 0021 == f845 0021 |
+| PASS | the instruction at 0x180068fc is the one this model cites | 2076 == 2076 |
+| PASS | the instruction at 0x1800690a is the one this model cites | f040 0020 == f040 0020 |
+| PASS | the instruction at 0x1800f83e is the one this model cites | 1e6d == 1e6d |
+| PASS | the instruction at 0x1800f840 is the one this model cites | f882 55b4 == f882 55b4 |
+| PASS | the instruction at 0x1800f850 is the one this model cites | 1e52 == 1e52 |
+| PASS | the instruction at 0x1800f852 is the one this model cites | f880 264a == f880 264a |
+| PASS | the instruction at 0x1800f8de is the one this model cites | f88c 764a == f88c 764a |
+| PASS | the instruction at 0x1800f916 is the one this model cites | f887 45b4 == f887 45b4 |
 | PASS | the instruction at 0x1800f972 is the one this model cites | f1a2 0c01 == f1a2 0c01 |
 | PASS | the instruction at 0x1800f976 is the one this model cites | f1bc 0f06 == f1bc 0f06 |
 | PASS | the instruction at 0x1800f97c is the one this model cites | 2202 == 2202 |
@@ -390,6 +550,8 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | the instruction at 0x1800f9fc is the one this model cites | f3c4 4442 == f3c4 4442 |
 | PASS | the instruction at 0x1800fa0a is the one this model cites | 79da == 79da |
 | PASS | the instruction at 0x1800fa26 is the one this model cites | 71e2 == 71e2 |
+| PASS | the instruction at 0x1800fa60 is the one this model cites | f363 4253 == f363 4253 |
+| PASS | the instruction at 0x1800fa74 is the one this model cites | e6c3 == e6c3 |
 | PASS | the top-level compare for opcode 0x52 is at 0x18001ff2 | 2a52 == 2a52 |
 | PASS | the top-level compare for opcode 0x41 is at 0x18001ffc | 2a41 == 2a41 |
 | PASS | the top-level compare for opcode 0x04 is at 0x18002002 | 2a04 == 2a04 |
@@ -452,9 +614,14 @@ Every HAL method `notes/protocol.md` leaves without an opcode, with the located 
 | PASS | log 128's 'per-layer ring' reading is withdrawn — the multiplier is a bank selector | the consumer diffs two banks |
 | PASS | the three things the timer analysis could not settle say so | wrap, release-before-expiry, threshold writer |
 | PASS | every HAL name protocol.md leaves without an opcode gets a disposition | 25 dispositions |
-| PASS | and a name with no plausible carrier is recorded as a finding, not hidden | 10 with no carrier found |
+| PASS | and a name with no plausible carrier is recorded as a finding, not hidden | 9 with no carrier found |
 | PASS | every disposition carries one of three confidences | hypothesis, no plausible carrier found, strongly-inferred |
-| PASS | every candidate carrier cites evidence | 15 named |
+| PASS | every candidate carrier cites evidence | 16 named |
 | PASS | all four feature captures reproduce the hashes in logs 135-137 |  |
+| PASS | both trigger analysis slices round-trip against their hash-verified full sources |  |
+| PASS | rapid-trigger handler and dead-zone helpers have matching bodies in both releases |  |
+| PASS | the shared dead-zone consumer bytes match both releases and cited instructions |  |
+| PASS | the cross-image lever caller and threshold round-trip against the installed source |  |
+| PASS | both lever poll bodies agree except for their verified report-call relocation |  |
 
-`RESULT vendor_command_map_ok=True checks=150`
+`RESULT vendor_command_map_ok=True checks=209`

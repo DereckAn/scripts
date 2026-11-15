@@ -94,6 +94,49 @@ class FeatureCaptures(unittest.TestCase):
                 rows, ok = dfc.compare_macro(records, events)
                 self.assertTrue(ok, rows)
 
+    def test_all_captured_rapid_trigger_fields_fit_the_static_model(self):
+        selectors, enables, count = Counter(), Counter(), 0
+        for records in self.records.values():
+            for record in records:
+                if record["direction"] != "OUT" or record["opcode"] != "5154":
+                    continue
+                raw = bytes.fromhex(record["payload"])
+                selector = int.from_bytes(raw[2:4], "little")
+                self.assertEqual(raw[5], 0)  # only base layer captured
+                self.assertEqual(raw[7], 0)  # only active mode 1 captured
+                result = commands.rapid_trigger_update(0, selector, raw[6], raw[7], raw[8])
+                self.assertTrue(result["selector_accepted"])
+                self.assertEqual(result["halfword"] >> 14, int(raw[8] != 0))
+                if selector in (0, 1):
+                    self.assertEqual((result["halfword"] >> 7) & 127, raw[6])
+                if selector in (0, 2):
+                    self.assertEqual(result["halfword"] & 127, raw[6])
+                selectors[selector] += 1
+                enables[raw[8]] += 1
+                count += 1
+        self.assertEqual(count, 346)
+        self.assertEqual(selectors, {0: 18, 1: 164, 2: 164})
+        self.assertEqual(enables, {0: 16, 1: 330})
+
+    def test_all_physical_lever_reports_match_the_static_report_layout(self):
+        expected = {"03-features": [1, 1], "03b-features": [0, 1, 0, 1, 0, 1, 1],
+                    "03c-deep": [0, 1, 0], "03d-finish": [1, 0]}
+        readbacks = {"03-features": [0, 1], "03b-features": [1, 1, 1],
+                     "03c-deep": [1, 0], "03d-finish": [0, 0]}
+        for name, states in expected.items():
+            reports = [bytes.fromhex(payload) for _, payload in
+                       dfc.endpoint_reports(ROOT / "captures" / f"{name}.pcap", dfc.LEVER_ENDPOINT)
+                       if dfc.lever_state(payload) is not None]
+            with self.subTest(capture=name):
+                self.assertEqual([p[4] for p in reports], states)
+                self.assertTrue(all(len(p) == 21 and p[:4] == bytes.fromhex("03 76 00 00")
+                                    and p[5:] == bytes(16) for p in reports))
+                pairs = [(reply, status) for request, reply, status in
+                         dfc.request_reply_results(self.records[name]) if request["opcode"] == "2500"]
+                self.assertTrue(all(status == "matched" and reply for reply, status in pairs))
+                self.assertEqual([bytes.fromhex(reply["payload"])[4] for reply, _ in pairs],
+                                 readbacks[name])
+
     def test_two_actuation_writes_share_one_commit(self):
         # 03d 06:21:33, selecting P and L together (log 137 section 1).
         records = [r for r in self.records["03d-finish"] if r["direction"] == "OUT"
