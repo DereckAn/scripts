@@ -319,10 +319,17 @@ CLEARLY_FEWER = 2  # broken bars (after the app's fixes) the plain reading must 
 
 
 def broken_bars(mxl):
-    """(bars whose notes don't fill them as the time signature says, total bars) in MusicXML (an
+    """(how many bars are broken, total bars): see broken_bar_list."""
+    found, total = broken_bar_list(mxl)
+    return len(found), total
+
+
+def broken_bar_list(mxl):
+    """([0-based indices of bars whose notes don't fill them as the time signature says], total
+    bars) in MusicXML (an
     Audiveris .mxl, a .musicxml file or a parsed root): a voice running past the bar line, or a bar too short that isn't the first or last
     (upbeat). Bars before any recognized time signature are not judged (Audiveris can miss it:
-    the Nocturne's 12/8). An unreadable file gives (0, 0): no evidence either way."""
+    the Nocturne's 12/8). An unreadable file gives ([], 0): no evidence either way."""
     try:
         if isinstance(mxl, ET.Element):
             root = mxl
@@ -332,8 +339,8 @@ def broken_bars(mxl):
         else:
             root = ET.parse(mxl).getroot()
     except (zipfile.BadZipFile, KeyError, TypeError, ET.ParseError, OSError):
-        return 0, 0
-    broken = total = 0
+        return [], 0
+    broken, total = set(), 0
     for part in root.findall("part"):
         measures, divisions, meter = part.findall("measure"), 1, None
         for index, measure in enumerate(measures):
@@ -351,8 +358,9 @@ def broken_bars(mxl):
                 longest = max(longest, cursor)
             length = longest / divisions
             total += 1
-            broken += bool(longest) and (length > meter + 1e-6 or (length < meter - 1e-6 and 0 < index < len(measures) - 1))
-    return broken, total
+            if longest and (length > meter + 1e-6 or (length < meter - 1e-6 and 0 < index < len(measures) - 1)):
+                broken.add(index)
+    return sorted(broken), total
 
 
 def recognize(path, folder, progress=lambda detail: None):

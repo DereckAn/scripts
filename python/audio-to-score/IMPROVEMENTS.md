@@ -106,9 +106,11 @@ twice (about a minute more each). A bar with no recognized time signature isn't 
 
 Recognition is the weak point: a misread bar just sounds wrong and you have to notice it.
 
-- [ ] **Flag suspicious bars.** Bars whose notes don't add up to the time signature are
-      almost always misread (e.g. "Merry Go Round of Life" bars 28, 45, 154, 155). Mark them on
-      the score: "these 4 bars may be misread". Cheap, high trust value.
+- [x] **Flag suspicious bars.** Sheet playback lists bars whose notes don't add up to the time
+      signature: a notice with jump buttons, amber staff lines, ⚠ on the waterfall. On the
+      benchmark 88% of flagged bars really are misread, but only 42% of misread bars get
+      flagged (wrong pitches or rhythms that still add up). No time signature: the notice says
+      the rhythm couldn't be checked.
 - [ ] **Side-by-side check.** Original page next to the re-engraved score, scrolling together.
 - [ ] **Small corrections in the app.** Change a note's pitch or length in a flagged bar and
       replay. Bigger fixes: the MusicXML download already opens in MuseScore.
@@ -146,9 +148,8 @@ Recognition is the weak point: a misread bar just sounds wrong and you have to n
       two-note chords and cross-staff beams (85 tie starts vs 95 ends; bar 1's La/Fa chord
       comes out as a G♭ half note). Higher resolution doesn't help (420 dpi was worse). Ideas:
       flag those bars (see 1), and repair unmatched ties where the next note has the same pitch.
-- [ ] **Upload MusicXML directly.** For well-known pieces a MusicXML/.mxl file (e.g. exported
-      from MuseScore) skips recognition entirely: exact notes, ties, rhythms and symbols.
-      The engraving/playback path already exists, so this is small.
+- [x] **Upload MusicXML directly.** `.musicxml`, `.xml` or `.mxl` on Label sheet → Play in
+      Practice Studio in seconds, no Audiveris needed (tempo words still applied).
 - [ ] **Read notes from the PDF's music font.** PDFs exported from notation software draw
       every notehead as a font character (as we already do for trills/fermatas). Reading the
       notes that way would be exact for those PDFs. Big project.

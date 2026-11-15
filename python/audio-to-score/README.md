@@ -102,6 +102,14 @@ curl -L -o ~/Library/Application\ Support/AudiverisLtd/audiveris/tessdata/eng.tr
 
 Sheets read before these settings are read again once (the cache is versioned).
 
+**MusicXML instead of a PDF:** upload a `.musicxml`, `.xml` or `.mxl` file (e.g. exported from
+MuseScore) and press Play in Practice Studio: exact notes, no recognition, ready in seconds (Audiveris
+not needed). Labeling and Clean PDF need a PDF page; note names and colors are in the Studio.
+
+**Bars to check:** after reading a sheet, the Studio lists bars whose notes don't add up to the time
+signature (a notice with jump buttons, amber staff lines, ⚠ on the waterfall). On the benchmark 88%
+of those really are misread, but misread bars whose rhythm still adds up aren't caught.
+
 ### Add a recording to a sheet
 
 In the Studio, a score opened from a sheet shows **Add recording**: upload a recording of

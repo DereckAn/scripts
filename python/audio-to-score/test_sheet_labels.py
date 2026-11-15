@@ -618,6 +618,39 @@ class SheetLabelsTests(unittest.TestCase):
             '<backup><duration>14</duration></backup>', '<backup><duration>14</duration></backup>' + marked * piano.SIMILE_MARKS))
         self.assertEqual(piano.unmarked_triplets(root), 2, 'A sheet that marks triplets writes the rest the same way')
 
+    def test_musicxml_plays_without_recognition_and_bars_are_checked(self):
+        from music21 import key, meter, note, stream
+        from sheet_labels import broken_bar_list
+        folder = Path(tempfile.mkdtemp(dir=piano.WORK))
+        part = stream.Part([key.KeySignature(2), meter.TimeSignature('3/4')] + [note.Note(p) for p in ('D4', 'F#4', 'A4', 'D5', 'A4', 'F#4')])
+        (folder / 'packed').mkdir()  # music21 removes a same-named .musicxml when it writes the .mxl
+        plain, packed = Path(part.write('musicxml', fp=folder / 'Minuet.musicxml')), Path(part.write('mxl', fp=folder / 'packed' / 'Minuet.mxl'))
+        client = TestClient(piano.app)
+        bad = client.post('/api/sheets/source', files={'file': ('broken.musicxml', b'<not xml', 'application/xml')})
+        self.assertEqual(bad.status_code, 400)
+        timewise = client.post('/api/sheets/source', files={'file': ('t.xml', b'<score-timewise><note/></score-timewise>', 'application/xml')})
+        self.assertIn('part-wise', timewise.json()['error'])
+        for upload in (plain, packed):
+            source = client.post('/api/sheets/source', files={'file': (upload.name, upload.read_bytes(), 'application/xml')}).json()
+            self.assertEqual((source['kind'], source['title']), ('musicxml', 'Minuet'))
+            for endpoint in ('/api/sheets/label', '/api/sheets/clean'):
+                self.assertEqual(client.post(endpoint, json={'source': source['id']}).status_code, 400, 'Needs a PDF page')
+        with patch.object(piano, 'audiveris_command', return_value=None):  # not needed for exact notes
+            job = client.post('/api/sheets/play', json={'source': source['id']}).json()['job']
+            for _ in range(300):
+                status = client.get(f'/api/jobs/{job}').json()
+                if status['state'] not in ('queued', 'running'):
+                    break
+                time.sleep(0.2)
+        self.assertEqual(status['state'], 'done', status.get('error'))
+        r = status['result']
+        self.assertEqual((r['key'], r['meter'], r['suspect'], r['checked']), ('D major', '3/4', [], True))
+        self.assertEqual(sorted(n[2] for n in r['studio']['notes']), [62, 66, 66, 69, 69, 74])
+        # A bar that runs past the bar line is named.
+        broken = plain.read_text().replace('<duration>10080</duration>', '<duration>20160</duration>', 1)
+        (folder / 'broken.musicxml').write_text(broken)
+        self.assertEqual(broken_bar_list(folder / 'broken.musicxml'), ([0], 2))
+
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():
             self.skipTest('potrace is not installed')

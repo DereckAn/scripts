@@ -55,6 +55,8 @@ tailwind.config = { theme: { extend: {
   .follow g.note.playing, .follow g.note.playing * { fill: #0d9488; stroke: #0d9488; }
   .follow g.note.playing { filter: drop-shadow(0 0 2px #0d9488); }
   .follow g.note.playing text.note-name { fill: #fff; stroke: none; }
+  /* Bars whose rhythm doesn't add up after reading a sheet: probably misread, check them. */
+  .follow g.measure.suspect g.staff > path { stroke: #d97706 !important; }  /* beats Verovio's #id path rule */
   /* Same files the PDF embeds, so the preview matches the download. */
   @font-face { font-family: 'Label EB Garamond'; src: url('/assets/fonts/eb-garamond-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
   @font-face { font-family: 'Label League Spartan'; src: url('/assets/fonts/league-spartan-bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
@@ -417,6 +419,7 @@ tailwind.config = { theme: { extend: {
     </div>
   </div>
 
+  <div id="s-suspect" hidden role="status" class="w-full px-gutter md:px-gutter-desktop py-1.5 flex flex-wrap items-center gap-1.5 font-label-lg text-label-lg" style="background:#fef3c7;color:#78350f"></div>
   <div id="s-waterfall" class="relative w-full select-none" style="height:calc(100vh - 16rem);min-height:420px;background:#00263c">
     <canvas id="wf" class="absolute inset-0 w-full h-full"></canvas>
     <div id="ctx-card" class="absolute top-4 right-4 z-20 w-80 max-w-[calc(100%-2rem)] bg-surface/95 backdrop-blur-md p-space-sm rounded-xl shadow-xl flex flex-col gap-2">
@@ -493,13 +496,13 @@ tailwind.config = { theme: { extend: {
           <span class="font-label-mono text-label-mono text-on-surface-variant">Up to 30 pages · 50 MB</span>
         </div>
         <label id="pdf-dropzone" class="group rounded-xl p-space-xl flex flex-col items-center gap-space-md text-center bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
-          <input id="pdf-input" type="file" accept=".pdf,.svg,.png,.jpg,.jpeg,.webp,.tif,.tiff,application/pdf,image/*" multiple class="sr-only"/>
+          <input id="pdf-input" type="file" accept=".pdf,.svg,.png,.jpg,.jpeg,.webp,.tif,.tiff,.musicxml,.xml,.mxl,application/pdf,image/*" multiple class="sr-only"/>
           <span class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-[28px] text-primary">upload_file</span></span>
           <span class="font-headline-sm text-headline-sm text-primary">Drop a piano sheet here</span>
-          <span class="text-on-surface-variant">One PDF or image, or up to 30 SVG pages · SVGs sort by filename</span>
-          <span class="px-space-md py-1 rounded bg-surface-container-highest text-primary font-label-lg text-label-lg shadow-sm">Choose a PDF, image or SVG files</span>
+          <span class="text-on-surface-variant">One PDF, image or MusicXML file, or up to 30 SVG pages · SVGs sort by filename</span>
+          <span class="px-space-md py-1 rounded bg-surface-container-highest text-primary font-label-lg text-label-lg shadow-sm">Choose a PDF, image, MusicXML or SVG files</span>
         </label>
-        <div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-secondary">description</span><div class="min-w-0 flex-1"><p id="pdf-name" class="font-label-lg text-label-lg text-primary truncate">No sheet yet</p><p id="pdf-info" class="font-label-mono text-label-mono text-on-surface-variant">Choose a PDF, photo/scan image or SVG to get started</p></div><a id="pdf-original" hidden target="_blank" rel="noopener" class="text-secondary font-label-lg text-label-lg underline">Original PDF</a></div>
+        <div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-secondary">description</span><div class="min-w-0 flex-1"><p id="pdf-name" class="font-label-lg text-label-lg text-primary truncate">No sheet yet</p><p id="pdf-info" class="font-label-mono text-label-mono text-on-surface-variant">Choose a PDF, photo/scan image, MusicXML or SVG to get started</p></div><a id="pdf-original" hidden target="_blank" rel="noopener" class="text-secondary font-label-lg text-label-lg underline">Original PDF</a></div>
         <p id="pdf-error" role="alert" hidden class="p-space-md rounded-lg bg-error-container text-on-error-container"></p>
       </div>
       <div id="pdf-progress" hidden class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md" aria-live="polite">
@@ -565,6 +568,7 @@ tailwind.config = { theme: { extend: {
         <p id="pdf-setup" hidden class="p-space-md rounded-lg bg-surface-container-low text-on-surface-variant">PDF recognition needs Audiveris installed on this Mac. See the project's README.md for setup.</p>
         <button id="pdf-label" type="button" disabled class="px-space-lg py-3 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">auto_fix_high</span><span>Apply to sheet</span></button>
         <div class="flex flex-col gap-space-xs pt-space-sm">
+          <p id="pdf-musicxml-hint" hidden class="font-body-sm text-body-sm text-on-surface-variant">MusicXML has the exact notes: play it in the Practice Studio, where note names and colors are available. Labeling and Clean PDF need a PDF page.</p>
           <button id="pdf-play" type="button" disabled class="px-space-lg py-2.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container-high font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">piano</span><span>Play in Practice Studio</span></button>
           <p class="font-body-sm text-body-sm text-on-surface-variant">No recording needed: the notes are read from the sheet, then you can listen, loop, slow down and practise each hand. The score is re-engraved from what was recognized.</p>
         </div>
@@ -888,7 +892,7 @@ tailwind.config = { theme: { extend: {
   const chip = (text, strong) => `<span class="px-2.5 py-0.5 rounded-full ${strong ? 'bg-secondary-container text-on-secondary-container font-label-md text-label-md uppercase tracking-wider font-semibold' : 'bg-surface-container-high text-on-surface-variant font-label-mono text-label-mono'}">${text}</span>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   // ---------- PDF note names (same source, job and download patterns as audio)
-  const pdf = { source: null, job: null, ready: false, ai: false, clean: false, loading: false };
+  const pdf = { source: null, kind: null, job: null, ready: false, ai: false, clean: false, loading: false };
   const paletteInputs = [...document.querySelectorAll('[data-note-color]')];
   const defaultPalette = Object.fromEntries(paletteInputs.map(input => [input.dataset.noteColor, input.value]));
   const sheetStyle = () => ({
@@ -922,10 +926,11 @@ tailwind.config = { theme: { extend: {
     });
   };
   const pdfControls = () => {
-    const style = sheetStyle(), busy = !!pdf.job;
-    $('pdf-label').disabled = !pdf.source || !pdf.ready || busy || pdf.loading || !(style.show_names || style.color_notes);
-    $('pdf-clean').disabled = !pdf.source || !pdf.clean || busy || pdf.loading;
-    $('pdf-play').disabled = !pdf.source || !pdf.ready || busy || pdf.loading;
+    const style = sheetStyle(), busy = !!pdf.job, exact = pdf.kind === 'musicxml';  // MusicXML: no page to draw on, nothing to recognize
+    $('pdf-label').disabled = !pdf.source || !pdf.ready || exact || busy || pdf.loading || !(style.show_names || style.color_notes);
+    $('pdf-musicxml-hint').hidden = !exact;
+    $('pdf-clean').disabled = !pdf.source || !pdf.clean || exact || busy || pdf.loading;
+    $('pdf-play').disabled = !pdf.source || !(pdf.ready || exact) || busy || pdf.loading;
     $('pdf-input').disabled = !!pdf.job || pdf.loading;
     $('pdf-style-controls').disabled = busy;
     $('pdf-name-controls').disabled = busy || !style.show_names;
@@ -959,15 +964,15 @@ tailwind.config = { theme: { extend: {
   async function loadSheets(selected) {
     const files = Array.from(selected || []);
     if (!files.length || pdf.job || pdf.loading) return;
-    pdf.source = null; pdf.loading = true; pdfControls();
+    pdf.source = null; pdf.kind = null; pdf.loading = true; pdfControls();
     $('pdf-result').hidden = true; $('pdf-progress').hidden = true; $('pdf-original').hidden = true;
     showError($('pdf-error'));
     $('pdf-name').textContent = files.length === 1 ? files[0].name : `${files.length} SVG pages`;
     $('pdf-info').textContent = 'Reading sheet…';
     try {
       const isSVG = files.every(f => /\.svg$/i.test(f.name));
-      if (!isSVG && (files.length !== 1 || !/\.(pdf|png|jpe?g|webp|tiff?)$/i.test(files[0].name))) {
-        throw new Error('Choose one PDF or image, or a set of SVG pages. Upload these formats separately.');
+      if (!isSVG && (files.length !== 1 || !/\.(pdf|png|jpe?g|webp|tiff?|musicxml|xml|mxl)$/i.test(files[0].name))) {
+        throw new Error('Choose one PDF, image or MusicXML file, or a set of SVG pages. Upload these formats separately.');
       }
       let file = files[0];
       if (isSVG) {
@@ -982,10 +987,11 @@ tailwind.config = { theme: { extend: {
       const response = await fetch('/api/sheets/source', { method: 'POST', body });
       const d = await response.json();
       if (!response.ok) throw new Error(d.error || 'Could not load this sheet.');
-      pdf.source = d.id; $('pdf-name').textContent = d.title;
+      pdf.source = d.id; pdf.kind = d.kind; $('pdf-name').textContent = d.title;
       $('pdf-original').href = d.url; $('pdf-original').hidden = false;
-      $('pdf-original').textContent = /\.pdf$/i.test(file.name) && !isSVG ? 'Original PDF' : 'Converted PDF';
-      $('pdf-info').textContent = `${d.pages} page${d.pages === 1 ? '' : 's'} · ${(file.size / 1048576).toFixed(1)} MB · ${isSVG ? 'SVG converted · ' : /\.pdf$/i.test(file.name) ? '' : 'Image converted · '}Ready`;
+      $('pdf-original').textContent = d.kind === 'musicxml' ? 'MusicXML file' : /\.pdf$/i.test(file.name) && !isSVG ? 'Original PDF' : 'Converted PDF';
+      $('pdf-info').textContent = d.kind === 'musicxml' ? `MusicXML · ${(file.size / 1048576).toFixed(1)} MB · exact notes, no recognition needed · Ready`
+        : `${d.pages} page${d.pages === 1 ? '' : 's'} · ${(file.size / 1048576).toFixed(1)} MB · ${isSVG ? 'SVG converted · ' : /\.pdf$/i.test(file.name) ? '' : 'Image converted · '}Ready`;
     } catch (e) { $('pdf-info').textContent = 'Choose another sheet to try again'; showError($('pdf-error'), e.message); }
     finally { pdf.loading = false; $('pdf-input').value = ''; pdfControls(); }
   }
@@ -1228,7 +1234,8 @@ tailwind.config = { theme: { extend: {
     S.d.bars.forEach((bt, i) => {
       const y = y0 - (bt - t) * pps; if (y < -20 || y > y0) return;
       g.fillStyle = 'rgba(194,199,205,0.22)'; g.fillRect(0, y, W, 1);
-      g.fillStyle = 'rgba(254,248,244,0.30)'; g.fillText('Bar ' + (i + 1), 14, y - 6);
+      const doubt = S.suspect?.has(i);
+      g.fillStyle = doubt ? 'rgba(251,191,36,0.9)' : 'rgba(254,248,244,0.30)'; g.fillText((doubt ? '⚠ ' : '') + 'Bar ' + (i + 1), 14, y - 6);
     });
     // falling notes
     const active = {}, look = noteLook();
@@ -1297,7 +1304,7 @@ tailwind.config = { theme: { extend: {
     A.r.src = d.rh; A.l.src = d.lh; if (d.original) A.o.src = d.original; else A.o.removeAttribute('src'); setVolumes();
     $('s-title').textContent = r.title;
     const fromSheet = r.engine === 'Sheet';  // played from an uploaded sheet: nothing to re-convert
-    $('s-chips').innerHTML = chip(esc(r.key), true) + chip(esc(r.meter)) + chip('♩ = ' + r.bpm) + chip(r.notes + ' notes') + chip(fromSheet ? 'From sheet' : 'Engine ' + esc(engineName(r.engine)));
+    $('s-chips').innerHTML = chip(esc(r.key), true) + chip(esc(r.meter)) + chip('♩ = ' + r.bpm) + chip(r.notes + ' notes') + chip(fromSheet ? (r.from === 'musicxml' ? 'From MusicXML' : 'From sheet') : 'Engine ' + esc(engineName(r.engine)));
     document.querySelector('.ssrc[data-src="orig"]').hidden = !d.original;
     $('other-engine').hidden = fromSheet;
     $('s-add-rec').hidden = !fromSheet || !!d.original || !r.score;
@@ -1306,6 +1313,7 @@ tailwind.config = { theme: { extend: {
       `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-2 rounded-lg hover:bg-surface-container-low text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
     $('sheet').innerHTML = r.player; $('ctx').innerHTML = r.player;
     $('sheet')._notes = null; $('ctx')._notes = null;
+    showSuspects(r); markSuspects();
     current = r; scoreStyleControls();
     if ($('sc-names').checked || $('sc-colors').checked) styleScore();
     $('t-total').textContent = fmt(d.duration);
@@ -1337,13 +1345,33 @@ tailwind.config = { theme: { extend: {
       const d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not update the score.');
       if (run !== styling) return;
       $('sheet').innerHTML = d.player; $('ctx').innerHTML = d.player;
-      $('sheet')._notes = null; $('ctx')._notes = null;
+      $('sheet')._notes = null; $('ctx')._notes = null; markSuspects();
       const pdfLink = [...$('s-export-menu').querySelectorAll('a')].find(a => a.textContent === 'PDF');
       if (pdfLink) { pdfLink.href = d.pdf.url; pdfLink.download = d.pdf.name; }
       $('sc-status').textContent = '';
     } catch (e) { if (run === styling) $('sc-status').textContent = e.message; }
   }
   ['sc-names', 'sc-colors', 'sc-naming'].forEach(id => $(id).addEventListener('change', styleScore));
+
+  // ---------- bars that are probably misread (sheet playback): say so, mark them, jump to them
+  function showSuspects(r) {
+    const box = $('s-suspect'), bars = r.engine === 'Sheet' ? r.suspect || [] : [];
+    S.suspect = new Set(bars);
+    if (r.engine !== 'Sheet' || (r.checked !== false && !bars.length)) { box.hidden = true; fitWaterfall(); return; }
+    box.hidden = false;
+    if (r.checked === false) {
+      box.textContent = "⚠ The time signature wasn't recognized, so the rhythm couldn't be checked. Compare with your sheet.";
+    } else {
+      box.innerHTML = `<span>⚠ ${bars.length} bar${bars.length === 1 ? '' : 's'} probably misread (others may be too). Check:</span>`
+        + bars.map(b => `<button type="button" data-bar="${b}" title="Go to bar ${b + 1}" class="px-1.5 rounded font-label-mono text-label-mono" style="background:rgba(255,255,255,.7)">${b + 1}</button>`).join('');
+      box.querySelectorAll('button').forEach(b => b.onclick = () => seek(S.d.bars[+b.dataset.bar] ?? 0));
+    }
+    fitWaterfall();
+  }
+  function markSuspects() {
+    for (const root of [$('sheet'), $('ctx')])
+      [...root.querySelectorAll('g.measure')].forEach((m, i) => m.classList.toggle('suspect', !!S.suspect?.has(i)));
+  }
 
   // ---------- a real recording for a score read from a sheet ("Original audio", kept in step)
   $('s-add-rec').onclick = () => $('s-rec-input').click();

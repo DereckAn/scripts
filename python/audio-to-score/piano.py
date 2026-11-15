@@ -37,7 +37,7 @@ from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           pdf_info, recognize, note_positions, annotate_pdf, pdf_previews, validate_style,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
                           FONTS, FONT_CSS, rgb, contrast_color, recognition_copy, RECOGNITION_VERSION,
-                          music_symbols, place_symbols, tuplet_marks, broken_bars, CLEARLY_FEWER)
+                          music_symbols, place_symbols, tuplet_marks, broken_bars, broken_bar_list, CLEARLY_FEWER)
 
 # Recognized sheets often have odd chord/beam markup Verovio reports but engraves fine;
 # a real failure still raises in render().
@@ -718,13 +718,36 @@ def sheet_setup():
             "clean": tracer_command() is not None}
 
 
+MUSICXML_TYPES = {".musicxml", ".xml", ".mxl"}
+
+
+def musicxml_source(upload, target):
+    """An uploaded MusicXML file (.musicxml/.xml, or compressed .mxl) as plain MusicXML."""
+    try:
+        if upload.suffix.lower() == ".mxl":
+            with zipfile.ZipFile(upload) as archive:
+                container = archive.read("META-INF/container.xml").decode()
+                data = archive.read(re.search(r'full-path="([^"]+)"', container)[1])
+        else:
+            data = upload.read_bytes()
+        root = ET.fromstring(data)
+    except (zipfile.BadZipFile, KeyError, TypeError, ET.ParseError) as exc:
+        raise SheetError("That MusicXML file could not be read. Export it again from your notation app.") from exc
+    if root.tag != "score-partwise":
+        raise SheetError("Only part-wise MusicXML is supported (the usual export from MuseScore, Finale, Sibelius, Dorico).")
+    if not any(True for _ in root.iter("note")):
+        raise SheetError("That MusicXML file has no notes.")
+    target.write_bytes(data)
+    return target
+
+
 @app.post("/api/sheets/source")
 async def add_sheet(file: UploadFile):
     folder = Path(tempfile.mkdtemp(prefix="sheet-", dir=WORK))
     try:
         ext = Path(file.filename or "").suffix.lower()
-        if ext != ".pdf" and ext not in IMAGE_TYPES:
-            raise SheetError("Choose a piano sheet as a PDF or an image (PNG, JPG, WEBP, TIFF).")
+        if ext != ".pdf" and ext not in IMAGE_TYPES and ext not in MUSICXML_TYPES:
+            raise SheetError("Choose a piano sheet as a PDF, an image (PNG, JPG, WEBP, TIFF) or MusicXML (.musicxml, .mxl).")
         path, size = folder / f"upload{ext}", 0
         with path.open("wb") as dest:
             while chunk := await file.read(1 << 20):
@@ -732,12 +755,16 @@ async def add_sheet(file: UploadFile):
                 if size > 50 << 20:
                     raise SheetError("That file is larger than 50 MB.")
                 dest.write(chunk)
-        if ext in IMAGE_TYPES:  # photos and scans become a one-page PDF; every feature then applies
+        if ext in MUSICXML_TYPES:  # exact notes: no recognition needed
+            path = await run_in_threadpool(musicxml_source, path, folder / "source.musicxml")
+            info = {"pages": 0, "kind": "musicxml"}
+        elif ext in IMAGE_TYPES:  # photos and scans become a one-page PDF; every feature then applies
             await run_in_threadpool(image_to_pdf, path, folder / "source.pdf")
             path = folder / "source.pdf"
         else:
             path = path.rename(folder / "source.pdf")
-        info = await run_in_threadpool(pdf_info, path)
+        if ext not in MUSICXML_TYPES:
+            info = {**await run_in_threadpool(pdf_info, path), "kind": "pdf"}
     except SheetError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
     title = Path(file.filename).stem
@@ -773,6 +800,9 @@ def label_sheet(req: LabelRequest):
     if not audiveris_command():
         return JSONResponse({"error": "Install Audiveris to recognize PDFs (see README.md)."}, status_code=503)
     path, title = SHEETS[req.source]
+    if path.suffix == ".musicxml":
+        return JSONResponse({"error": "This works on a PDF page. For MusicXML, use Play in Practice Studio "
+                                      "(note names and colors are there)."}, status_code=400)
 
     def work(step):
         step(0)
@@ -1354,34 +1384,49 @@ def sheet_facts(xml, midi):
     return (f"{k.tonic.name.replace('-', '♭')} {k.mode}" if k else "Key unknown"), meter_text, bpm
 
 
+def play_result(xml, out, title, step, recognized=True):
+    """A sheet's MusicXML engraved and voiced for the Studio (stages 2 and 3)."""
+    played = engrave_and_voice(xml, out, step, 2)
+    key_text, meter_text, bpm = sheet_facts(xml, out / "score_two_hands.mid")
+    # Bars whose rhythm still doesn't add up: 88% of them really are misread (benchmark), but
+    # misread bars whose rhythm adds up go unnoticed. No time signature: nothing can be checked.
+    # An uploaded MusicXML file wasn't read by us: nothing to flag.
+    suspect, judged = broken_bar_list(xml) if recognized else ([], 1)
+    return {"engine": "Sheet", "from": "sheet" if recognized else "musicxml", "suspect": suspect, "checked": judged > 0, "notes": len(played["studio"]["notes"]),
+            "bpm": bpm, "meter": meter_text, "key": key_text, "title": title, "score": out.name, "player": played["player"],
+            "studio": {**played["studio"], "original": None, "timing": [], "bpm": bpm,
+                       "per_bar": int(meter_text.split("/")[0])},
+            "downloads": [{"label": label, "url": files_url(f), "name": f.name} for label, f in played["downloads"]]}
+
+
 @app.post("/api/sheets/play")
 def play_sheet(req: SheetRequest):
     """An uploaded sheet in the Practice Studio, no recording needed: recognized notes are
     engraved and voiced exactly like a converted recording."""
     if req.source not in SHEETS:
         return JSONResponse({"error": "Upload a sheet first."}, status_code=400)
-    if not audiveris_command():
-        return JSONResponse({"error": "Install Audiveris to read sheets (see README.md)."}, status_code=503)
     path, title = SHEETS[req.source]
+    if path.suffix != ".musicxml" and not audiveris_command():
+        return JSONResponse({"error": "Install Audiveris to read sheets (see README.md)."}, status_code=503)
 
     def work(step):
         step(0)
+        out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))  # piano-: note names/colors can restyle it
+        if path.suffix == ".musicxml":  # exact notes from a notation app: nothing to recognize or repair
+            step(1, "MusicXML: no recognition needed")
+            score = ET.parse(path).getroot()
+            tempo_from_words(score)  # tempo numbers already in the file win
+            xml = out / "score.musicxml"
+            ET.ElementTree(score).write(xml, encoding="UTF-8", xml_declaration=True)
+            return play_result(xml, out, title, step, recognized=False)
         pdf_info(path)
         step(1)
         _, scores = sheet_recognition(path, step)
         if len(scores) != 1:  # ponytail: multi-movement books; join them if such sheets turn up
             raise SheetError("This sheet was recognized as several separate pieces. Upload one piece at a time.")
-        out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))  # piano-: note names/colors can restyle it
         books = sorted(scores[0].parent.glob("*.omr"))
         placed = place_symbols(music_symbols(path) + tuplet_marks(path), books[0]) if books else []
-        xml = sheet_musicxml(scores[0], out / "score.musicxml", placed)
-        played = engrave_and_voice(xml, out, step, 2)
-        key_text, meter_text, bpm = sheet_facts(xml, out / "score_two_hands.mid")
-        return {"engine": "Sheet", "notes": len(played["studio"]["notes"]), "bpm": bpm, "meter": meter_text,
-                "key": key_text, "title": title, "score": out.name, "player": played["player"],
-                "studio": {**played["studio"], "original": None, "timing": [], "bpm": bpm,
-                           "per_bar": int(meter_text.split("/")[0])},
-                "downloads": [{"label": label, "url": files_url(f), "name": f.name} for label, f in played["downloads"]]}
+        return play_result(sheet_musicxml(scores[0], out / "score.musicxml", placed), out, title, step)
 
     return start_job(work, ["Reading the sheet", "Recognizing the music", "Engraving the score", "Making the audio"],
                      [0.03, 0.75, 0.07, 0.15], "Could not prepare this sheet for practice. Try a clearer PDF.")
@@ -1398,6 +1443,9 @@ def clean_sheet(req: CleanRequest):
     if not tracer_command():
         return JSONResponse({"error": "Install potrace to make a clean PDF (see README.md)."}, status_code=503)
     path, title = SHEETS[req.source]
+    if path.suffix == ".musicxml":
+        return JSONResponse({"error": "This works on a PDF page. For MusicXML, use Play in Practice Studio "
+                                      "(note names and colors are there)."}, status_code=400)
 
     def work(step):
         step(0)
