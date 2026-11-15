@@ -560,6 +560,10 @@ tailwind.config = { theme: { extend: {
         <p id="pdf-setup" hidden class="p-space-md rounded-lg bg-surface-container-low text-on-surface-variant">PDF recognition needs Audiveris installed on this Mac. See the project's README.md for setup.</p>
         <button id="pdf-label" type="button" disabled class="px-space-lg py-3 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">auto_fix_high</span><span>Apply to sheet</span></button>
         <div class="flex flex-col gap-space-xs pt-space-sm">
+          <button id="pdf-play" type="button" disabled class="px-space-lg py-2.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container-high font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">piano</span><span>Play in Practice Studio</span></button>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">No recording needed: the notes are read from the sheet, then you can listen, loop, slow down and practise each hand. The score is re-engraved from what was recognized.</p>
+        </div>
+        <div class="flex flex-col gap-space-xs pt-space-sm">
           <button id="pdf-clean" type="button" disabled class="px-space-lg py-2.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container-high font-label-lg text-label-lg flex items-center justify-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">high_quality</span><span>Make clean PDF</span></button>
           <p class="font-body-sm text-body-sm text-on-surface-variant">For scans and photos: traces the page into a sharp vector PDF that stays crisp at any zoom, keeping the original layout and shapes. No note names or colors.</p>
           <p id="pdf-clean-setup" hidden class="font-body-sm text-body-sm text-on-surface-variant">Clean PDF needs potrace (<code>brew install potrace</code>). See README.md.</p>
@@ -916,6 +920,7 @@ tailwind.config = { theme: { extend: {
     const style = sheetStyle(), busy = !!pdf.job;
     $('pdf-label').disabled = !pdf.source || !pdf.ready || busy || pdf.loading || !(style.show_names || style.color_notes);
     $('pdf-clean').disabled = !pdf.source || !pdf.clean || busy || pdf.loading;
+    $('pdf-play').disabled = !pdf.source || !pdf.ready || busy || pdf.loading;
     $('pdf-input').disabled = !!pdf.job || pdf.loading;
     $('pdf-style-controls').disabled = busy;
     $('pdf-name-controls').disabled = busy || !style.show_names;
@@ -993,14 +998,23 @@ tailwind.config = { theme: { extend: {
   $('pdf-clean').onclick = () => {
     if (pdf.source && !pdf.job && pdf.clean) runSheet('/api/sheets/clean', {}, 'Your clean PDF is ready');
   };
-  async function runSheet(endpoint, options, doneMessage) {
+  $('pdf-play').onclick = () => {
+    if (pdf.source && !pdf.job && pdf.ready) runSheet('/api/sheets/play', {}, 'Opened in Practice Studio', result => {
+      fillResult(result); show('studio');
+    });
+  };
+  async function runSheet(endpoint, options, doneMessage, onDone) {
     // Reserve the buttons before the request so double-clicks cannot create duplicate jobs.
     pdf.job = 'starting'; pdfControls(); showError($('pdf-error'));
     $('pdf-result').hidden = true;
     try {
       const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: pdf.source, ...options }) });
-      const d = await response.json(); if (!response.ok) throw new Error(d.error || 'Could not start labeling.');
+      const d = await response.json().catch(() => ({}));
+      // 404: the page is newer than the running server (static files are read fresh, Python is not).
+      if (!response.ok) throw new Error(d.error || (response.status === 404
+        ? 'The app was updated. Restart the server (Ctrl+C, then .venv/bin/python piano.py) and try again.'
+        : `Could not start (error ${response.status}). Try again.`));
       pdf.job = d.job; $('pdf-progress').hidden = false; $('pdf-cancel').disabled = false;
       const stageStart = {};
       let job;
@@ -1015,6 +1029,7 @@ tailwind.config = { theme: { extend: {
       } while (job.state === 'queued' || job.state === 'running');
       if (job.state !== 'done') throw new Error(job.state === 'cancelled' ? 'Cancelled.' : job.error);
       const result = job.result;
+      if (onDone) { $('pdf-step').textContent = doneMessage; onDone(result); return; }
       $('pdf-result-title').textContent = result.title;
       if (result.info) $('pdf-result-info').textContent = result.info;
       else {
@@ -1263,9 +1278,12 @@ tailwind.config = { theme: { extend: {
     lo = Math.max(21, lo - (lo % 12)); hi = Math.min(108, hi + (11 - hi % 12));
     while (hi - lo < 47) { lo = Math.max(21, lo - 12); if (hi - lo < 47) hi = Math.min(108, hi + 12); }
     S.range = { lo, hi };
-    A.r.src = d.rh; A.l.src = d.lh; A.o.src = d.original; setVolumes();
+    A.r.src = d.rh; A.l.src = d.lh; if (d.original) A.o.src = d.original; else A.o.removeAttribute('src'); setVolumes();
     $('s-title').textContent = r.title;
-    $('s-chips').innerHTML = chip(esc(r.key), true) + chip(esc(r.meter)) + chip('♩ = ' + r.bpm) + chip(r.notes + ' notes') + chip('Engine ' + esc(engineName(r.engine)));
+    const fromSheet = !d.original;  // played from an uploaded sheet: no recording to compare or re-convert
+    $('s-chips').innerHTML = chip(esc(r.key), true) + chip(esc(r.meter)) + chip('♩ = ' + r.bpm) + chip(r.notes + ' notes') + chip(fromSheet ? 'From sheet' : 'Engine ' + esc(engineName(r.engine)));
+    document.querySelector('.ssrc[data-src="orig"]').hidden = fromSheet;
+    $('other-engine').hidden = fromSheet;
     $('s-export-menu').innerHTML = r.downloads.map(f =>
       `<a href="${f.url}" download="${esc(f.name)}" class="px-space-md py-2 rounded-lg hover:bg-surface-container-low text-primary font-label-lg text-label-lg">${esc(f.label)}</a>`).join('');
     $('sheet').innerHTML = r.player; $('ctx').innerHTML = r.player;

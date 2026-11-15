@@ -13,6 +13,7 @@ import time
 import traceback
 import urllib.parse
 import uuid
+import zipfile
 from pathlib import Path
 
 import librosa
@@ -36,6 +37,9 @@ from sheet_labels import (SheetError, SHEET_STAGES, NAMING, audiveris_command,
                           ai_model, clean_pdf, tracer_command, image_to_pdf, IMAGE_TYPES,
                           FONTS, FONT_CSS, rgb, contrast_color, recognition_copy)
 
+# Recognized sheets often have odd chord/beam markup Verovio reports but engraves fine;
+# a real failure still raises in render().
+verovio.enableLog(verovio.LOG_OFF)
 MODEL = None  # loaded on first ByteDance run
 BEATS = None  # beat_this tracker, loaded on first run
 SOUNDFONT = str(Path(__file__).parent / "soundfonts" / "GeneralUser-GS.sf2")
@@ -493,11 +497,26 @@ def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, prog
     xml = Path(score.write("musicxml", fp=out / "score.musicxml"))
     progress(3, f"Right hand {hand_of.count('r')} notes · left hand {hand_of.count('l')} notes · {key_text}",
              hands="".join(hand_of), key=key_text, meter=meter_text)
-    progress(4)
+    played = engrave_and_voice(xml, out, progress, 4)
+    downloads = played["downloads"] + [("Performance MIDI", raw_midi)]
+    return {"engine": engine, "notes": len(events), "bpm": round(bpm), "meter": meter_text,
+            "key": key_text, "title": title or Path(source).stem, "score": out.name,
+            "player": played["player"],
+            "studio": {**played["studio"], "original": files_url(audio), "timing": timing,
+                       "bpm": round(bpm), "per_bar": int(meter_text.split("/")[0])},
+            "downloads": [{"label": label, "url": files_url(p), "name": p.name} for label, p in downloads]}
+
+
+def engrave_and_voice(xml, out, progress, stage):
+    """MusicXML -> engraved pages, PDF, per-hand audio and falling notes for the Practice Studio.
+
+    Shared by audio conversions and uploaded sheets; reports stages `stage` and `stage + 1`.
+    """
+    progress(stage)
     pdf, midi = out / "score.pdf", out / "score_two_hands.mid"
     pages, notes, bars = render(xml, pdf, midi)
-    progress(4, f"{len(pages)} page{'s' * (len(pages) != 1)}", preview=pages[0])
-    progress(5)
+    progress(stage, f"{len(pages)} page{'s' * (len(pages) != 1)}", preview=pages[0])
+    progress(stage + 1)
     mp3 = out / "score_piano.mp3"
     synth(midi, mp3)
     hand_audio, waterfall = {}, []
@@ -506,17 +525,12 @@ def transcribe(source, engine="ByteDance", start=0.0, end=None, title=None, prog
         synth(path, hand_audio[hand])
         waterfall += [[round(n.start, 3), round(n.end, 3), n.pitch, hand[0]]
                       for inst in pretty_midi.PrettyMIDI(str(path)).instruments for n in inst.notes]
-    progress(5, f"{fmt_time(max((e for _, e in notes.values()), default=0) / 1000)} of score audio")
-    downloads = [("PDF", pdf), ("MusicXML", xml), ("Two-hand MIDI", midi), ("Score audio (MP3)", mp3),
-                 ("Performance MIDI", raw_midi)]
-    return {"engine": engine, "notes": len(events), "bpm": round(bpm), "meter": meter_text,
-            "key": key_text, "title": title or Path(source).stem, "score": out.name,
-            "player": player_html(pages, notes),
-            "studio": {"rh": files_url(hand_audio["rh"]), "lh": files_url(hand_audio["lh"]), "original": files_url(audio),
-                       "notes": sorted(waterfall), "bars": [b / 1000 for b in bars], "timing": timing,
-                       "bpm": round(bpm), "per_bar": int(meter_text.split("/")[0]),
+    progress(stage + 1, f"{fmt_time(max((e for _, e in notes.values()), default=0) / 1000)} of score audio")
+    return {"player": player_html(pages, notes), "pages": len(pages),
+            "studio": {"rh": files_url(hand_audio["rh"]), "lh": files_url(hand_audio["lh"]),
+                       "notes": sorted(waterfall), "bars": [b / 1000 for b in bars],
                        "duration": max([n[1] for n in waterfall] + [0])},
-            "downloads": [{"label": label, "url": files_url(p), "name": p.name} for label, p in downloads]}
+            "downloads": [("PDF", pdf), ("MusicXML", xml), ("Two-hand MIDI", midi), ("Score audio (MP3)", mp3)]}
 
 
 def synth(midi, mp3):
@@ -666,15 +680,7 @@ def label_sheet(req: LabelRequest):
         step(0)
         info = pdf_info(path)
         step(1)
-        # Cache recognition: changing naming styles only needs a new text overlay.
-        recognition = path.parent / "recognized"
-        recognition.mkdir(exist_ok=True)
-        marker = recognition / "complete.json"
-        if marker.is_file():
-            scores = [recognition / name for name in json.loads(marker.read_text())]
-        else:
-            scores = recognize(path, recognition, lambda detail: step(1, detail))
-            marker.write_text(json.dumps([s.relative_to(recognition).as_posix() for s in scores]))
+        recognition, scores = sheet_recognition(path, step)
         step(2)
         out = Path(tempfile.mkdtemp(prefix="labels-", dir=WORK))
         books = sorted({book for score in scores for book in score.parent.glob("*.omr")})
@@ -701,6 +707,82 @@ def label_sheet(req: LabelRequest):
 
     return start_job(work, SHEET_STAGES, [0.05, 0.7, 0.2, 0.05],
                      "PDF labeling failed. Try a clearer scan or fewer pages.")
+
+
+class SheetRequest(BaseModel):
+    source: str
+
+
+def sheet_recognition(path, step):
+    """Audiveris's output for an uploaded sheet, cached beside it: restyling labels and
+    playing the sheet in the Studio reuse one recognition. Reports progress on stage 1."""
+    recognition = path.parent / "recognized"
+    recognition.mkdir(exist_ok=True)
+    marker = recognition / "complete.json"
+    if marker.is_file():
+        return recognition, [recognition / name for name in json.loads(marker.read_text())]
+    scores = recognize(path, recognition, lambda detail: step(1, detail))
+    marker.write_text(json.dumps([s.relative_to(recognition).as_posix() for s in scores]))
+    return recognition, scores
+
+
+def sheet_musicxml(mxl, xml):
+    """Unpack Audiveris's compressed .mxl. Verovio reads it as is; rewriting it through
+    music21 fails on recognized scores whose voices don't line up exactly."""
+    with zipfile.ZipFile(mxl) as archive:
+        root = re.search(r'full-path="([^"]+)"', archive.read("META-INF/container.xml").decode())[1]
+        xml.write_bytes(archive.read(root))
+    return xml
+
+
+def sheet_facts(xml, midi):
+    """Key (from the signature: note statistics can pick a neighbor key), meter and the tempo
+    Verovio actually played (sheets rarely carry a readable tempo mark: then 120)."""
+    from music21 import converter
+    signature, k, meter_text = None, None, "4/4"
+    try:
+        sc = converter.parse(str(xml))
+        signature = sc.recurse().getElementsByClass(key.KeySignature).first()
+        k = sc.analyze("key")
+        if signature is not None and k.sharps != signature.sharps:
+            k = signature.asKey("major")
+        meter_text = (sc.recurse().getElementsByClass(meter.TimeSignature).first() or meter.TimeSignature("4/4")).ratioString
+    except Exception:  # metadata is cosmetic; playback already works from the engraved MIDI
+        pass
+    tempos = [e.tempo for track in mido.MidiFile(str(midi)).tracks for e in track if e.type == "set_tempo"]
+    bpm = round(mido.tempo2bpm(tempos[0])) if tempos else 120
+    return (f"{k.tonic.name.replace('-', '♭')} {k.mode}" if k else "Key unknown"), meter_text, bpm
+
+
+@app.post("/api/sheets/play")
+def play_sheet(req: SheetRequest):
+    """An uploaded sheet in the Practice Studio, no recording needed: recognized notes are
+    engraved and voiced exactly like a converted recording."""
+    if req.source not in SHEETS:
+        return JSONResponse({"error": "Upload a sheet first."}, status_code=400)
+    if not audiveris_command():
+        return JSONResponse({"error": "Install Audiveris to read sheets (see README.md)."}, status_code=503)
+    path, title = SHEETS[req.source]
+
+    def work(step):
+        step(0)
+        pdf_info(path)
+        step(1)
+        _, scores = sheet_recognition(path, step)
+        if len(scores) != 1:  # ponytail: multi-movement books; join them if such sheets turn up
+            raise SheetError("This sheet was recognized as several separate pieces. Upload one piece at a time.")
+        out = Path(tempfile.mkdtemp(prefix="piano-", dir=WORK))  # piano-: note names/colors can restyle it
+        xml = sheet_musicxml(scores[0], out / "score.musicxml")
+        played = engrave_and_voice(xml, out, step, 2)
+        key_text, meter_text, bpm = sheet_facts(xml, out / "score_two_hands.mid")
+        return {"engine": "Sheet", "notes": len(played["studio"]["notes"]), "bpm": bpm, "meter": meter_text,
+                "key": key_text, "title": title, "score": out.name, "player": played["player"],
+                "studio": {**played["studio"], "original": None, "timing": [], "bpm": bpm,
+                           "per_bar": int(meter_text.split("/")[0])},
+                "downloads": [{"label": label, "url": files_url(f), "name": f.name} for label, f in played["downloads"]]}
+
+    return start_job(work, ["Reading the sheet", "Recognizing the music", "Engraving the score", "Making the audio"],
+                     [0.03, 0.75, 0.07, 0.15], "Could not prepare this sheet for practice. Try a clearer PDF.")
 
 
 class CleanRequest(BaseModel):

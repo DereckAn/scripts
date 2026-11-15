@@ -46,6 +46,16 @@ curl -L -o .venv/lib/python3.10/site-packages/oemer/checkpoints/seg_net/model.on
 Only the 38 MB notehead model is needed. Newer oemer releases require `onnxruntime-gpu`,
 which has no macOS build. Restart the app; the AI option is enabled when the model exists.
 
+## Play a sheet in the Practice Studio
+
+On **Label sheet**, upload a PDF or image and press **Play in Practice Studio**: no
+recording needed. Audiveris's MusicXML (the same recognition labeling uses, cached per
+upload) is engraved by Verovio and voiced per hand exactly like a converted recording, so
+the waterfall, sheet view, loops, speed, metronome, note names/colors and downloads all
+work. Differences: the score is re-engraved from what was recognized (check it against the
+original), there is no "Original audio", and tempo marks are rarely recognized, so playback
+starts at ♩ = 120 (use Speed). The key comes from the key signature.
+
 ## Clean PDF (scans and photos)
 
 Upload a PDF or an image (PNG, JPG, WEBP, TIFF; images become a one-page, A4-wide PDF,

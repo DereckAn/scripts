@@ -275,6 +275,35 @@ class SheetLabelsTests(unittest.TestCase):
         self.assertEqual(plain['pdf']['name'], 'score.pdf')
         self.assertFalse(list(folder.glob('score-*.mid')), 'Restyling leaves no stray MIDI files')
 
+    def test_uploaded_sheet_opens_in_the_studio_without_audio(self):
+        """Recognition is faked with a small two-staff piece; engraving and audio are real."""
+        from music21 import clef, key, layout, meter, note, stream
+        folder = Path(tempfile.mkdtemp(dir=piano.WORK))
+        rh, lh = stream.PartStaff(), stream.PartStaff()
+        rh.append([clef.TrebleClef(), key.KeySignature(-1), meter.TimeSignature('3/4')] + [note.Note(p) for p in ('F4', 'A4', 'C5')])
+        lh.append([clef.BassClef(), key.KeySignature(-1), meter.TimeSignature('3/4'), note.Note('F2', quarterLength=3)])
+        piece = stream.Score([rh, lh]); piece.insert(0, layout.StaffGroup([rh, lh], symbol='brace'))
+        mxl = Path(piece.write('mxl', fp=folder / 'recognized.mxl'))
+        client = TestClient(piano.app)
+        self.assertEqual(client.post('/api/sheets/play', json={'source': 'missing'}).status_code, 400)
+        source = client.post('/api/sheets/source', files={'file': ('Waltz.pdf', open(blank_pdf(folder / 'w.pdf'), 'rb'), 'application/pdf')}).json()
+        with patch.object(piano, 'sheet_recognition', return_value=(folder, [mxl])), \
+                patch.object(piano, 'audiveris_command', return_value='/fake/audiveris'):
+            job = client.post('/api/sheets/play', json={'source': source['id']}).json()['job']
+            for _ in range(300):
+                status = client.get(f'/api/jobs/{job}').json()
+                if status['state'] not in ('queued', 'running'):
+                    break
+                time.sleep(0.2)
+        self.assertEqual(status['state'], 'done', status.get('error'))
+        r = status['result']
+        self.assertEqual((r['engine'], r['title'], r['meter'], r['key']), ('Sheet', 'Waltz', '3/4', 'F major'))
+        self.assertIsNone(r['studio']['original'], 'No recording to compare with')
+        self.assertEqual(sorted((n[2], n[3]) for n in r['studio']['notes']), [(41, 'l'), (65, 'r'), (69, 'r'), (72, 'r')])
+        self.assertEqual([d['label'] for d in r['downloads']], ['PDF', 'MusicXML', 'Two-hand MIDI', 'Score audio (MP3)'])
+        self.assertTrue(r['score'].startswith('piano-'), 'Note names and colors can restyle it')
+        self.assertEqual(client.post('/api/scores/style', json={'score': r['score'], 'show_names': True}).status_code, 200)
+
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():
             self.skipTest('potrace is not installed')
