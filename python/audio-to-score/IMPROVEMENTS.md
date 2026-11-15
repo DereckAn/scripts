@@ -19,6 +19,7 @@ Baseline, Clair de Lune vs Mutopia's MIDI (1,468 notes, 72 bars), 2026-11-15:
 | `clarodelunaletras.pdf` (note names printed inside the heads) | 23% | 54% | 159 | 66 |
 | Mutopia PDF, after duplet repair | 75% | 88% | 90 | 26 |
 | Mutopia PDF, after "2" and "6" repair | 77% | 88% | 87 | 23 |
+| Mutopia PDF, after voice re-timing | 79% | 88% | 78 | 23 |
 
 Labeled sheets read badly: letters inside noteheads stop them looking like noteheads.
 Read the clean sheet, then label it.
@@ -35,7 +36,14 @@ Read the clean sheet, then label it.
 - [ ] **Mid-bar clef changes** (bar 17: left hand switches to treble clef; Audiveris drops the
       small clef, so those chords come out a sixth too low). Readable from Finale/SMuFL fonts;
       LilyPond's Emmentaler glyphs have no usable codes.
-- [ ] **Voices split wrongly** (a hand's notes spread over voices that overrun the bar).
+- [x] **Mistimed voices** (`retime_voices`). Notes stacked vertically are played together:
+      voices that fill their bar give a page-position → time map, and a voice whose every
+      note lines up with them is re-timed from it. Clair de Lune: 11 voices, bar 23 now
+      perfect, 21 and 19 close. Conservative: a voice with a note between trusted notes is
+      left alone.
+- [ ] **Voices that run past the bar line** (23 bars still). Re-timing needs a trusted voice
+      in the bar; bars where every voice is broken (e.g. 49, 50, 71) need another anchor,
+      such as Audiveris's slot grid or the audio.
 - [ ] **Warn when a sheet already has note names inside the heads** (it reads far worse).
 
 Recognition is the weak point: a misread bar just sounds wrong and you have to notice it.

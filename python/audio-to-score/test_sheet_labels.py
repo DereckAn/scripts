@@ -510,6 +510,29 @@ class SheetLabelsTests(unittest.TestCase):
                 self.assertEqual({n.findtext('time-modification/normal-notes') for n in notes}, {'9'})
                 self.assertEqual(sum(int(n.findtext('duration')) for n in notes), 54, 'Fills the 9/8 bar')
 
+    def test_mistimed_voice_is_retimed_from_the_notes_above_it(self):
+        """9/8: the right hand's "6" group is right; the left-hand notes stacked under it were
+        read as plain eighths starting at the wrong time. Stacked notes are played together."""
+        def note(step, x, staff, voice, duration, ratio=None, octave=5):
+            tm = (f'<time-modification><actual-notes>{ratio[0]}</actual-notes><normal-notes>{ratio[1]}</normal-notes>'
+                  '</time-modification>') if ratio else ''
+            return (f'<note default-x="{x}"><pitch><step>{step}</step><octave>{octave}</octave></pitch><duration>{duration}</duration>'
+                    f'<voice>{voice}</voice><type>eighth</type>{tm}<staff>{staff}</staff></note>')
+        right = ''.join(note(n, x, 1, 1, 9, (6, 9)) for n, x in zip('GABCBG', (10, 40, 70, 100, 130, 160)))
+        left = '<forward><duration>4</duration></forward>' + ''.join(
+            note(n, x, 2, 5, 6, octave=3) for n, x in zip('GACBG', (40, 70, 100, 130, 160)))
+        between = note('D', 55, 2, 6, 6, octave=2)  # sits between trusted notes: no safe time
+        root = ET.fromstring('<score-partwise><part id="P1"><measure number="1"><attributes><divisions>12</divisions>'
+                             '<time><beats>9</beats><beat-type>8</beat-type></time><staves>2</staves></attributes>'
+                             f'{right}<backup><duration>54</duration></backup>{left}<backup><duration>34</duration></backup>'
+                             f'{between}</measure></part></score-partwise>')
+        self.assertEqual(piano.retime_voices(root), 1)
+        events = piano.voice_events(root.find('part/measure'), 2, 12)
+        self.assertEqual([(o, l) for o, l, _ in events['5']], [(0.75, 0.75), (1.5, 0.75), (2.25, 0.75), (3.0, 0.75), (3.75, 0.75)])
+        self.assertEqual({n.findtext('time-modification/normal-notes') for _, _, g in events['5'] for n in g}, {'3'})
+        self.assertEqual([(o, l) for o, l, _ in events['6']], [(0.0, 0.5)], 'Not lined up with anything: left alone')
+        self.assertEqual([el.findtext('duration') for el in root.iter('backup')], ['54', '54'], 'Backups rewind to the bar line')
+
     def test_clean_pdf_keeps_vector_pages_untouched(self):
         if not piano.tracer_command():
             self.skipTest('potrace is not installed')

@@ -833,6 +833,7 @@ def sheet_musicxml(mxl, xml, placed=()):
     fix_chord_beams(score)
     mark_symbols(score, placed)  # before duplets: symbols are placed at the recognized onsets
     apply_tuplets(score, placed)
+    retime_voices(score)  # after tuplets: their voices now fill the bar and can be trusted
     tempo_from_words(score)
     ET.ElementTree(score).write(xml, encoding="UTF-8", xml_declaration=True)
     return xml
@@ -1094,6 +1095,108 @@ def apply_tuplets(root, placed):
                 el.find("duration").text = str(int(el.find("duration").text) + grown)
                 break
     return len(chosen)
+
+
+ALIGN = 6  # tenths: notes this close horizontally are played together
+RATIOS = {1.0: None, 1.5: (2, 3), 0.75: (4, 3), 2 / 3: (3, 2), 4 / 3: (3, 4)}  # played / written -> tuplet
+
+
+def retime_voices(root):
+    """Re-time voices that don't fit their bar from where their notes sit on the page: notes
+    stacked vertically are played together. Voices that fill the bar exactly are trusted and
+    give a page position -> time map; a voice whose every note lines up with a trusted note
+    (within ALIGN) but whose timing disagrees is rebuilt from those times, each note lasting
+    until the voice's next one. Only standard ratios to the printed length are accepted (they
+    become the tuplet ratio Verovio plays); anything else is left alone. Returns voices fixed."""
+    fixed = 0
+    for part in root.findall("part"):
+        divisions, meter, count = 1, 4.0, 1
+        for measure in part.findall("measure"):
+            divisions = int(measure.findtext("attributes/divisions") or divisions)
+            count = int(measure.findtext("attributes/staves") or count)
+            if measure.find("attributes/time/beats") is not None:
+                meter = int(measure.findtext("attributes/time/beats")) * 4 / int(measure.findtext("attributes/time/beat-type"))
+            voices = {(staff, v): events for staff in range(1, count + 1)
+                      for v, events in voice_events(measure, staff, divisions).items()}
+            fits = lambda events: (abs(events[0][0]) < 1e-6 and abs(events[-1][0] + events[-1][1] - meter) < 1e-6
+                                   and all(abs(a[0] + a[1] - b[0]) < 1e-6 for a, b in zip(events, events[1:])))
+            trusted = {}  # page x -> time
+            for events in voices.values():
+                if fits(events):
+                    for onset, _, notes in events:
+                        x = float(notes[0].get("default-x", "nan"))
+                        if x == x:
+                            trusted.setdefault(round(x), set()).add(round(onset, 6))
+            if not trusted or any(len(times) > 1 for times in trusted.values()):
+                continue  # nothing to trust, or trusted voices disagree
+            points = sorted((x, next(iter(times))) for x, times in trusted.items())
+            for key, events in voices.items():
+                if fits(events):
+                    continue
+                times = []
+                for onset, _, notes in events:
+                    x = float(notes[0].get("default-x", "nan"))
+                    near = [t for px, t in points if abs(px - x) <= ALIGN] if x == x else []
+                    times.append(near[0] if near else None)
+                if None in times or any(b <= a for a, b in zip(times, times[1:])):
+                    continue
+                if all(abs(t - e[0]) < 1e-6 for t, e in zip(times, events)) and events[-1][0] + events[-1][1] <= meter + 1e-6:
+                    continue  # already right
+                lengths, ok = [], True
+                for i, (t, (_, _, notes)) in enumerate(zip(times, events)):
+                    written = written_length(notes[0])
+                    if written is None:
+                        ok = False; break
+                    room = (times[i + 1] if i + 1 < len(times) else meter) - t
+                    if i + 1 == len(times):  # the last note: as printed, or stretched like a tuplet
+                        room = min(room, written * 1.5) if room >= written - 1e-6 else room
+                    ratio = next((r for r in RATIOS if abs(room / written - r) < 1e-6), None)
+                    if ratio is None:
+                        ok = False; break
+                    lengths.append((written * ratio, RATIOS[ratio]))
+                if ok:
+                    rebuild_voice(measure, events, times, lengths, divisions)
+                    fixed += 1
+    return fixed
+
+
+def rebuild_voice(measure, events, times, lengths, divisions):
+    """Rewrite one voice's stretch of a bar: forward to each note's time, set its length and
+    tuplet ratio, and make the following backup rewind to the bar line again."""
+    notes = [n for e in events for n in e[2]]
+    children = list(measure)
+    first, last = children.index(notes[0]), children.index(notes[-1])
+    while first > 0 and children[first - 1].tag == "forward":  # the voice's own lead-in
+        first -= 1
+    for el in children[first:last + 1]:
+        if el.tag in ("forward", "note") and (el.tag == "forward" or el in notes):
+            measure.remove(el)
+    insert_at = list(measure).index(children[last + 1]) if last + 1 < len(children) else len(measure)
+    cursor, new = 0, []
+    for t, (length, ratio), (_, _, group) in zip(times, lengths, events):
+        gap = round(t * divisions) - cursor
+        if gap > 0:
+            forward = ET.Element("forward")
+            ET.SubElement(forward, "duration").text = str(gap)
+            new.append(forward)
+        for note in group:
+            note.find("duration").text = str(round(length * divisions))
+            for old in note.findall("time-modification"):
+                note.remove(old)
+            if ratio:
+                tm = ET.Element("time-modification")
+                ET.SubElement(tm, "actual-notes").text = str(ratio[0])
+                ET.SubElement(tm, "normal-notes").text = str(ratio[1])
+                after = [i for i, c in enumerate(note) if c.tag in ("type", "dot", "accidental")]
+                note.insert(after[-1] + 1 if after else len(note), tm)
+            new.append(note)
+        cursor = round(t * divisions) + round(length * divisions)
+    for offset, el in enumerate(new):
+        measure.insert(insert_at + offset, el)
+    following = list(measure)[insert_at + len(new):]
+    backup = next((el for el in following if el.tag == "backup"), None)
+    if backup is not None and following and following[0] is backup:
+        backup.find("duration").text = str(cursor)
 
 
 def fix_chord_beams(root):

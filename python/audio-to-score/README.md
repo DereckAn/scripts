@@ -69,6 +69,9 @@ What playback picks up from the sheet:
   the printed "2"/"6" is read from the PDF's text layer and matched to the notes it is
   centered on, only where that voice is short by exactly the missing time; Audiveris's own
   6:4 readings of such groups are corrected too.
+- **Mistimed voices**: notes stacked vertically are played together. In a bar where some
+  voices fill the bar exactly, a voice whose notes all line up under/over theirs but whose
+  timing disagrees is re-timed from those positions (standard tuplet ratios only).
 - **Chords with beams**: Audiveris repeats a chord's beam on each note, which made Verovio
   drop those notes and shorten bars; the beam is kept on the chord's first note only.
 - **Fermatas, trills and arpeggios** (Audiveris doesn't detect them): read from the PDF's
