@@ -125,7 +125,7 @@ recording is probably a different piece or arrangement, and is refused.
 
 ## Song library
 
-The Library tab lists every folder in `songs/`. Each one holds a `song.json` (`title`, plus optional `composer`, `work`, `level`, `license`, `source`, `url`), one score (`.musicxml`, `.mxl` or a score-exact `.mid`) and optionally a `.pdf` of the sheet. Practice opens the song in the Studio like an uploaded MusicXML file; a MIDI is converted to MusicXML first. Only add music you may share (public domain or an open license).
+The Library tab lists every folder in `songs/`. Each one holds a `song.json` (`title`, plus optional `composer`, `work`, `level`, `license`, `source`, `url`), one score (`.musicxml`, `.mxl` or a score-exact `.mid`) and optionally a `.pdf` of the sheet. Practice opens the song in the Studio like an uploaded MusicXML file; a MIDI is converted to MusicXML first. For a MIDI, `key` (e.g. `"C# minor"`, `"Db major"`) names the opening key, since a MIDI's mode is often missing or wrong, and `bpm` sets the opening tempo in ♩ per minute (LilyPond MIDIs say 60); leave `bpm` out to keep the tempo changes in the file. Only add music you may share (public domain or an open license).
 
 ## Clean PDF (scans and photos)
 

@@ -792,15 +792,35 @@ def library():
     return songs
 
 
-def midi_musicxml(midi, target, title):
-    """A score-exact MIDI (e.g. one engraved by LilyPond) as MusicXML; triplets survive the quantizing."""
+def song_key(text):
+    """song.json "key", e.g. "C# minor" or "Db major" -> music21 Key."""
+    tonic, mode = text.split()
+    return key.Key(tonic[0] + tonic[1:].replace("b", "-").replace("♭", "-").replace("♯", "#"), mode)
+
+
+def midi_musicxml(midi, target, title, facts=None):
+    """A score-exact MIDI (e.g. one engraved by LilyPond) as MusicXML; triplets survive the quantizing.
+    song.json "key" names the opening key (a MIDI's mode is often missing or wrong) and "bpm"
+    the opening tempo in ♩ per minute (LilyPond MIDIs default to 60); later changes are kept."""
     from music21 import converter
+    facts = facts or {}
     score = converter.parse(str(midi), quarterLengthDivisors=(4, 3))
     score.metadata = metadata.Metadata(title=title, movementName=title)  # else "Music21 Fragment"
+    opening = song_key(facts["key"]) if facts.get("key") else None
     for part in score.parts:  # MIDI track names ("upper", "lower") would label the staves
         part.partName = part.partAbbreviation = None
         for inst in part.recurse().getElementsByClass(instrument.Instrument):
             inst.partName = inst.instrumentName = inst.partAbbreviation = inst.instrumentAbbreviation = None
+        signature = part.recurse().getElementsByClass(key.KeySignature).first()
+        if opening and signature is not None:
+            if signature.sharps != opening.sharps:
+                raise SheetError(f'song.json key "{facts["key"]}" does not match the file\'s key signature.')
+            signature.activeSite.replace(signature, copy.deepcopy(opening))
+        if facts.get("bpm"):
+            mark = part.recurse().getElementsByClass(tempo.MetronomeMark).first()
+            if mark is not None and mark.offset == 0:
+                mark.activeSite.remove(mark)
+            part.getElementsByClass(stream.Measure).first().insert(0, tempo.MetronomeMark(number=facts["bpm"]))
     score.write("musicxml", fp=target)
     return target
 
@@ -822,7 +842,7 @@ async def open_song(slug: str):
     target = folder / "source.musicxml"
     try:
         if score.suffix == ".mid":
-            await run_in_threadpool(midi_musicxml, score, target, facts["title"])
+            await run_in_threadpool(midi_musicxml, score, target, facts["title"], facts)
         else:
             await run_in_threadpool(musicxml_source, score, target)
     except SheetError as exc:
@@ -1433,7 +1453,9 @@ def sheet_facts(xml, midi):
         sc = converter.parse(str(xml))
         signature = sc.recurse().getElementsByClass(key.KeySignature).first()
         k = sc.analyze("key")
-        if signature is not None and k.sharps != signature.sharps:
+        if isinstance(signature, key.Key):  # the file names its mode: trust it over note statistics
+            k = signature
+        elif signature is not None and k.sharps != signature.sharps:
             k = signature.asKey("major")
         meter_text = (sc.recurse().getElementsByClass(meter.TimeSignature).first() or meter.TimeSignature("4/4")).ratioString
     except Exception:  # metadata is cosmetic; playback already works from the engraved MIDI
