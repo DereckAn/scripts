@@ -84,7 +84,7 @@ tailwind.config = { theme: { extend: {
       <button type="button" data-view="start" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Convert</button>
       <button type="button" data-view="labels" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Label sheet</button>
       <button type="button" data-view="studio" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg" disabled title="Convert a recording first">Practice Studio</button>
-      <button type="button" class="px-space-md py-1.5 rounded-lg font-label-lg text-label-lg text-on-surface-variant" disabled title="Coming soon">Library</button>
+      <button type="button" data-view="library" class="nav-btn px-space-md py-1.5 rounded-lg font-label-lg text-label-lg">Library</button>
     </nav>
   </div>
 </header>
@@ -480,7 +480,19 @@ tailwind.config = { theme: { extend: {
     </div>
   </div>
 </section>
-<section id="view-labels" hidden class="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl">
+<section id="view-library" hidden class="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl">
+  <div class="relative overflow-hidden rounded-xl bg-surface-container-low shadow-sm p-space-xl">
+    <div class="flex flex-col gap-space-xs max-w-2xl">
+      <span class="font-label-mono text-label-mono text-secondary tracking-widest uppercase">Ready to play</span>
+      <h1 class="font-headline-lg text-headline-lg text-primary">Song library</h1>
+      <p class="text-on-surface-variant">Pieces with exact notes, no recording or sheet reading needed. Pick one to open it in the Practice Studio.</p>
+    </div>
+  </div>
+  <p id="lib-error" role="alert" hidden class="p-space-md rounded-lg bg-error-container text-on-error-container"></p>
+  <ul id="lib-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg"></ul>
+</section>
+
+<section id="view-labels" hiddenclass="w-full max-w-7xl mx-auto px-gutter md:px-gutter-desktop py-space-xl flex flex-col gap-space-xl">
   <div class="relative overflow-hidden rounded-xl bg-surface-container-low shadow-sm p-space-xl">
     <div class="flex flex-col gap-space-xs max-w-2xl">
       <span class="font-label-mono text-label-mono text-secondary tracking-widest uppercase">Read it. Name it. Play it.</span>
@@ -607,6 +619,7 @@ tailwind.config = { theme: { extend: {
     $('view-processing').hidden = view !== 'processing';
     $('view-studio').hidden = view !== 'studio';
     $('view-labels').hidden = view !== 'labels';
+    $('view-library').hidden = view !== 'library';
     document.querySelectorAll('.nav-btn').forEach(b => {
       const on = b.dataset.view === view;
       b.classList.toggle('bg-primary-container', on); b.classList.toggle('text-on-primary', on); b.classList.toggle('shadow-sm', on);
@@ -1010,7 +1023,7 @@ tailwind.config = { theme: { extend: {
     if (pdf.source && !pdf.job && pdf.clean) runSheet('/api/sheets/clean', {}, 'Your clean PDF is ready');
   };
   $('pdf-play').onclick = () => {
-    if (pdf.source && !pdf.job && pdf.ready) runSheet('/api/sheets/play', {}, 'Opened in Practice Studio', result => {
+    if (pdf.source && !pdf.job && (pdf.ready || pdf.kind === 'musicxml')) runSheet('/api/sheets/play', {}, 'Opened in Practice Studio', result => {
       fillResult(result); show('studio');
     });
   };
@@ -1057,6 +1070,39 @@ tailwind.config = { theme: { extend: {
     } catch (e) { showError($('pdf-error'), e.message || 'Lost contact with the app. Reload to try again.'); }
     finally { pdf.job = null; $('pdf-progress').hidden = true; pdfControls(); }
   }
+  // ---------- song library: a song becomes a MusicXML sheet, then plays like any uploaded one
+  fetch('/api/library').then(r => r.json()).then(songs => {
+    $('lib-list').innerHTML = songs.length ? songs.map(s => `
+      <li class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+        <div class="flex flex-col gap-space-xs">
+          <span class="font-label-mono text-label-mono text-secondary uppercase tracking-wider">${esc(s.level || '')}</span>
+          <h2 class="font-headline-sm text-headline-sm text-primary">${esc(s.title)}</h2>
+          <p class="text-on-surface-variant">${esc(s.composer || '')}${s.work ? ' · ' + esc(s.work) : ''}</p>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">${esc(s.license || '')}${s.source ? ' · ' + (s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener" class="underline">${esc(s.source)}</a>` : esc(s.source)) : ''}</p>
+        </div>
+        <div class="flex flex-wrap gap-space-sm mt-auto">
+          <button type="button" data-song="${esc(s.id)}" class="px-space-lg py-2.5 rounded-lg bg-primary-container text-on-primary hover:bg-primary font-label-lg text-label-lg flex items-center gap-space-xs"><span class="material-symbols-outlined text-[20px]">piano</span>Practice</button>
+          ${s.pdf ? `<a href="${esc(s.pdf)}" target="_blank" rel="noopener" class="px-space-lg py-2.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container-high font-label-lg text-label-lg flex items-center gap-space-xs"><span class="material-symbols-outlined text-[20px]">description</span>Sheet PDF</a>` : ''}
+        </div>
+      </li>`).join('') : '<li class="text-on-surface-variant">No songs yet. Add a folder to songs/ with a song.json and a .mid or .musicxml file.</li>';
+  }).catch(() => showError($('lib-error'), 'Could not load the library. Reload the page.'));
+  $('lib-list').onclick = async e => {
+    const button = e.target.closest('[data-song]');
+    if (!button || pdf.job || pdf.loading) return;
+    button.disabled = true; showError($('lib-error'));
+    try {
+      const response = await fetch('/api/library/' + encodeURIComponent(button.dataset.song), { method: 'POST' });
+      const d = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(d.error || (response.status === 404 && !d.error
+        ? 'The app was updated. Restart the server (Ctrl+C, then .venv/bin/python piano.py) and try again.' : 'Could not open this song.'));
+      pdf.source = d.id; pdf.kind = d.kind; $('pdf-name').textContent = d.title;
+      $('pdf-info').textContent = 'From the library · exact notes, no recognition needed';
+      $('pdf-original').hidden = true; $('pdf-result').hidden = true;
+      show('labels');  // its progress panel shows the engraving, then the Studio opens
+      runSheet('/api/sheets/play', {}, 'Opened in Practice Studio', result => { fillResult(result); show('studio'); });
+    } catch (err) { showError($('lib-error'), err.message); }
+    finally { button.disabled = false; }
+  };
   $('pdf-cancel').onclick = async () => {
     if (!pdf.job || pdf.job === 'starting') return;
     $('pdf-cancel').disabled = true;

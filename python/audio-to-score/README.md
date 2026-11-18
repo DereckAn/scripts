@@ -123,6 +123,10 @@ sheet + a Wikimedia Commons recording): 67 of 72 bars matched, bar starts within
 of a reference alignment (median), 90% within 0.44 s. Too few matched bars means the
 recording is probably a different piece or arrangement, and is refused.
 
+## Song library
+
+The Library tab lists every folder in `songs/`. Each one holds a `song.json` (`title`, plus optional `composer`, `work`, `level`, `license`, `source`, `url`), one score (`.musicxml`, `.mxl` or a score-exact `.mid`) and optionally a `.pdf` of the sheet. Practice opens the song in the Studio like an uploaded MusicXML file; a MIDI is converted to MusicXML first. Only add music you may share (public domain or an open license).
+
 ## Clean PDF (scans and photos)
 
 Upload a PDF or an image (PNG, JPG, WEBP, TIFF; images become a one-page, A4-wide PDF,

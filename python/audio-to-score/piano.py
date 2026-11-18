@@ -662,6 +662,9 @@ def fmt_time(seconds):
 app = FastAPI(title="Piano to Score")
 app.mount("/files", StaticFiles(directory=WORK), name="files")
 app.mount("/assets", StaticFiles(directory=Path(__file__).parent / "web"), name="assets")
+SONGS = Path(__file__).parent / "songs"
+SONGS.mkdir(exist_ok=True)
+app.mount("/songs", StaticFiles(directory=SONGS), name="songs")
 SOURCES = {}  # source id -> (audio path, title)
 SHEETS = {}  # source id -> (PDF path, title)
 JOBS = {}  # job id -> {"state", "progress", "stage", "result" | "error"}
@@ -770,6 +773,62 @@ async def add_sheet(file: UploadFile):
     title = Path(file.filename).stem
     SHEETS[folder.name] = (path, title)
     return {"id": folder.name, "title": title, "url": files_url(path), **info}
+
+
+# ---------------------------------------------------------------- song library
+# songs/<slug>/: song.json (title, composer, ...), one score (.musicxml, .mxl or .mid), optionally a .pdf
+
+SONG_TYPES = (".musicxml", ".mxl", ".mid")
+
+
+def library():
+    """slug -> (song.json facts, score file, PDF or None) for every complete song folder."""
+    songs = {}
+    for folder in sorted(SONGS.iterdir()) if SONGS.is_dir() else []:
+        scores = [f for ext in SONG_TYPES for f in sorted(folder.glob(f"*{ext}"))]
+        if (folder / "song.json").is_file() and scores:
+            songs[folder.name] = (json.loads((folder / "song.json").read_text()), scores[0],
+                                  next(iter(sorted(folder.glob("*.pdf"))), None))
+    return songs
+
+
+def midi_musicxml(midi, target, title):
+    """A score-exact MIDI (e.g. one engraved by LilyPond) as MusicXML; triplets survive the quantizing."""
+    from music21 import converter
+    score = converter.parse(str(midi), quarterLengthDivisors=(4, 3))
+    score.metadata = metadata.Metadata(title=title, movementName=title)  # else "Music21 Fragment"
+    for part in score.parts:  # MIDI track names ("upper", "lower") would label the staves
+        part.partName = part.partAbbreviation = None
+        for inst in part.recurse().getElementsByClass(instrument.Instrument):
+            inst.partName = inst.instrumentName = inst.partAbbreviation = inst.instrumentAbbreviation = None
+    score.write("musicxml", fp=target)
+    return target
+
+
+@app.get("/api/library")
+def list_songs():
+    return [{"id": slug, **facts, "pdf": f"/songs/{slug}/{pdf.name}" if pdf else None}
+            for slug, (facts, _, pdf) in library().items()]
+
+
+@app.post("/api/library/{slug}")
+async def open_song(slug: str):
+    """A library song as a MusicXML sheet source; /api/sheets/play then opens it in the Studio."""
+    song = library().get(slug)  # only listed folders: the slug never reaches the file system unchecked
+    if song is None:
+        return JSONResponse({"error": "That song is not in the library."}, status_code=404)
+    facts, score, _ = song
+    folder = Path(tempfile.mkdtemp(prefix="sheet-", dir=WORK))
+    target = folder / "source.musicxml"
+    try:
+        if score.suffix == ".mid":
+            await run_in_threadpool(midi_musicxml, score, target, facts["title"])
+        else:
+            await run_in_threadpool(musicxml_source, score, target)
+    except SheetError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    SHEETS[folder.name] = (target, facts["title"])
+    return {"id": folder.name, "title": facts["title"], "url": files_url(target), "pages": 0, "kind": "musicxml"}
 
 
 class LabelRequest(BaseModel):

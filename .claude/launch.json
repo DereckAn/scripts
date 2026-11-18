@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "piano",
+      "runtimeExecutable": "python/audio-to-score/.venv/bin/python",
+      "runtimeArgs": ["python/audio-to-score/piano.py"],
+      "port": 7861
+    }
+  ]
+}
