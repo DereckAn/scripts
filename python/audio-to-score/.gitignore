@@ -3,3 +3,4 @@ __pycache__/
 *.log
 soundfonts/
 .tools/
+my-songs/
