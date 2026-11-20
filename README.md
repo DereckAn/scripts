@@ -86,6 +86,18 @@ irm https://raw.githubusercontent.com/DereckAn/scripts/main/powershell/install-o
 
 ---
 
+## Contributing
+
+Run this once after cloning to enable the repo's git hooks:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/commit-msg` removes AI attribution lines (`Co-Authored-By: <AI tool>`, "Generated with …", `Assisted-by:`, 🤖) from every commit message, whichever model or tool wrote it. Co-author lines for people are kept.
+
+---
+
 ## Help and inspiration
 
 - [macOS Setup Script](https://github.com/sapoepsilon/scripts.git)

@@ -1,0 +1,22 @@
+#!/bin/sh
+# Remove AI/LLM attribution lines from a commit message.
+#   commit-msg hook:   strip-ai-trailers.sh <msg-file>   (edits in place)
+#   filter (stdin):    git filter-branch --msg-filter strip-ai-trailers.sh <range>
+# Human Co-authored-by trailers are kept; only ones naming an AI tool are dropped.
+
+AI='claude|anthropic|copilot|openai|chatgpt|gpt-?[0-9]|gemini|bard|codex|cursor|aider|devin|windsurf|codeium|tabnine|amazon q|codewhisperer|llama|mistral|deepseek|qwen|grok|llm|ai assistant'
+
+filter() {
+  grep -viE "^[[:space:]]*(co-authored-by|signed-off-by|assisted-by|generated-by|ai-by|helped-by):.*($AI)" |
+  grep -viE "generated (with|by|using) .*($AI)" |
+  grep -viE "^[[:space:]]*(assisted-by|generated-by|ai-assisted|ai-generated):" |
+  grep -v '🤖' |
+  # drop trailing blank lines left behind
+  awk '{ lines[NR] = $0 } END { n = NR; while (n > 0 && lines[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print lines[i] }'
+}
+
+if [ -n "$1" ] && [ -f "$1" ]; then
+  tmp=$(mktemp) && filter < "$1" > "$tmp" && cat "$tmp" > "$1"; rm -f "$tmp"
+else
+  filter
+fi
